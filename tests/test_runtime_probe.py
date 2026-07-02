@@ -20,8 +20,12 @@ class FakeOllamaClient:
         failure=None,
     ):
         self.version = version
-        self.show = show or {
-            "details": {"family": "gemma4"},
+        self.show = show if show is not None else {
+            "details": {
+                "families": ["gemma4"],
+                "family": "gemma4",
+                "quantization_level": "Q4_K_M",
+            },
             "model_info": {
                 "general.architecture": "gemma4",
                 "general.parameter_count": 11900000000,
@@ -59,6 +63,9 @@ class RuntimeProbeTests(unittest.TestCase):
         self.assertEqual(result.exit_status, 0)
         self.assertEqual(result.provider["version"], "0.30.6")
         self.assertEqual(result.model["name"], "gemma4:12b")
+        self.assertEqual(result.model["identity"]["family"], "gemma4")
+        self.assertEqual(result.model["identity"]["architecture"], "gemma4")
+        self.assertEqual(result.model["identity"]["quantization_level"], "Q4_K_M")
         self.assertIn("completion", result.model["capabilities"])
         self.assertEqual(result.structured_response["status"], "ok")
 
@@ -99,6 +106,116 @@ class RuntimeProbeTests(unittest.TestCase):
 
         self.assertEqual(result.exit_status, 5)
         self.assertIn("structured JSON response did not match", result.diagnostic)
+
+    def test_probe_rejects_structured_output_with_extra_fields(self):
+        policy = load_runtime_policy(POLICY_PATH)
+
+        result = run_runtime_probe(
+            policy,
+            client=FakeOllamaClient(
+                chat_content=json.dumps(
+                    {
+                        "runtime_baseline": "mvp-runtime-baseline-issue-26",
+                        "status": "ok",
+                        "extra": "not allowed",
+                    }
+                )
+            ),
+        )
+
+        self.assertEqual(result.exit_status, 5)
+        self.assertIn("unexpected field(s): extra", result.diagnostic)
+        self.assertIn("issue #26 schema", result.diagnostic)
+
+    def test_probe_rejects_non_object_structured_json(self):
+        policy = load_runtime_policy(POLICY_PATH)
+
+        result = run_runtime_probe(
+            policy,
+            client=FakeOllamaClient(chat_content=json.dumps(["not", "an", "object"])),
+        )
+
+        self.assertEqual(result.exit_status, 5)
+        self.assertIn("chat response JSON was not an object", result.diagnostic)
+
+    def test_probe_rejects_structured_output_with_wrong_values(self):
+        policy = load_runtime_policy(POLICY_PATH)
+
+        result = run_runtime_probe(
+            policy,
+            client=FakeOllamaClient(
+                chat_content=json.dumps(
+                    {
+                        "runtime_baseline": "different-baseline",
+                        "status": "ok",
+                    }
+                )
+            ),
+        )
+
+        self.assertEqual(result.exit_status, 5)
+        self.assertIn("runtime_baseline expected", result.diagnostic)
+
+    def test_probe_reports_mismatched_generation_model_family(self):
+        policy = load_runtime_policy(POLICY_PATH)
+
+        result = run_runtime_probe(
+            policy,
+            client=FakeOllamaClient(
+                show={
+                    "details": {
+                        "family": "llama",
+                        "quantization_level": "Q4_K_M",
+                    },
+                    "model_info": {"general.architecture": "gemma4"},
+                    "capabilities": ["completion"],
+                }
+            ),
+        )
+
+        self.assertEqual(result.exit_status, 4)
+        self.assertIn("model identity", result.diagnostic)
+        self.assertIn("family", result.diagnostic)
+        self.assertIn("gemma4", result.diagnostic)
+
+    def test_probe_reports_missing_generation_model_identity_evidence(self):
+        policy = load_runtime_policy(POLICY_PATH)
+
+        result = run_runtime_probe(
+            policy,
+            client=FakeOllamaClient(
+                show={
+                    "details": {},
+                    "model_info": {},
+                    "capabilities": ["completion"],
+                }
+            ),
+        )
+
+        self.assertEqual(result.exit_status, 4)
+        self.assertIn("missing identity evidence", result.diagnostic)
+        self.assertIn("/api/show", result.diagnostic)
+
+    def test_probe_reports_wrong_generation_model_quantization(self):
+        policy = load_runtime_policy(POLICY_PATH)
+
+        result = run_runtime_probe(
+            policy,
+            client=FakeOllamaClient(
+                show={
+                    "details": {
+                        "family": "gemma4",
+                        "quantization_level": "Q8_0",
+                    },
+                    "model_info": {"general.architecture": "gemma4"},
+                    "capabilities": ["completion"],
+                }
+            ),
+        )
+
+        self.assertEqual(result.exit_status, 4)
+        self.assertIn("quantization", result.diagnostic)
+        self.assertIn("Q4_K_M", result.diagnostic)
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ This document records the issue #26 MVP runtime baseline for Danish Immigration 
 
 Ollama is the first MVP provider baseline. This is an initial adapter decision, not a permanent product mandate. Later providers must stay behind provider-specific adapters rather than pretending all local runtimes behave the same.
 
-The approved initial generation model is `gemma4:12b`. It composes evidence-bounded answers from retrieved approved official sources. It is not an approved official source and cannot supply official facts from model knowledge.
+The approved initial generation model is `gemma4:12b`. It composes evidence-bounded answers from retrieved approved official sources. It is not an approved official source and cannot supply official facts from model knowledge. The live probe validates `/api/show` identity evidence for the approved artifact: `details.family` is `gemma4`, `model_info.general.architecture` is `gemma4`, and `details.quantization_level` is `Q4_K_M`.
 
 Generation and embedding are separate capabilities:
 
@@ -77,7 +77,7 @@ The probe verifies:
 
 - Ollama service reachability at the loopback endpoint.
 - Ollama version compatibility with the `0.30.6` floor.
-- Installed `gemma4:12b` model identity and completion capability.
+- Installed `gemma4:12b` model identity, Q4_K_M quantization, and completion capability.
 - A small structured JSON response using the local provider.
 - Environment and timing evidence written to `docs/progress/issue-26-runtime-probe.json`.
 

@@ -1,6 +1,12 @@
 # Danish Immigration RAG Architecture
 
-This document records the architectural direction agreed during the initial design discussion. It is a decision summary, not an implementation plan; unresolved choices remain explicitly open.
+This document records settled architecture plus project-level direction for Danish Immigration RAG. It is a decision summary, not an implementation plan; unresolved choices remain explicitly open.
+
+## Scope And Traceability
+
+- Runtime-baseline decisions proven by issue #26 are limited to the local provider baseline, generation/embedding capability separation, loopback defaults, release-network boundary, process/distribution baseline, first verified environment, and live structured-output probe. The traceable sources are [GitHub issue #26](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/26), [docs/runtime-baseline.md](runtime-baseline.md), [docs/progress/issue-26-runtime-baseline.md](progress/issue-26-runtime-baseline.md), and the runtime sections of [.agent/issues/prd-runtime-and-retrieval-baseline.md](../.agent/issues/prd-runtime-and-retrieval-baseline.md).
+- The interaction model, retrieval architecture, source governance, answer pipeline, and trust-indicator sections below preserve project-level context and pre-existing direction. They are not issue #26 completion claims unless an item explicitly cites the issue #26 runtime baseline.
+- Retrieval-library choice, production chunking/ranking, supported embedding models, citation validation, answer schema, trust-scoring algorithms, and source-release governance remain deferred until their own benchmark or architecture gates approve them.
 
 ## Product And Privacy Boundary
 
@@ -20,35 +26,41 @@ This document records the architectural direction agreed during the initial desi
 
 ## Interaction Model
 
-- The primary interface is a calm, conversation-first experience rather than a source browser or research workbench.
-- The desktop layout uses a narrow local-conversation sidebar and a flexible chat canvas. Official evidence opens in a slide-over drawer instead of permanently competing with the answer for width.
-- The large product prompt is an empty state only. Active conversations use a compact title and status line plus a persistent multiline composer.
-- Each exchange follows a conversational rhythm: user message, assistant identity and source status, natural-language answer, compact inline citations, optional support details, and suggested follow-up questions.
-- The answer keeps only essential provenance visible: material-source count, Evidence Confidence, and source check date. Fresh Tomato Score explanations, corpus identity, freshness methodology, model identity, and update controls live in the evidence drawer.
-- Official facts and interpretation remain distinguishable through restrained margin labels. Colored callouts are reserved for warnings and explicit evidence-bounded refusals.
-- The approved direction was validated in the throwaway prototype at [`visualization/danish-rag-ui-prototype.html`](../visualization/danish-rag-ui-prototype.html). Prototype mechanics and styling are not production implementation requirements.
+These statements are project-level product direction. Issue #26 did not implement or approve production UI behavior.
+
+- The primary interface is expected to be a calm, conversation-first experience rather than a source browser or research workbench.
+- The desktop layout direction uses a narrow local-conversation sidebar and a flexible chat canvas. Official evidence is expected to open in a slide-over drawer instead of permanently competing with the answer for width.
+- The large product prompt is an empty-state direction only. Active conversations are expected to use a compact title and status line plus a persistent multiline composer.
+- The intended exchange rhythm is: user message, assistant identity and source status, natural-language answer, compact inline citations, optional support details, and suggested follow-up questions.
+- The intended answer surface keeps only essential provenance visible: material-source count, Evidence Confidence, and source check date. Fresh Tomato Score explanations, corpus identity, freshness methodology, model identity, and update controls are expected to live in the evidence drawer.
+- Official facts and interpretation should remain distinguishable through restrained margin labels. Colored callouts are reserved for warnings and explicit evidence-bounded refusals.
+- The project direction was explored in the throwaway prototype at [`visualization/danish-rag-ui-prototype.html`](../visualization/danish-rag-ui-prototype.html). Prototype mechanics and styling are not production implementation requirements.
 
 ## Local Model Integration
 
 - Users choose and run their own local model provider; Ollama is not mandatory.
-- Issue #26 records Ollama 0.30.6+ as the first MVP provider baseline and `gemma4:12b` as the approved initial generation model. This does not make Ollama mandatory for future providers.
+- Issue #26 records Ollama 0.30.6+ as the first MVP provider baseline and `gemma4:12b` as the approved initial generation model. This does not make Ollama mandatory for future providers. See [docs/runtime-baseline.md](runtime-baseline.md) for the checked runtime contract.
 - Provider-specific differences are isolated behind independent adapters rather than treated as perfectly interchangeable.
 - Generation and embedding are separate capabilities and may use different providers or models.
 - Provider selection is manual in the MVP and includes a connection test; automatic provider discovery is not required.
 - Compatible local generation models remain configurable.
-- `embeddinggemma` is a provisional embedding candidate only. Embedding models are restricted to a small evaluated set because retrieval quality must remain testable.
-- Each index records its embedding model and vector dimensions. Changing the embedding model requires re-indexing.
+- `embeddinggemma` is a provisional embedding candidate only under issue #26. It is not a supported embedding model until retrieval benchmark evidence and later human architecture approval accept it.
+- Each index is expected to record its embedding model and vector dimensions. Changing the embedding model is expected to require re-indexing. The production index implementation remains deferred.
 
 ## Local Data And Retrieval
+
+This section preserves project-level direction for later retrieval work. Issue #26 did not select production retrieval libraries, chunking, ranking, reranking, or supported embedding models.
 
 - Conversation history persists on the user's local disk.
 - SQLite is the working store for conversations, messages, citations, model identity, corpus version, Evidence Confidence, and Fresh Tomato Score.
 - MVP storage relies on per-user operating-system file permissions rather than application-level encryption.
-- Retrieval is hybrid: semantic similarity, full-text matching, metadata filters, and combined ranking.
+- The intended retrieval direction is hybrid: semantic similarity, full-text matching, metadata filters, and combined ranking. The final production retrieval design requires benchmark evidence and architecture approval.
 - Corpus installations contain normalized documents and metadata, not a provider-specific prebuilt vector index.
-- New and changed chunks are embedded locally. Corpus installation must show progress and preserve the previous usable corpus and index if re-indexing fails.
+- New and changed chunks are expected to be embedded locally. Corpus installation should show progress and preserve the previous usable corpus and index if re-indexing fails; exact mechanics remain deferred.
 
 ## Source Governance And Updates
+
+This section is project-level source governance direction. Issue #26 approved the runtime boundary between answer-time local operation and permitted release-network activity, but it did not complete production source-review workflow, release signing, or maintainer-role decisions.
 
 - Project maintainers own a human-reviewed source registry rather than allowing each installation to define trust independently.
 - Maintainer automation may fetch approved URLs and detect changes, but changed content requires review before publication.
@@ -60,18 +72,22 @@ This document records the architectural direction agreed during the initial desi
 
 ## Answer Pipeline
 
-- The MVP uses a constrained RAG pipeline, not an autonomous agent loop.
-- The pipeline normalizes the question, identifies ambiguity, retrieves approved evidence, rejects unsupported claims, generates a structured answer, validates citations, and stores the answer with its provenance.
-- The model does not browse, choose arbitrary tools, or supply unsupported facts from its pretrained knowledge.
-- When only part of a question is supported, the application answers that portion and explicitly declines the unsupported portion.
-- Official facts and interpretation remain visibly distinct.
+This section is project-level answer-pipeline direction. Issue #26 proved only local structured output through the runtime provider; it did not implement production retrieval, prompting, answer validation, citation validation, or storage behavior.
+
+- The MVP is expected to use a constrained RAG pipeline, not an autonomous agent loop.
+- The intended pipeline normalizes the question, identifies ambiguity, retrieves approved evidence, rejects unsupported claims, generates a structured answer, validates citations, and stores the answer with its provenance.
+- The generation model must not browse, choose arbitrary tools, or supply unsupported facts from its pretrained knowledge.
+- When only part of a question is supported, the application should answer that portion and explicitly decline the unsupported portion.
+- Official facts and interpretation should remain visibly distinct.
 
 ## Trust Indicators
 
+This section is project-level trust-indicator direction. Issue #26 did not define scoring algorithms or implement historical answer storage.
+
 - **Evidence Confidence** measures how directly and consistently retrieved approved sources support the answer. It is computed from evidence and citation coverage, not model self-rating.
 - **Fresh Tomato Score** measures source recency and health independently of Evidence Confidence.
-- Each source retains its own Fresh Tomato Score. The answer-level score is the lowest score among material sources.
-- Trust indicators, their reasons, citations, model identity, and corpus version are stored with the historical answer rather than recalculated silently later.
+- Each source retains its own Fresh Tomato Score. The answer-level score is expected to be the lowest score among material sources.
+- Trust indicators, their reasons, citations, model identity, and corpus version are expected to be stored with the historical answer rather than recalculated silently later.
 
 ## Still Open
 

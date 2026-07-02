@@ -30,6 +30,12 @@ Implementation source PRD: [.agent/issues/prd-runtime-and-retrieval-baseline.md]
 - Runtime documentation distinguishes the local-only answer path from permitted release-network operations: `docs/runtime-baseline.md`.
 - Integration evidence records command, exit status, environment, model identity, and timing: `docs/progress/issue-26-runtime-probe.json` after the live gate runs.
 
+## Architecture Documentation Boundary
+
+Issue #26 updates only the runtime-baseline portions of [docs/architecture.md](../architecture.md): the first Ollama provider baseline, approved initial `gemma4:12b` generation model, generation/embedding separation, provisional `embeddinggemma` status, loopback answer-path boundary, release-network separation, local process/distribution baseline, first verified environment, and live structured-output probe.
+
+The broader interaction model, retrieval approach, source governance, answer pipeline, and trust-indicator text in [docs/architecture.md](../architecture.md) are project-level context or pre-existing direction. They are not issue #26 completion claims and still require later benchmark evidence, implementation, or human architecture approval before they can be treated as settled production design.
+
 ## Commands
 
 ```bash
@@ -54,3 +60,6 @@ Latest evidence file: [docs/progress/issue-26-runtime-probe.json](issue-26-runti
 
 - The live gate verifies only the current WSL2 host. macOS, native Linux, packaging, and background service behavior remain unverified.
 - CPU-only latency is recorded as host evidence, not guaranteed as a support claim.
+- Production retrieval libraries, chunking, ranking/reranking, and supported embedding models remain deferred to the retrieval benchmark and later architecture approval.
+- Source-review workflow, release signing, and maintainer roles remain deferred outside the runtime baseline.
+- Production answer schema, prompt design, citation validation, answer storage, Evidence Confidence calculation, and Fresh Tomato Score calculation remain deferred outside the runtime baseline.

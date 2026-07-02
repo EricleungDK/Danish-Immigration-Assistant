@@ -9,7 +9,7 @@
     "docs/progress/issue-26-runtime-probe.json"
   ],
   "diagnostic": "Runtime baseline probe passed.",
-  "elapsed_ms": 27032.909,
+  "elapsed_ms": 25071.712,
   "environment": {
     "cpu_count": 16,
     "machine": "x86_64",
@@ -21,7 +21,7 @@
     "wsl": true
   },
   "exit_status": 0,
-  "finished_at_utc": "2026-07-02T20:36:22.763377+00:00",
+  "finished_at_utc": "2026-07-02T21:18:42.251283+00:00",
   "model": {
     "capabilities": [
       "completion",
@@ -40,6 +40,11 @@
       "parent_model": "",
       "quantization_level": "Q4_K_M"
     },
+    "identity": {
+      "architecture": "gemma4",
+      "family": "gemma4",
+      "quantization_level": "Q4_K_M"
+    },
     "model_info": {
       "general.architecture": "gemma4",
       "general.parameter_count": 11907350576,
@@ -52,14 +57,14 @@
     "id": "ollama",
     "version": "0.30.6"
   },
-  "started_at_utc": "2026-07-02T20:35:57.425961+00:00",
+  "started_at_utc": "2026-07-02T21:18:18.930888+00:00",
   "structured_response": {
     "runtime_baseline": "mvp-runtime-baseline-issue-26",
     "status": "ok"
   },
   "timings_ms": {
-    "model_inspection": 2.881,
-    "service_version": 18.364,
-    "structured_completion": 27008.199
+    "model_inspection": 2.847,
+    "service_version": 20.134,
+    "structured_completion": 25045.422
   }
 }

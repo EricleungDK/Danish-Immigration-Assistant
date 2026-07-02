@@ -15,7 +15,12 @@
     "generation": {
       "initial": "gemma4:12b",
       "purpose": "compose evidence-bounded answers from retrieved approved official sources",
-      "treated_as_official_source": false
+      "treated_as_official_source": false,
+      "identity": {
+        "family": "gemma4",
+        "architecture": "gemma4",
+        "quantization_level": "Q4_K_M"
+      }
     },
     "embedding": {
       "provisional_candidate": "embeddinggemma",

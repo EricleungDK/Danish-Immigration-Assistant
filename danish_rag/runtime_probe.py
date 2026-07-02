@@ -173,6 +173,17 @@ def run_runtime_probe(
             "model_info": _summarize_model_info(model_payload.get("model_info", {})),
         }
     )
+    try:
+        result.model["identity"] = _validate_model_identity(
+            model_payload, policy["models"]["generation"].get("identity", {})
+        )
+    except Exception as exc:
+        return _finish(
+            result,
+            4,
+            f"The installed generation model did not match the issue #26 model identity baseline. Detail: {exc}",
+            started_counter,
+        )
 
     schema = _structured_probe_schema(policy["baseline_id"])
     messages = [
@@ -319,6 +330,73 @@ def _summarize_model_info(model_info: dict[str, Any]) -> dict[str, Any]:
     return {key: model_info[key] for key in allowed_keys if key in model_info}
 
 
+def _validate_model_identity(
+    model_payload: dict[str, Any], identity_policy: dict[str, Any]
+) -> dict[str, str]:
+    details = model_payload.get("details")
+    if not isinstance(details, dict):
+        details = {}
+    model_info = model_payload.get("model_info")
+    if not isinstance(model_info, dict):
+        model_info = {}
+
+    expected_family = str(identity_policy.get("family", ""))
+    expected_architecture = str(identity_policy.get("architecture", ""))
+    expected_quantization = str(identity_policy.get("quantization_level", ""))
+
+    family = _model_family(details)
+    architecture = model_info.get("general.architecture")
+    quantization = details.get("quantization_level")
+
+    missing_fields = [
+        field
+        for field, value in (
+            ("details.family", family),
+            ("model_info.general.architecture", architecture),
+            ("details.quantization_level", quantization),
+        )
+        if not value
+    ]
+    if missing_fields:
+        raise ValueError(
+            "missing identity evidence from /api/show: " + ", ".join(missing_fields)
+        )
+
+    if expected_family and family != expected_family:
+        raise ValueError(
+            f"family expected {expected_family!r} from /api/show details, found {family!r}. "
+            f"Reinstall the approved {expected_family} artifact."
+        )
+    if expected_architecture and architecture != expected_architecture:
+        raise ValueError(
+            f"architecture expected {expected_architecture!r} from /api/show model_info, "
+            f"found {architecture!r}."
+        )
+    if expected_quantization and quantization != expected_quantization:
+        raise ValueError(
+            f"quantization expected {expected_quantization!r} from /api/show details, "
+            f"found {quantization!r}. Pull the approved artifact again."
+        )
+
+    return {
+        "family": str(family),
+        "architecture": str(architecture),
+        "quantization_level": str(quantization),
+    }
+
+
+def _model_family(details: dict[str, Any]) -> str | None:
+    family = details.get("family")
+    if isinstance(family, str) and family:
+        return family
+    families = details.get("families")
+    if isinstance(families, list):
+        for candidate in families:
+            if isinstance(candidate, str) and candidate:
+                return candidate
+    return None
+
+
 def _structured_probe_schema(baseline_id: str) -> dict[str, Any]:
     return {
         "type": "object",
@@ -342,10 +420,36 @@ def _parse_structured_response(chat_payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _validate_structured_response(response: dict[str, Any], baseline_id: str) -> None:
-    if response.get("runtime_baseline") != baseline_id:
-        raise ValueError("runtime_baseline was missing or incorrect")
-    if response.get("status") != "ok":
-        raise ValueError("status was missing or not ok")
+    schema = _structured_probe_schema(baseline_id)
+    expected_type = schema["type"]
+    if expected_type != "object":
+        raise ValueError(f"unsupported probe schema type: {expected_type}")
+
+    properties = schema["properties"]
+    required = set(schema["required"])
+    allowed = set(properties)
+
+    missing = sorted(field for field in required if field not in response)
+    if missing:
+        raise ValueError("missing required field(s): " + ", ".join(missing))
+
+    if schema.get("additionalProperties") is False:
+        extra = sorted(field for field in response if field not in allowed)
+        if extra:
+            raise ValueError(
+                "unexpected field(s): "
+                + ", ".join(extra)
+                + "; expected only "
+                + ", ".join(sorted(allowed))
+            )
+
+    for field, field_schema in properties.items():
+        if field not in response:
+            continue
+        if "const" in field_schema and response[field] != field_schema["const"]:
+            raise ValueError(
+                f"{field} expected {field_schema['const']!r}, found {response[field]!r}"
+            )
 
 
 def _running_under_wsl() -> bool:
