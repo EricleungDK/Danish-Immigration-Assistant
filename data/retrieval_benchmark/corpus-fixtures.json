@@ -1,0 +1,139 @@
+[
+  {
+    "id": "di-rag-doc-permanent-residence-language",
+    "publisher": "SIRI",
+    "official_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+    "topic_tags": [
+      "permanent-residence",
+      "language-requirement"
+    ],
+    "language": "da",
+    "approval_state": "approved",
+    "source_health": "healthy",
+    "checked_at_utc": "2026-06-15T09:00:00Z",
+    "content_origin": "project-authored-fixture",
+    "content": "Permanent opholdstilladelse kan kræve dokumentation for bestået Prøve i Dansk 2 eller en tilsvarende danskprøve. Denne fixture beskriver kun sprogkravet for permanent ophold og ikke familiesammenføring."
+  },
+  {
+    "id": "di-rag-doc-terse-danish-exam",
+    "publisher": "Udlændingestyrelsen",
+    "official_url": "https://www.nyidanmark.dk/da/Ord-og-begreber/Danskproeve",
+    "topic_tags": [
+      "permanent-residence",
+      "language-requirement",
+      "exam"
+    ],
+    "language": "da",
+    "approval_state": "approved",
+    "source_health": "healthy",
+    "checked_at_utc": "2026-06-15T09:05:00Z",
+    "content_origin": "project-authored-fixture",
+    "content": "Danskprøve til permanent ophold kan være Prøve i Dansk 2. Kort phrasing som dansk prøve permanent ophold skal stadig finde denne godkendte kilde."
+  },
+  {
+    "id": "di-rag-doc-permanent-residence-fees",
+    "publisher": "SIRI",
+    "official_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Gebyr",
+    "topic_tags": [
+      "permanent-residence",
+      "fees"
+    ],
+    "language": "da",
+    "approval_state": "approved",
+    "source_health": "healthy",
+    "checked_at_utc": "2026-06-16T10:00:00Z",
+    "content_origin": "project-authored-fixture",
+    "content": "Gebyr for ansøgning om permanent opholdstilladelse fremgår af den officielle gebyrside. Metadata skal afgrænse denne fixture til emnet gebyr og udgiveren SIRI."
+  },
+  {
+    "id": "di-rag-doc-overdue-policy-usable-exam",
+    "publisher": "Udlændingestyrelsen",
+    "official_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold/Dansk",
+    "topic_tags": [
+      "permanent-residence",
+      "language-requirement",
+      "exam"
+    ],
+    "language": "da",
+    "approval_state": "approved",
+    "source_health": "overdue-policy-usable",
+    "checked_at_utc": "2026-03-01T08:30:00Z",
+    "content_origin": "project-authored-fixture",
+    "content": "Overdue men policy-usable dokumentation for Prøve i Dansk 3 kan stadig identificeres som brugbart bevis, når queryen eksplicit tillader source_health overdue-policy-usable."
+  },
+  {
+    "id": "di-rag-doc-evidence-boundary",
+    "publisher": "SIRI",
+    "official_url": "https://www.nyidanmark.dk/da/Service/Kontakt",
+    "topic_tags": [
+      "safety-boundary",
+      "evidence-boundary"
+    ],
+    "language": "da",
+    "approval_state": "approved",
+    "source_health": "healthy",
+    "checked_at_utc": "2026-06-17T08:30:00Z",
+    "content_origin": "project-authored-fixture",
+    "content": "Assistenten skal give evidensbundne svar og afvise personlig juridisk rådgivning om ophold, når der ikke findes direkte støtte i en godkendt officiel kilde."
+  },
+  {
+    "id": "di-rag-doc-citizenship-language",
+    "publisher": "Udlændinge- og Integrationsministeriet",
+    "official_url": "https://uim.dk/statsborgerskab/danskproeve",
+    "topic_tags": [
+      "citizenship",
+      "language-requirement"
+    ],
+    "language": "da",
+    "approval_state": "approved",
+    "source_health": "healthy",
+    "checked_at_utc": "2026-06-18T08:30:00Z",
+    "content_origin": "project-authored-fixture",
+    "content": "Statsborgerskab og indfødsret kan have andre danskprøvekrav end permanent ophold. Denne fixture er en forbudt grænse for permanent ophold-spørgsmål."
+  },
+  {
+    "id": "di-rag-doc-changed-unreviewed-language-rule",
+    "publisher": "SIRI",
+    "official_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold/Aendret",
+    "topic_tags": [
+      "permanent-residence",
+      "language-requirement"
+    ],
+    "language": "da",
+    "approval_state": "approved",
+    "source_health": "changed-unreviewed",
+    "checked_at_utc": "2026-06-20T12:00:00Z",
+    "content_origin": "project-authored-fixture",
+    "content": "Ændret uanmeldt danskkrav for permanent ophold er stærkt matchende tekst, men changed-unreviewed kilder må ikke få retrieval credit."
+  },
+  {
+    "id": "di-rag-doc-broken-extraction-exam",
+    "publisher": "SIRI",
+    "official_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold/Broken",
+    "topic_tags": [
+      "permanent-residence",
+      "language-requirement"
+    ],
+    "language": "da",
+    "approval_state": "approved",
+    "source_health": "extraction-failed",
+    "checked_at_utc": "2026-06-21T12:00:00Z",
+    "content_origin": "project-authored-fixture",
+    "content": "Extraction failed tekst om danskprøve permanent ophold er med som negativ kontrol og må ikke krediteres."
+  },
+  {
+    "id": "di-rag-doc-unapproved-community-summary",
+    "publisher": "Community summary",
+    "official_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold/Ureviewed-summary",
+    "topic_tags": [
+      "permanent-residence",
+      "language-requirement"
+    ],
+    "language": "da",
+    "approval_state": "unapproved",
+    "source_health": "healthy",
+    "checked_at_utc": "2026-06-22T12:00:00Z",
+    "content_origin": "project-authored-fixture",
+    "content": "Ugodkendt opsummering om permanent ophold og danskprøve er en negativ kontrol og må ikke give retrieval credit."
+  }
+]

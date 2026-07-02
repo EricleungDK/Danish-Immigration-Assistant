@@ -1,0 +1,127 @@
+[
+  {
+    "id": "di-rag-query-exact-danish-terminology",
+    "query_text": "permanent opholdstilladelse Prøve i Dansk 2",
+    "category": "exact-danish-terminology",
+    "required_document_ids": [
+      "di-rag-doc-permanent-residence-language"
+    ],
+    "forbidden_document_ids": [
+      "di-rag-doc-citizenship-language"
+    ],
+    "allowed_source_health": [
+      "healthy"
+    ],
+    "metadata_filters": {
+      "topic_tags": [
+        "permanent-residence",
+        "language-requirement"
+      ],
+      "language": "da"
+    }
+  },
+  {
+    "id": "di-rag-query-terse-phrasing",
+    "query_text": "dansk prøve permanent ophold",
+    "category": "terse-phrasing",
+    "required_document_ids": [
+      "di-rag-doc-terse-danish-exam"
+    ],
+    "forbidden_document_ids": [
+      "di-rag-doc-citizenship-language"
+    ],
+    "allowed_source_health": [
+      "healthy"
+    ],
+    "metadata_filters": {
+      "topic_tags": [
+        "permanent-residence"
+      ],
+      "language": "da"
+    }
+  },
+  {
+    "id": "di-rag-query-metadata-filtering",
+    "query_text": "gebyr permanent ophold",
+    "category": "metadata-filtering",
+    "required_document_ids": [
+      "di-rag-doc-permanent-residence-fees"
+    ],
+    "forbidden_document_ids": [
+      "di-rag-doc-terse-danish-exam"
+    ],
+    "allowed_source_health": [
+      "healthy"
+    ],
+    "metadata_filters": {
+      "publisher": "SIRI",
+      "topic_tags": [
+        "fees"
+      ],
+      "language": "da"
+    }
+  },
+  {
+    "id": "di-rag-query-stale-policy-usable",
+    "query_text": "overdue Prøve i Dansk 3 policy usable",
+    "category": "stale-but-policy-usable",
+    "required_document_ids": [
+      "di-rag-doc-overdue-policy-usable-exam"
+    ],
+    "forbidden_document_ids": [
+      "di-rag-doc-broken-extraction-exam"
+    ],
+    "allowed_source_health": [
+      "healthy",
+      "overdue-policy-usable"
+    ],
+    "metadata_filters": {
+      "topic_tags": [
+        "exam"
+      ],
+      "language": "da"
+    }
+  },
+  {
+    "id": "di-rag-query-blocked-source-exclusion",
+    "query_text": "ændret uanmeldt danskkrav",
+    "category": "blocked-source-exclusion",
+    "required_document_ids": [
+      "di-rag-doc-changed-unreviewed-language-rule"
+    ],
+    "forbidden_document_ids": [
+      "di-rag-doc-unapproved-community-summary",
+      "di-rag-doc-broken-extraction-exam"
+    ],
+    "allowed_source_health": [
+      "healthy"
+    ],
+    "metadata_filters": {
+      "topic_tags": [
+        "permanent-residence",
+        "language-requirement"
+      ],
+      "language": "da"
+    }
+  },
+  {
+    "id": "di-rag-query-forbidden-result-safety-boundary",
+    "query_text": "personlig juridisk rådgivning ophold evidensbundet svar",
+    "category": "forbidden-result-safety-boundary",
+    "required_document_ids": [
+      "di-rag-doc-evidence-boundary"
+    ],
+    "forbidden_document_ids": [
+      "di-rag-doc-citizenship-language"
+    ],
+    "allowed_source_health": [
+      "healthy"
+    ],
+    "metadata_filters": {
+      "topic_tags": [
+        "safety-boundary"
+      ],
+      "language": "da"
+    }
+  }
+]

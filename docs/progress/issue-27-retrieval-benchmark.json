@@ -1,0 +1,234 @@
+{
+  "benchmark_id": "mvp-retrieval-benchmark-issue-27",
+  "executed_at_utc": "2026-07-02T21:13:58.626638+00:00",
+  "fixture_identity": {
+    "corpus_path": "data/retrieval_benchmark/corpus-fixtures.json",
+    "corpus_sha256": "51f5c891fd742c1f67f076ccd13d5381bdd7ec9d46b3fb436acf6eb4ad143679",
+    "document_ids": [
+      "di-rag-doc-permanent-residence-language",
+      "di-rag-doc-terse-danish-exam",
+      "di-rag-doc-permanent-residence-fees",
+      "di-rag-doc-overdue-policy-usable-exam",
+      "di-rag-doc-evidence-boundary",
+      "di-rag-doc-citizenship-language",
+      "di-rag-doc-changed-unreviewed-language-rule",
+      "di-rag-doc-broken-extraction-exam",
+      "di-rag-doc-unapproved-community-summary"
+    ],
+    "queries_path": "data/retrieval_benchmark/evaluation-queries.json",
+    "queries_sha256": "402a28f1b3386b0d7fd2271c4533bf658e5aeeaadaf2941120842df727217217",
+    "query_ids": [
+      "di-rag-query-exact-danish-terminology",
+      "di-rag-query-terse-phrasing",
+      "di-rag-query-metadata-filtering",
+      "di-rag-query-stale-policy-usable",
+      "di-rag-query-blocked-source-exclusion",
+      "di-rag-query-forbidden-result-safety-boundary"
+    ]
+  },
+  "index": {
+    "document_count": 9,
+    "engine": "sqlite-fts5"
+  },
+  "queries": [
+    {
+      "blocked_result_ids": [
+        "di-rag-doc-broken-extraction-exam",
+        "di-rag-doc-unapproved-community-summary",
+        "di-rag-doc-changed-unreviewed-language-rule"
+      ],
+      "blocked_source_violations": 0,
+      "category": "exact-danish-terminology",
+      "eligible_result_ids": [
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-terse-danish-exam"
+      ],
+      "forbidden_result_ids": [],
+      "forbidden_result_violations": 0,
+      "latency_ms": 0.166,
+      "overdue_result_ids": [],
+      "query_id": "di-rag-query-exact-danish-terminology",
+      "query_text": "permanent opholdstilladelse Pr\u00f8ve i Dansk 2",
+      "raw_result_ids": [
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-terse-danish-exam",
+        "di-rag-doc-overdue-policy-usable-exam",
+        "di-rag-doc-permanent-residence-fees",
+        "di-rag-doc-evidence-boundary",
+        "di-rag-doc-citizenship-language",
+        "di-rag-doc-broken-extraction-exam",
+        "di-rag-doc-unapproved-community-summary",
+        "di-rag-doc-changed-unreviewed-language-rule"
+      ],
+      "recall_at_1_hit": true,
+      "recall_at_3_hit": true,
+      "reciprocal_rank": 1.0,
+      "required_rank": 1,
+      "required_result_credit": 1
+    },
+    {
+      "blocked_result_ids": [
+        "di-rag-doc-broken-extraction-exam",
+        "di-rag-doc-unapproved-community-summary",
+        "di-rag-doc-changed-unreviewed-language-rule"
+      ],
+      "blocked_source_violations": 0,
+      "category": "terse-phrasing",
+      "eligible_result_ids": [
+        "di-rag-doc-terse-danish-exam",
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-permanent-residence-fees"
+      ],
+      "forbidden_result_ids": [],
+      "forbidden_result_violations": 0,
+      "latency_ms": 0.049,
+      "overdue_result_ids": [],
+      "query_id": "di-rag-query-terse-phrasing",
+      "query_text": "dansk pr\u00f8ve permanent ophold",
+      "raw_result_ids": [
+        "di-rag-doc-terse-danish-exam",
+        "di-rag-doc-overdue-policy-usable-exam",
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-citizenship-language",
+        "di-rag-doc-broken-extraction-exam",
+        "di-rag-doc-unapproved-community-summary",
+        "di-rag-doc-changed-unreviewed-language-rule",
+        "di-rag-doc-permanent-residence-fees",
+        "di-rag-doc-evidence-boundary"
+      ],
+      "recall_at_1_hit": true,
+      "recall_at_3_hit": true,
+      "reciprocal_rank": 1.0,
+      "required_rank": 1,
+      "required_result_credit": 1
+    },
+    {
+      "blocked_result_ids": [
+        "di-rag-doc-broken-extraction-exam",
+        "di-rag-doc-unapproved-community-summary",
+        "di-rag-doc-changed-unreviewed-language-rule"
+      ],
+      "blocked_source_violations": 0,
+      "category": "metadata-filtering",
+      "eligible_result_ids": [
+        "di-rag-doc-permanent-residence-fees"
+      ],
+      "forbidden_result_ids": [],
+      "forbidden_result_violations": 0,
+      "latency_ms": 0.036,
+      "overdue_result_ids": [],
+      "query_id": "di-rag-query-metadata-filtering",
+      "query_text": "gebyr permanent ophold",
+      "raw_result_ids": [
+        "di-rag-doc-permanent-residence-fees",
+        "di-rag-doc-citizenship-language",
+        "di-rag-doc-terse-danish-exam",
+        "di-rag-doc-broken-extraction-exam",
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-unapproved-community-summary",
+        "di-rag-doc-changed-unreviewed-language-rule",
+        "di-rag-doc-evidence-boundary"
+      ],
+      "recall_at_1_hit": true,
+      "recall_at_3_hit": true,
+      "reciprocal_rank": 1.0,
+      "required_rank": 1,
+      "required_result_credit": 1
+    },
+    {
+      "blocked_result_ids": [],
+      "blocked_source_violations": 0,
+      "category": "stale-but-policy-usable",
+      "eligible_result_ids": [
+        "di-rag-doc-overdue-policy-usable-exam",
+        "di-rag-doc-terse-danish-exam"
+      ],
+      "forbidden_result_ids": [],
+      "forbidden_result_violations": 0,
+      "latency_ms": 0.032,
+      "overdue_result_ids": [
+        "di-rag-doc-overdue-policy-usable-exam"
+      ],
+      "query_id": "di-rag-query-stale-policy-usable",
+      "query_text": "overdue Pr\u00f8ve i Dansk 3 policy usable",
+      "raw_result_ids": [
+        "di-rag-doc-overdue-policy-usable-exam",
+        "di-rag-doc-terse-danish-exam",
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-evidence-boundary"
+      ],
+      "recall_at_1_hit": true,
+      "recall_at_3_hit": true,
+      "reciprocal_rank": 1.0,
+      "required_rank": 1,
+      "required_result_credit": 1
+    },
+    {
+      "blocked_result_ids": [
+        "di-rag-doc-changed-unreviewed-language-rule"
+      ],
+      "blocked_source_violations": 0,
+      "category": "blocked-source-exclusion",
+      "eligible_result_ids": [],
+      "forbidden_result_ids": [],
+      "forbidden_result_violations": 0,
+      "latency_ms": 0.014,
+      "overdue_result_ids": [],
+      "query_id": "di-rag-query-blocked-source-exclusion",
+      "query_text": "\u00e6ndret uanmeldt danskkrav",
+      "raw_result_ids": [
+        "di-rag-doc-changed-unreviewed-language-rule"
+      ],
+      "recall_at_1_hit": false,
+      "recall_at_3_hit": false,
+      "reciprocal_rank": 0.0,
+      "required_rank": null,
+      "required_result_credit": 0
+    },
+    {
+      "blocked_result_ids": [
+        "di-rag-doc-broken-extraction-exam",
+        "di-rag-doc-unapproved-community-summary",
+        "di-rag-doc-changed-unreviewed-language-rule"
+      ],
+      "blocked_source_violations": 0,
+      "category": "forbidden-result-safety-boundary",
+      "eligible_result_ids": [
+        "di-rag-doc-evidence-boundary"
+      ],
+      "forbidden_result_ids": [],
+      "forbidden_result_violations": 0,
+      "latency_ms": 0.037,
+      "overdue_result_ids": [],
+      "query_id": "di-rag-query-forbidden-result-safety-boundary",
+      "query_text": "personlig juridisk r\u00e5dgivning ophold evidensbundet svar",
+      "raw_result_ids": [
+        "di-rag-doc-evidence-boundary",
+        "di-rag-doc-citizenship-language",
+        "di-rag-doc-terse-danish-exam",
+        "di-rag-doc-broken-extraction-exam",
+        "di-rag-doc-unapproved-community-summary",
+        "di-rag-doc-changed-unreviewed-language-rule",
+        "di-rag-doc-permanent-residence-language"
+      ],
+      "recall_at_1_hit": true,
+      "recall_at_3_hit": true,
+      "reciprocal_rank": 1.0,
+      "required_rank": 1,
+      "required_result_credit": 1
+    }
+  ],
+  "summary": {
+    "blocked_source_violations": 0,
+    "forbidden_result_violations": 0,
+    "latency_ms": {
+      "max": 0.166,
+      "mean": 0.056,
+      "min": 0.014
+    },
+    "mean_reciprocal_rank": 0.833333,
+    "query_count": 6,
+    "recall_at_1": 0.833333,
+    "recall_at_3": 0.833333
+  }
+}
