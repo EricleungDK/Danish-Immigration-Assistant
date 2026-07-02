@@ -5,8 +5,10 @@ from pathlib import Path
 
 from danish_rag.retrieval_benchmark import (
     BenchmarkValidationError,
+    DenseIndexCompatibilityError,
     build_fts_index,
     load_benchmark_inputs,
+    run_dense_retrieval_benchmark,
     run_retrieval_benchmark,
     write_benchmark_failure,
     write_benchmark_result,
@@ -16,6 +18,49 @@ from danish_rag.retrieval_benchmark import (
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS_PATH = ROOT / "data" / "retrieval_benchmark" / "corpus-fixtures.json"
 QUERIES_PATH = ROOT / "data" / "retrieval_benchmark" / "evaluation-queries.json"
+DENSE_QUERIES_PATH = ROOT / "data" / "retrieval_benchmark" / "dense-evaluation-queries.json"
+
+
+class FakeEmbeddingClient:
+    def __init__(
+        self,
+        *,
+        identity: dict[str, object] | None = None,
+        invalid_shape_for: str | None = None,
+    ):
+        self.identity = identity or {"family": "embeddinggemma", "revision": "fixture"}
+        self.invalid_shape_for = invalid_shape_for
+        self.calls = 0
+
+    def show_model(self, model: str) -> dict[str, object]:
+        return {"model": model, "identity": self.identity}
+
+    def embed(self, model: str, text: str) -> dict[str, object]:
+        self.calls += 1
+        if self.invalid_shape_for and self.invalid_shape_for in text:
+            return {"embedding": [0.1, "not-a-number"], "model": model}
+
+        normalized = text.casefold()
+        vector = [0.0, 0.0, 0.0, 0.0]
+        if "permanent" in normalized or "permanet" in normalized or "ophold" in normalized:
+            vector[0] += 0.8
+        if "dansk" in normalized or "danish" in normalized or "danskprove" in normalized:
+            vector[1] += 0.9
+        if "gebyr" in normalized or "fee" in normalized:
+            vector[2] += 1.0
+        if "ændret" in normalized or "uanmeldt" in normalized:
+            vector[3] += 1.0
+        if "changed-unreviewed" in normalized:
+            vector[3] += 1.0
+        if not any(vector):
+            vector = [0.1, 0.1, 0.1, 0.1]
+
+        return {
+            "embedding": vector,
+            "model": model,
+            "total_duration": 5_000_000,
+            "load_duration": 3_000_000 if self.calls == 1 else 0,
+        }
 
 
 class RetrievalBenchmarkTests(unittest.TestCase):
@@ -157,6 +202,92 @@ class RetrievalBenchmarkTests(unittest.TestCase):
             connection.close()
 
         self.assertEqual(len(rows), 1)
+
+    def test_dense_runner_records_embedding_metadata_and_operational_metrics(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            index_path = Path(tempdir) / "dense-index.json"
+            output_path = Path(tempdir) / "dense-result.json"
+
+            result = run_dense_retrieval_benchmark(
+                CORPUS_PATH,
+                DENSE_QUERIES_PATH,
+                index_path=index_path,
+                output_path=output_path,
+                client=FakeEmbeddingClient(),
+                embedding_model="embeddinggemma",
+            )
+
+            self.assertEqual(result["benchmark_id"], "mvp-dense-retrieval-benchmark-issue-28")
+            self.assertEqual(result["index"]["engine"], "local-dense-json")
+            self.assertEqual(result["index"]["schema_version"], "dense-retrieval-index-v1")
+            self.assertEqual(result["index"]["embedding_model"], "embeddinggemma")
+            self.assertEqual(result["index"]["vector_dimensions"], 4)
+            self.assertEqual(result["summary"]["query_count"], 3)
+            self.assertIn("english-paraphrase", result["summary"]["categories"])
+            self.assertIn("realistic-typo", result["summary"]["categories"])
+            self.assertGreater(result["operations"]["dense_indexing_wall_time_ms"], 0)
+            self.assertGreater(result["operations"]["dense_index_size_bytes"], 0)
+            self.assertIn("process_peak_resident_memory_mb", result["operations"])
+            self.assertTrue(result["operations"]["cold_embedding_load_observed"])
+            self.assertEqual(result["summary"]["blocked_source_violations"], 0)
+            self.assertTrue(output_path.exists())
+            self.assertTrue(index_path.exists())
+
+    def test_dense_runner_rejects_incompatible_existing_index_before_querying(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            index_path = Path(tempdir) / "dense-index.json"
+            run_dense_retrieval_benchmark(
+                CORPUS_PATH,
+                DENSE_QUERIES_PATH,
+                index_path=index_path,
+                client=FakeEmbeddingClient(identity={"family": "embeddinggemma", "revision": "a"}),
+                embedding_model="embeddinggemma",
+            )
+
+            incompatible_client = FakeEmbeddingClient(
+                identity={"family": "embeddinggemma", "revision": "b"}
+            )
+            with self.assertRaisesRegex(DenseIndexCompatibilityError, "Re-index required"):
+                run_dense_retrieval_benchmark(
+                    CORPUS_PATH,
+                    DENSE_QUERIES_PATH,
+                    index_path=index_path,
+                    client=incompatible_client,
+                    embedding_model="embeddinggemma",
+                    rebuild_index=False,
+                )
+
+            self.assertEqual(incompatible_client.calls, 0)
+
+    def test_dense_metadata_filtering_runs_before_credit(self):
+        result = run_dense_retrieval_benchmark(
+            CORPUS_PATH,
+            DENSE_QUERIES_PATH,
+            client=FakeEmbeddingClient(),
+            embedding_model="embeddinggemma",
+        )
+        by_id = {query["query_id"]: query for query in result["queries"]}
+
+        blocked = by_id["di-rag-query-dense-blocked-source-exclusion"]
+        self.assertIn(
+            "di-rag-doc-changed-unreviewed-language-rule",
+            blocked["raw_result_ids"],
+        )
+        self.assertIn(
+            "di-rag-doc-changed-unreviewed-language-rule",
+            blocked["blocked_result_ids"],
+        )
+        self.assertEqual(blocked["required_result_credit"], 0)
+        self.assertEqual(blocked["blocked_source_violations"], 0)
+
+    def test_dense_runner_rejects_invalid_embedding_vector_shape(self):
+        with self.assertRaisesRegex(BenchmarkValidationError, "invalid embedding vector"):
+            run_dense_retrieval_benchmark(
+                CORPUS_PATH,
+                DENSE_QUERIES_PATH,
+                client=FakeEmbeddingClient(invalid_shape_for="Permanent opholdstilladelse"),
+                embedding_model="embeddinggemma",
+            )
 
 
 if __name__ == "__main__":

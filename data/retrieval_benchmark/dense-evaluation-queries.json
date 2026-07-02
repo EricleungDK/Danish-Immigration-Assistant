@@ -1,0 +1,65 @@
+[
+  {
+    "id": "di-rag-query-dense-english-paraphrase",
+    "query_text": "Which Danish language test can count for permanent residence?",
+    "category": "english-paraphrase",
+    "required_document_ids": [
+      "di-rag-doc-permanent-residence-language"
+    ],
+    "forbidden_document_ids": [
+      "di-rag-doc-citizenship-language"
+    ],
+    "allowed_source_health": [
+      "healthy"
+    ],
+    "metadata_filters": {
+      "topic_tags": [
+        "permanent-residence",
+        "language-requirement"
+      ],
+      "language": "da"
+    }
+  },
+  {
+    "id": "di-rag-query-dense-realistic-typo",
+    "query_text": "permanet ophold danskprove",
+    "category": "realistic-typo",
+    "required_document_ids": [
+      "di-rag-doc-terse-danish-exam"
+    ],
+    "forbidden_document_ids": [
+      "di-rag-doc-citizenship-language"
+    ],
+    "allowed_source_health": [
+      "healthy"
+    ],
+    "metadata_filters": {
+      "topic_tags": [
+        "permanent-residence"
+      ],
+      "language": "da"
+    }
+  },
+  {
+    "id": "di-rag-query-dense-blocked-source-exclusion",
+    "query_text": "changed-unreviewed ændret uanmeldt danskkrav",
+    "category": "blocked-source-exclusion",
+    "required_document_ids": [
+      "di-rag-doc-changed-unreviewed-language-rule"
+    ],
+    "forbidden_document_ids": [
+      "di-rag-doc-unapproved-community-summary",
+      "di-rag-doc-broken-extraction-exam"
+    ],
+    "allowed_source_health": [
+      "healthy"
+    ],
+    "metadata_filters": {
+      "topic_tags": [
+        "permanent-residence",
+        "language-requirement"
+      ],
+      "language": "da"
+    }
+  }
+]
