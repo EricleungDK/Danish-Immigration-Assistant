@@ -1,0 +1,133 @@
+{
+  "baseline_id": "mvp-runtime-baseline-issue-26",
+  "issue": "https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/26",
+  "providers": {
+    "initial": {
+      "id": "ollama",
+      "name": "Ollama",
+      "role": "first-mvp-provider",
+      "mandatory_for_future_versions": false,
+      "minimum_version": "0.30.6",
+      "default_endpoint": "http://127.0.0.1:11434"
+    }
+  },
+  "models": {
+    "generation": {
+      "initial": "gemma4:12b",
+      "purpose": "compose evidence-bounded answers from retrieved approved official sources",
+      "treated_as_official_source": false
+    },
+    "embedding": {
+      "provisional_candidate": "embeddinggemma",
+      "supported_for_production": false,
+      "approval_gate": "retrieval benchmark and human architecture approval"
+    }
+  },
+  "capabilities": [
+    "generation",
+    "embedding"
+  ],
+  "capability_contracts": {
+    "generation": {
+      "input": [
+        "messages",
+        "response_schema",
+        "runtime_options"
+      ],
+      "output": [
+        "structured_answer",
+        "provider_identity",
+        "model_identity"
+      ]
+    },
+    "embedding": {
+      "input": [
+        "text_inputs"
+      ],
+      "output": [
+        "vectors",
+        "model_identity",
+        "vector_dimensions"
+      ]
+    }
+  },
+  "application": {
+    "language": "python",
+    "process_model": "single-local-python-process",
+    "launch_model": "foreground-virtualenv",
+    "default_bind_host": "127.0.0.1",
+    "default_bind_port": 8000,
+    "code_updates": "manual",
+    "automatic_application_code_updates": false
+  },
+  "browser_security": {
+    "reject_non_loopback_by_default": true,
+    "validate_host_and_origin_for_state_changes": true,
+    "provider_configuration_in_urls": false,
+    "future_credentials_require_separate_secret_storage_decision": true
+  },
+  "network": {
+    "answer_path_allows_outbound_requests": false,
+    "knowledge_release_checks_allowed": true,
+    "knowledge_release_download_requires_user_approval": true,
+    "application_code_update_network_allowed": false,
+    "answer_path_local_operations": [
+      "questions",
+      "retrieved evidence",
+      "model inference",
+      "answers",
+      "indexes",
+      "conversation records"
+    ],
+    "permitted_release_network_operations": [
+      "knowledge release discovery",
+      "approved knowledge release artifact retrieval",
+      "project release discovery"
+    ]
+  },
+  "privacy": {
+    "provider_credentials_required_for_mvp": false,
+    "put_user_content_in_urls_or_logs": false,
+    "send_questions_answers_evidence_or_conversation_records_to_updates": false
+  },
+  "knowledge_releases": {
+    "updates": "explicit-user-approved",
+    "separate_from_application_code_updates": true,
+    "application_must_not_run_git_pull": true
+  },
+  "supported_environment": {
+    "first_verified": {
+      "host": "Windows 11 with WSL2 Ubuntu",
+      "architecture": "x86-64",
+      "python": "3.11+",
+      "ollama": "0.30.6+",
+      "browser": "evergreen local browser"
+    },
+    "hardware": {
+      "minimum_system_ram_gb": 16,
+      "recommended_system_ram_gb": 24,
+      "gpu_acceleration": "recommended",
+      "cpu_only": "measure, do not guarantee latency"
+    },
+    "not_verified_by_issue_26": [
+      "macOS",
+      "native Linux",
+      "desktop packaging",
+      "background services"
+    ]
+  },
+  "documentation_contract": {
+    "baseline_id": "mvp-runtime-baseline-issue-26",
+    "initial_provider": "ollama",
+    "minimum_ollama_version": "0.30.6",
+    "initial_generation_model": "gemma4:12b",
+    "provisional_embedding_candidate": "embeddinggemma",
+    "default_application_bind_host": "127.0.0.1",
+    "default_provider_endpoint": "http://127.0.0.1:11434",
+    "application_process_model": "single-local-python-process",
+    "application_code_updates": "manual",
+    "knowledge_release_updates": "explicit-user-approved",
+    "answer_path_allows_outbound_requests": false,
+    "knowledge_release_checks_allowed": true
+  }
+}

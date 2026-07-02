@@ -1,0 +1,65 @@
+{
+  "command": [
+    "/usr/bin/python3",
+    "-m",
+    "danish_rag.runtime_probe",
+    "--policy",
+    "config/runtime-policy.json",
+    "--evidence",
+    "docs/progress/issue-26-runtime-probe.json"
+  ],
+  "diagnostic": "Runtime baseline probe passed.",
+  "elapsed_ms": 27032.909,
+  "environment": {
+    "cpu_count": 16,
+    "machine": "x86_64",
+    "memory_total_mb": 15908,
+    "platform_release": "6.6.114.1-microsoft-standard-WSL2",
+    "platform_system": "Linux",
+    "processor": "x86_64",
+    "python_version": "3.12.3",
+    "wsl": true
+  },
+  "exit_status": 0,
+  "finished_at_utc": "2026-07-02T20:36:22.763377+00:00",
+  "model": {
+    "capabilities": [
+      "completion",
+      "vision",
+      "audio",
+      "tools",
+      "thinking"
+    ],
+    "details": {
+      "families": [
+        "gemma4"
+      ],
+      "family": "gemma4",
+      "format": "gguf",
+      "parameter_size": "11.9B",
+      "parent_model": "",
+      "quantization_level": "Q4_K_M"
+    },
+    "model_info": {
+      "general.architecture": "gemma4",
+      "general.parameter_count": 11907350576,
+      "general.quantization_version": 2
+    },
+    "name": "gemma4:12b"
+  },
+  "provider": {
+    "endpoint": "http://127.0.0.1:11434",
+    "id": "ollama",
+    "version": "0.30.6"
+  },
+  "started_at_utc": "2026-07-02T20:35:57.425961+00:00",
+  "structured_response": {
+    "runtime_baseline": "mvp-runtime-baseline-issue-26",
+    "status": "ok"
+  },
+  "timings_ms": {
+    "model_inspection": 2.881,
+    "service_version": 18.364,
+    "structured_completion": 27008.199
+  }
+}
