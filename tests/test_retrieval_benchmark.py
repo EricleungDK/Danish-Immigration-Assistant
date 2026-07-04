@@ -9,6 +9,7 @@ from danish_rag.retrieval_benchmark import (
     build_fts_index,
     load_benchmark_inputs,
     run_dense_retrieval_benchmark,
+    run_hybrid_retrieval_comparison,
     run_retrieval_benchmark,
     write_benchmark_failure,
     write_benchmark_result,
@@ -27,10 +28,21 @@ class FakeEmbeddingClient:
         *,
         identity: dict[str, object] | None = None,
         invalid_shape_for: str | None = None,
+        dimensions: int = 4,
+        endpoint: str = "http://fake-embedding.local",
+        provider_version: str = "0.9.9-fixture",
+        load_duration_by_text: dict[str, int] | None = None,
     ):
         self.identity = identity or {"family": "embeddinggemma", "revision": "fixture"}
         self.invalid_shape_for = invalid_shape_for
+        self.dimensions = dimensions
+        self.endpoint = endpoint
+        self.provider_version = provider_version
+        self.load_duration_by_text = load_duration_by_text or {}
         self.calls = 0
+
+    def get_version(self) -> dict[str, object]:
+        return {"version": self.provider_version}
 
     def show_model(self, model: str) -> dict[str, object]:
         return {"model": model, "identity": self.identity}
@@ -54,12 +66,19 @@ class FakeEmbeddingClient:
             vector[3] += 1.0
         if not any(vector):
             vector = [0.1, 0.1, 0.1, 0.1]
+        if self.dimensions > 4:
+            vector.extend([0.0] * (self.dimensions - 4))
+        elif self.dimensions < 4:
+            vector = vector[: self.dimensions]
 
         return {
             "embedding": vector,
             "model": model,
             "total_duration": 5_000_000,
-            "load_duration": 3_000_000 if self.calls == 1 else 0,
+            "load_duration": self.load_duration_by_text.get(
+                text,
+                3_000_000 if self.calls == 1 else 0,
+            ),
         }
 
 
@@ -233,6 +252,73 @@ class RetrievalBenchmarkTests(unittest.TestCase):
             self.assertTrue(output_path.exists())
             self.assertTrue(index_path.exists())
 
+    def test_dense_runner_records_runtime_version_and_reproducible_configuration(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            index_path = Path(tempdir) / "dense-index.json"
+            output_path = Path(tempdir) / "dense-result.json"
+            client = FakeEmbeddingClient(
+                endpoint="http://127.0.0.1:11434",
+                provider_version="0.9.9-test",
+            )
+
+            result = run_dense_retrieval_benchmark(
+                CORPUS_PATH,
+                DENSE_QUERIES_PATH,
+                index_path=index_path,
+                output_path=output_path,
+                policy_path="config/runtime-policy.json",
+                embedding_endpoint=client.endpoint,
+                embedding_model="embeddinggemma",
+                client=client,
+                rebuild_index=True,
+                timeout_seconds=12.5,
+            )
+
+            self.assertEqual(
+                result["configuration"],
+                {
+                    "corpus_path": str(CORPUS_PATH),
+                    "queries_path": str(DENSE_QUERIES_PATH),
+                    "policy_path": "config/runtime-policy.json",
+                    "embedding_endpoint": "http://127.0.0.1:11434",
+                    "embedding_model": "embeddinggemma",
+                    "index_path": str(index_path),
+                    "output_path": str(output_path),
+                    "index_mode": "rebuild",
+                    "timeout_seconds": 12.5,
+                },
+            )
+            self.assertEqual(result["runtime"]["embedding_provider"], "ollama")
+            self.assertEqual(result["runtime"]["embedding_endpoint"], "http://127.0.0.1:11434")
+            self.assertEqual(result["runtime"]["embedding_model"], "embeddinggemma")
+            self.assertEqual(result["runtime"]["provider_version"], "0.9.9-test")
+            self.assertEqual(result["runtime"]["provider_version_payload"], {"version": "0.9.9-test"})
+
+    def test_dense_query_reports_warm_retrieval_latency_separate_from_cold_load(self):
+        result = run_dense_retrieval_benchmark(
+            CORPUS_PATH,
+            DENSE_QUERIES_PATH,
+            client=FakeEmbeddingClient(
+                load_duration_by_text={
+                    "Which Danish language test can count for permanent residence?": 1_000_000
+                }
+            ),
+            embedding_model="embeddinggemma",
+        )
+        by_id = {query["query_id"]: query for query in result["queries"]}
+        query = by_id["di-rag-query-dense-english-paraphrase"]
+
+        self.assertEqual(query["embedding_load_duration_ms"], 1.0)
+        self.assertIn("warm_retrieval_latency_ms", query)
+        expected_warm_latency_ms = round(
+            max(query["embedding_latency_ms"] - query["embedding_load_duration_ms"], 0.0)
+            + query["warm_similarity_latency_ms"],
+            3,
+        )
+        self.assertEqual(query["warm_retrieval_latency_ms"], expected_warm_latency_ms)
+        self.assertLessEqual(query["warm_retrieval_latency_ms"], query["latency_ms"])
+        self.assertIn("warm_retrieval_latency_ms", result["summary"])
+
     def test_dense_runner_rejects_incompatible_existing_index_before_querying(self):
         with tempfile.TemporaryDirectory() as tempdir:
             index_path = Path(tempdir) / "dense-index.json"
@@ -258,6 +344,30 @@ class RetrievalBenchmarkTests(unittest.TestCase):
                 )
 
             self.assertEqual(incompatible_client.calls, 0)
+
+    def test_dense_runner_rejects_existing_index_with_different_vector_dimensions(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            index_path = Path(tempdir) / "dense-index.json"
+            run_dense_retrieval_benchmark(
+                CORPUS_PATH,
+                DENSE_QUERIES_PATH,
+                index_path=index_path,
+                client=FakeEmbeddingClient(),
+                embedding_model="embeddinggemma",
+            )
+
+            incompatible_client = FakeEmbeddingClient(dimensions=5)
+            with self.assertRaisesRegex(DenseIndexCompatibilityError, "dimension mismatch"):
+                run_dense_retrieval_benchmark(
+                    CORPUS_PATH,
+                    DENSE_QUERIES_PATH,
+                    index_path=index_path,
+                    client=incompatible_client,
+                    embedding_model="embeddinggemma",
+                    rebuild_index=False,
+                )
+
+            self.assertEqual(incompatible_client.calls, 1)
 
     def test_dense_metadata_filtering_runs_before_credit(self):
         result = run_dense_retrieval_benchmark(
@@ -288,6 +398,206 @@ class RetrievalBenchmarkTests(unittest.TestCase):
                 client=FakeEmbeddingClient(invalid_shape_for="Permanent opholdstilladelse"),
                 embedding_model="embeddinggemma",
             )
+
+    def test_hybrid_comparison_runs_all_candidates_and_recommends_best_evidence(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            output_path = Path(tempdir) / "issue-29-comparison.json"
+            recommendation_path = Path(tempdir) / "issue-29-recommendation.md"
+
+            result = run_hybrid_retrieval_comparison(
+                CORPUS_PATH,
+                QUERIES_PATH,
+                DENSE_QUERIES_PATH,
+                index_path=Path(tempdir) / "dense-index.json",
+                output_path=output_path,
+                recommendation_path=recommendation_path,
+                embedding_endpoint="http://127.0.0.1:11434",
+                client=FakeEmbeddingClient(),
+                embedding_model="embeddinggemma",
+                timeout_seconds=12.5,
+            )
+
+            self.assertEqual(
+                result["benchmark_id"],
+                "mvp-hybrid-retrieval-comparison-issue-29",
+            )
+            self.assertEqual(
+                result["recommendation"]["selected_candidate"],
+                result["human_recommendation"]["selected_candidate"],
+            )
+            self.assertEqual(result["recommendation"]["selected_candidate"], "hybrid")
+            self.assertEqual(result["recommendation"]["production_thresholds"], "out_of_scope")
+            self.assertEqual(result["summary"]["selected_candidate"], "hybrid")
+            self.assertIn("lexical", result["candidates"])
+            self.assertIn("dense", result["candidates"])
+            self.assertIn("hybrid", result["candidates"])
+            self.assertEqual(result["candidates"]["hybrid"]["fusion"]["algorithm"], "rrf")
+            self.assertEqual(result["candidates"]["hybrid"]["summary"]["blocked_source_violations"], 0)
+            self.assertEqual(
+                result["candidates"]["hybrid"]["category_metrics"]["exact-danish-terminology"][
+                    "recall_at_3"
+                ],
+                result["candidates"]["lexical"]["category_metrics"]["exact-danish-terminology"][
+                    "recall_at_3"
+                ],
+            )
+            self.assertGreaterEqual(
+                result["candidates"]["hybrid"]["category_metrics"]["english-paraphrase"][
+                    "recall_at_3"
+                ],
+                result["candidates"]["dense"]["category_metrics"]["english-paraphrase"][
+                    "recall_at_3"
+                ],
+            )
+            self.assertIn("runtime_baseline", result["configuration"])
+            self.assertEqual(
+                result["configuration"]["inputs"],
+                {
+                    "corpus_path": str(CORPUS_PATH),
+                    "lexical_queries_path": str(QUERIES_PATH),
+                    "dense_queries_path": str(DENSE_QUERIES_PATH),
+                },
+            )
+            self.assertEqual(
+                result["configuration"]["outputs"],
+                {
+                    "machine_readable_result_path": str(output_path),
+                    "human_recommendation_path": str(recommendation_path),
+                },
+            )
+            self.assertEqual(
+                result["configuration"]["embedding"],
+                {
+                    "endpoint": "http://127.0.0.1:11434",
+                    "model": "embeddinggemma",
+                    "timeout_seconds": 12.5,
+                },
+            )
+            self.assertEqual(
+                result["configuration"]["index"],
+                {
+                    "index_path": str(Path(tempdir) / "dense-index.json"),
+                    "index_mode": "rebuild",
+                },
+            )
+            self.assertIn("embedding_model_identity", result["index"])
+            self.assertIn("vector_dimensions", result["index"])
+            repeat = run_hybrid_retrieval_comparison(
+                CORPUS_PATH,
+                QUERIES_PATH,
+                DENSE_QUERIES_PATH,
+                client=FakeEmbeddingClient(),
+                embedding_model="embeddinggemma",
+            )
+            self.assertEqual(
+                [
+                    (query["query_id"], query["raw_result_ids"])
+                    for query in result["candidates"]["hybrid"]["queries"]
+                ],
+                [
+                    (query["query_id"], query["raw_result_ids"])
+                    for query in repeat["candidates"]["hybrid"]["queries"]
+                ],
+            )
+            self.assertTrue(output_path.exists())
+            recommendation = recommendation_path.read_text(encoding="utf-8")
+            self.assertIn("Selected candidate: hybrid", recommendation)
+            self.assertIn(f"Machine-readable result: `{output_path}`", recommendation)
+            self.assertIn("Production thresholds remain out of scope", recommendation)
+            self.assertIn("Non-Selected Alternatives", recommendation)
+
+    def test_hybrid_rejection_recommends_best_alternative_with_reasons(self):
+        class SemanticOnlyClient(FakeEmbeddingClient):
+            def embed(self, model: str, text: str) -> dict[str, object]:
+                self.calls += 1
+                if "semantic target" in text.casefold() or text == "misleading one two":
+                    vector = [1.0, 0.0]
+                else:
+                    vector = [0.0, 1.0]
+                return {
+                    "embedding": vector,
+                    "model": model,
+                    "total_duration": 5_000_000,
+                    "load_duration": 0,
+                }
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            temp_path = Path(tempdir)
+            corpus_path = temp_path / "corpus.json"
+            lexical_queries_path = temp_path / "lexical-queries.json"
+            dense_queries_path = temp_path / "dense-queries.json"
+            common_fixture = {
+                "publisher": "SIRI",
+                "official_url": "https://www.nyidanmark.dk/example",
+                "topic_tags": ["permanent-residence"],
+                "language": "da",
+                "approval_state": "approved",
+                "source_health": "healthy",
+                "checked_at_utc": "2026-06-01T00:00:00Z",
+                "content_origin": "project-authored-fixture",
+            }
+            corpus = [
+                {
+                    **common_fixture,
+                    "id": "di-rag-doc-required",
+                    "content": "semantic target only",
+                },
+                {
+                    **common_fixture,
+                    "id": "di-rag-doc-distractor-one",
+                    "content": "misleading one",
+                },
+                {
+                    **common_fixture,
+                    "id": "di-rag-doc-distractor-two",
+                    "content": "misleading two",
+                },
+                {
+                    **common_fixture,
+                    "id": "di-rag-doc-distractor-three",
+                    "content": "misleading one two",
+                },
+            ]
+            exact_query = {
+                "id": "di-rag-query-exact-synthetic",
+                "query_text": "semantic target",
+                "category": "exact-danish-terminology",
+                "required_document_ids": ["di-rag-doc-required"],
+                "forbidden_document_ids": [],
+                "allowed_source_health": ["healthy"],
+                "metadata_filters": {
+                    "topic_tags": ["permanent-residence"],
+                    "language": "da",
+                },
+            }
+            misleading_query = {
+                "id": "di-rag-query-english-synthetic",
+                "query_text": "misleading one two",
+                "category": "english-paraphrase",
+                "required_document_ids": ["di-rag-doc-required"],
+                "forbidden_document_ids": [],
+                "allowed_source_health": ["healthy"],
+                "metadata_filters": {
+                    "topic_tags": ["permanent-residence"],
+                    "language": "da",
+                },
+            }
+            corpus_path.write_text(json.dumps(corpus), encoding="utf-8")
+            lexical_queries_path.write_text(json.dumps([exact_query]), encoding="utf-8")
+            dense_queries_path.write_text(json.dumps([misleading_query]), encoding="utf-8")
+
+            result = run_hybrid_retrieval_comparison(
+                corpus_path,
+                lexical_queries_path,
+                dense_queries_path,
+                index_path=temp_path / "dense-index.json",
+                client=SemanticOnlyClient(),
+                embedding_model="embeddinggemma",
+            )
+
+            self.assertNotEqual(result["recommendation"]["selected_candidate"], "hybrid")
+            self.assertIn("hybrid", result["recommendation"]["rejected_candidates"])
+            self.assertTrue(result["recommendation"]["rejected_candidates"]["hybrid"])
 
 
 if __name__ == "__main__":

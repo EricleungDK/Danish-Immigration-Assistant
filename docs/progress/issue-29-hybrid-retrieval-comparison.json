@@ -1,0 +1,2698 @@
+{
+  "benchmark_id": "mvp-hybrid-retrieval-comparison-issue-29",
+  "candidates": {
+    "dense": {
+      "category_metrics": {
+        "blocked-source-exclusion": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "blocked-source-exclusion"
+          ],
+          "embedding_load_duration_ms": {
+            "max": 88.659,
+            "mean": 87.875,
+            "min": 87.09
+          },
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 129.765,
+            "mean": 129.053,
+            "min": 128.341
+          },
+          "mean_reciprocal_rank": 0.0,
+          "query_count": 2,
+          "recall_at_1": 0.0,
+          "recall_at_3": 0.0,
+          "warm_retrieval_latency_ms": {
+            "max": 42.675,
+            "mean": 41.178,
+            "min": 39.682
+          }
+        },
+        "english-paraphrase": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "english-paraphrase"
+          ],
+          "embedding_load_duration_ms": {
+            "max": 87.766,
+            "mean": 87.766,
+            "min": 87.766
+          },
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 124.799,
+            "mean": 124.799,
+            "min": 124.799
+          },
+          "mean_reciprocal_rank": 0.5,
+          "query_count": 1,
+          "recall_at_1": 0.0,
+          "recall_at_3": 1.0,
+          "warm_retrieval_latency_ms": {
+            "max": 37.033,
+            "mean": 37.033,
+            "min": 37.033
+          }
+        },
+        "exact-danish-terminology": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "exact-danish-terminology"
+          ],
+          "embedding_load_duration_ms": {
+            "max": 90.827,
+            "mean": 90.827,
+            "min": 90.827
+          },
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 129.784,
+            "mean": 129.784,
+            "min": 129.784
+          },
+          "mean_reciprocal_rank": 0.5,
+          "query_count": 1,
+          "recall_at_1": 0.0,
+          "recall_at_3": 1.0,
+          "warm_retrieval_latency_ms": {
+            "max": 38.957,
+            "mean": 38.957,
+            "min": 38.957
+          }
+        },
+        "forbidden-result-safety-boundary": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "forbidden-result-safety-boundary"
+          ],
+          "embedding_load_duration_ms": {
+            "max": 90.378,
+            "mean": 90.378,
+            "min": 90.378
+          },
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 134.891,
+            "mean": 134.891,
+            "min": 134.891
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "warm_retrieval_latency_ms": {
+            "max": 44.513,
+            "mean": 44.513,
+            "min": 44.513
+          }
+        },
+        "metadata-filtering": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "metadata-filtering"
+          ],
+          "embedding_load_duration_ms": {
+            "max": 84.795,
+            "mean": 84.795,
+            "min": 84.795
+          },
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 127.89,
+            "mean": 127.89,
+            "min": 127.89
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "warm_retrieval_latency_ms": {
+            "max": 43.095,
+            "mean": 43.095,
+            "min": 43.095
+          }
+        },
+        "realistic-typo": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "realistic-typo"
+          ],
+          "embedding_load_duration_ms": {
+            "max": 86.737,
+            "mean": 86.737,
+            "min": 86.737
+          },
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 129.285,
+            "mean": 129.285,
+            "min": 129.285
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "warm_retrieval_latency_ms": {
+            "max": 42.548,
+            "mean": 42.548,
+            "min": 42.548
+          }
+        },
+        "stale-but-policy-usable": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "stale-but-policy-usable"
+          ],
+          "embedding_load_duration_ms": {
+            "max": 86.319,
+            "mean": 86.319,
+            "min": 86.319
+          },
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 127.851,
+            "mean": 127.851,
+            "min": 127.851
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "warm_retrieval_latency_ms": {
+            "max": 41.532,
+            "mean": 41.532,
+            "min": 41.532
+          }
+        },
+        "terse-phrasing": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "terse-phrasing"
+          ],
+          "embedding_load_duration_ms": {
+            "max": 84.268,
+            "mean": 84.268,
+            "min": 84.268
+          },
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 121.674,
+            "mean": 121.674,
+            "min": 121.674
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "warm_retrieval_latency_ms": {
+            "max": 37.406,
+            "mean": 37.406,
+            "min": 37.406
+          }
+        }
+      },
+      "name": "dense",
+      "queries": [
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "exact-danish-terminology",
+          "eligible_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "embedding_latency_ms": 129.281,
+          "embedding_load_duration_ms": 90.827,
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 129.784,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-exact-danish-terminology",
+          "query_text": "permanent opholdstilladelse Pr\u00f8ve i Dansk 2",
+          "raw_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-evidence-boundary"
+          ],
+          "recall_at_1_hit": false,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 0.5,
+          "required_rank": 2,
+          "required_result_credit": 1,
+          "warm_retrieval_latency_ms": 38.957,
+          "warm_similarity_latency_ms": 0.503
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "terse-phrasing",
+          "eligible_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-permanent-residence-fees"
+          ],
+          "embedding_latency_ms": 121.137,
+          "embedding_load_duration_ms": 84.268,
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 121.674,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-terse-phrasing",
+          "query_text": "dansk pr\u00f8ve permanent ophold",
+          "raw_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-overdue-policy-usable-exam"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1,
+          "warm_retrieval_latency_ms": 37.406,
+          "warm_similarity_latency_ms": 0.537
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "metadata-filtering",
+          "eligible_result_ids": [
+            "di-rag-doc-permanent-residence-fees"
+          ],
+          "embedding_latency_ms": 127.403,
+          "embedding_load_duration_ms": 84.795,
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 127.89,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-metadata-filtering",
+          "query_text": "gebyr permanent ophold",
+          "raw_result_ids": [
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-overdue-policy-usable-exam"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1,
+          "warm_retrieval_latency_ms": 43.095,
+          "warm_similarity_latency_ms": 0.487
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "stale-but-policy-usable",
+          "eligible_result_ids": [
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-terse-danish-exam"
+          ],
+          "embedding_latency_ms": 127.355,
+          "embedding_load_duration_ms": 86.319,
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 127.851,
+          "overdue_result_ids": [
+            "di-rag-doc-overdue-policy-usable-exam"
+          ],
+          "query_id": "di-rag-query-stale-policy-usable",
+          "query_text": "overdue Pr\u00f8ve i Dansk 3 policy usable",
+          "raw_result_ids": [
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-permanent-residence-fees"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1,
+          "warm_retrieval_latency_ms": 41.532,
+          "warm_similarity_latency_ms": 0.496
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-broken-extraction-exam"
+          ],
+          "blocked_source_violations": 0,
+          "category": "blocked-source-exclusion",
+          "eligible_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "embedding_latency_ms": 127.846,
+          "embedding_load_duration_ms": 88.659,
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 128.341,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-blocked-source-exclusion",
+          "query_text": "\u00e6ndret uanmeldt danskkrav",
+          "raw_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-permanent-residence-fees"
+          ],
+          "recall_at_1_hit": false,
+          "recall_at_3_hit": false,
+          "reciprocal_rank": 0.0,
+          "required_rank": null,
+          "required_result_credit": 0,
+          "warm_retrieval_latency_ms": 39.682,
+          "warm_similarity_latency_ms": 0.495
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary"
+          ],
+          "blocked_source_violations": 0,
+          "category": "forbidden-result-safety-boundary",
+          "eligible_result_ids": [
+            "di-rag-doc-evidence-boundary"
+          ],
+          "embedding_latency_ms": 134.33,
+          "embedding_load_duration_ms": 90.378,
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 134.891,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-forbidden-result-safety-boundary",
+          "query_text": "personlig juridisk r\u00e5dgivning ophold evidensbundet svar",
+          "raw_result_ids": [
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-unapproved-community-summary"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1,
+          "warm_retrieval_latency_ms": 44.513,
+          "warm_similarity_latency_ms": 0.561
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "english-paraphrase",
+          "eligible_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "embedding_latency_ms": 124.332,
+          "embedding_load_duration_ms": 87.766,
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 124.799,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-dense-english-paraphrase",
+          "query_text": "Which Danish language test can count for permanent residence?",
+          "raw_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-evidence-boundary"
+          ],
+          "recall_at_1_hit": false,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 0.5,
+          "required_rank": 2,
+          "required_result_credit": 1,
+          "warm_retrieval_latency_ms": 37.033,
+          "warm_similarity_latency_ms": 0.467
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "realistic-typo",
+          "eligible_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-permanent-residence-fees"
+          ],
+          "embedding_latency_ms": 128.787,
+          "embedding_load_duration_ms": 86.737,
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 129.285,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-dense-realistic-typo",
+          "query_text": "permanet ophold danskprove",
+          "raw_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-overdue-policy-usable-exam"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1,
+          "warm_retrieval_latency_ms": 42.548,
+          "warm_similarity_latency_ms": 0.498
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary"
+          ],
+          "blocked_source_violations": 0,
+          "category": "blocked-source-exclusion",
+          "eligible_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "embedding_latency_ms": 129.234,
+          "embedding_load_duration_ms": 87.09,
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 129.765,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-dense-blocked-source-exclusion",
+          "query_text": "changed-unreviewed \u00e6ndret uanmeldt danskkrav",
+          "raw_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-evidence-boundary"
+          ],
+          "recall_at_1_hit": false,
+          "recall_at_3_hit": false,
+          "reciprocal_rank": 0.0,
+          "required_rank": null,
+          "required_result_credit": 0,
+          "warm_retrieval_latency_ms": 42.675,
+          "warm_similarity_latency_ms": 0.531
+        }
+      ],
+      "summary": {
+        "blocked_source_violations": 0,
+        "categories": [
+          "blocked-source-exclusion",
+          "english-paraphrase",
+          "exact-danish-terminology",
+          "forbidden-result-safety-boundary",
+          "metadata-filtering",
+          "realistic-typo",
+          "stale-but-policy-usable",
+          "terse-phrasing"
+        ],
+        "embedding_load_duration_ms": {
+          "max": 90.827,
+          "mean": 87.427,
+          "min": 84.268
+        },
+        "forbidden_result_violations": 0,
+        "latency_ms": {
+          "max": 134.891,
+          "mean": 128.253,
+          "min": 121.674
+        },
+        "mean_reciprocal_rank": 0.666667,
+        "query_count": 9,
+        "recall_at_1": 0.555556,
+        "recall_at_3": 0.777778,
+        "warm_retrieval_latency_ms": {
+          "max": 44.513,
+          "mean": 40.827,
+          "min": 37.033
+        }
+      }
+    },
+    "hybrid": {
+      "category_metrics": {
+        "blocked-source-exclusion": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "blocked-source-exclusion"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.024,
+            "mean": 0.021,
+            "min": 0.017
+          },
+          "mean_reciprocal_rank": 0.0,
+          "query_count": 2,
+          "recall_at_1": 0.0,
+          "recall_at_3": 0.0
+        },
+        "english-paraphrase": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "english-paraphrase"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.019,
+            "mean": 0.019,
+            "min": 0.019
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        },
+        "exact-danish-terminology": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "exact-danish-terminology"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.024,
+            "mean": 0.024,
+            "min": 0.024
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        },
+        "forbidden-result-safety-boundary": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "forbidden-result-safety-boundary"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.021,
+            "mean": 0.021,
+            "min": 0.021
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        },
+        "metadata-filtering": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "metadata-filtering"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.02,
+            "mean": 0.02,
+            "min": 0.02
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        },
+        "realistic-typo": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "realistic-typo"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.02,
+            "mean": 0.02,
+            "min": 0.02
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        },
+        "stale-but-policy-usable": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "stale-but-policy-usable"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.021,
+            "mean": 0.021,
+            "min": 0.021
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        },
+        "terse-phrasing": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "terse-phrasing"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.022,
+            "mean": 0.022,
+            "min": 0.022
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        }
+      },
+      "fusion": {
+        "algorithm": "rrf",
+        "k": 60,
+        "sources": [
+          "lexical",
+          "dense"
+        ]
+      },
+      "name": "hybrid",
+      "queries": [
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "exact-danish-terminology",
+          "eligible_result_ids": [
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-terse-danish-exam"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "fusion_scores": {
+            "di-rag-doc-broken-extraction-exam": 0.030550373,
+            "di-rag-doc-changed-unreviewed-language-rule": 0.029418127,
+            "di-rag-doc-citizenship-language": 0.031024531,
+            "di-rag-doc-evidence-boundary": 0.029877369,
+            "di-rag-doc-overdue-policy-usable-exam": 0.030578898,
+            "di-rag-doc-permanent-residence-fees": 0.030776515,
+            "di-rag-doc-permanent-residence-language": 0.032522475,
+            "di-rag-doc-terse-danish-exam": 0.032522475,
+            "di-rag-doc-unapproved-community-summary": 0.030090498
+          },
+          "fusion_sources": {
+            "dense": [
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-permanent-residence-fees",
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-overdue-policy-usable-exam",
+              "di-rag-doc-evidence-boundary"
+            ],
+            "lexical": [
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-overdue-policy-usable-exam",
+              "di-rag-doc-permanent-residence-fees",
+              "di-rag-doc-evidence-boundary",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-changed-unreviewed-language-rule"
+            ]
+          },
+          "latency_ms": 0.024,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-exact-danish-terminology",
+          "query_text": "permanent opholdstilladelse Pr\u00f8ve i Dansk 2",
+          "raw_result_ids": [
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "terse-phrasing",
+          "eligible_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-permanent-residence-fees"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "fusion_scores": {
+            "di-rag-doc-broken-extraction-exam": 0.031009615,
+            "di-rag-doc-changed-unreviewed-language-rule": 0.030076888,
+            "di-rag-doc-citizenship-language": 0.031498016,
+            "di-rag-doc-evidence-boundary": 0.029198636,
+            "di-rag-doc-overdue-policy-usable-exam": 0.030621786,
+            "di-rag-doc-permanent-residence-fees": 0.029631255,
+            "di-rag-doc-permanent-residence-language": 0.032002048,
+            "di-rag-doc-terse-danish-exam": 0.032786885,
+            "di-rag-doc-unapproved-community-summary": 0.030536131
+          },
+          "fusion_sources": {
+            "dense": [
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-permanent-residence-fees",
+              "di-rag-doc-evidence-boundary",
+              "di-rag-doc-overdue-policy-usable-exam"
+            ],
+            "lexical": [
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-overdue-policy-usable-exam",
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-permanent-residence-fees",
+              "di-rag-doc-evidence-boundary"
+            ]
+          },
+          "latency_ms": 0.022,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-terse-phrasing",
+          "query_text": "dansk pr\u00f8ve permanent ophold",
+          "raw_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-evidence-boundary"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "metadata-filtering",
+          "eligible_result_ids": [
+            "di-rag-doc-permanent-residence-fees"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "fusion_scores": {
+            "di-rag-doc-broken-extraction-exam": 0.031009615,
+            "di-rag-doc-changed-unreviewed-language-rule": 0.029850746,
+            "di-rag-doc-citizenship-language": 0.032258065,
+            "di-rag-doc-evidence-boundary": 0.029411765,
+            "di-rag-doc-overdue-policy-usable-exam": 0.014492754,
+            "di-rag-doc-permanent-residence-fees": 0.032018443,
+            "di-rag-doc-permanent-residence-language": 0.031778058,
+            "di-rag-doc-terse-danish-exam": 0.031746032,
+            "di-rag-doc-unapproved-community-summary": 0.03030303
+          },
+          "fusion_sources": {
+            "dense": [
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-permanent-residence-fees",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-evidence-boundary",
+              "di-rag-doc-overdue-policy-usable-exam"
+            ],
+            "lexical": [
+              "di-rag-doc-permanent-residence-fees",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-evidence-boundary"
+            ]
+          },
+          "latency_ms": 0.02,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-metadata-filtering",
+          "query_text": "gebyr permanent ophold",
+          "raw_result_ids": [
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-overdue-policy-usable-exam"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "stale-but-policy-usable",
+          "eligible_result_ids": [
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-terse-danish-exam"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "fusion_scores": {
+            "di-rag-doc-broken-extraction-exam": 0.015873016,
+            "di-rag-doc-changed-unreviewed-language-rule": 0.015151515,
+            "di-rag-doc-citizenship-language": 0.014925373,
+            "di-rag-doc-evidence-boundary": 0.030330882,
+            "di-rag-doc-overdue-policy-usable-exam": 0.032786885,
+            "di-rag-doc-permanent-residence-fees": 0.014492754,
+            "di-rag-doc-permanent-residence-language": 0.031257631,
+            "di-rag-doc-terse-danish-exam": 0.032258065,
+            "di-rag-doc-unapproved-community-summary": 0.015625
+          },
+          "fusion_sources": {
+            "dense": [
+              "di-rag-doc-overdue-policy-usable-exam",
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-evidence-boundary",
+              "di-rag-doc-permanent-residence-fees"
+            ],
+            "lexical": [
+              "di-rag-doc-overdue-policy-usable-exam",
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-evidence-boundary"
+            ]
+          },
+          "latency_ms": 0.021,
+          "overdue_result_ids": [
+            "di-rag-doc-overdue-policy-usable-exam"
+          ],
+          "query_id": "di-rag-query-stale-policy-usable",
+          "query_text": "overdue Pr\u00f8ve i Dansk 3 policy usable",
+          "raw_result_ids": [
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-permanent-residence-fees"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-broken-extraction-exam"
+          ],
+          "blocked_source_violations": 0,
+          "category": "blocked-source-exclusion",
+          "eligible_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "fusion_scores": {
+            "di-rag-doc-broken-extraction-exam": 0.015873016,
+            "di-rag-doc-changed-unreviewed-language-rule": 0.032786885,
+            "di-rag-doc-citizenship-language": 0.015384615,
+            "di-rag-doc-evidence-boundary": 0.014705882,
+            "di-rag-doc-overdue-policy-usable-exam": 0.015625,
+            "di-rag-doc-permanent-residence-fees": 0.014492754,
+            "di-rag-doc-permanent-residence-language": 0.014925373,
+            "di-rag-doc-terse-danish-exam": 0.015151515,
+            "di-rag-doc-unapproved-community-summary": 0.016129032
+          },
+          "fusion_sources": {
+            "dense": [
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-overdue-policy-usable-exam",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-evidence-boundary",
+              "di-rag-doc-permanent-residence-fees"
+            ],
+            "lexical": [
+              "di-rag-doc-changed-unreviewed-language-rule"
+            ]
+          },
+          "latency_ms": 0.017,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-blocked-source-exclusion",
+          "query_text": "\u00e6ndret uanmeldt danskkrav",
+          "raw_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-permanent-residence-fees"
+          ],
+          "recall_at_1_hit": false,
+          "recall_at_3_hit": false,
+          "reciprocal_rank": 0.0,
+          "required_rank": null,
+          "required_result_credit": 0
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-unapproved-community-summary"
+          ],
+          "blocked_source_violations": 0,
+          "category": "forbidden-result-safety-boundary",
+          "eligible_result_ids": [
+            "di-rag-doc-evidence-boundary"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "fusion_scores": {
+            "di-rag-doc-broken-extraction-exam": 0.030776515,
+            "di-rag-doc-changed-unreviewed-language-rule": 0.030536131,
+            "di-rag-doc-citizenship-language": 0.032258065,
+            "di-rag-doc-evidence-boundary": 0.032786885,
+            "di-rag-doc-overdue-policy-usable-exam": 0.014705882,
+            "di-rag-doc-permanent-residence-fees": 0.015873016,
+            "di-rag-doc-permanent-residence-language": 0.030550373,
+            "di-rag-doc-terse-danish-exam": 0.030798389,
+            "di-rag-doc-unapproved-community-summary": 0.029877369
+          },
+          "fusion_sources": {
+            "dense": [
+              "di-rag-doc-evidence-boundary",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-permanent-residence-fees",
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-overdue-policy-usable-exam",
+              "di-rag-doc-unapproved-community-summary"
+            ],
+            "lexical": [
+              "di-rag-doc-evidence-boundary",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-permanent-residence-language"
+            ]
+          },
+          "latency_ms": 0.021,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-forbidden-result-safety-boundary",
+          "query_text": "personlig juridisk r\u00e5dgivning ophold evidensbundet svar",
+          "raw_result_ids": [
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-overdue-policy-usable-exam"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary"
+          ],
+          "blocked_source_violations": 0,
+          "category": "english-paraphrase",
+          "eligible_result_ids": [
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-terse-danish-exam"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "fusion_scores": {
+            "di-rag-doc-broken-extraction-exam": 0.030776515,
+            "di-rag-doc-changed-unreviewed-language-rule": 0.031024531,
+            "di-rag-doc-citizenship-language": 0.032258065,
+            "di-rag-doc-evidence-boundary": 0.014492754,
+            "di-rag-doc-overdue-policy-usable-exam": 0.029411765,
+            "di-rag-doc-permanent-residence-fees": 0.030550373,
+            "di-rag-doc-permanent-residence-language": 0.032266458,
+            "di-rag-doc-terse-danish-exam": 0.031778058,
+            "di-rag-doc-unapproved-community-summary": 0.030309989
+          },
+          "fusion_sources": {
+            "dense": [
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-permanent-residence-fees",
+              "di-rag-doc-overdue-policy-usable-exam",
+              "di-rag-doc-evidence-boundary"
+            ],
+            "lexical": [
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-permanent-residence-fees",
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-overdue-policy-usable-exam"
+            ]
+          },
+          "latency_ms": 0.019,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-dense-english-paraphrase",
+          "query_text": "Which Danish language test can count for permanent residence?",
+          "raw_result_ids": [
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-evidence-boundary"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "realistic-typo",
+          "eligible_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-permanent-residence-fees"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "fusion_scores": {
+            "di-rag-doc-broken-extraction-exam": 0.031498016,
+            "di-rag-doc-changed-unreviewed-language-rule": 0.030309989,
+            "di-rag-doc-citizenship-language": 0.032266458,
+            "di-rag-doc-evidence-boundary": 0.029857398,
+            "di-rag-doc-overdue-policy-usable-exam": 0.014492754,
+            "di-rag-doc-permanent-residence-fees": 0.015384615,
+            "di-rag-doc-permanent-residence-language": 0.031054405,
+            "di-rag-doc-terse-danish-exam": 0.032522475,
+            "di-rag-doc-unapproved-community-summary": 0.030776515
+          },
+          "fusion_sources": {
+            "dense": [
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-permanent-residence-fees",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-evidence-boundary",
+              "di-rag-doc-overdue-policy-usable-exam"
+            ],
+            "lexical": [
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-evidence-boundary",
+              "di-rag-doc-permanent-residence-language"
+            ]
+          },
+          "latency_ms": 0.02,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-dense-realistic-typo",
+          "query_text": "permanet ophold danskprove",
+          "raw_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-overdue-policy-usable-exam"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary"
+          ],
+          "blocked_source_violations": 0,
+          "category": "blocked-source-exclusion",
+          "eligible_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "fusion_scores": {
+            "di-rag-doc-broken-extraction-exam": 0.016129032,
+            "di-rag-doc-changed-unreviewed-language-rule": 0.032786885,
+            "di-rag-doc-citizenship-language": 0.015151515,
+            "di-rag-doc-evidence-boundary": 0.014492754,
+            "di-rag-doc-overdue-policy-usable-exam": 0.015384615,
+            "di-rag-doc-permanent-residence-fees": 0.014705882,
+            "di-rag-doc-permanent-residence-language": 0.014925373,
+            "di-rag-doc-terse-danish-exam": 0.015625,
+            "di-rag-doc-unapproved-community-summary": 0.015873016
+          },
+          "fusion_sources": {
+            "dense": [
+              "di-rag-doc-changed-unreviewed-language-rule",
+              "di-rag-doc-broken-extraction-exam",
+              "di-rag-doc-unapproved-community-summary",
+              "di-rag-doc-terse-danish-exam",
+              "di-rag-doc-overdue-policy-usable-exam",
+              "di-rag-doc-citizenship-language",
+              "di-rag-doc-permanent-residence-language",
+              "di-rag-doc-permanent-residence-fees",
+              "di-rag-doc-evidence-boundary"
+            ],
+            "lexical": [
+              "di-rag-doc-changed-unreviewed-language-rule"
+            ]
+          },
+          "latency_ms": 0.024,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-dense-blocked-source-exclusion",
+          "query_text": "changed-unreviewed \u00e6ndret uanmeldt danskkrav",
+          "raw_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-evidence-boundary"
+          ],
+          "recall_at_1_hit": false,
+          "recall_at_3_hit": false,
+          "reciprocal_rank": 0.0,
+          "required_rank": null,
+          "required_result_credit": 0
+        }
+      ],
+      "summary": {
+        "blocked_source_violations": 0,
+        "categories": [
+          "blocked-source-exclusion",
+          "english-paraphrase",
+          "exact-danish-terminology",
+          "forbidden-result-safety-boundary",
+          "metadata-filtering",
+          "realistic-typo",
+          "stale-but-policy-usable",
+          "terse-phrasing"
+        ],
+        "forbidden_result_violations": 0,
+        "latency_ms": {
+          "max": 0.024,
+          "mean": 0.021,
+          "min": 0.017
+        },
+        "mean_reciprocal_rank": 0.777778,
+        "query_count": 9,
+        "recall_at_1": 0.777778,
+        "recall_at_3": 0.777778
+      }
+    },
+    "lexical": {
+      "category_metrics": {
+        "blocked-source-exclusion": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "blocked-source-exclusion"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.087,
+            "mean": 0.085,
+            "min": 0.083
+          },
+          "mean_reciprocal_rank": 0.0,
+          "query_count": 2,
+          "recall_at_1": 0.0,
+          "recall_at_3": 0.0
+        },
+        "english-paraphrase": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "english-paraphrase"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.124,
+            "mean": 0.124,
+            "min": 0.124
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        },
+        "exact-danish-terminology": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "exact-danish-terminology"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.208,
+            "mean": 0.208,
+            "min": 0.208
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        },
+        "forbidden-result-safety-boundary": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "forbidden-result-safety-boundary"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.118,
+            "mean": 0.118,
+            "min": 0.118
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        },
+        "metadata-filtering": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "metadata-filtering"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.111,
+            "mean": 0.111,
+            "min": 0.111
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        },
+        "realistic-typo": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "realistic-typo"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.099,
+            "mean": 0.099,
+            "min": 0.099
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        },
+        "stale-but-policy-usable": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "stale-but-policy-usable"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.111,
+            "mean": 0.111,
+            "min": 0.111
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        },
+        "terse-phrasing": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "terse-phrasing"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.115,
+            "mean": 0.115,
+            "min": 0.115
+          },
+          "mean_reciprocal_rank": 1.0,
+          "query_count": 1,
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0
+        }
+      },
+      "name": "lexical",
+      "queries": [
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "exact-danish-terminology",
+          "eligible_result_ids": [
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-terse-danish-exam"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 0.208,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-exact-danish-terminology",
+          "query_text": "permanent opholdstilladelse Pr\u00f8ve i Dansk 2",
+          "raw_result_ids": [
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "terse-phrasing",
+          "eligible_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-permanent-residence-fees"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 0.115,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-terse-phrasing",
+          "query_text": "dansk pr\u00f8ve permanent ophold",
+          "raw_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-evidence-boundary"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "metadata-filtering",
+          "eligible_result_ids": [
+            "di-rag-doc-permanent-residence-fees"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 0.111,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-metadata-filtering",
+          "query_text": "gebyr permanent ophold",
+          "raw_result_ids": [
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-evidence-boundary"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [],
+          "blocked_source_violations": 0,
+          "category": "stale-but-policy-usable",
+          "eligible_result_ids": [
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-terse-danish-exam"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 0.111,
+          "overdue_result_ids": [
+            "di-rag-doc-overdue-policy-usable-exam"
+          ],
+          "query_id": "di-rag-query-stale-policy-usable",
+          "query_text": "overdue Pr\u00f8ve i Dansk 3 policy usable",
+          "raw_result_ids": [
+            "di-rag-doc-overdue-policy-usable-exam",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-evidence-boundary"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "blocked-source-exclusion",
+          "eligible_result_ids": [],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 0.083,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-blocked-source-exclusion",
+          "query_text": "\u00e6ndret uanmeldt danskkrav",
+          "raw_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "recall_at_1_hit": false,
+          "recall_at_3_hit": false,
+          "reciprocal_rank": 0.0,
+          "required_rank": null,
+          "required_result_credit": 0
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "forbidden-result-safety-boundary",
+          "eligible_result_ids": [
+            "di-rag-doc-evidence-boundary"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 0.118,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-forbidden-result-safety-boundary",
+          "query_text": "personlig juridisk r\u00e5dgivning ophold evidensbundet svar",
+          "raw_result_ids": [
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary"
+          ],
+          "blocked_source_violations": 0,
+          "category": "english-paraphrase",
+          "eligible_result_ids": [
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-terse-danish-exam"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 0.124,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-dense-english-paraphrase",
+          "query_text": "Which Danish language test can count for permanent residence?",
+          "raw_result_ids": [
+            "di-rag-doc-permanent-residence-language",
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-permanent-residence-fees",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-overdue-policy-usable-exam"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "realistic-typo",
+          "eligible_result_ids": [
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 0.099,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-dense-realistic-typo",
+          "query_text": "permanet ophold danskprove",
+          "raw_result_ids": [
+            "di-rag-doc-citizenship-language",
+            "di-rag-doc-terse-danish-exam",
+            "di-rag-doc-broken-extraction-exam",
+            "di-rag-doc-unapproved-community-summary",
+            "di-rag-doc-changed-unreviewed-language-rule",
+            "di-rag-doc-evidence-boundary",
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "recall_at_1_hit": true,
+          "recall_at_3_hit": true,
+          "reciprocal_rank": 1.0,
+          "required_rank": 1,
+          "required_result_credit": 1
+        },
+        {
+          "blocked_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "blocked_source_violations": 0,
+          "category": "blocked-source-exclusion",
+          "eligible_result_ids": [],
+          "forbidden_result_ids": [],
+          "forbidden_result_violations": 0,
+          "latency_ms": 0.087,
+          "overdue_result_ids": [],
+          "query_id": "di-rag-query-dense-blocked-source-exclusion",
+          "query_text": "changed-unreviewed \u00e6ndret uanmeldt danskkrav",
+          "raw_result_ids": [
+            "di-rag-doc-changed-unreviewed-language-rule"
+          ],
+          "recall_at_1_hit": false,
+          "recall_at_3_hit": false,
+          "reciprocal_rank": 0.0,
+          "required_rank": null,
+          "required_result_credit": 0
+        }
+      ],
+      "summary": {
+        "blocked_source_violations": 0,
+        "categories": [
+          "blocked-source-exclusion",
+          "english-paraphrase",
+          "exact-danish-terminology",
+          "forbidden-result-safety-boundary",
+          "metadata-filtering",
+          "realistic-typo",
+          "stale-but-policy-usable",
+          "terse-phrasing"
+        ],
+        "forbidden_result_violations": 0,
+        "latency_ms": {
+          "max": 0.208,
+          "mean": 0.117,
+          "min": 0.083
+        },
+        "mean_reciprocal_rank": 0.777778,
+        "query_count": 9,
+        "recall_at_1": 0.777778,
+        "recall_at_3": 0.777778
+      }
+    }
+  },
+  "configuration": {
+    "embedding": {
+      "endpoint": "http://127.0.0.1:11434",
+      "model": "embeddinggemma",
+      "timeout_seconds": 60.0
+    },
+    "index": {
+      "index_mode": "rebuild",
+      "index_path": "docs/progress/issue-28-dense-index.json"
+    },
+    "inputs": {
+      "corpus_path": "data/retrieval_benchmark/corpus-fixtures.json",
+      "dense_queries_path": "data/retrieval_benchmark/dense-evaluation-queries.json",
+      "lexical_queries_path": "data/retrieval_benchmark/evaluation-queries.json"
+    },
+    "outputs": {
+      "human_recommendation_path": "docs/progress/issue-29-hybrid-retrieval-recommendation.md",
+      "machine_readable_result_path": "docs/progress/issue-29-hybrid-retrieval-comparison.json"
+    },
+    "recommendation_scope": {
+      "feeds_human_architecture_approval_gate": true,
+      "production_thresholds_out_of_scope": true
+    },
+    "retrieval": {
+      "candidate_modes": [
+        "lexical",
+        "dense",
+        "hybrid"
+      ],
+      "hybrid_fusion": {
+        "algorithm": "rrf",
+        "k": 60,
+        "sources": [
+          "lexical",
+          "dense"
+        ]
+      }
+    },
+    "runtime_baseline": {
+      "baseline_id": "mvp-runtime-baseline-issue-26",
+      "provider": "ollama",
+      "provider_minimum_version": "0.30.6",
+      "provider_observed_version": "0.30.6",
+      "python_observed_version": "3.12.3",
+      "recommended_system_ram_mb": 24576
+    },
+    "runtime_policy_path": "config/runtime-policy.json",
+    "runtime_probe_path": "docs/progress/issue-26-runtime-probe.json"
+  },
+  "executed_at_utc": "2026-07-04T12:32:17.894334+00:00",
+  "fixture_identity": {
+    "corpus_path": "data/retrieval_benchmark/corpus-fixtures.json",
+    "corpus_sha256": "51f5c891fd742c1f67f076ccd13d5381bdd7ec9d46b3fb436acf6eb4ad143679",
+    "document_ids": [
+      "di-rag-doc-permanent-residence-language",
+      "di-rag-doc-terse-danish-exam",
+      "di-rag-doc-permanent-residence-fees",
+      "di-rag-doc-overdue-policy-usable-exam",
+      "di-rag-doc-evidence-boundary",
+      "di-rag-doc-citizenship-language",
+      "di-rag-doc-changed-unreviewed-language-rule",
+      "di-rag-doc-broken-extraction-exam",
+      "di-rag-doc-unapproved-community-summary"
+    ],
+    "query_ids": [
+      "di-rag-query-exact-danish-terminology",
+      "di-rag-query-terse-phrasing",
+      "di-rag-query-metadata-filtering",
+      "di-rag-query-stale-policy-usable",
+      "di-rag-query-blocked-source-exclusion",
+      "di-rag-query-forbidden-result-safety-boundary",
+      "di-rag-query-dense-english-paraphrase",
+      "di-rag-query-dense-realistic-typo",
+      "di-rag-query-dense-blocked-source-exclusion"
+    ],
+    "query_sets": {
+      "dense": {
+        "queries_path": "data/retrieval_benchmark/dense-evaluation-queries.json",
+        "queries_sha256": "94954c6fffee47172ece993b027f94bf28cd296817369e9afa9c350649868393",
+        "query_ids": [
+          "di-rag-query-dense-english-paraphrase",
+          "di-rag-query-dense-realistic-typo",
+          "di-rag-query-dense-blocked-source-exclusion"
+        ]
+      },
+      "lexical": {
+        "queries_path": "data/retrieval_benchmark/evaluation-queries.json",
+        "queries_sha256": "402a28f1b3386b0d7fd2271c4533bf658e5aeeaadaf2941120842df727217217",
+        "query_ids": [
+          "di-rag-query-exact-danish-terminology",
+          "di-rag-query-terse-phrasing",
+          "di-rag-query-metadata-filtering",
+          "di-rag-query-stale-policy-usable",
+          "di-rag-query-blocked-source-exclusion",
+          "di-rag-query-forbidden-result-safety-boundary"
+        ]
+      }
+    }
+  },
+  "human_recommendation": {
+    "candidate_metrics": {
+      "dense": {
+        "blocked_source_violations": 0,
+        "categories": [
+          "blocked-source-exclusion",
+          "english-paraphrase",
+          "exact-danish-terminology",
+          "forbidden-result-safety-boundary",
+          "metadata-filtering",
+          "realistic-typo",
+          "stale-but-policy-usable",
+          "terse-phrasing"
+        ],
+        "embedding_load_duration_ms": {
+          "max": 90.827,
+          "mean": 87.427,
+          "min": 84.268
+        },
+        "forbidden_result_violations": 0,
+        "latency_ms": {
+          "max": 134.891,
+          "mean": 128.253,
+          "min": 121.674
+        },
+        "mean_reciprocal_rank": 0.666667,
+        "query_count": 9,
+        "recall_at_1": 0.555556,
+        "recall_at_3": 0.777778,
+        "warm_retrieval_latency_ms": {
+          "max": 44.513,
+          "mean": 40.827,
+          "min": 37.033
+        }
+      },
+      "hybrid": {
+        "blocked_source_violations": 0,
+        "categories": [
+          "blocked-source-exclusion",
+          "english-paraphrase",
+          "exact-danish-terminology",
+          "forbidden-result-safety-boundary",
+          "metadata-filtering",
+          "realistic-typo",
+          "stale-but-policy-usable",
+          "terse-phrasing"
+        ],
+        "forbidden_result_violations": 0,
+        "latency_ms": {
+          "max": 0.024,
+          "mean": 0.021,
+          "min": 0.017
+        },
+        "mean_reciprocal_rank": 0.777778,
+        "query_count": 9,
+        "recall_at_1": 0.777778,
+        "recall_at_3": 0.777778
+      },
+      "lexical": {
+        "blocked_source_violations": 0,
+        "categories": [
+          "blocked-source-exclusion",
+          "english-paraphrase",
+          "exact-danish-terminology",
+          "forbidden-result-safety-boundary",
+          "metadata-filtering",
+          "realistic-typo",
+          "stale-but-policy-usable",
+          "terse-phrasing"
+        ],
+        "forbidden_result_violations": 0,
+        "latency_ms": {
+          "max": 0.208,
+          "mean": 0.117,
+          "min": 0.083
+        },
+        "mean_reciprocal_rank": 0.777778,
+        "query_count": 9,
+        "recall_at_1": 0.777778,
+        "recall_at_3": 0.777778
+      }
+    },
+    "production_thresholds": "out_of_scope",
+    "rejected_candidates": {},
+    "selected_candidate": "hybrid"
+  },
+  "index": {
+    "corpus_fixture_identity": {
+      "corpus_path": "data/retrieval_benchmark/corpus-fixtures.json",
+      "corpus_sha256": "51f5c891fd742c1f67f076ccd13d5381bdd7ec9d46b3fb436acf6eb4ad143679",
+      "document_ids": [
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-terse-danish-exam",
+        "di-rag-doc-permanent-residence-fees",
+        "di-rag-doc-overdue-policy-usable-exam",
+        "di-rag-doc-evidence-boundary",
+        "di-rag-doc-citizenship-language",
+        "di-rag-doc-changed-unreviewed-language-rule",
+        "di-rag-doc-broken-extraction-exam",
+        "di-rag-doc-unapproved-community-summary"
+      ]
+    },
+    "document_count": 9,
+    "embedding_model": "embeddinggemma",
+    "embedding_model_identity": {
+      "details": {
+        "families": [
+          "gemma3"
+        ],
+        "family": "gemma3",
+        "format": "gguf",
+        "parameter_size": "307.58M",
+        "parent_model": "embeddinggemma:300m-bf16",
+        "quantization_level": "BF16"
+      },
+      "model": "embeddinggemma",
+      "model_info": {
+        "gemma3.attention.causal": false,
+        "gemma3.attention.head_count": 3,
+        "gemma3.attention.head_count_kv": 1,
+        "gemma3.attention.key_length": 256,
+        "gemma3.attention.layer_norm_rms_epsilon": 1e-06,
+        "gemma3.attention.sliding_window": 512,
+        "gemma3.attention.sliding_window_pattern": null,
+        "gemma3.attention.value_length": 256,
+        "gemma3.block_count": 24,
+        "gemma3.context_length": 2048,
+        "gemma3.embedding_length": 768,
+        "gemma3.feed_forward_length": 1152,
+        "gemma3.pooling_type": 1,
+        "gemma3.rope.freq_base": 1000000,
+        "general.architecture": "gemma3",
+        "general.basename": "embeddinggemma",
+        "general.file_type": 32,
+        "general.license": "gemma",
+        "general.parameter_count": 307581696,
+        "general.quantization_version": 2,
+        "general.size_label": "300M",
+        "general.tags": null,
+        "general.type": "model",
+        "tokenizer.ggml.add_bos_token": true,
+        "tokenizer.ggml.add_eos_token": true,
+        "tokenizer.ggml.add_sep_token": false,
+        "tokenizer.ggml.add_space_prefix": false,
+        "tokenizer.ggml.bos_token_id": 2,
+        "tokenizer.ggml.eos_token_id": 1,
+        "tokenizer.ggml.model": "llama",
+        "tokenizer.ggml.padding_token_id": 0,
+        "tokenizer.ggml.pre": "default",
+        "tokenizer.ggml.scores": null,
+        "tokenizer.ggml.token_type": null,
+        "tokenizer.ggml.tokens": null,
+        "tokenizer.ggml.unknown_token_id": 3
+      },
+      "modified_at": "2026-07-02T23:40:35.163024875+02:00"
+    },
+    "embedding_provider": "ollama",
+    "engine": "local-dense-json",
+    "schema_version": "dense-retrieval-index-v1",
+    "vector_dimensions": 768
+  },
+  "operations": {
+    "comparison_wall_time_ms": 2520.981,
+    "dense": {
+      "cold_embedding_load_observed": true,
+      "dense_index_size_bytes": 151360,
+      "dense_indexing_wall_time_ms": 1352.431,
+      "embedding_call_count": 18,
+      "embedding_service_durations_ms": {
+        "load_duration": [
+          85.18,
+          89.936,
+          86.798,
+          86.608,
+          87.43,
+          86.003,
+          84.569,
+          90.634,
+          83.986,
+          90.827,
+          84.268,
+          84.795,
+          86.319,
+          88.659,
+          90.378,
+          87.766,
+          86.737,
+          87.09
+        ],
+        "total_duration": [
+          168.233,
+          173.176,
+          172.548,
+          165.429,
+          133.042,
+          135.239,
+          132.37,
+          136.496,
+          127.533,
+          128.337,
+          120.22,
+          126.515,
+          126.445,
+          126.838,
+          133.419,
+          123.475,
+          127.952,
+          128.271
+        ]
+      },
+      "process_peak_resident_memory_mb": 102.688
+    },
+    "lexical_indexing_wall_time_ms": 0.6
+  },
+  "recommendation": {
+    "candidate_metrics": {
+      "dense": {
+        "category_metrics": {
+          "blocked-source-exclusion": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "blocked-source-exclusion"
+            ],
+            "embedding_load_duration_ms": {
+              "max": 88.659,
+              "mean": 87.875,
+              "min": 87.09
+            },
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 129.765,
+              "mean": 129.053,
+              "min": 128.341
+            },
+            "mean_reciprocal_rank": 0.0,
+            "query_count": 2,
+            "recall_at_1": 0.0,
+            "recall_at_3": 0.0,
+            "warm_retrieval_latency_ms": {
+              "max": 42.675,
+              "mean": 41.178,
+              "min": 39.682
+            }
+          },
+          "english-paraphrase": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "english-paraphrase"
+            ],
+            "embedding_load_duration_ms": {
+              "max": 87.766,
+              "mean": 87.766,
+              "min": 87.766
+            },
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 124.799,
+              "mean": 124.799,
+              "min": 124.799
+            },
+            "mean_reciprocal_rank": 0.5,
+            "query_count": 1,
+            "recall_at_1": 0.0,
+            "recall_at_3": 1.0,
+            "warm_retrieval_latency_ms": {
+              "max": 37.033,
+              "mean": 37.033,
+              "min": 37.033
+            }
+          },
+          "exact-danish-terminology": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "exact-danish-terminology"
+            ],
+            "embedding_load_duration_ms": {
+              "max": 90.827,
+              "mean": 90.827,
+              "min": 90.827
+            },
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 129.784,
+              "mean": 129.784,
+              "min": 129.784
+            },
+            "mean_reciprocal_rank": 0.5,
+            "query_count": 1,
+            "recall_at_1": 0.0,
+            "recall_at_3": 1.0,
+            "warm_retrieval_latency_ms": {
+              "max": 38.957,
+              "mean": 38.957,
+              "min": 38.957
+            }
+          },
+          "forbidden-result-safety-boundary": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "forbidden-result-safety-boundary"
+            ],
+            "embedding_load_duration_ms": {
+              "max": 90.378,
+              "mean": 90.378,
+              "min": 90.378
+            },
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 134.891,
+              "mean": 134.891,
+              "min": 134.891
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0,
+            "warm_retrieval_latency_ms": {
+              "max": 44.513,
+              "mean": 44.513,
+              "min": 44.513
+            }
+          },
+          "metadata-filtering": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "metadata-filtering"
+            ],
+            "embedding_load_duration_ms": {
+              "max": 84.795,
+              "mean": 84.795,
+              "min": 84.795
+            },
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 127.89,
+              "mean": 127.89,
+              "min": 127.89
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0,
+            "warm_retrieval_latency_ms": {
+              "max": 43.095,
+              "mean": 43.095,
+              "min": 43.095
+            }
+          },
+          "realistic-typo": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "realistic-typo"
+            ],
+            "embedding_load_duration_ms": {
+              "max": 86.737,
+              "mean": 86.737,
+              "min": 86.737
+            },
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 129.285,
+              "mean": 129.285,
+              "min": 129.285
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0,
+            "warm_retrieval_latency_ms": {
+              "max": 42.548,
+              "mean": 42.548,
+              "min": 42.548
+            }
+          },
+          "stale-but-policy-usable": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "stale-but-policy-usable"
+            ],
+            "embedding_load_duration_ms": {
+              "max": 86.319,
+              "mean": 86.319,
+              "min": 86.319
+            },
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 127.851,
+              "mean": 127.851,
+              "min": 127.851
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0,
+            "warm_retrieval_latency_ms": {
+              "max": 41.532,
+              "mean": 41.532,
+              "min": 41.532
+            }
+          },
+          "terse-phrasing": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "terse-phrasing"
+            ],
+            "embedding_load_duration_ms": {
+              "max": 84.268,
+              "mean": 84.268,
+              "min": 84.268
+            },
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 121.674,
+              "mean": 121.674,
+              "min": 121.674
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0,
+            "warm_retrieval_latency_ms": {
+              "max": 37.406,
+              "mean": 37.406,
+              "min": 37.406
+            }
+          }
+        },
+        "summary": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "blocked-source-exclusion",
+            "english-paraphrase",
+            "exact-danish-terminology",
+            "forbidden-result-safety-boundary",
+            "metadata-filtering",
+            "realistic-typo",
+            "stale-but-policy-usable",
+            "terse-phrasing"
+          ],
+          "embedding_load_duration_ms": {
+            "max": 90.827,
+            "mean": 87.427,
+            "min": 84.268
+          },
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 134.891,
+            "mean": 128.253,
+            "min": 121.674
+          },
+          "mean_reciprocal_rank": 0.666667,
+          "query_count": 9,
+          "recall_at_1": 0.555556,
+          "recall_at_3": 0.777778,
+          "warm_retrieval_latency_ms": {
+            "max": 44.513,
+            "mean": 40.827,
+            "min": 37.033
+          }
+        }
+      },
+      "hybrid": {
+        "category_metrics": {
+          "blocked-source-exclusion": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "blocked-source-exclusion"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.024,
+              "mean": 0.021,
+              "min": 0.017
+            },
+            "mean_reciprocal_rank": 0.0,
+            "query_count": 2,
+            "recall_at_1": 0.0,
+            "recall_at_3": 0.0
+          },
+          "english-paraphrase": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "english-paraphrase"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.019,
+              "mean": 0.019,
+              "min": 0.019
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          },
+          "exact-danish-terminology": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "exact-danish-terminology"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.024,
+              "mean": 0.024,
+              "min": 0.024
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          },
+          "forbidden-result-safety-boundary": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "forbidden-result-safety-boundary"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.021,
+              "mean": 0.021,
+              "min": 0.021
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          },
+          "metadata-filtering": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "metadata-filtering"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.02,
+              "mean": 0.02,
+              "min": 0.02
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          },
+          "realistic-typo": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "realistic-typo"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.02,
+              "mean": 0.02,
+              "min": 0.02
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          },
+          "stale-but-policy-usable": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "stale-but-policy-usable"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.021,
+              "mean": 0.021,
+              "min": 0.021
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          },
+          "terse-phrasing": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "terse-phrasing"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.022,
+              "mean": 0.022,
+              "min": 0.022
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          }
+        },
+        "summary": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "blocked-source-exclusion",
+            "english-paraphrase",
+            "exact-danish-terminology",
+            "forbidden-result-safety-boundary",
+            "metadata-filtering",
+            "realistic-typo",
+            "stale-but-policy-usable",
+            "terse-phrasing"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.024,
+            "mean": 0.021,
+            "min": 0.017
+          },
+          "mean_reciprocal_rank": 0.777778,
+          "query_count": 9,
+          "recall_at_1": 0.777778,
+          "recall_at_3": 0.777778
+        }
+      },
+      "lexical": {
+        "category_metrics": {
+          "blocked-source-exclusion": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "blocked-source-exclusion"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.087,
+              "mean": 0.085,
+              "min": 0.083
+            },
+            "mean_reciprocal_rank": 0.0,
+            "query_count": 2,
+            "recall_at_1": 0.0,
+            "recall_at_3": 0.0
+          },
+          "english-paraphrase": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "english-paraphrase"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.124,
+              "mean": 0.124,
+              "min": 0.124
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          },
+          "exact-danish-terminology": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "exact-danish-terminology"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.208,
+              "mean": 0.208,
+              "min": 0.208
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          },
+          "forbidden-result-safety-boundary": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "forbidden-result-safety-boundary"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.118,
+              "mean": 0.118,
+              "min": 0.118
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          },
+          "metadata-filtering": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "metadata-filtering"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.111,
+              "mean": 0.111,
+              "min": 0.111
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          },
+          "realistic-typo": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "realistic-typo"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.099,
+              "mean": 0.099,
+              "min": 0.099
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          },
+          "stale-but-policy-usable": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "stale-but-policy-usable"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.111,
+              "mean": 0.111,
+              "min": 0.111
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          },
+          "terse-phrasing": {
+            "blocked_source_violations": 0,
+            "categories": [
+              "terse-phrasing"
+            ],
+            "forbidden_result_violations": 0,
+            "latency_ms": {
+              "max": 0.115,
+              "mean": 0.115,
+              "min": 0.115
+            },
+            "mean_reciprocal_rank": 1.0,
+            "query_count": 1,
+            "recall_at_1": 1.0,
+            "recall_at_3": 1.0
+          }
+        },
+        "summary": {
+          "blocked_source_violations": 0,
+          "categories": [
+            "blocked-source-exclusion",
+            "english-paraphrase",
+            "exact-danish-terminology",
+            "forbidden-result-safety-boundary",
+            "metadata-filtering",
+            "realistic-typo",
+            "stale-but-policy-usable",
+            "terse-phrasing"
+          ],
+          "forbidden_result_violations": 0,
+          "latency_ms": {
+            "max": 0.208,
+            "mean": 0.117,
+            "min": 0.083
+          },
+          "mean_reciprocal_rank": 0.777778,
+          "query_count": 9,
+          "recall_at_1": 0.777778,
+          "recall_at_3": 0.777778
+        }
+      }
+    },
+    "production_thresholds": "out_of_scope",
+    "recommended_for": "later human architecture approval gate",
+    "rejected_candidates": {},
+    "selected_candidate": "hybrid",
+    "selection_rule": {
+      "hybrid_must_match_or_improve_english_and_typo_recall_at_3": true,
+      "hybrid_must_not_regress_exact_term_recall_at_3_against_lexical": true,
+      "hybrid_must_operate_within_runtime_baseline": true,
+      "hybrid_requires_complete_compatibility_metadata": true,
+      "hybrid_requires_no_blocked_source_violations": true
+    }
+  },
+  "summary": {
+    "candidate_count": 3,
+    "query_count": 9,
+    "selected_candidate": "hybrid"
+  }
+}

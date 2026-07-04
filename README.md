@@ -7,6 +7,8 @@ Private, source-grounded local assistant for Danish permanent-residence language
 - Runtime policy: [config/runtime-policy.json](config/runtime-policy.json)
 - Human-readable baseline: [docs/runtime-baseline.md](docs/runtime-baseline.md)
 - Issue #26 progress: [docs/progress/issue-26-runtime-baseline.md](docs/progress/issue-26-runtime-baseline.md)
+- Issue #28 dense benchmark progress: [docs/progress/issue-28-dense-retrieval-benchmark.md](docs/progress/issue-28-dense-retrieval-benchmark.md)
+- Issue #29 hybrid comparison progress: [docs/progress/issue-29-hybrid-retrieval-comparison.md](docs/progress/issue-29-hybrid-retrieval-comparison.md)
 - Retrieval benchmark fixtures: [data/retrieval_benchmark/corpus-fixtures.json](data/retrieval_benchmark/corpus-fixtures.json)
 - Retrieval benchmark queries: [data/retrieval_benchmark/evaluation-queries.json](data/retrieval_benchmark/evaluation-queries.json)
 - Dense retrieval benchmark queries: [data/retrieval_benchmark/dense-evaluation-queries.json](data/retrieval_benchmark/dense-evaluation-queries.json)
@@ -27,4 +29,16 @@ Run the local dense retrieval benchmark with the provisional embedding candidate
 
 ```bash
 python3 -m danish_rag.retrieval_benchmark --mode dense
+```
+
+Run the opt-in live dense benchmark gate:
+
+```bash
+DI_RAG_RUN_LIVE_DENSE_BENCHMARK=1 python3 -m unittest tests.test_dense_retrieval_benchmark_live -v
+```
+
+Run the local hybrid retrieval comparison and recommendation:
+
+```bash
+python3 -m danish_rag.retrieval_benchmark --mode compare
 ```

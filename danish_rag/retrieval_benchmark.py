@@ -13,6 +13,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,7 @@ from .runtime_policy import load_runtime_policy
 
 BENCHMARK_ID = "mvp-retrieval-benchmark-issue-27"
 DENSE_BENCHMARK_ID = "mvp-dense-retrieval-benchmark-issue-28"
+HYBRID_BENCHMARK_ID = "mvp-hybrid-retrieval-comparison-issue-29"
 DENSE_INDEX_SCHEMA_VERSION = "dense-retrieval-index-v1"
 DENSE_INDEX_ENGINE = "local-dense-json"
 DEFAULT_CORPUS_PATH = "data/retrieval_benchmark/corpus-fixtures.json"
@@ -29,7 +31,13 @@ DEFAULT_LEXICAL_QUERIES_PATH = "data/retrieval_benchmark/evaluation-queries.json
 DEFAULT_DENSE_QUERIES_PATH = "data/retrieval_benchmark/dense-evaluation-queries.json"
 DEFAULT_LEXICAL_OUTPUT_PATH = "docs/progress/issue-27-retrieval-benchmark.json"
 DEFAULT_DENSE_OUTPUT_PATH = "docs/progress/issue-28-dense-retrieval-benchmark.json"
+DEFAULT_HYBRID_OUTPUT_PATH = "docs/progress/issue-29-hybrid-retrieval-comparison.json"
+DEFAULT_HYBRID_RECOMMENDATION_PATH = (
+    "docs/progress/issue-29-hybrid-retrieval-recommendation.md"
+)
 DEFAULT_DENSE_INDEX_PATH = "docs/progress/issue-28-dense-index.json"
+DEFAULT_RUNTIME_PROBE_PATH = "docs/progress/issue-26-runtime-probe.json"
+DEFAULT_RRF_K = 60
 APPROVAL_STATES = {"approved", "unapproved"}
 SOURCE_HEALTH_STATES = {
     "healthy",
@@ -53,10 +61,54 @@ class DenseIndexCompatibilityError(BenchmarkValidationError):
     """Raised when an existing dense index cannot be queried safely."""
 
 
+@dataclass(frozen=True)
+class DenseIndexCompatibilityIdentity:
+    schema_version: str
+    engine: str
+    embedding_model: str
+    embedding_model_identity: dict[str, Any]
+    corpus_fixture_identity: dict[str, Any]
+
+    @classmethod
+    def for_run(
+        cls,
+        *,
+        embedding_model: str,
+        embedding_model_identity: dict[str, Any],
+        corpus_fixture_identity: dict[str, Any],
+    ) -> "DenseIndexCompatibilityIdentity":
+        return cls(
+            schema_version=DENSE_INDEX_SCHEMA_VERSION,
+            engine=DENSE_INDEX_ENGINE,
+            embedding_model=embedding_model,
+            embedding_model_identity=_json_roundtrip(embedding_model_identity),
+            corpus_fixture_identity=_json_roundtrip(corpus_fixture_identity),
+        )
+
+    def metadata_fields(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "engine": self.engine,
+            "embedding_model": self.embedding_model,
+            "embedding_model_identity": self.embedding_model_identity,
+            "corpus_fixture_identity": self.corpus_fixture_identity,
+        }
+
+    def mismatched_metadata_fields(self, metadata: dict[str, Any]) -> list[str]:
+        return [
+            key
+            for key, expected in self.metadata_fields().items()
+            if metadata.get(key) != expected
+        ]
+
+
 class OllamaEmbeddingClient:
     def __init__(self, endpoint: str, timeout_seconds: float = 60.0):
         self.endpoint = endpoint.rstrip("/")
         self.timeout_seconds = timeout_seconds
+
+    def get_version(self) -> dict[str, Any]:
+        return self._request("GET", "/api/version")
 
     def show_model(self, model: str) -> dict[str, Any]:
         try:
@@ -210,6 +262,7 @@ def run_dense_retrieval_benchmark(
     embedding_model: str | None = None,
     client: Any | None = None,
     rebuild_index: bool = True,
+    timeout_seconds: float | None = None,
 ) -> dict[str, Any]:
     started = datetime.now(UTC)
     fixtures, queries = load_benchmark_inputs(corpus_path, queries_path)
@@ -221,11 +274,18 @@ def run_dense_retrieval_benchmark(
         policy = load_runtime_policy(policy_path)
     if embedding_model is None:
         embedding_model = policy["models"]["embedding"]["provisional_candidate"]  # type: ignore[index]
+    endpoint = embedding_endpoint
     if client is None:
         endpoint = embedding_endpoint or policy["providers"]["initial"]["default_endpoint"]  # type: ignore[index]
-        client = OllamaEmbeddingClient(endpoint)
+        client = OllamaEmbeddingClient(
+            endpoint,
+            timeout_seconds=timeout_seconds if timeout_seconds is not None else 60.0,
+        )
+    else:
+        endpoint = embedding_endpoint or getattr(client, "endpoint", None)
 
     model_identity = _inspect_embedding_model(client, embedding_model)
+    runtime_version_payload = _inspect_embedding_runtime(client)
     operations = _empty_dense_operations()
 
     if rebuild_index:
@@ -272,6 +332,23 @@ def run_dense_retrieval_benchmark(
     result = {
         "benchmark_id": DENSE_BENCHMARK_ID,
         "executed_at_utc": started.isoformat(),
+        "configuration": _dense_benchmark_configuration(
+            corpus_path=corpus_path,
+            queries_path=queries_path,
+            policy_path=policy_path,
+            embedding_endpoint=endpoint,
+            embedding_model=embedding_model,
+            index_path=index_path,
+            output_path=output_path,
+            rebuild_index=rebuild_index,
+            timeout_seconds=timeout_seconds,
+        ),
+        "runtime": _dense_runtime_metadata(
+            embedding_endpoint=endpoint,
+            embedding_model=embedding_model,
+            embedding_model_identity=model_identity,
+            version_payload=runtime_version_payload,
+        ),
         "fixture_identity": fixture_identity,
         "index": index["metadata"],
         "operations": _finalize_dense_operations(operations),
@@ -283,8 +360,176 @@ def run_dense_retrieval_benchmark(
     return result
 
 
+def run_hybrid_retrieval_comparison(
+    corpus_path: str | Path,
+    lexical_queries_path: str | Path,
+    dense_queries_path: str | Path,
+    *,
+    index_path: str | Path | None = None,
+    output_path: str | Path | None = None,
+    recommendation_path: str | Path | None = None,
+    policy_path: str | Path = "config/runtime-policy.json",
+    runtime_probe_path: str | Path = DEFAULT_RUNTIME_PROBE_PATH,
+    embedding_endpoint: str | None = None,
+    embedding_model: str | None = None,
+    client: Any | None = None,
+    rebuild_index: bool = True,
+    rrf_k: int = DEFAULT_RRF_K,
+    timeout_seconds: float | None = None,
+) -> dict[str, Any]:
+    started = datetime.now(UTC)
+    fixtures, lexical_queries = load_benchmark_inputs(corpus_path, lexical_queries_path)
+    _dense_fixtures, dense_queries = load_benchmark_inputs(corpus_path, dense_queries_path)
+    queries = _combine_query_sets(lexical_queries, dense_queries)
+    fixture_identity = _comparison_fixture_identity(
+        corpus_path,
+        lexical_queries_path,
+        dense_queries_path,
+        fixtures,
+        lexical_queries,
+        dense_queries,
+    )
+    corpus_identity = _corpus_fixture_identity(corpus_path, fixtures)
+
+    policy = load_runtime_policy(policy_path)
+    if embedding_model is None:
+        embedding_model = policy["models"]["embedding"]["provisional_candidate"]
+    if client is None:
+        endpoint = embedding_endpoint or policy["providers"]["initial"]["default_endpoint"]
+        client = OllamaEmbeddingClient(
+            endpoint,
+            timeout_seconds=timeout_seconds if timeout_seconds is not None else 60.0,
+        )
+    else:
+        endpoint = embedding_endpoint or getattr(client, "endpoint", None)
+
+    model_identity = _inspect_embedding_model(client, embedding_model)
+    operations_started = time.perf_counter()
+    fts_started = time.perf_counter()
+    connection = build_fts_index(fixtures)
+    lexical_indexing_wall_time_ms = round((time.perf_counter() - fts_started) * 1000, 3)
+
+    if rebuild_index:
+        index, dense_operations = _build_dense_index(
+            fixtures,
+            corpus_identity=corpus_identity,
+            client=client,
+            embedding_model=embedding_model,
+            model_identity=model_identity,
+            index_path=index_path,
+        )
+    else:
+        if index_path is None:
+            raise DenseIndexCompatibilityError(
+                "Dense index path is required when --reuse-index is used. Re-index required."
+            )
+        index = _load_compatible_dense_index(
+            index_path,
+            expected_corpus_identity=corpus_identity,
+            embedding_model=embedding_model,
+            model_identity=model_identity,
+            client=client,
+        )
+        dense_operations = _empty_dense_operations()
+        dense_operations["dense_index_size_bytes"] = Path(index_path).stat().st_size
+
+    fixtures_by_id = {fixture["id"]: fixture for fixture in fixtures}
+    vectors_by_id = {
+        item["id"]: item["vector"] for item in index["vectors"] if isinstance(item, dict)
+    }
+    lexical_results: list[dict[str, Any]] = []
+    dense_results: list[dict[str, Any]] = []
+    hybrid_results: list[dict[str, Any]] = []
+
+    try:
+        for query in queries:
+            lexical_result = _evaluate_query(connection, fixtures_by_id, query)
+            dense_result = _evaluate_dense_query(
+                fixtures_by_id,
+                vectors_by_id,
+                query,
+                client=client,
+                embedding_model=embedding_model,
+                operations=dense_operations,
+            )
+            hybrid_result = _evaluate_hybrid_query(
+                fixtures_by_id,
+                query,
+                lexical_result["raw_result_ids"],
+                dense_result["raw_result_ids"],
+                rrf_k=rrf_k,
+            )
+            lexical_results.append(lexical_result)
+            dense_results.append(dense_result)
+            hybrid_results.append(hybrid_result)
+    finally:
+        connection.close()
+
+    operations = {
+        "comparison_wall_time_ms": round((time.perf_counter() - operations_started) * 1000, 3),
+        "lexical_indexing_wall_time_ms": lexical_indexing_wall_time_ms,
+        "dense": _finalize_dense_operations(dense_operations),
+    }
+    candidates = {
+        "lexical": _candidate_report("lexical", lexical_results),
+        "dense": _candidate_report("dense", dense_results),
+        "hybrid": _candidate_report(
+            "hybrid",
+            hybrid_results,
+            fusion={"algorithm": "rrf", "k": rrf_k, "sources": ["lexical", "dense"]},
+        ),
+    }
+    configuration = _comparison_configuration(
+        policy,
+        corpus_path=corpus_path,
+        lexical_queries_path=lexical_queries_path,
+        dense_queries_path=dense_queries_path,
+        policy_path=policy_path,
+        runtime_probe_path=runtime_probe_path,
+        embedding_endpoint=endpoint,
+        embedding_model=embedding_model,
+        index_path=index_path,
+        output_path=output_path,
+        recommendation_path=recommendation_path,
+        rebuild_index=rebuild_index,
+        rrf_k=rrf_k,
+        timeout_seconds=timeout_seconds,
+    )
+    recommendation = _recommend_candidate(candidates, index, operations, configuration)
+    human_recommendation = _human_recommendation_summary(recommendation, candidates)
+    result = {
+        "benchmark_id": HYBRID_BENCHMARK_ID,
+        "executed_at_utc": started.isoformat(),
+        "fixture_identity": fixture_identity,
+        "configuration": configuration,
+        "index": index["metadata"],
+        "operations": operations,
+        "candidates": candidates,
+        "recommendation": recommendation,
+        "human_recommendation": human_recommendation,
+        "summary": {
+            "selected_candidate": recommendation["selected_candidate"],
+            "query_count": len(queries),
+            "candidate_count": len(candidates),
+        },
+    }
+    if output_path is not None:
+        write_benchmark_result(result, output_path)
+    if recommendation_path is not None:
+        write_hybrid_recommendation(result, recommendation_path)
+    return result
+
+
 def write_benchmark_result(result: dict[str, Any], path: str | Path) -> None:
     _write_json_atomic(result, path)
+
+
+def write_hybrid_recommendation(result: dict[str, Any], path: str | Path) -> None:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = output_path.with_suffix(output_path.suffix + ".tmp")
+    temporary_path.write_text(_format_hybrid_recommendation(result), encoding="utf-8")
+    temporary_path.replace(output_path)
 
 
 def write_benchmark_failure(
@@ -303,9 +548,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--mode",
-        choices=("lexical", "dense"),
+        choices=("lexical", "dense", "compare"),
         default="lexical",
-        help="Run the issue #27 lexical benchmark or the issue #28 dense benchmark.",
+        help=(
+            "Run issue #27 lexical, issue #28 dense, or issue #29 comparison "
+            "benchmark."
+        ),
     )
     parser.add_argument(
         "--corpus",
@@ -318,6 +566,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Path to the reviewed evaluation-query JSON. Defaults depend on --mode.",
     )
     parser.add_argument(
+        "--dense-queries",
+        default=DEFAULT_DENSE_QUERIES_PATH,
+        help="Path to the dense/paraphrase query JSON used by --mode compare.",
+    )
+    parser.add_argument(
         "--output",
         default=None,
         help="Path where complete benchmark results are written atomically.",
@@ -326,6 +579,11 @@ def main(argv: list[str] | None = None) -> int:
         "--failure-output",
         default=None,
         help="Path where failed benchmark diagnostics are written atomically.",
+    )
+    parser.add_argument(
+        "--recommendation-output",
+        default=DEFAULT_HYBRID_RECOMMENDATION_PATH,
+        help="Path where --mode compare writes the human-readable recommendation.",
     )
     parser.add_argument(
         "--policy",
@@ -358,22 +616,63 @@ def main(argv: list[str] | None = None) -> int:
         type=float,
         help="Timeout in seconds for each dense embedding HTTP request.",
     )
+    parser.add_argument(
+        "--runtime-probe",
+        default=DEFAULT_RUNTIME_PROBE_PATH,
+        help="Runtime probe evidence used by --mode compare for compatibility metadata.",
+    )
+    parser.add_argument(
+        "--rrf-k",
+        default=DEFAULT_RRF_K,
+        type=int,
+        help="Reciprocal-rank fusion k value used by --mode compare.",
+    )
     args = parser.parse_args(argv)
 
     queries_path = args.queries or (
-        DEFAULT_DENSE_QUERIES_PATH if args.mode == "dense" else DEFAULT_LEXICAL_QUERIES_PATH
+        DEFAULT_DENSE_QUERIES_PATH
+        if args.mode == "dense"
+        else DEFAULT_LEXICAL_QUERIES_PATH
     )
     output_path = args.output or (
-        DEFAULT_DENSE_OUTPUT_PATH if args.mode == "dense" else DEFAULT_LEXICAL_OUTPUT_PATH
+        DEFAULT_DENSE_OUTPUT_PATH
+        if args.mode == "dense"
+        else DEFAULT_HYBRID_OUTPUT_PATH
+        if args.mode == "compare"
+        else DEFAULT_LEXICAL_OUTPUT_PATH
     )
     failure_output = args.failure_output or output_path.replace(".json", ".failed.json")
-    benchmark_id = DENSE_BENCHMARK_ID if args.mode == "dense" else BENCHMARK_ID
+    benchmark_id = (
+        DENSE_BENCHMARK_ID
+        if args.mode == "dense"
+        else HYBRID_BENCHMARK_ID
+        if args.mode == "compare"
+        else BENCHMARK_ID
+    )
 
     try:
-        if args.mode == "dense":
+        if args.mode in {"dense", "compare"}:
             policy = load_runtime_policy(args.policy)
             endpoint = args.embedding_endpoint or policy["providers"]["initial"]["default_endpoint"]
             client = OllamaEmbeddingClient(endpoint, timeout_seconds=args.timeout)
+        if args.mode == "compare":
+            result = run_hybrid_retrieval_comparison(
+                args.corpus,
+                queries_path,
+                args.dense_queries,
+                index_path=args.index,
+                output_path=output_path,
+                recommendation_path=args.recommendation_output,
+                policy_path=args.policy,
+                runtime_probe_path=args.runtime_probe,
+                embedding_endpoint=endpoint,
+                embedding_model=args.embedding_model,
+                client=client,
+                rebuild_index=not args.reuse_index,
+                rrf_k=args.rrf_k,
+                timeout_seconds=args.timeout,
+            )
+        elif args.mode == "dense":
             result = run_dense_retrieval_benchmark(
                 args.corpus,
                 queries_path,
@@ -384,6 +683,7 @@ def main(argv: list[str] | None = None) -> int:
                 embedding_model=args.embedding_model,
                 client=client,
                 rebuild_index=not args.reuse_index,
+                timeout_seconds=args.timeout,
             )
         else:
             result = run_retrieval_benchmark(args.corpus, queries_path, output_path=output_path)
@@ -392,6 +692,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Benchmark validation failed: {exc}", file=sys.stderr)
         print(f"Failure evidence: {failure_output}", file=sys.stderr)
         return 1
+
+    if args.mode == "compare":
+        print(
+            "Hybrid retrieval comparison complete: "
+            f"selected={result['recommendation']['selected_candidate']}, "
+            f"hybrid Recall@3={result['candidates']['hybrid']['summary']['recall_at_3']:.3f}"
+        )
+        print(f"Evidence: {output_path}")
+        print(f"Recommendation: {args.recommendation_output}")
+        return 0
 
     label = "Dense retrieval" if args.mode == "dense" else "Retrieval"
     print(
@@ -460,6 +770,12 @@ def _evaluate_dense_query(
     raw_result_ids = [fixture_id for fixture_id, _score in scored[:10]]
     similarity_latency_ms = round((time.perf_counter() - similarity_started) * 1000, 3)
     latency_ms = round(embedding_latency_ms + similarity_latency_ms, 3)
+    embedding_load_duration_ms = _duration_ms(payload.get("load_duration"))
+    warm_retrieval_latency_ms = _warm_retrieval_latency_ms(
+        embedding_latency_ms=embedding_latency_ms,
+        similarity_latency_ms=similarity_latency_ms,
+        embedding_load_duration_ms=embedding_load_duration_ms,
+    )
 
     return _evaluate_ranked_result_ids(
         fixtures_by_id,
@@ -469,9 +785,68 @@ def _evaluate_dense_query(
         extra={
             "embedding_latency_ms": embedding_latency_ms,
             "warm_similarity_latency_ms": similarity_latency_ms,
-            "embedding_load_duration_ms": _duration_ms(payload.get("load_duration")),
+            "embedding_load_duration_ms": embedding_load_duration_ms,
+            "warm_retrieval_latency_ms": warm_retrieval_latency_ms,
         },
     )
+
+
+def _evaluate_hybrid_query(
+    fixtures_by_id: dict[str, dict[str, Any]],
+    query: dict[str, Any],
+    lexical_result_ids: list[str],
+    dense_result_ids: list[str],
+    *,
+    rrf_k: int,
+) -> dict[str, Any]:
+    started = time.perf_counter()
+    raw_result_ids, fusion_scores = _reciprocal_rank_fusion(
+        [lexical_result_ids, dense_result_ids],
+        k=rrf_k,
+    )
+    latency_ms = round((time.perf_counter() - started) * 1000, 3)
+    return _evaluate_ranked_result_ids(
+        fixtures_by_id,
+        query,
+        raw_result_ids[:10],
+        latency_ms=latency_ms,
+        extra={
+            "fusion_scores": fusion_scores,
+            "fusion_sources": {
+                "lexical": lexical_result_ids,
+                "dense": dense_result_ids,
+            },
+        },
+    )
+
+
+def _reciprocal_rank_fusion(
+    rankings: list[list[str]], *, k: int = DEFAULT_RRF_K
+) -> tuple[list[str], dict[str, float]]:
+    if k < 0:
+        raise BenchmarkValidationError("RRF k must be non-negative")
+    scores: dict[str, float] = {}
+    best_rank: dict[str, int] = {}
+    first_source: dict[str, int] = {}
+    for source_index, ranking in enumerate(rankings):
+        seen_in_source: set[str] = set()
+        for rank, result_id in enumerate(ranking, start=1):
+            if result_id in seen_in_source:
+                continue
+            seen_in_source.add(result_id)
+            scores[result_id] = scores.get(result_id, 0.0) + (1.0 / (k + rank))
+            best_rank[result_id] = min(best_rank.get(result_id, rank), rank)
+            first_source.setdefault(result_id, source_index)
+    ranked = sorted(
+        scores,
+        key=lambda result_id: (
+            -scores[result_id],
+            best_rank[result_id],
+            first_source[result_id],
+            result_id,
+        ),
+    )
+    return ranked, {result_id: round(scores[result_id], 9) for result_id in ranked}
 
 
 def _evaluate_ranked_result_ids(
@@ -533,7 +908,7 @@ def _evaluate_ranked_result_ids(
 def _summarize_results(query_results: list[dict[str, Any]]) -> dict[str, Any]:
     query_count = len(query_results)
     latency_values = [query["latency_ms"] for query in query_results]
-    return {
+    summary = {
         "query_count": query_count,
         "categories": sorted({query["category"] for query in query_results}),
         "recall_at_1": _mean(query["recall_at_1_hit"] for query in query_results),
@@ -547,11 +922,198 @@ def _summarize_results(query_results: list[dict[str, Any]]) -> dict[str, Any]:
         "blocked_source_violations": sum(
             query["blocked_source_violations"] for query in query_results
         ),
-        "latency_ms": {
-            "min": min(latency_values),
-            "max": max(latency_values),
-            "mean": round(sum(latency_values) / query_count, 3),
+        "latency_ms": _numeric_summary(latency_values),
+    }
+    for key in ("warm_retrieval_latency_ms", "embedding_load_duration_ms"):
+        values = [
+            query[key]
+            for query in query_results
+            if isinstance(query.get(key), int | float)
+            and not isinstance(query.get(key), bool)
+        ]
+        if values:
+            summary[key] = _numeric_summary(values)
+    return summary
+
+
+def _candidate_report(
+    name: str,
+    query_results: list[dict[str, Any]],
+    *,
+    fusion: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    report = {
+        "name": name,
+        "summary": _summarize_results(query_results),
+        "category_metrics": _category_metrics(query_results),
+        "queries": query_results,
+    }
+    if fusion is not None:
+        report["fusion"] = fusion
+    return report
+
+
+def _category_metrics(query_results: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    metrics: dict[str, dict[str, Any]] = {}
+    for category in sorted({query["category"] for query in query_results}):
+        category_results = [
+            query for query in query_results if query["category"] == category
+        ]
+        metrics[category] = _summarize_results(category_results)
+    return metrics
+
+
+def _recommend_candidate(
+    candidates: dict[str, dict[str, Any]],
+    index: dict[str, Any],
+    operations: dict[str, Any],
+    configuration: dict[str, Any],
+) -> dict[str, Any]:
+    hybrid_rejection_reasons = _hybrid_rejection_reasons(
+        candidates,
+        index,
+        operations,
+        configuration,
+    )
+    rejected_candidates: dict[str, list[str]] = {}
+    if hybrid_rejection_reasons:
+        rejected_candidates["hybrid"] = hybrid_rejection_reasons
+        selected = _best_alternative_candidate(candidates, excluded={"hybrid"})
+    else:
+        selected = "hybrid"
+
+    return {
+        "selected_candidate": selected,
+        "recommended_for": "later human architecture approval gate",
+        "production_thresholds": "out_of_scope",
+        "rejected_candidates": rejected_candidates,
+        "selection_rule": {
+            "hybrid_requires_no_blocked_source_violations": True,
+            "hybrid_must_not_regress_exact_term_recall_at_3_against_lexical": True,
+            "hybrid_must_match_or_improve_english_and_typo_recall_at_3": True,
+            "hybrid_requires_complete_compatibility_metadata": True,
+            "hybrid_must_operate_within_runtime_baseline": True,
         },
+        "candidate_metrics": {
+            name: {
+                "summary": candidate["summary"],
+                "category_metrics": candidate["category_metrics"],
+            }
+            for name, candidate in candidates.items()
+        },
+    }
+
+
+def _hybrid_rejection_reasons(
+    candidates: dict[str, dict[str, Any]],
+    index: dict[str, Any],
+    operations: dict[str, Any],
+    configuration: dict[str, Any],
+) -> list[str]:
+    reasons: list[str] = []
+    hybrid = candidates["hybrid"]
+    lexical = candidates["lexical"]
+    dense = candidates["dense"]
+
+    if hybrid["summary"]["blocked_source_violations"] != 0:
+        reasons.append("hybrid returned credit for blocked or unapproved sources")
+
+    rrf_k = (
+        configuration.get("retrieval", {})
+        .get("hybrid_fusion", {})
+        .get("k")
+    )
+    if rrf_k != DEFAULT_RRF_K:
+        reasons.append("hybrid RRF k differs from the reviewed default configuration")
+
+    exact_category = "exact-danish-terminology"
+    hybrid_exact = _recall_at_3_for_category(hybrid, exact_category)
+    lexical_exact = _recall_at_3_for_category(lexical, exact_category)
+    if hybrid_exact < lexical_exact:
+        reasons.append(
+            "hybrid regressed exact Danish terminology Recall@3 against lexical retrieval"
+        )
+
+    for category in ("english-paraphrase", "realistic-typo"):
+        hybrid_recall = _recall_at_3_for_category(hybrid, category)
+        required_recall = max(
+            _recall_at_3_for_category(lexical, category),
+            _recall_at_3_for_category(dense, category),
+        )
+        if hybrid_recall < required_recall:
+            reasons.append(
+                f"hybrid regressed {category} Recall@3 against a single-mode candidate"
+            )
+
+    metadata = index.get("metadata", {})
+    required_index_fields = {
+        "engine",
+        "schema_version",
+        "embedding_model",
+        "embedding_model_identity",
+        "vector_dimensions",
+        "corpus_fixture_identity",
+    }
+    missing_index_fields = sorted(required_index_fields - set(metadata))
+    if missing_index_fields:
+        reasons.append(
+            "hybrid compatibility metadata is incomplete: "
+            + ", ".join(missing_index_fields)
+        )
+
+    runtime = configuration.get("runtime_baseline", {})
+    memory_limit_mb = runtime.get("recommended_system_ram_mb")
+    peak_memory_mb = operations["dense"].get("process_peak_resident_memory_mb")
+    if (
+        isinstance(memory_limit_mb, int | float)
+        and isinstance(peak_memory_mb, int | float)
+        and peak_memory_mb > memory_limit_mb
+    ):
+        reasons.append("hybrid exceeded the recorded runtime memory baseline")
+    if not runtime.get("baseline_id"):
+        reasons.append("runtime baseline metadata is missing")
+
+    return reasons
+
+
+def _recall_at_3_for_category(candidate: dict[str, Any], category: str) -> float:
+    metrics = candidate["category_metrics"].get(category)
+    if metrics is None:
+        return 0.0
+    return metrics["recall_at_3"]
+
+
+def _best_alternative_candidate(
+    candidates: dict[str, dict[str, Any]], *, excluded: set[str]
+) -> str:
+    eligible = [
+        (name, candidate)
+        for name, candidate in candidates.items()
+        if name not in excluded
+    ]
+    ranked = sorted(
+        eligible,
+        key=lambda item: (
+            item[1]["summary"]["blocked_source_violations"],
+            -item[1]["summary"]["recall_at_3"],
+            -item[1]["summary"]["mean_reciprocal_rank"],
+            item[1]["summary"]["latency_ms"]["mean"],
+            item[0],
+        ),
+    )
+    return ranked[0][0]
+
+
+def _human_recommendation_summary(
+    recommendation: dict[str, Any], candidates: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    return {
+        "selected_candidate": recommendation["selected_candidate"],
+        "production_thresholds": recommendation["production_thresholds"],
+        "candidate_metrics": {
+            name: candidate["summary"] for name, candidate in candidates.items()
+        },
+        "rejected_candidates": recommendation["rejected_candidates"],
     }
 
 
@@ -569,6 +1131,66 @@ def _inspect_embedding_model(client: Any, embedding_model: str) -> dict[str, Any
     if not isinstance(payload, dict):
         raise BenchmarkValidationError("Embedding model inspection returned a non-object response")
     return _embedding_model_identity(payload, embedding_model)
+
+
+def _inspect_embedding_runtime(client: Any) -> dict[str, Any] | None:
+    get_version = getattr(client, "get_version", None)
+    if not callable(get_version):
+        return None
+    try:
+        payload = get_version()
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return _json_roundtrip(payload)
+
+
+def _dense_runtime_metadata(
+    *,
+    embedding_endpoint: str | None,
+    embedding_model: str,
+    embedding_model_identity: dict[str, Any],
+    version_payload: dict[str, Any] | None,
+) -> dict[str, Any]:
+    version = None
+    if isinstance(version_payload, dict) and version_payload.get("version") is not None:
+        version = str(version_payload["version"])
+    return {
+        "embedding_provider": "ollama",
+        "embedding_endpoint": embedding_endpoint,
+        "embedding_model": embedding_model,
+        "embedding_model_identity": embedding_model_identity,
+        "provider_version": version,
+        "provider_version_payload": version_payload,
+    }
+
+
+def _dense_benchmark_configuration(
+    *,
+    corpus_path: str | Path,
+    queries_path: str | Path,
+    policy_path: str | Path,
+    embedding_endpoint: str | None,
+    embedding_model: str,
+    index_path: str | Path | None,
+    output_path: str | Path | None,
+    rebuild_index: bool,
+    timeout_seconds: float | None,
+) -> dict[str, Any]:
+    configuration = {
+        "corpus_path": str(corpus_path),
+        "queries_path": str(queries_path),
+        "policy_path": str(policy_path),
+        "embedding_endpoint": embedding_endpoint,
+        "embedding_model": embedding_model,
+        "index_path": str(index_path) if index_path is not None else None,
+        "output_path": str(output_path) if output_path is not None else None,
+        "index_mode": "rebuild" if rebuild_index else "reuse",
+    }
+    if timeout_seconds is not None:
+        configuration["timeout_seconds"] = timeout_seconds
+    return configuration
 
 
 def _embedding_model_identity(payload: dict[str, Any], embedding_model: str) -> dict[str, Any]:
@@ -616,14 +1238,15 @@ def _build_dense_index(
     if vector_dimensions is None:
         raise BenchmarkValidationError("Dense index cannot be built from an empty corpus")
 
+    compatibility_identity = DenseIndexCompatibilityIdentity.for_run(
+        embedding_model=embedding_model,
+        embedding_model_identity=model_identity,
+        corpus_fixture_identity=corpus_identity,
+    )
     metadata = {
-        "engine": DENSE_INDEX_ENGINE,
-        "schema_version": DENSE_INDEX_SCHEMA_VERSION,
+        **compatibility_identity.metadata_fields(),
         "embedding_provider": "ollama",
-        "embedding_model": embedding_model,
-        "embedding_model_identity": model_identity,
         "vector_dimensions": vector_dimensions,
-        "corpus_fixture_identity": corpus_identity,
         "document_count": len(fixtures),
     }
     index = {"metadata": metadata, "vectors": vectors}
@@ -671,16 +1294,12 @@ def _load_compatible_dense_index(
         )
 
     metadata = index["metadata"]
-    expected_fields = {
-        "schema_version": DENSE_INDEX_SCHEMA_VERSION,
-        "engine": DENSE_INDEX_ENGINE,
-        "embedding_model": embedding_model,
-        "embedding_model_identity": model_identity,
-        "corpus_fixture_identity": expected_corpus_identity,
-    }
-    mismatches = [
-        key for key, expected in expected_fields.items() if metadata.get(key) != expected
-    ]
+    expected_identity = DenseIndexCompatibilityIdentity.for_run(
+        embedding_model=embedding_model,
+        embedding_model_identity=model_identity,
+        corpus_fixture_identity=expected_corpus_identity,
+    )
+    mismatches = expected_identity.mismatched_metadata_fields(metadata)
     if mismatches:
         raise DenseIndexCompatibilityError(
             f"Dense index metadata mismatch for {', '.join(sorted(mismatches))}. Re-index required."
@@ -770,6 +1389,26 @@ def _duration_ms(value: Any) -> float | None:
     return round(float(value) / 1_000_000, 3)
 
 
+def _warm_retrieval_latency_ms(
+    *,
+    embedding_latency_ms: float,
+    similarity_latency_ms: float,
+    embedding_load_duration_ms: float | None,
+) -> float:
+    if embedding_load_duration_ms is None:
+        return round(embedding_latency_ms + similarity_latency_ms, 3)
+    warm_embedding_latency_ms = max(embedding_latency_ms - embedding_load_duration_ms, 0.0)
+    return round(warm_embedding_latency_ms + similarity_latency_ms, 3)
+
+
+def _numeric_summary(values: list[float]) -> dict[str, float]:
+    return {
+        "min": min(values),
+        "max": max(values),
+        "mean": round(sum(values) / len(values), 3),
+    }
+
+
 def _empty_dense_operations() -> dict[str, Any]:
     return {
         "dense_indexing_wall_time_ms": 0.0,
@@ -825,6 +1464,34 @@ def _fixture_identity(
     }
 
 
+def _comparison_fixture_identity(
+    corpus_path: str | Path,
+    lexical_queries_path: str | Path,
+    dense_queries_path: str | Path,
+    fixtures: list[dict[str, Any]],
+    lexical_queries: list[dict[str, Any]],
+    dense_queries: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "corpus_path": str(corpus_path),
+        "corpus_sha256": _sha256_file(corpus_path),
+        "document_ids": [fixture["id"] for fixture in fixtures],
+        "query_sets": {
+            "lexical": {
+                "queries_path": str(lexical_queries_path),
+                "queries_sha256": _sha256_file(lexical_queries_path),
+                "query_ids": [query["id"] for query in lexical_queries],
+            },
+            "dense": {
+                "queries_path": str(dense_queries_path),
+                "queries_sha256": _sha256_file(dense_queries_path),
+                "query_ids": [query["id"] for query in dense_queries],
+            },
+        },
+        "query_ids": [query["id"] for query in lexical_queries + dense_queries],
+    }
+
+
 def _corpus_fixture_identity(
     corpus_path: str | Path, fixtures: list[dict[str, Any]]
 ) -> dict[str, Any]:
@@ -833,6 +1500,168 @@ def _corpus_fixture_identity(
         "corpus_sha256": _sha256_file(corpus_path),
         "document_ids": [fixture["id"] for fixture in fixtures],
     }
+
+
+def _combine_query_sets(
+    lexical_queries: list[dict[str, Any]], dense_queries: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    queries = lexical_queries + dense_queries
+    seen: set[str] = set()
+    duplicates: list[str] = []
+    for query in queries:
+        if query["id"] in seen:
+            duplicates.append(query["id"])
+        seen.add(query["id"])
+    if duplicates:
+        raise BenchmarkValidationError(
+            f"comparison query ids must be unique: {sorted(duplicates)}"
+        )
+    return queries
+
+
+def _comparison_configuration(
+    policy: dict[str, Any],
+    *,
+    corpus_path: str | Path,
+    lexical_queries_path: str | Path,
+    dense_queries_path: str | Path,
+    policy_path: str | Path,
+    runtime_probe_path: str | Path,
+    embedding_endpoint: str | None,
+    embedding_model: str,
+    index_path: str | Path | None,
+    output_path: str | Path | None,
+    recommendation_path: str | Path | None,
+    rebuild_index: bool,
+    rrf_k: int,
+    timeout_seconds: float | None,
+) -> dict[str, Any]:
+    provider = policy["providers"]["initial"]
+    hardware = policy["supported_environment"]["hardware"]
+    runtime_probe = _load_optional_json_object(runtime_probe_path)
+    provider_version = None
+    python_version = None
+    if runtime_probe is not None:
+        provider_version = runtime_probe.get("provider", {}).get("version")
+        python_version = runtime_probe.get("environment", {}).get("python_version")
+    return {
+        "inputs": {
+            "corpus_path": str(corpus_path),
+            "lexical_queries_path": str(lexical_queries_path),
+            "dense_queries_path": str(dense_queries_path),
+        },
+        "outputs": {
+            "machine_readable_result_path": (
+                str(output_path) if output_path is not None else None
+            ),
+            "human_recommendation_path": (
+                str(recommendation_path) if recommendation_path is not None else None
+            ),
+        },
+        "embedding": {
+            "endpoint": embedding_endpoint,
+            "model": embedding_model,
+            "timeout_seconds": timeout_seconds,
+        },
+        "index": {
+            "index_path": str(index_path) if index_path is not None else None,
+            "index_mode": "rebuild" if rebuild_index else "reuse",
+        },
+        "runtime_policy_path": str(policy_path),
+        "runtime_probe_path": str(runtime_probe_path),
+        "runtime_baseline": {
+            "baseline_id": policy["baseline_id"],
+            "provider": provider["id"],
+            "provider_minimum_version": provider["minimum_version"],
+            "provider_observed_version": provider_version,
+            "python_observed_version": python_version,
+            "recommended_system_ram_mb": hardware["recommended_system_ram_gb"] * 1024,
+        },
+        "retrieval": {
+            "candidate_modes": ["lexical", "dense", "hybrid"],
+            "hybrid_fusion": {
+                "algorithm": "rrf",
+                "k": rrf_k,
+                "sources": ["lexical", "dense"],
+            },
+        },
+        "recommendation_scope": {
+            "feeds_human_architecture_approval_gate": True,
+            "production_thresholds_out_of_scope": True,
+        },
+    }
+
+
+def _load_optional_json_object(path: str | Path) -> dict[str, Any] | None:
+    try:
+        value = json.loads(Path(path).read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    if not isinstance(value, dict):
+        return None
+    return value
+
+
+def _format_hybrid_recommendation(result: dict[str, Any]) -> str:
+    recommendation = result["recommendation"]
+    selected = recommendation["selected_candidate"]
+    output_path = result["configuration"]["outputs"]["machine_readable_result_path"]
+    lines = [
+        "# Issue 29 Hybrid Retrieval Recommendation",
+        "",
+        f"Machine-readable result: `{output_path}`",
+        f"Executed at UTC: `{result['executed_at_utc']}`",
+        f"Selected candidate: {selected}",
+        "",
+        "Production thresholds remain out of scope and must be decided by the later evaluation decision ticket.",
+        "",
+        "## Candidate Metrics",
+        "",
+    ]
+    for name, candidate in result["candidates"].items():
+        summary = candidate["summary"]
+        lines.extend(
+            [
+                f"### {name}",
+                "",
+                f"- Recall@1: `{summary['recall_at_1']}`",
+                f"- Recall@3: `{summary['recall_at_3']}`",
+                f"- Mean reciprocal rank: `{summary['mean_reciprocal_rank']}`",
+                f"- Blocked-source violations: `{summary['blocked_source_violations']}`",
+                f"- Forbidden-result violations: `{summary['forbidden_result_violations']}`",
+                f"- Mean latency ms: `{summary['latency_ms']['mean']}`",
+                "",
+            ]
+        )
+
+    lines.extend(["## Non-Selected Alternatives", ""])
+    rejected = recommendation["rejected_candidates"]
+    if not rejected:
+        lines.append("- No candidate was rejected by the issue 29 rule.")
+    else:
+        for name, reasons in rejected.items():
+            lines.append(f"- {name}: " + "; ".join(reasons))
+    lines.extend(
+        [
+            "",
+            "## Compatibility Metadata",
+            "",
+            f"- Runtime baseline: `{result['configuration']['runtime_baseline']['baseline_id']}`",
+            f"- Embedding model: `{result['index']['embedding_model']}`",
+            f"- Vector dimensions: `{result['index']['vector_dimensions']}`",
+            f"- Corpus SHA-256: `{result['fixture_identity']['corpus_sha256']}`",
+            f"- RRF k: `{result['configuration']['retrieval']['hybrid_fusion']['k']}`",
+            "",
+            "## Recommendation",
+            "",
+            (
+                f"Use `{selected}` as the evidenced retrieval candidate to bring into "
+                "the later human architecture approval gate."
+            ),
+            "",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def _json_roundtrip(value: Any) -> Any:
