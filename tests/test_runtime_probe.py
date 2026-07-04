@@ -36,6 +36,7 @@ class FakeOllamaClient:
             {"runtime_baseline": "mvp-runtime-baseline-issue-26", "status": "ok"}
         )
         self.failure = failure
+        self.chat_calls = 0
 
     def get_version(self):
         if self.failure == "service":
@@ -48,6 +49,7 @@ class FakeOllamaClient:
         return self.show
 
     def chat_structured(self, *, model, schema, messages):
+        self.chat_calls += 1
         if self.failure == "chat":
             raise RuntimeError("chat failed")
         return {"message": {"content": self.chat_content}}
@@ -126,6 +128,27 @@ class RuntimeProbeTests(unittest.TestCase):
         self.assertEqual(result.exit_status, 5)
         self.assertIn("unexpected field(s): extra", result.diagnostic)
         self.assertIn("issue #26 schema", result.diagnostic)
+
+    def test_probe_rejects_model_without_completion_capability_before_chat(self):
+        policy = load_runtime_policy(POLICY_PATH)
+        client = FakeOllamaClient(
+            show={
+                "details": {
+                    "family": "gemma4",
+                    "quantization_level": "Q4_K_M",
+                },
+                "model_info": {"general.architecture": "gemma4"},
+                "capabilities": ["thinking"],
+            }
+        )
+
+        result = run_runtime_probe(policy, client=client)
+
+        self.assertEqual(result.exit_status, 4)
+        self.assertEqual(client.chat_calls, 0)
+        self.assertEqual(result.model["capabilities"], ["thinking"])
+        self.assertIn("completion", result.diagnostic)
+        self.assertIn("issue #26", result.diagnostic)
 
     def test_probe_rejects_non_object_structured_json(self):
         policy = load_runtime_policy(POLICY_PATH)

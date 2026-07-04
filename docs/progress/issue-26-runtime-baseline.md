@@ -54,7 +54,8 @@ Latest evidence file: [docs/progress/issue-26-runtime-probe.json](issue-26-runti
 - Reported capabilities: `completion`, `vision`, `audio`, `tools`, `thinking`
 - Structured response: `{"runtime_baseline": "mvp-runtime-baseline-issue-26", "status": "ok"}`
 - Environment: WSL2 Linux `6.6.114.1-microsoft-standard-WSL2`, Python `3.12.3`, `x86_64`, 16 CPUs, 15908 MB RAM
-- Timings: service version 18.364 ms, model inspection 2.881 ms, structured completion 27008.199 ms, total 27032.909 ms
+- Finished at UTC: `2026-07-02T21:28:21.625849+00:00`
+- Timings: service version 17.277 ms, model inspection 2.144 ms, structured completion 25805.935 ms, total 25828.447 ms
 
 ## Remaining Risks
 

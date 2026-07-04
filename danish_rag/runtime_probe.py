@@ -185,6 +185,15 @@ def run_runtime_probe(
             started_counter,
         )
 
+    if "completion" not in capabilities:
+        return _finish(
+            result,
+            4,
+            f"The installed generation model is missing the completion capability required by the issue #26 baseline. "
+            f"/api/show capabilities reported: {capabilities!r}.",
+            started_counter,
+        )
+
     schema = _structured_probe_schema(policy["baseline_id"])
     messages = [
         {
@@ -215,8 +224,6 @@ def run_runtime_probe(
             started_counter,
         )
 
-    if "completion" not in result.model["capabilities"]:
-        result.model["capabilities"].append("completion")
     result.structured_response = structured_response
     return _finish(result, 0, "Runtime baseline probe passed.", started_counter)
 
@@ -420,36 +427,28 @@ def _parse_structured_response(chat_payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _validate_structured_response(response: dict[str, Any], baseline_id: str) -> None:
-    schema = _structured_probe_schema(baseline_id)
-    expected_type = schema["type"]
-    if expected_type != "object":
-        raise ValueError(f"unsupported probe schema type: {expected_type}")
+    expected_fields = {"runtime_baseline", "status"}
 
-    properties = schema["properties"]
-    required = set(schema["required"])
-    allowed = set(properties)
-
-    missing = sorted(field for field in required if field not in response)
+    missing = sorted(field for field in expected_fields if field not in response)
     if missing:
         raise ValueError("missing required field(s): " + ", ".join(missing))
 
-    if schema.get("additionalProperties") is False:
-        extra = sorted(field for field in response if field not in allowed)
-        if extra:
-            raise ValueError(
-                "unexpected field(s): "
-                + ", ".join(extra)
-                + "; expected only "
-                + ", ".join(sorted(allowed))
-            )
+    extra = sorted(field for field in response if field not in expected_fields)
+    if extra:
+        raise ValueError(
+            "unexpected field(s): "
+            + ", ".join(extra)
+            + "; expected only "
+            + ", ".join(sorted(expected_fields))
+        )
 
-    for field, field_schema in properties.items():
-        if field not in response:
-            continue
-        if "const" in field_schema and response[field] != field_schema["const"]:
-            raise ValueError(
-                f"{field} expected {field_schema['const']!r}, found {response[field]!r}"
-            )
+    if response["runtime_baseline"] != baseline_id:
+        raise ValueError(
+            f"runtime_baseline expected {baseline_id!r}, "
+            f"found {response['runtime_baseline']!r}"
+        )
+    if response["status"] != "ok":
+        raise ValueError(f"status expected 'ok', found {response['status']!r}")
 
 
 def _running_under_wsl() -> bool:

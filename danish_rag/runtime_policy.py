@@ -122,10 +122,7 @@ def validate_runtime_baseline_prose_contract(
             "not an approved official source",
             "cannot supply official facts from model knowledge",
             "generation and embedding are separate capabilities",
-            "generation accepts messages, a response schema, and runtime options",
-            "returns structured output with provider and model identity",
-            "embedding accepts text inputs",
-            "returns vectors with model identity and vector dimensions",
+            *_capability_contract_phrases(policy["capability_contracts"]),
             (
                 f"{models['embedding']['provisional_candidate']} is only a "
                 "provisional embedding candidate"
@@ -269,6 +266,62 @@ def _normalize_prose(text: str) -> str:
     return " ".join(text.replace("`", "").casefold().split())
 
 
+def _capability_contract_phrases(
+    capability_contracts: dict[str, dict[str, list[str]]],
+) -> list[str]:
+    generation_contract = capability_contracts["generation"]
+    embedding_contract = capability_contracts["embedding"]
+
+    return [
+        f"generation accepts {_format_contract_fields(generation_contract['input'])}",
+        f"returns {_format_contract_output(generation_contract['output'])}",
+        f"embedding accepts {_format_contract_fields(embedding_contract['input'])}",
+        f"returns {_format_contract_output(embedding_contract['output'])}",
+    ]
+
+
+def _format_contract_output(fields: list[str]) -> str:
+    if len(fields) <= 1:
+        return _format_contract_fields(fields)
+
+    return (
+        f"{_contract_field_prose(fields[0])} with "
+        f"{_format_contract_fields(fields[1:])}"
+    )
+
+
+def _format_contract_fields(fields: list[str]) -> str:
+    prose_fields = _merge_identity_fields(
+        [_contract_field_prose(field) for field in fields]
+    )
+    if len(prose_fields) <= 2:
+        return " and ".join(prose_fields)
+    return f"{', '.join(prose_fields[:-1])}, and {prose_fields[-1]}"
+
+
+def _merge_identity_fields(fields: list[str]) -> list[str]:
+    merged: list[str] = []
+    index = 0
+    while index < len(fields):
+        if fields[index : index + 2] == ["provider identity", "model identity"]:
+            merged.append("provider and model identity")
+            index += 2
+            continue
+        merged.append(fields[index])
+        index += 1
+    return merged
+
+
+def _contract_field_prose(field: str) -> str:
+    field_prose = {
+        "response_schema": "a response schema",
+        "runtime_options": "runtime options",
+        "structured_answer": "structured output",
+        "text_inputs": "text inputs",
+    }
+    return field_prose.get(field, field.replace("_", " "))
+
+
 def _require_phrases(
     failures: list[str], label: str, normalized_text: str, phrases: list[str]
 ) -> None:
@@ -304,6 +357,7 @@ def _validate_runtime_policy_shape(policy: dict[str, Any]) -> list[str]:
         "providers",
         "models",
         "capabilities",
+        "capability_contracts",
         "application",
         "browser_security",
         "network",

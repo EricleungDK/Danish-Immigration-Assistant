@@ -1,3 +1,4 @@
+from copy import deepcopy
 import json
 import unittest
 from pathlib import Path
@@ -16,6 +17,23 @@ DOC_PATH = ROOT / "docs" / "runtime-baseline.md"
 
 
 class RuntimePolicyContractTests(unittest.TestCase):
+    def assertProseContradictions(
+        self,
+        policy,
+        contradictions,
+        expected_failure_fragment,
+    ):
+        for label, contradictory_text in contradictions.items():
+            with self.subTest(label=label):
+                failures = validate_runtime_baseline_prose_contract(
+                    policy, contradictory_text
+                )
+                self.assertTrue(
+                    any(expected_failure_fragment in failure for failure in failures),
+                    f"{label} failures did not include "
+                    f"{expected_failure_fragment!r}: {failures}",
+                )
+
     def test_policy_records_local_only_answer_path_runtime_baseline(self):
         policy = load_runtime_policy(POLICY_PATH)
 
@@ -106,14 +124,50 @@ class RuntimePolicyContractTests(unittest.TestCase):
             ),
         }
 
-        for label, contradictory_text in contradictions.items():
+        self.assertProseContradictions(
+            policy,
+            contradictions,
+            "generation and embedding",
+        )
+
+    def test_generation_and_embedding_prose_tracks_policy_capability_contracts(self):
+        text = DOC_PATH.read_text(encoding="utf-8")
+        policy = load_runtime_policy(POLICY_PATH)
+        drifts = {
+            "generation input": (
+                ("generation", "input"),
+                ["messages", "response_schema", "tool_options"],
+            ),
+            "generation output": (
+                ("generation", "output"),
+                [
+                    "structured_answer",
+                    "provider_identity",
+                    "model_identity",
+                    "trace_id",
+                ],
+            ),
+            "embedding input": (("embedding", "input"), ["document_chunks"]),
+            "embedding output": (
+                ("embedding", "output"),
+                ["vectors", "model_identity", "vector_dimensions", "token_counts"],
+            ),
+        }
+
+        for label, ((capability, boundary), drifted_fields) in drifts.items():
             with self.subTest(label=label):
-                failures = validate_runtime_baseline_prose_contract(
-                    policy, contradictory_text
+                drifted_policy = deepcopy(policy)
+                drifted_policy["capability_contracts"][capability][boundary] = (
+                    drifted_fields
                 )
+
+                failures = validate_runtime_baseline_prose_contract(
+                    drifted_policy, text
+                )
+
                 self.assertTrue(
                     any("generation and embedding" in failure for failure in failures),
-                    failures,
+                    f"{label} drift was not reported: {failures}",
                 )
 
     def test_local_only_answer_path_prose_rejects_loopback_security_contradictions(self):
@@ -136,14 +190,7 @@ class RuntimePolicyContractTests(unittest.TestCase):
             ),
         }
 
-        for label, contradictory_text in contradictions.items():
-            with self.subTest(label=label):
-                failures = validate_runtime_baseline_prose_contract(
-                    policy, contradictory_text
-                )
-                self.assertTrue(
-                    any("loopback" in failure for failure in failures), failures
-                )
+        self.assertProseContradictions(policy, contradictions, "loopback")
 
     def test_knowledge_release_prose_rejects_update_separation_contradictions(self):
         text = DOC_PATH.read_text(encoding="utf-8")
@@ -159,15 +206,7 @@ class RuntimePolicyContractTests(unittest.TestCase):
             ),
         }
 
-        for label, contradictory_text in contradictions.items():
-            with self.subTest(label=label):
-                failures = validate_runtime_baseline_prose_contract(
-                    policy, contradictory_text
-                )
-                self.assertTrue(
-                    any("Knowledge release" in failure for failure in failures),
-                    failures,
-                )
+        self.assertProseContradictions(policy, contradictions, "Knowledge release")
 
     def test_local_only_answer_path_prose_rejects_verified_environment_contradictions(self):
         text = DOC_PATH.read_text(encoding="utf-8")
@@ -187,14 +226,7 @@ class RuntimePolicyContractTests(unittest.TestCase):
             ),
         }
 
-        for label, contradictory_text in contradictions.items():
-            with self.subTest(label=label):
-                failures = validate_runtime_baseline_prose_contract(
-                    policy, contradictory_text
-                )
-                self.assertTrue(
-                    any("environment" in failure for failure in failures), failures
-                )
+        self.assertProseContradictions(policy, contradictions, "environment")
 
     def test_documented_contract_is_valid_json(self):
         documented_contract = extract_documented_policy_contract(DOC_PATH)

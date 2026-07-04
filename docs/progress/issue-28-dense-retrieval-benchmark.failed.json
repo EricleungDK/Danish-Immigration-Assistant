@@ -1,0 +1,6 @@
+{
+  "benchmark_id": "mvp-dense-retrieval-benchmark-issue-28",
+  "diagnostic": "Embedding service could not inspect embeddinggemma. Start the local embedding service and confirm the model is available. Detail: <urlopen error [Errno 1] Operation not permitted>",
+  "exit_status": 1,
+  "failed_at_utc": "2026-07-02T21:46:22.383864+00:00"
+}
