@@ -1,6 +1,16 @@
 # Source Governance And Knowledge-Release Integrity
 
-This document recommends the issue #5 operating model for the human-reviewed source registry and knowledge-release lifecycle in Danish Immigration RAG. It is a governance baseline for human approval, not an implementation mandate for every future automation detail.
+This document records the issue #5 operating-model recommendation and the issue #6 architecture approval for the human-reviewed source registry and knowledge-release lifecycle in Danish Immigration RAG. It is a governance baseline, not an implementation mandate for every future automation detail.
+
+## Approval Status
+
+Issue #6 approves this baseline for the MVP architecture gate:
+
+- The lifecycle and threat model are accepted as compatible with the PRD safety boundaries.
+- Human review and publication authority are assigned to maintainer roles. A production knowledge release must name the human maintainer or maintainers acting as source curator, source reviewer, release operator, release approver, and recovery owner.
+- The selected integrity approach is a signed release manifest containing SHA-256 artifact hashes and a documented project trust root.
+- Source blocking, warning, withdrawal, and emergency recovery rules follow the state model and recovery procedures below.
+- Release implementation tooling, exact signing commands, final release thresholds, and Fresh Tomato Score algorithms remain separate implementation decisions.
 
 ## Recommendation
 
