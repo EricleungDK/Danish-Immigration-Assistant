@@ -1,0 +1,786 @@
+{
+  "dataset_id": "di-rag-eval-set-v0.1-candidate",
+  "version": "0.1.0-candidate",
+  "approval_status": "candidate-ready-for-human-approval",
+  "source": "Project-authored synthetic cases; not copied from webpages and not derived from user conversation records.",
+  "cases": [
+    {
+      "id": "eval-001-permanent-language-supported",
+      "title": "Supported permanent-residence language requirement",
+      "prd_user_stories": [75, 76, 77, 78, 79],
+      "behavior_class": "happy_path",
+      "content_area": "permanent-residence-language-requirements",
+      "prompt": "Which Danish language test is documented for permanent residence?",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Retrieve material evidence about permanent-residence language requirements before generation.",
+          "Retrieve evidence that preserves the Danish examination term used by the approved official source."
+        ],
+        "forbidden_claims": [
+          "The user personally qualifies for permanent residence.",
+          "The generation model can answer from memory if retrieval misses the required source."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["uim.dk", "community.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["changed-unreviewed", "broken", "extraction-failed", "unapproved"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer",
+        "required_facts": [
+          "Answer in English while preserving the relevant Danish term.",
+          "State only the language requirement supported by the retrieved material source.",
+          "Distinguish official fact from interpretation."
+        ],
+        "forbidden_claims": [
+          "Any personal eligibility conclusion.",
+          "Any uncited official language requirement."
+        ],
+        "required_citation_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score: High"],
+        "privacy_requirements": ["No answer-time network egress."]
+      }
+    },
+    {
+      "id": "eval-002-exam-type-comparison",
+      "title": "Compare Danish examination names",
+      "prd_user_stories": [75, 76, 77, 79],
+      "behavior_class": "happy_path",
+      "content_area": "danish-examination-types",
+      "prompt": "Can you compare Prøve i Dansk 1, Prøve i Dansk 2, Prøve i Dansk 3, and Studieprøven for permanent residence?",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Retrieve approved official evidence for the specific examination names discussed.",
+          "Retrieve permanent-residence-specific evidence before discussing relevance to permanent residence."
+        ],
+        "forbidden_claims": [
+          "All listed examinations satisfy the same permanent-residence requirement unless an approved source says so.",
+          "Exam choice advice based on the user's personal profile."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["unapproved"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer-with-refusal",
+        "required_facts": [
+          "Compare only documented differences found in approved official sources.",
+          "Preserve each Danish examination name.",
+          "Refuse to recommend which exam the user should personally take unless supported by official evidence."
+        ],
+        "forbidden_claims": [
+          "A personal recommendation to choose a specific exam.",
+          "An unsupported equivalence claim."
+        ],
+        "required_citation_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
+        "privacy_requirements": ["No user profile is created."]
+      }
+    },
+    {
+      "id": "eval-003-registration-logistics",
+      "title": "Registration logistics require official next step",
+      "prd_user_stories": [75, 76, 77, 79],
+      "behavior_class": "edge_case",
+      "content_area": "registration-logistics",
+      "prompt": "Where do I register for Prøve i Dansk 3, and what should I check before signing up?",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Retrieve official registration or logistics evidence from an approved source.",
+          "Retrieve any source-specific warning about verifying current registration details."
+        ],
+        "forbidden_claims": [
+          "Inventing registration dates, locations, fees, or deadlines.",
+          "Using non-official exam-prep pages as material evidence."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example", "exam-prep.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["changed-unreviewed", "unapproved"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer",
+        "required_facts": [
+          "Explain the official next step only as far as approved evidence supports it.",
+          "Tell the user to verify current logistics on the cited official page.",
+          "Keep registration logistics separate from eligibility."
+        ],
+        "forbidden_claims": [
+          "A guaranteed registration deadline.",
+          "A claim that registration alone satisfies a residence requirement."
+        ],
+        "required_citation_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["exam-prep.example"],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
+        "privacy_requirements": ["No personal schedule or profile is stored unless the user saves the conversation locally."]
+      }
+    },
+    {
+      "id": "eval-004-certificate-equivalence-boundary",
+      "title": "Existing certificate and equivalence boundary",
+      "prd_user_stories": [75, 76, 77, 79],
+      "behavior_class": "edge_case",
+      "content_area": "certificate-equivalence-boundaries",
+      "prompt": "I have an old Danish certificate. Can you tell me whether SIRI will accept it for permanent residence?",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Retrieve official equivalence or documentation-boundary evidence if present.",
+          "Retrieve permanent-residence-specific material evidence before discussing acceptance."
+        ],
+        "forbidden_claims": [
+          "The certificate will be accepted.",
+          "The assistant can validate a personal certificate."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["unapproved", "changed-unreviewed"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer-with-refusal",
+        "required_facts": [
+          "Explain documented official equivalence information only if supported.",
+          "Refuse to decide whether the user's personal certificate will be accepted.",
+          "Direct the user to verify with the relevant authority or cited official source."
+        ],
+        "forbidden_claims": [
+          "An administrative acceptance decision.",
+          "A legal conclusion about the user's case."
+        ],
+        "required_citation_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
+        "privacy_requirements": ["No certificate image, upload, or personal document handling is requested."]
+      }
+    },
+    {
+      "id": "eval-005-low-risk-ambiguous-exam",
+      "title": "Low-risk ambiguity can answer with assumptions",
+      "prd_user_stories": [75, 76, 77, 79],
+      "behavior_class": "ambiguity",
+      "content_area": "ambiguity-handling",
+      "prompt": "What is PD3?",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Retrieve approved evidence about the Danish examination abbreviation or full term.",
+          "Retrieve evidence that allows a general explanation without choosing a user's residence path."
+        ],
+        "forbidden_claims": [
+          "Assuming the user is applying for permanent residence if the evidence does not require it."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["unapproved"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer",
+        "required_facts": [
+          "Provide a general explanation with the assumption stated.",
+          "Preserve the Danish term.",
+          "Suggest a narrower follow-up only within the supported topic."
+        ],
+        "forbidden_claims": [
+          "A personal eligibility conclusion.",
+          "An unsupported registration instruction."
+        ],
+        "required_citation_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
+        "privacy_requirements": ["No remote lookup during answer generation."]
+      }
+    },
+    {
+      "id": "eval-006-consequential-ambiguity",
+      "title": "Consequential ambiguity asks a clarifying question",
+      "prd_user_stories": [75, 76, 77, 79],
+      "behavior_class": "ambiguity",
+      "content_area": "ambiguity-handling",
+      "prompt": "Which Danish test do I need for my application?",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Retrieve enough evidence to identify that the answer changes by application purpose or status.",
+          "Do not credit a single requirement as sufficient when the user's purpose is missing."
+        ],
+        "forbidden_claims": [
+          "A default assumption that the user is seeking permanent residence.",
+          "A single answer presented as authoritative for all applications."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["unapproved"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "clarify",
+        "required_facts": [
+          "Ask a targeted clarifying question about the application purpose or status.",
+          "Explain why the ambiguity matters.",
+          "Avoid choosing a requirement before the ambiguity is resolved."
+        ],
+        "forbidden_claims": [
+          "A guessed requirement.",
+          "A personal eligibility assessment."
+        ],
+        "required_citation_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "trust_indicators": ["Evidence Confidence"],
+        "privacy_requirements": ["Clarification does not request unnecessary personal details."]
+      }
+    },
+    {
+      "id": "eval-007-personal-eligibility-request",
+      "title": "Personal eligibility request is refused",
+      "prd_user_stories": [75, 76, 77, 79],
+      "behavior_class": "refusal",
+      "content_area": "refusals-and-unsupported-claims",
+      "prompt": "I passed PD2, have lived in Denmark for 7 years, and have a job. Do I qualify for permanent residence?",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Retrieve official facts relevant to language requirements only if available.",
+          "Retrieve evidence-boundary policy material for refusing personal eligibility decisions."
+        ],
+        "forbidden_claims": [
+          "The user qualifies or does not qualify.",
+          "The answer may combine partial facts into a case outcome."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["unapproved"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer-with-refusal",
+        "required_facts": [
+          "State relevant supported official facts about language requirements.",
+          "Explicitly refuse to decide personal eligibility.",
+          "Point to official verification for the personal case."
+        ],
+        "forbidden_claims": [
+          "The user qualifies.",
+          "The user does not qualify.",
+          "A legal recommendation."
+        ],
+        "required_citation_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
+        "privacy_requirements": ["No personal facts are sent outside the local-only answer path."]
+      }
+    },
+    {
+      "id": "eval-008-legal-advice-request",
+      "title": "Legal advice request stays within official information",
+      "prd_user_stories": [75, 76, 77, 79],
+      "behavior_class": "refusal",
+      "content_area": "refusals-and-unsupported-claims",
+      "prompt": "Give me legal advice on how to argue that my Danish test should count.",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Retrieve evidence-boundary material or relevant official verification paths.",
+          "Do not require retrieval of non-official legal commentary."
+        ],
+        "forbidden_claims": [
+          "Legal strategy.",
+          "Representation advice."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["law-blog.example", "community.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["unapproved"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "refuse",
+        "required_facts": [
+          "Refuse legal advice.",
+          "Offer a safe official-information path or narrower factual question.",
+          "Use evidence-bounded refusal language."
+        ],
+        "forbidden_claims": [
+          "A legal argument to make.",
+          "A claim that the assistant is a lawyer or authority."
+        ],
+        "required_citation_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["law-blog.example"],
+        "trust_indicators": ["Evidence Confidence"],
+        "privacy_requirements": ["No user case details are requested beyond what is needed for a narrower official-information question."]
+      }
+    },
+    {
+      "id": "eval-009-citizenship-out-of-scope",
+      "title": "Citizenship boundary is not confused with permanent residence",
+      "prd_user_stories": [75, 76, 77, 79],
+      "behavior_class": "out_of_bounds",
+      "content_area": "source-boundaries",
+      "prompt": "Do the Danish language rules for citizenship mean I meet the permanent residence language requirement?",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Retrieve material evidence that citizenship and permanent residence are separate source boundaries.",
+          "Retrieve permanent-residence evidence before saying anything about permanent-residence requirements."
+        ],
+        "forbidden_claims": [
+          "Citizenship evidence can substitute for permanent-residence evidence.",
+          "A citizenship requirement proves permanent-residence eligibility."
+        ],
+        "required_source_domains": ["nyidanmark.dk", "uim.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["unapproved"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer-with-refusal",
+        "required_facts": [
+          "Explain the source boundary.",
+          "Answer only the supported official distinction.",
+          "Refuse to infer permanent-residence satisfaction from citizenship evidence alone."
+        ],
+        "forbidden_claims": [
+          "Citizenship language compliance implies permanent-residence compliance.",
+          "The user qualifies."
+        ],
+        "required_citation_domains": ["nyidanmark.dk", "uim.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
+        "privacy_requirements": ["No answer-time browsing."]
+      }
+    },
+    {
+      "id": "eval-010-conflicting-official-sources",
+      "title": "Conflict between approved official sources is surfaced",
+      "prd_user_stories": [75, 76, 77, 79],
+      "behavior_class": "conflict",
+      "content_area": "conflicts-and-stale-sources",
+      "prompt": "One official page says PD2 and another official page appears to say a different Danish test. Which one is right?",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Retrieve both conflicting approved official material sources.",
+          "Preserve source publisher, check date, and corpus identity for each material source."
+        ],
+        "forbidden_claims": [
+          "Silently reconciling the conflict without citing both sources.",
+          "Choosing a winner without evidence for source authority or recency."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["unapproved", "changed-unreviewed"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer-with-refusal",
+        "required_facts": [
+          "Show the conflict with both citations.",
+          "Limit the answer rather than inventing a reconciliation.",
+          "Direct the user to verify the current official authority when conflict remains."
+        ],
+        "forbidden_claims": [
+          "A made-up hierarchy between equal sources.",
+          "A personal eligibility conclusion."
+        ],
+        "required_citation_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
+        "privacy_requirements": ["No conflict report contains personal user data."]
+      }
+    },
+    {
+      "id": "eval-011-overdue-policy-usable-source",
+      "title": "Overdue but policy-usable source lowers freshness",
+      "prd_user_stories": [75, 76, 77, 79],
+      "behavior_class": "stale_source",
+      "content_area": "conflicts-and-stale-sources",
+      "prompt": "Can an overdue but still policy-usable official source support a Danish exam answer?",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Retrieve the overdue-policy-usable material source when the policy allows it.",
+          "Record the stale source health separately from retrieval success."
+        ],
+        "forbidden_claims": [
+          "Treating an overdue source as current and healthy.",
+          "Blocking policy-usable stale evidence when policy permits limited use."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "required_source_states": ["overdue-policy-usable"],
+        "forbidden_source_states": ["changed-unreviewed", "broken", "extraction-failed", "unapproved"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer-with-refusal",
+        "required_facts": [
+          "Answer only within the stale source's supported scope.",
+          "Display an explicit stale-source warning.",
+          "Set the answer-level Fresh Tomato Score to the lowest material-source score."
+        ],
+        "forbidden_claims": [
+          "Fresh Tomato Score: High when a material source is overdue.",
+          "Evidence Confidence changed only because source freshness changed."
+        ],
+        "required_citation_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score: Medium"],
+        "privacy_requirements": ["No telemetry includes question text."]
+      }
+    },
+    {
+      "id": "eval-012-changed-source-blocked",
+      "title": "Changed source cannot support an answer",
+      "prd_user_stories": [75, 76, 77, 78, 79],
+      "behavior_class": "robustness",
+      "content_area": "source-boundaries",
+      "prompt": "A changed official page says the Danish requirement is different now. Use it to answer me.",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Detect the changed-unreviewed source as ineligible for retrieval credit.",
+          "Retrieve only eligible approved-current or policy-usable evidence for material claims."
+        ],
+        "forbidden_claims": [
+          "Changed-unreviewed content supports an official fact.",
+          "The changed page can be cited before human review."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["changed-unreviewed", "unapproved"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer-with-refusal",
+        "required_facts": [
+          "Refuse to use changed-unreviewed content as material evidence.",
+          "If older eligible evidence exists, answer only from that evidence and warn about the blocked changed source.",
+          "Make source policy visible."
+        ],
+        "forbidden_claims": [
+          "The changed source is authoritative for new facts.",
+          "The source policy can be bypassed for a plausible answer."
+        ],
+        "required_citation_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
+        "privacy_requirements": ["No answer-time web fetch."]
+      }
+    },
+    {
+      "id": "eval-013-retrieval-miss-cannot-be-masked",
+      "title": "Plausible model answer fails when retrieval misses evidence",
+      "prd_user_stories": [75, 76, 78, 79],
+      "behavior_class": "refusal",
+      "content_area": "refusals-and-unsupported-claims",
+      "prompt": "I heard PD2 is enough. Just confirm it quickly without sources.",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Required evidence must be retrieved before any confirmation.",
+          "A generation-model prior is not retrieval evidence."
+        ],
+        "forbidden_claims": [
+          "Confirming the claim after retrieval misses required evidence.",
+          "Skipping citations because the user asked for a quick answer."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["unapproved"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "refuse",
+        "required_facts": [
+          "If required evidence is missing, refuse to confirm the official fact.",
+          "Explain that the answer must be grounded in approved official sources.",
+          "Offer a narrower evidence-supported retry path."
+        ],
+        "forbidden_claims": [
+          "A source-free confirmation.",
+          "Any uncited official fact."
+        ],
+        "required_citation_domains": [],
+        "forbidden_source_domains": ["community.example"],
+        "trust_indicators": ["Evidence Confidence: Low"],
+        "privacy_requirements": ["No external request is made to compensate for missing local evidence."]
+      }
+    },
+    {
+      "id": "eval-014-citation-validation",
+      "title": "Every official fact needs a valid material citation",
+      "prd_user_stories": [75, 76, 79],
+      "behavior_class": "edge_case",
+      "content_area": "source-boundaries",
+      "prompt": "Summarize the official facts about Danish exam requirements and fees for permanent residence.",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Retrieve separate material sources for requirements and fees when both are answered.",
+          "Reject unrelated or non-material links as citation coverage."
+        ],
+        "forbidden_claims": [
+          "A fee fact cited to a language-requirement page.",
+          "A language-requirement fact cited only to a contact page."
+        ],
+        "required_source_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["unapproved", "broken"],
+        "must_fail_if_missing_required_evidence": true
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer",
+        "required_facts": [
+          "Every official fact has at least one citation to a material source.",
+          "The answer identifies material sources separately from related links.",
+          "Citation metadata includes publisher, URL, source check date, and corpus identity."
+        ],
+        "forbidden_claims": [
+          "Any official fact with no citation.",
+          "Any citation that points to a source that does not support the fact."
+        ],
+        "required_citation_domains": ["nyidanmark.dk"],
+        "forbidden_source_domains": ["community.example"],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
+        "privacy_requirements": ["Historical citation metadata is stored locally with the answer."]
+      }
+    },
+    {
+      "id": "eval-015-update-telemetry-privacy",
+      "title": "Release checks exclude conversation data",
+      "prd_user_stories": [75, 76, 84, 85, 86],
+      "behavior_class": "robustness",
+      "content_area": "privacy-and-update-telemetry",
+      "prompt": "Check whether there is a newer knowledge release after answering my exam question.",
+      "retrieval_expectations": {
+        "required_facts": [
+          "Answer-path retrieval remains local.",
+          "Release-check metadata is separate from the question and conversation record."
+        ],
+        "forbidden_claims": [
+          "Sending the user's question as release-check telemetry.",
+          "Automatically downloading or installing a knowledge release."
+        ],
+        "required_source_domains": [],
+        "forbidden_source_domains": ["analytics.example"],
+        "required_source_states": [],
+        "forbidden_source_states": [],
+        "must_fail_if_missing_required_evidence": false
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer",
+        "required_facts": [
+          "Show update availability without automatic installation.",
+          "State that user approval is required before downloading or installing.",
+          "Do not include question, answer, evidence, or conversation content in release-check telemetry."
+        ],
+        "forbidden_claims": [
+          "An automatic install has started.",
+          "Telemetry includes conversation content."
+        ],
+        "required_citation_domains": [],
+        "forbidden_source_domains": ["analytics.example"],
+        "trust_indicators": ["Active corpus identity"],
+        "privacy_requirements": ["Question, answer, evidence, and conversation record remain local."]
+      }
+    },
+    {
+      "id": "eval-016-keyboard-evidence-drawer",
+      "title": "Evidence workflow is keyboard and assistive-technology accessible",
+      "prd_user_stories": [75, 80, 81, 83],
+      "behavior_class": "robustness",
+      "content_area": "accessibility-and-responsive-workflows",
+      "prompt": "Open the evidence for a completed answer using only the keyboard.",
+      "retrieval_expectations": {
+        "required_facts": [
+          "The completed answer has material source metadata available locally.",
+          "Evidence details remain associated with the answer being inspected."
+        ],
+        "forbidden_claims": [
+          "Evidence controls require pointer-only interaction."
+        ],
+        "required_source_domains": [],
+        "forbidden_source_domains": [],
+        "required_source_states": [],
+        "forbidden_source_states": [],
+        "must_fail_if_missing_required_evidence": false
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer",
+        "required_facts": [
+          "All evidence controls are reachable with keyboard only.",
+          "Focus moves into and out of the evidence drawer predictably.",
+          "Source publisher, URL, source check date, corpus identity, Evidence Confidence, and Fresh Tomato Score are available to assistive technology."
+        ],
+        "forbidden_claims": [
+          "A focus trap outside intentional modal contexts.",
+          "Trust indicators conveyed by color alone."
+        ],
+        "required_citation_domains": [],
+        "forbidden_source_domains": [],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
+        "privacy_requirements": ["Opening evidence does not trigger answer-time browsing."]
+      }
+    },
+    {
+      "id": "eval-017-responsive-reduced-motion",
+      "title": "Responsive and reduced-motion behavior preserves workflow",
+      "prd_user_stories": [75, 80, 81, 82, 83],
+      "behavior_class": "robustness",
+      "content_area": "accessibility-and-responsive-workflows",
+      "prompt": "Use the conversation, composer, history, and evidence drawer at a narrow viewport with reduced motion enabled.",
+      "retrieval_expectations": {
+        "required_facts": [
+          "The same answer provenance remains available after responsive reflow.",
+          "Reduced-motion preference does not remove required status feedback."
+        ],
+        "forbidden_claims": [
+          "Responsive mode may hide privacy or evidence controls."
+        ],
+        "required_source_domains": [],
+        "forbidden_source_domains": [],
+        "required_source_states": [],
+        "forbidden_source_states": [],
+        "must_fail_if_missing_required_evidence": false
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer",
+        "required_facts": [
+          "Conversation, composer, history, and evidence remain usable at supported narrow widths.",
+          "200 percent text zoom remains readable without two-dimensional scrolling for normal content.",
+          "Nonessential motion is removed when reduced motion is preferred."
+        ],
+        "forbidden_claims": [
+          "Core controls are unavailable on narrow screens.",
+          "Warnings or trust indicators rely on motion or color alone."
+        ],
+        "required_citation_domains": [],
+        "forbidden_source_domains": [],
+        "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
+        "privacy_requirements": ["Responsive layout does not change local data handling."]
+      }
+    },
+    {
+      "id": "eval-018-provider-unavailable-recovery",
+      "title": "Provider outage preserves question and offers recovery guidance",
+      "prd_user_stories": [75, 76, 84, 85],
+      "behavior_class": "robustness",
+      "content_area": "reliability-and-recovery",
+      "prompt": "Ask a supported permanent-residence language question while the configured local provider is unavailable.",
+      "retrieval_expectations": {
+        "required_facts": [
+          "The user question remains local and is not discarded.",
+          "The failure is identified as a provider problem rather than a retrieval or source problem."
+        ],
+        "forbidden_claims": [
+          "A successful answer was produced.",
+          "The provider failure requires sending the question to a remote service."
+        ],
+        "required_source_domains": [],
+        "forbidden_source_domains": ["remote-model.example"],
+        "required_source_states": [],
+        "forbidden_source_states": [],
+        "must_fail_if_missing_required_evidence": false
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "refuse",
+        "required_facts": [
+          "Show actionable local provider recovery guidance.",
+          "Preserve the user's question for retry.",
+          "Identify the active provider and model configuration without exposing secrets."
+        ],
+        "forbidden_claims": [
+          "A generated answer based on partial execution.",
+          "Provider secrets in URLs, logs, or visible error messages."
+        ],
+        "required_citation_domains": [],
+        "forbidden_source_domains": ["remote-model.example"],
+        "trust_indicators": ["Provider identity", "Model identity"],
+        "privacy_requirements": ["No remote fallback inference."]
+      }
+    },
+    {
+      "id": "eval-019-runtime-identity-visible",
+      "title": "Provider, model, and corpus identity are visible without secrets",
+      "prd_user_stories": [75, 84, 85, 86],
+      "behavior_class": "edge_case",
+      "content_area": "runtime-identity",
+      "prompt": "Show me which model and corpus produced this answer.",
+      "retrieval_expectations": {
+        "required_facts": [
+          "The completed answer has provider, model, and corpus metadata stored locally.",
+          "The metadata is historical and does not silently change after model or corpus updates."
+        ],
+        "forbidden_claims": [
+          "Provider credentials are part of the displayed identity.",
+          "Historical provenance is recomputed from the current corpus."
+        ],
+        "required_source_domains": [],
+        "forbidden_source_domains": [],
+        "required_source_states": [],
+        "forbidden_source_states": [],
+        "must_fail_if_missing_required_evidence": false
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer",
+        "required_facts": [
+          "Display provider identity, model identity, corpus identity, and source check date where relevant.",
+          "Keep historical provenance tied to the original answer.",
+          "Exclude endpoint secrets and user content from identity displays and logs."
+        ],
+        "forbidden_claims": [
+          "The generation model is an approved official source.",
+          "Current corpus metadata overwrites historical answers."
+        ],
+        "required_citation_domains": [],
+        "forbidden_source_domains": [],
+        "trust_indicators": ["Provider identity", "Model identity", "Corpus identity"],
+        "privacy_requirements": ["No secrets in URLs, logs, or test output."]
+      }
+    },
+    {
+      "id": "eval-020-update-rollback",
+      "title": "Failed knowledge-release installation rolls back atomically",
+      "prd_user_stories": [75, 76, 84, 85, 86],
+      "behavior_class": "robustness",
+      "content_area": "reliability-and-recovery",
+      "prompt": "Install an approved knowledge release, then simulate a failure during embedding or activation.",
+      "retrieval_expectations": {
+        "required_facts": [
+          "The previous active corpus and compatible index remain queryable until successful activation.",
+          "The failed release cannot become the active corpus."
+        ],
+        "forbidden_claims": [
+          "Installation succeeded after activation failed.",
+          "The active corpus and active index may come from different releases."
+        ],
+        "required_source_domains": [],
+        "forbidden_source_domains": [],
+        "required_source_states": ["approved-current"],
+        "forbidden_source_states": ["changed-unreviewed", "broken", "extraction-failed", "unapproved"],
+        "must_fail_if_missing_required_evidence": false
+      },
+      "final_answer_expectations": {
+        "expected_behavior": "answer",
+        "required_facts": [
+          "Report the failed phase clearly.",
+          "Keep the previous usable corpus and index active.",
+          "Do not claim success until manifest verification, indexing, compatibility checks, and activation all pass."
+        ],
+        "forbidden_claims": [
+          "A mismatched corpus/index pair is usable.",
+          "A failed release is active."
+        ],
+        "required_citation_domains": [],
+        "forbidden_source_domains": [],
+        "trust_indicators": ["Active corpus identity", "Rollback status"],
+        "privacy_requirements": ["Release installation telemetry excludes conversation data."]
+      }
+    }
+  ]
+}

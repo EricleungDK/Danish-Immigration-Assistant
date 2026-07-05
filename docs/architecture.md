@@ -7,8 +7,9 @@ This document records settled architecture plus project-level direction for Dani
 - Runtime-baseline decisions proven by issue #26 are limited to the local provider baseline, generation/embedding capability separation, loopback defaults, release-network boundary, process/distribution baseline, first verified environment, and live structured-output probe. The traceable sources are [GitHub issue #26](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/26), [docs/runtime-baseline.md](runtime-baseline.md), [docs/progress/issue-26-runtime-baseline.md](progress/issue-26-runtime-baseline.md), and the runtime sections of [.agent/issues/prd-runtime-and-retrieval-baseline.md](../.agent/issues/prd-runtime-and-retrieval-baseline.md).
 - Retrieval architecture decisions approved by issue #4 are limited to the MVP hybrid retrieval baseline, metadata eligibility boundary, index compatibility requirements, and initial supported embedding model. The traceable sources are [GitHub issue #4](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/4), [docs/progress/issue-29-hybrid-retrieval-comparison.md](progress/issue-29-hybrid-retrieval-comparison.md), [docs/progress/issue-29-hybrid-retrieval-recommendation.md](progress/issue-29-hybrid-retrieval-recommendation.md), and [docs/progress/issue-29-hybrid-retrieval-comparison.json](progress/issue-29-hybrid-retrieval-comparison.json).
 - Source-governance decisions approved by issue #6 are limited to the human-reviewed source registry lifecycle, release manifest contents, source-state eligibility rules, signed-manifest integrity baseline, project trust-root requirement, maintainer roles, separation of duties, and recovery procedures. The traceable sources are [GitHub issue #6](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/6), [GitHub issue #5](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/5), [docs/source-governance.md](source-governance.md), [docs/progress/issue-5-source-governance.md](progress/issue-5-source-governance.md), and [docs/progress/issue-6-source-governance-approval.md](progress/issue-6-source-governance-approval.md).
+- Evaluation quality-bar work for issue #7 is currently a versioned candidate, not final human approval. The traceable sources are [GitHub issue #7](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/7), [docs/evaluation-quality-bar.md](evaluation-quality-bar.md), [config/evaluation-quality-bar.json](../config/evaluation-quality-bar.json), [data/evaluation/evaluation-set-v0.1-candidate.json](../data/evaluation/evaluation-set-v0.1-candidate.json), and [docs/progress/issue-7-evaluation-quality-bar.md](progress/issue-7-evaluation-quality-bar.md).
 - The interaction model, answer pipeline, and trust-indicator sections below preserve project-level context and pre-existing direction. They are not issue #26, issue #4, or issue #6 completion claims unless an item explicitly cites the approved runtime, retrieval, or source-governance baseline.
-- Citation validation, answer schema, trust-scoring algorithms, release implementation tooling, release thresholds, and final hardware targets remain deferred until their own benchmark or architecture gates approve them.
+- Citation validation, answer schema, trust-scoring algorithms, release implementation tooling, approved release thresholds, and final hardware targets remain deferred until their own benchmark, implementation, or human-approval gates approve them.
 
 ## Product And Privacy Boundary
 
@@ -76,6 +77,17 @@ Issue #6 approves the source-governance operating model recommended by issue #5.
 - Source review, release approval, publication, and recovery are human responsibilities assigned to the maintainer roles in [docs/source-governance.md](source-governance.md). A production knowledge release must record the named human maintainer or maintainers acting in those roles; the MVP fallback allows one maintainer to hold multiple roles only with visible audit notes and post-release review.
 - The trust root is a project-controlled release-signing root distributed with the application or a separately verified project configuration. Key rotation, revoked key IDs, and emergency withdrawal handling must be documented before the first production knowledge release.
 
+## Evaluation Quality Bar
+
+Issue #7 has a versioned candidate evaluation package in [docs/evaluation-quality-bar.md](evaluation-quality-bar.md), [config/evaluation-quality-bar.json](../config/evaluation-quality-bar.json), and [data/evaluation/evaluation-set-v0.1-candidate.json](../data/evaluation/evaluation-set-v0.1-candidate.json). It remains pending human approval.
+
+- The candidate dataset is `di-rag-eval-set-v0.1-candidate`, version `0.1.0-candidate`, with 20 project-authored synthetic cases covering happy paths, edge cases, out-of-bounds requests, ambiguity, conflicts, stale sources, refusals, and robustness.
+- Retrieval evaluation and final-answer evaluation remain separate. A plausible generated answer cannot hide a retrieval miss.
+- Proposed release-blocking thresholds cover retrieval, citations, unsupported claims, clarify/answer/refuse behavior, Evidence Confidence, Fresh Tomato Score, local-only privacy, update rollback, accessibility, reliability, runtime identity, and supported-environment critical journeys.
+- Threshold weakening requires a new quality-bar version and recorded human approval.
+- Baseline hardware evidence comes from issue #26 and issue #29: Windows 11 with WSL2 Ubuntu on x86-64, Python 3.12.3, Ollama 0.30.6, `gemma4:12b`, `embeddinggemma`, 16 CPU threads, and 15908 MB RAM.
+- The only verified supported-environment candidate is Windows 11 with WSL2 Ubuntu on x86-64. Native Linux and macOS remain candidates pending full matrix evidence; native Windows is not supported for the MVP candidate.
+
 ## Answer Pipeline
 
 This section is project-level answer-pipeline direction. Issue #26 proved only local structured output through the runtime provider; it did not implement production retrieval, prompting, answer validation, citation validation, or storage behavior.
@@ -103,4 +115,5 @@ This section is project-level trust-indicator direction. Issue #26 did not defin
 - Source-governance implementation tooling and exact signing command workflow
 - Detailed browser security and local process lifecycle
 - Application-code installation and update mechanism
-- Evaluation datasets, acceptance thresholds, and hardware support targets
+- Human approval of the issue #7 evaluation dataset, metric definitions, thresholds, hardware targets, and environment matrix
+- Production evaluation runner, answer evaluator, accessibility harness, network-boundary monitor, rollback fault injection, and supported-environment CI matrix

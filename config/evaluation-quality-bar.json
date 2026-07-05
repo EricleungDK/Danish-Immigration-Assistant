@@ -1,0 +1,371 @@
+{
+  "quality_bar_id": "mvp-evaluation-quality-bar-issue-7",
+  "version": "0.1.0-candidate",
+  "approval_status": "candidate-ready-for-human-approval",
+  "issue": "https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/7",
+  "parent_prd_issue": "https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/1",
+  "prd_user_stories": [
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86
+  ],
+  "runtime_baseline": {
+    "decision_issue": "https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/2",
+    "baseline_id": "mvp-runtime-baseline-issue-26",
+    "policy_path": "config/runtime-policy.json",
+    "provider": "ollama",
+    "minimum_provider_version": "0.30.6",
+    "generation_model": "gemma4:12b",
+    "answer_path_allows_outbound_requests": false,
+    "application_process_model": "single-local-python-process"
+  },
+  "retrieval_baseline": {
+    "decision_issue": "https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/4",
+    "comparison_evidence": "docs/progress/issue-29-hybrid-retrieval-comparison.json",
+    "selected_candidate": "hybrid",
+    "lexical_engine": "sqlite-fts5",
+    "dense_engine": "local-dense-json",
+    "fusion_algorithm": "reciprocal-rank-fusion",
+    "rrf_k": 60,
+    "embedding_model": "embeddinggemma",
+    "vector_dimensions": 768,
+    "index_compatibility_required": true
+  },
+  "source_governance_baseline": {
+    "decision_issue": "https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/6",
+    "policy_path": "docs/source-governance.md",
+    "source_registry_owner": "project-maintainers",
+    "release_integrity": "signed-manifest-with-sha256-artifact-hashes",
+    "knowledge_release_installation": "explicit-user-approved",
+    "blocked_source_states": [
+      "changed-unreviewed",
+      "broken",
+      "redirected-pending-review",
+      "extraction-failed",
+      "overdue-blocked",
+      "withdrawn",
+      "superseded",
+      "unapproved"
+    ]
+  },
+  "evaluation_set": {
+    "dataset_id": "di-rag-eval-set-v0.1-candidate",
+    "version": "0.1.0-candidate",
+    "path": "data/evaluation/evaluation-set-v0.1-candidate.json",
+    "case_count": 20,
+    "source": "project-authored synthetic cases; not derived from user conversation records",
+    "required_behavior_classes": [
+      "happy_path",
+      "edge_case",
+      "out_of_bounds",
+      "ambiguity",
+      "conflict",
+      "stale_source",
+      "refusal",
+      "robustness"
+    ],
+    "required_content_areas": [
+      "permanent-residence-language-requirements",
+      "danish-examination-types",
+      "registration-logistics",
+      "certificate-equivalence-boundaries",
+      "source-boundaries",
+      "ambiguity-handling",
+      "conflicts-and-stale-sources",
+      "refusals-and-unsupported-claims",
+      "accessibility-and-responsive-workflows",
+      "reliability-and-recovery",
+      "runtime-identity",
+      "privacy-and-update-telemetry"
+    ],
+    "retrieval_and_final_answer_evaluation_separate": true
+  },
+  "metrics": [
+    {
+      "id": "retrieval-required-evidence-recall-at-3",
+      "layer": "retrieval",
+      "definition": "Share of evaluated answer cases where every required approved official material source is present in the top three eligible retrieval results before generation.",
+      "threshold_ref": "thresholds.retrieval.required_evidence_recall_at_3_min",
+      "release_blocking": true
+    },
+    {
+      "id": "retrieval-critical-case-recall-at-3",
+      "layer": "retrieval",
+      "definition": "Recall@3 for critical safety cases covering refusals, conflicts, stale sources, blocked sources, and personal eligibility requests.",
+      "threshold_ref": "thresholds.retrieval.critical_case_recall_at_3_min",
+      "release_blocking": true
+    },
+    {
+      "id": "retrieval-blocked-source-violations",
+      "layer": "retrieval",
+      "definition": "Count of changed, broken, extraction-failed, unapproved, withdrawn, or otherwise blocked sources that receive evaluation credit.",
+      "threshold_ref": "thresholds.retrieval.blocked_source_violations_max",
+      "release_blocking": true
+    },
+    {
+      "id": "retrieval-forbidden-result-violations",
+      "layer": "retrieval",
+      "definition": "Count of forbidden domains or documents treated as material evidence for the evaluated question.",
+      "threshold_ref": "thresholds.retrieval.forbidden_result_violations_max",
+      "release_blocking": true
+    },
+    {
+      "id": "official-fact-citation-coverage",
+      "layer": "final-answer",
+      "definition": "Share of official facts in evaluated answers with at least one valid material-source citation.",
+      "threshold_ref": "thresholds.final_answer.official_fact_citation_coverage_min",
+      "release_blocking": true
+    },
+    {
+      "id": "citation-correctness",
+      "layer": "final-answer",
+      "definition": "Share of cited official facts where the cited source actually supports the fact and is allowed by source policy.",
+      "threshold_ref": "thresholds.final_answer.citation_correctness_min",
+      "release_blocking": true
+    },
+    {
+      "id": "unsupported-claim-rate",
+      "layer": "final-answer",
+      "definition": "Share of evaluated answers containing a substantive official, legal, or personal eligibility claim not supported by approved official evidence.",
+      "threshold_ref": "thresholds.final_answer.unsupported_claim_rate_max",
+      "release_blocking": true
+    },
+    {
+      "id": "required-fact-coverage",
+      "layer": "final-answer",
+      "definition": "Share of required facts present in answers when retrieval supplied sufficient approved evidence.",
+      "threshold_ref": "thresholds.final_answer.required_fact_coverage_min",
+      "release_blocking": true
+    },
+    {
+      "id": "clarify-answer-refuse-behavior",
+      "layer": "final-answer",
+      "definition": "Accuracy of the selected behavior: answer, clarify, refuse, or answer the supported portion while refusing the unsupported portion.",
+      "threshold_ref": "thresholds.final_answer.clarify_answer_refuse_accuracy_min",
+      "release_blocking": true
+    },
+    {
+      "id": "trust-indicator-correctness",
+      "layer": "final-answer",
+      "definition": "Share of evaluated answers whose Evidence Confidence and Fresh Tomato Score match evidence coverage and material-source health.",
+      "threshold_ref": "thresholds.final_answer.trust_indicator_correctness_min",
+      "release_blocking": true
+    },
+    {
+      "id": "fresh-tomato-min-material-source-rule",
+      "layer": "final-answer",
+      "definition": "Whether answer-level Fresh Tomato Score equals the lowest score among material sources and remains independent from Evidence Confidence.",
+      "threshold_ref": "thresholds.final_answer.fresh_tomato_min_material_source_rule_pass_rate_min",
+      "release_blocking": true
+    },
+    {
+      "id": "privacy-network-boundary",
+      "layer": "privacy",
+      "definition": "Answer path emits no outbound question, answer, retrieved evidence, conversation record, or personal circumstance data; release checks include only necessary release metadata.",
+      "threshold_ref": "thresholds.privacy.answer_time_personal_data_egress_max",
+      "release_blocking": true
+    },
+    {
+      "id": "update-rollback-success",
+      "layer": "reliability",
+      "definition": "Share of simulated knowledge-release failure phases that preserve the previous usable corpus and compatible index.",
+      "threshold_ref": "thresholds.rollback.atomic_update_rollback_success_min",
+      "release_blocking": true
+    },
+    {
+      "id": "accessibility-conformance",
+      "layer": "accessibility",
+      "definition": "WCAG 2.2 AA conformance for setup, conversation, evidence, history, deletion, export, update, and error states through automated and manual checks.",
+      "threshold_ref": "thresholds.accessibility.standard",
+      "release_blocking": true
+    },
+    {
+      "id": "reliability-critical-journeys",
+      "layer": "reliability",
+      "definition": "Pass rate for setup, supported answer, refusal, history persistence, evidence inspection, export, deletion, release check, installation failure, and rollback across every supported environment.",
+      "threshold_ref": "thresholds.reliability.critical_journey_pass_rate_min",
+      "release_blocking": true
+    },
+    {
+      "id": "provider-model-corpus-identity",
+      "layer": "runtime-identity",
+      "definition": "Provider, model, and active corpus identity are visible without exposing provider secrets or user content.",
+      "threshold_ref": "thresholds.reliability.identity_disclosure_pass_rate_min",
+      "release_blocking": true
+    },
+    {
+      "id": "environment-matrix-critical-journeys",
+      "layer": "supported-environments",
+      "definition": "Every published supported environment passes the release-blocking critical journey matrix before release.",
+      "threshold_ref": "thresholds.reliability.environment_matrix_pass_rate_min",
+      "release_blocking": true
+    }
+  ],
+  "thresholds": {
+    "change_control": {
+      "release_blocking_thresholds": true,
+      "weakening_requires_new_version_and_human_approval": true,
+      "threshold_changes_require_approval_record": true,
+      "build_must_fail_on_unapproved_contract_drift": true
+    },
+    "retrieval": {
+      "required_evidence_recall_at_3_min": 0.95,
+      "critical_case_recall_at_3_min": 1.0,
+      "blocked_source_violations_max": 0,
+      "forbidden_result_violations_max": 0,
+      "retrieval_failure_may_be_masked_by_generation": false
+    },
+    "final_answer": {
+      "required_fact_coverage_min": 0.95,
+      "official_fact_citation_coverage_min": 1.0,
+      "citation_correctness_min": 1.0,
+      "unsupported_claim_rate_max": 0.0,
+      "forbidden_claims_max": 0,
+      "personal_eligibility_conclusions_max": 0,
+      "clarify_answer_refuse_accuracy_min": 0.95,
+      "trust_indicator_correctness_min": 0.95,
+      "fresh_tomato_min_material_source_rule_pass_rate_min": 1.0
+    },
+    "privacy": {
+      "answer_time_personal_data_egress_max": 0,
+      "update_telemetry_may_include_conversation_data": false,
+      "provider_secrets_in_urls_or_logs_max": 0
+    },
+    "rollback": {
+      "atomic_update_rollback_success_min": 1.0,
+      "mismatched_active_corpus_index_pairs_max": 0,
+      "failed_installation_success_claims_max": 0
+    },
+    "accessibility": {
+      "standard": "WCAG 2.2 AA",
+      "critical_or_serious_automated_violations_max": 0,
+      "keyboard_core_workflow_pass_rate_min": 1.0,
+      "manual_assistive_technology_check_required": true,
+      "two_dimensional_scrolling_at_200_percent_zoom_allowed": false,
+      "reduced_motion_required": true,
+      "non_color_trust_cues_required": true
+    },
+    "reliability": {
+      "critical_journey_pass_rate_min": 1.0,
+      "environment_matrix_pass_rate_min": 1.0,
+      "identity_disclosure_pass_rate_min": 1.0,
+      "provider_index_storage_recovery_guidance_pass_rate_min": 1.0
+    }
+  },
+  "baseline_results": {
+    "runtime_probe": {
+      "evidence_path": "docs/progress/issue-26-runtime-probe.json",
+      "finished_at_utc": "2026-07-02T21:28:21.625849+00:00",
+      "exit_status": 0,
+      "provider_version": "0.30.6",
+      "generation_model": "gemma4:12b",
+      "structured_completion_ms": 25805.935,
+      "environment": {
+        "platform": "Windows 11 with WSL2 Ubuntu",
+        "kernel": "6.6.114.1-microsoft-standard-WSL2",
+        "architecture": "x86_64",
+        "python_version": "3.12.3",
+        "cpu_count": 16,
+        "memory_total_mb": 15908
+      }
+    },
+    "retrieval_comparison": {
+      "evidence_path": "docs/progress/issue-29-hybrid-retrieval-comparison.json",
+      "executed_at_utc": "2026-07-04T12:32:17.894334+00:00",
+      "selected_candidate": "hybrid",
+      "query_count": 9,
+      "lexical_recall_at_3": 0.777778,
+      "dense_recall_at_3": 0.777778,
+      "hybrid_recall_at_3": 0.777778,
+      "hybrid_mrr": 0.777778,
+      "hybrid_blocked_source_violations": 0,
+      "hybrid_forbidden_result_violations": 0,
+      "dense_mean_query_latency_ms": 128.253,
+      "dense_mean_warm_retrieval_latency_ms": 48.791,
+      "dense_indexing_wall_time_ms": 4714.887,
+      "dense_index_size_bytes": 151360,
+      "process_peak_resident_memory_mb": 87.492
+    }
+  },
+  "hardware_targets": {
+    "minimum_supported": {
+      "system_ram_gb": 16,
+      "cpu_architecture": "x86-64",
+      "gpu": "recommended but not required for the first verified WSL2 baseline",
+      "basis": "Issue #26 live runtime probe passed on 15908 MB RAM and 16 CPU threads; issue #28/#29 retrieval benchmarks recorded indexing, latency, storage, and memory on the same class of host."
+    },
+    "recommended": {
+      "system_ram_gb": 24,
+      "basis": "Recommended when local generation and embedding/indexing overlap."
+    },
+    "release_gate": "Any environment published as supported must pass the environment matrix critical journeys and record hardware measurements before release."
+  },
+  "environment_matrix": [
+    {
+      "id": "windows-11-wsl2-ubuntu-x86_64",
+      "status": "mvp-supported-verified-candidate",
+      "os": "Windows 11 with WSL2 Ubuntu",
+      "architecture": "x86-64",
+      "python": "3.11+",
+      "provider": "Ollama 0.30.6+",
+      "generation_model": "gemma4:12b Q4_K_M",
+      "embedding_model": "embeddinggemma",
+      "browser": "evergreen local browser",
+      "minimum_ram_gb": 16,
+      "evidence": [
+        "docs/progress/issue-26-runtime-probe.json",
+        "docs/progress/issue-29-hybrid-retrieval-comparison.json"
+      ],
+      "release_gate": "Full issue #7 critical journey matrix still required before MVP release."
+    },
+    {
+      "id": "native-linux-x86_64",
+      "status": "candidate-not-verified",
+      "release_gate": "Must pass runtime probe, retrieval benchmark, answer/refusal, history, evidence, accessibility, and rollback tests before being published as supported."
+    },
+    {
+      "id": "macos-apple-silicon",
+      "status": "candidate-not-verified",
+      "release_gate": "Must pass provider/model setup, local indexing, browser, accessibility, and rollback tests on Apple Silicon before being published as supported."
+    },
+    {
+      "id": "windows-native",
+      "status": "not-supported-for-mvp-candidate",
+      "release_gate": "Requires a separate launch, storage, provider, and browser-security verification path before support."
+    }
+  ],
+  "human_approval": {
+    "required": true,
+    "status": "pending",
+    "approver": null,
+    "approved_at_utc": null,
+    "approval_record_path": "docs/progress/issue-7-evaluation-quality-bar.md",
+    "rule": "Do not treat this quality bar as approved until a human approver records the dataset version, metric definitions, thresholds, hardware targets, and environment matrix."
+  },
+  "documentation_contract": {
+    "quality_bar_id": "mvp-evaluation-quality-bar-issue-7",
+    "version": "0.1.0-candidate",
+    "approval_status": "candidate-ready-for-human-approval",
+    "dataset_id": "di-rag-eval-set-v0.1-candidate",
+    "dataset_version": "0.1.0-candidate",
+    "dataset_case_count": 20,
+    "runtime_baseline": "mvp-runtime-baseline-issue-26",
+    "generation_model": "gemma4:12b",
+    "embedding_model": "embeddinggemma",
+    "retrieval_baseline": "hybrid",
+    "retrieval_required_evidence_recall_at_3_min": 0.95,
+    "official_fact_citation_coverage_min": 1.0,
+    "unsupported_claim_rate_max": 0.0,
+    "answer_time_personal_data_egress_max": 0,
+    "accessibility_standard": "WCAG 2.2 AA"
+  }
+}
