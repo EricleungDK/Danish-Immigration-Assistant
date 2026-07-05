@@ -5,9 +5,10 @@ This document records settled architecture plus project-level direction for Dani
 ## Scope And Traceability
 
 - Runtime-baseline decisions proven by issue #26 are limited to the local provider baseline, generation/embedding capability separation, loopback defaults, release-network boundary, process/distribution baseline, first verified environment, and live structured-output probe. The traceable sources are [GitHub issue #26](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/26), [docs/runtime-baseline.md](runtime-baseline.md), [docs/progress/issue-26-runtime-baseline.md](progress/issue-26-runtime-baseline.md), and the runtime sections of [.agent/issues/prd-runtime-and-retrieval-baseline.md](../.agent/issues/prd-runtime-and-retrieval-baseline.md).
+- Retrieval architecture decisions approved by issue #4 are limited to the MVP hybrid retrieval baseline, metadata eligibility boundary, index compatibility requirements, and initial supported embedding model. The traceable sources are [GitHub issue #4](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/4), [docs/progress/issue-29-hybrid-retrieval-comparison.md](progress/issue-29-hybrid-retrieval-comparison.md), [docs/progress/issue-29-hybrid-retrieval-recommendation.md](progress/issue-29-hybrid-retrieval-recommendation.md), and [docs/progress/issue-29-hybrid-retrieval-comparison.json](progress/issue-29-hybrid-retrieval-comparison.json).
 - Source-governance decisions recommended by issue #5 are limited to the human-reviewed source registry lifecycle, release manifest contents, source-state eligibility rules, integrity/signing baseline, maintainer roles, separation of duties, and recovery procedures. The traceable sources are [GitHub issue #5](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/5), [docs/source-governance.md](source-governance.md), and [docs/progress/issue-5-source-governance.md](progress/issue-5-source-governance.md).
-- The interaction model, retrieval architecture, answer pipeline, and trust-indicator sections below preserve project-level context and pre-existing direction. They are not issue #26 or issue #5 completion claims unless an item explicitly cites the approved runtime or source-governance baseline.
-- Retrieval-library choice, production chunking/ranking, supported embedding models, citation validation, answer schema, trust-scoring algorithms, release implementation tooling, release thresholds, and final hardware targets remain deferred until their own benchmark or architecture gates approve them.
+- The interaction model, answer pipeline, and trust-indicator sections below preserve project-level context and pre-existing direction. They are not issue #26, issue #4, or issue #5 completion claims unless an item explicitly cites the approved runtime, retrieval, or source-governance baseline.
+- Citation validation, answer schema, trust-scoring algorithms, release implementation tooling, release thresholds, and final hardware targets remain deferred until their own benchmark or architecture gates approve them.
 
 ## Product And Privacy Boundary
 
@@ -45,19 +46,20 @@ These statements are project-level product direction. Issue #26 did not implemen
 - Generation and embedding are separate capabilities and may use different providers or models.
 - Provider selection is manual in the MVP and includes a connection test; automatic provider discovery is not required.
 - Compatible local generation models remain configurable.
-- `embeddinggemma` is a provisional embedding candidate only under issue #26. It is not a supported embedding model until retrieval benchmark evidence and later human architecture approval accept it.
-- Each index is expected to record its embedding model and vector dimensions. Changing the embedding model is expected to require re-indexing. The production index implementation remains deferred.
+- Issue #4 approves `embeddinggemma` as the initial supported embedding model for the MVP retrieval baseline. It remains tied to the issue #29 benchmark evidence and may be replaced only through a later evaluated re-indexing decision.
+- Each dense index records its embedding model, model identity, vector dimensions, corpus fixture identity, and schema version. Changing the embedding model, dimensions, corpus identity, or schema version requires re-indexing instead of mixing incompatible vectors.
 
 ## Local Data And Retrieval
 
-This section preserves project-level direction for later retrieval work. Issue #26 did not select production retrieval libraries, chunking, ranking, reranking, or supported embedding models.
+Issue #4 approves the MVP retrieval baseline. Production release thresholds and broader evaluation targets remain deferred to the later evaluation decision ticket.
 
 - Conversation history persists on the user's local disk.
 - SQLite is the working store for conversations, messages, citations, model identity, corpus version, Evidence Confidence, and Fresh Tomato Score.
 - MVP storage relies on per-user operating-system file permissions rather than application-level encryption.
-- The intended retrieval direction is hybrid: semantic similarity, full-text matching, metadata filters, and combined ranking. The final production retrieval design requires benchmark evidence and architecture approval.
+- The approved MVP retrieval baseline is hybrid retrieval: SQLite FTS5 lexical retrieval, local dense retrieval using `embeddinggemma`, metadata eligibility filtering, and reciprocal-rank fusion with `k=60`.
+- Metadata eligibility is applied before retrieval credit. Changed-unreviewed, broken, extraction-failed, and unapproved sources cannot support an answer; overdue but policy-usable sources remain distinguishable when allowed by policy.
 - Corpus installations contain normalized documents and metadata, not a provider-specific prebuilt vector index.
-- New and changed chunks are expected to be embedded locally. Corpus installation should show progress and preserve the previous usable corpus and index if re-indexing fails; exact mechanics remain deferred.
+- New and changed chunks are embedded locally into a compatibility-checked dense index. Corpus installation should show progress and preserve the previous usable corpus and index if re-indexing fails; detailed rollback mechanics remain deferred to implementation tickets.
 
 ## Source Governance And Updates
 
@@ -94,9 +96,8 @@ This section is project-level trust-indicator direction. Issue #26 did not defin
 ## Still Open
 
 - Final provider adapter contracts beyond the issue #26 Ollama baseline
-- The initial supported embedding models after retrieval benchmark approval
-- Libraries and storage layout for vector indexing and full-text search
-- Corpus chunking, ranking, and reranking strategies
+- Retrieval release thresholds beyond the issue #4 MVP baseline
+- Detailed corpus chunking, reranking, and rollback mechanics beyond the issue #4 MVP baseline
 - Source-governance implementation tooling and exact signing command workflow
 - Detailed browser security and local process lifecycle
 - Application-code installation and update mechanism
