@@ -5,8 +5,9 @@ This document records settled architecture plus project-level direction for Dani
 ## Scope And Traceability
 
 - Runtime-baseline decisions proven by issue #26 are limited to the local provider baseline, generation/embedding capability separation, loopback defaults, release-network boundary, process/distribution baseline, first verified environment, and live structured-output probe. The traceable sources are [GitHub issue #26](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/26), [docs/runtime-baseline.md](runtime-baseline.md), [docs/progress/issue-26-runtime-baseline.md](progress/issue-26-runtime-baseline.md), and the runtime sections of [.agent/issues/prd-runtime-and-retrieval-baseline.md](../.agent/issues/prd-runtime-and-retrieval-baseline.md).
-- The interaction model, retrieval architecture, source governance, answer pipeline, and trust-indicator sections below preserve project-level context and pre-existing direction. They are not issue #26 completion claims unless an item explicitly cites the issue #26 runtime baseline.
-- Retrieval-library choice, production chunking/ranking, supported embedding models, citation validation, answer schema, trust-scoring algorithms, and source-release governance remain deferred until their own benchmark or architecture gates approve them.
+- Source-governance decisions recommended by issue #5 are limited to the human-reviewed source registry lifecycle, release manifest contents, source-state eligibility rules, integrity/signing baseline, maintainer roles, separation of duties, and recovery procedures. The traceable sources are [GitHub issue #5](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/5), [docs/source-governance.md](source-governance.md), and [docs/progress/issue-5-source-governance.md](progress/issue-5-source-governance.md).
+- The interaction model, retrieval architecture, answer pipeline, and trust-indicator sections below preserve project-level context and pre-existing direction. They are not issue #26 or issue #5 completion claims unless an item explicitly cites the approved runtime or source-governance baseline.
+- Retrieval-library choice, production chunking/ranking, supported embedding models, citation validation, answer schema, trust-scoring algorithms, release implementation tooling, release thresholds, and final hardware targets remain deferred until their own benchmark or architecture gates approve them.
 
 ## Product And Privacy Boundary
 
@@ -60,15 +61,16 @@ This section preserves project-level direction for later retrieval work. Issue #
 
 ## Source Governance And Updates
 
-This section is project-level source governance direction. Issue #26 approved the runtime boundary between answer-time local operation and permitted release-network activity, but it did not complete production source-review workflow, release signing, or maintainer-role decisions.
+Issue #5 recommends the source-governance operating model. Implementation tooling remains deferred, but the lifecycle, eligibility rules, manifest contents, signing baseline, maintainer roles, and recovery procedures are documented in [docs/source-governance.md](source-governance.md).
 
 - Project maintainers own a human-reviewed source registry rather than allowing each installation to define trust independently.
-- Maintainer automation may fetch approved URLs and detect changes, but changed content requires review before publication.
+- Maintainer automation may fetch approved URLs and detect changes, but changed, fetch-failed, broken, redirected, extraction-failed, overdue-blocked, withdrawn, superseded, and unapproved sources cannot support answers until an allowed human-review transition restores eligibility.
 - GitHub Releases is the initial authority for versioned knowledge releases.
 - The application checks automatically for a newer knowledge release but requires explicit user approval before installation.
 - Knowledge releases and application-code releases are independent. The application must not run `git pull` as an update mechanism.
-- A knowledge release includes normalized documents, source URLs, check timestamps, content hashes, review status, corpus schema version, and minimum compatible application version.
-- Release integrity is verified before installation, and installation is atomic with rollback on failure.
+- A knowledge release includes normalized documents, source URLs, final URLs, check timestamps, content hashes, normalized-document hashes, review status, reviewers, source registry version, corpus schema version, manifest schema version, and minimum compatible application version.
+- The preferred integrity baseline is a signed release manifest with SHA-256 artifact hashes and a documented project trust root. Hash-only manifests are insufficient except as a temporary pre-signing MVP step.
+- Release integrity is verified before installation, and installation is atomic with rollback on failure. A withdrawal notice must block or warn on installed releases whose material sources are no longer trusted.
 
 ## Answer Pipeline
 
@@ -95,7 +97,7 @@ This section is project-level trust-indicator direction. Issue #26 did not defin
 - The initial supported embedding models after retrieval benchmark approval
 - Libraries and storage layout for vector indexing and full-text search
 - Corpus chunking, ranking, and reranking strategies
-- Source-review workflow, release signing, and maintainer roles
+- Source-governance implementation tooling and exact signing command workflow
 - Detailed browser security and local process lifecycle
 - Application-code installation and update mechanism
 - Evaluation datasets, acceptance thresholds, and hardware support targets
