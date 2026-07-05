@@ -1,0 +1,12 @@
+{
+  "name": "danish-immigration-rag",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:browser": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "htmx.org": "^2.0.8"
+  }
+}

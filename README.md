@@ -11,6 +11,7 @@ Private, source-grounded local assistant for Danish permanent-residence language
 - Issue #5 source governance progress: [docs/progress/issue-5-source-governance.md](docs/progress/issue-5-source-governance.md)
 - Issue #6 source governance approval: [docs/progress/issue-6-source-governance-approval.md](docs/progress/issue-6-source-governance-approval.md)
 - Issue #7 evaluation quality-bar progress: [docs/progress/issue-7-evaluation-quality-bar.md](docs/progress/issue-7-evaluation-quality-bar.md)
+- Issue #8 local app setup progress: [docs/progress/issue-8-local-app-setup.md](docs/progress/issue-8-local-app-setup.md)
 - Issue #26 progress: [docs/progress/issue-26-runtime-baseline.md](docs/progress/issue-26-runtime-baseline.md)
 - Issue #28 dense benchmark progress: [docs/progress/issue-28-dense-retrieval-benchmark.md](docs/progress/issue-28-dense-retrieval-benchmark.md)
 - Issue #29 hybrid comparison progress: [docs/progress/issue-29-hybrid-retrieval-comparison.md](docs/progress/issue-29-hybrid-retrieval-comparison.md)
@@ -19,6 +20,30 @@ Private, source-grounded local assistant for Danish permanent-residence language
 - Retrieval benchmark fixtures: [data/retrieval_benchmark/corpus-fixtures.json](data/retrieval_benchmark/corpus-fixtures.json)
 - Retrieval benchmark queries: [data/retrieval_benchmark/evaluation-queries.json](data/retrieval_benchmark/evaluation-queries.json)
 - Dense retrieval benchmark queries: [data/retrieval_benchmark/dense-evaluation-queries.json](data/retrieval_benchmark/dense-evaluation-queries.json)
+
+## Local Application
+
+Install the local web application dependencies in a virtual environment:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+npm install
+```
+
+Launch the single local Python process:
+
+```bash
+.venv/bin/python -m danish_rag.local_app
+```
+
+The default bind address is `127.0.0.1:8000`, from [config/runtime-policy.json](config/runtime-policy.json). The first-launch setup page stores validated provider configuration at the per-user config path and does not require Ollama; Ollama remains the first baseline provider option.
+
+Run browser-level setup tests:
+
+```bash
+npm run test:browser
+```
 
 Run the live local provider gate:
 

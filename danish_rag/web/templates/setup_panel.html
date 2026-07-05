@@ -1,0 +1,58 @@
+<aside id="setup-panel" class="setup-panel" aria-labelledby="setup-title">
+  <div class="setup-sticky">
+    <p class="eyebrow">First Launch Setup</p>
+    <h2 id="setup-title">Connect a local generation model.</h2>
+    {% if setup_error %}
+    <div class="error" role="alert">
+      <strong>Connection test failed</strong>
+      <p>{{ setup_error }}</p>
+      {% if setup_reason %}<small>Reason: {{ setup_reason }}</small>{% endif %}
+    </div>
+    {% elif configuration %}
+    <div class="success" role="status">
+      <strong>Provider verified</strong>
+      <p>{{ configuration.provider_name }} with {{ configuration.model }} is active.</p>
+    </div>
+    {% else %}
+    <p class="setup-copy">
+      Select a supported provider, enter its local endpoint and model, then run the
+      capability test. Ollama is available as the first baseline provider, but setup
+      also supports another local provider option.
+    </p>
+    {% endif %}
+
+    <form
+      method="post"
+      action="/setup"
+      class="setup-form"
+      hx-post="/setup"
+      hx-target="#setup-panel"
+      hx-swap="outerHTML"
+    >
+      <fieldset>
+        <legend>Provider</legend>
+        <div class="provider-options">
+          {% for provider in providers %}
+          <label class="provider-option">
+            <input
+              type="radio"
+              name="provider_id"
+              value="{{ provider.id }}"
+              {% if form.provider_id == provider.id %}checked{% endif %}
+            >
+            <span>
+              <strong>{{ provider.name }}</strong>
+              <small>{{ provider.description }}</small>
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      <label for="endpoint">Endpoint</label>
+      <input id="endpoint" name="endpoint" type="url" value="{{ form.endpoint }}" required>
+      <label for="model">Generation model</label>
+      <input id="model" name="model" type="text" value="{{ form.model }}" required>
+      <button type="submit">Test and Save</button>
+    </form>
+  </div>
+</aside>
