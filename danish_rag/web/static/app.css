@@ -426,9 +426,24 @@ h1 {
   font-size: 0.88rem;
 }
 
-.inline-citations a {
+.citation-button {
+  display: inline;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--blue);
+  cursor: pointer;
   font-weight: 800;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.citation-button:hover {
+  background: transparent;
+  color: var(--green);
 }
 
 .inline-citations span {
@@ -455,6 +470,95 @@ h1 {
 .trust-list dd {
   margin: 0.25rem 0 0;
   color: var(--muted);
+}
+
+.evidence-drawer {
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  margin: auto 0 auto auto;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0;
+}
+
+.evidence-drawer::backdrop {
+  background: rgba(23, 33, 29, 0.42);
+}
+
+.drawer-panel {
+  display: grid;
+  gap: 1.15rem;
+  min-height: 100%;
+  padding: clamp(1rem, 4vw, 1.6rem);
+}
+
+.drawer-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer-close {
+  background: var(--ink);
+}
+
+.drawer-close:hover {
+  background: #2c3a34;
+}
+
+.evidence-drawer h3,
+.drawer-section h4 {
+  margin: 0;
+}
+
+.evidence-drawer h3 {
+  font-family: Georgia, serif;
+  font-size: 1.55rem;
+  font-weight: 500;
+  line-height: 1.12;
+}
+
+.drawer-facts {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+}
+
+.drawer-facts div {
+  border-top: 1px solid var(--line);
+  padding-top: 0.65rem;
+}
+
+.drawer-facts dt,
+.drawer-section h4 {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.drawer-facts dd {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
+.drawer-section {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.drawer-section ol {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.drawer-section p {
+  margin: 0.2rem 0 0;
 }
 
 .notice {

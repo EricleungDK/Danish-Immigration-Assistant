@@ -39,7 +39,13 @@
             <ol class="inline-citations" aria-label="Citations for {{ section.label }}">
               {% for citation in section.citations %}
               <li>
-                <a href="{{ citation.official_url }}" rel="noreferrer">{{ citation.title }}</a>
+                <button
+                  type="button"
+                  class="citation-button"
+                  data-evidence-target="evidence-drawer-{{ turn.turn_index }}-{{ citation.citation_id }}"
+                >
+                  Inspect evidence: {{ citation.title }}
+                </button>
                 <span>{{ citation.publisher }}</span>
                 <span>Checked: {{ citation.checked_at_display }}</span>
                 <span>Corpus: {{ citation.corpus_identity }}</span>
@@ -61,6 +67,83 @@
             <dd>{{ turn.answer.trust.fresh_tomato_reason }}</dd>
           </div>
         </dl>
+
+        {% for citation in turn.answer.citations %}
+        <dialog
+          id="evidence-drawer-{{ turn.turn_index }}-{{ citation.citation_id }}"
+          class="evidence-drawer"
+          aria-labelledby="evidence-title-{{ turn.turn_index }}-{{ citation.citation_id }}"
+        >
+          <div class="drawer-panel">
+            <form method="dialog" class="drawer-actions">
+              <button type="submit" class="drawer-close">Close</button>
+            </form>
+            <p class="eyebrow">Material Source</p>
+            <h3 id="evidence-title-{{ turn.turn_index }}-{{ citation.citation_id }}" tabindex="-1">{{ citation.title }}</h3>
+            <dl class="drawer-facts" aria-label="Evidence provenance">
+              <div>
+                <dt>Publisher</dt>
+                <dd>{{ citation.publisher }}</dd>
+              </div>
+              <div>
+                <dt>Official URL</dt>
+                <dd><a href="{{ citation.official_url }}" rel="noreferrer">{{ citation.official_url }}</a></dd>
+              </div>
+              <div>
+                <dt>Checked</dt>
+                <dd>{{ citation.checked_at_display }}</dd>
+              </div>
+              <div>
+                <dt>Corpus</dt>
+                <dd>{{ turn.corpus_identity }}</dd>
+              </div>
+              <div>
+                <dt>Model</dt>
+                <dd>{{ turn.model_identity.model }}</dd>
+              </div>
+              <div>
+                <dt>Evidence Confidence</dt>
+                <dd>{{ turn.answer.trust.evidence_confidence }}</dd>
+              </div>
+              <div>
+                <dt>Fresh Tomato Score: {{ citation.fresh_tomato_score }}</dt>
+                <dd>{{ citation.fresh_tomato_reason }}</dd>
+              </div>
+            </dl>
+
+            <section class="drawer-section" aria-labelledby="claim-support-title-{{ turn.turn_index }}-{{ citation.citation_id }}">
+              <h4 id="claim-support-title-{{ turn.turn_index }}-{{ citation.citation_id }}">Claim Support</h4>
+              <ol>
+                {% for claim in citation.claim_support %}
+                <li>
+                  <strong>{{ claim.label }}</strong>
+                  <p>{{ claim.text }}</p>
+                </li>
+                {% endfor %}
+              </ol>
+            </section>
+
+            <section class="drawer-section" aria-labelledby="trust-reasons-title-{{ turn.turn_index }}-{{ citation.citation_id }}">
+              <h4 id="trust-reasons-title-{{ turn.turn_index }}-{{ citation.citation_id }}">Trust Reasons</h4>
+              <dl class="trust-list" aria-label="Independent trust indicator reasons">
+                <div>
+                  <dt>Evidence Confidence: {{ turn.answer.trust.evidence_confidence }}</dt>
+                  <dd>{{ turn.answer.trust.evidence_confidence_reason }}</dd>
+                </div>
+                <div>
+                  <dt>Fresh Tomato Score: {{ turn.answer.trust.fresh_tomato_score }}</dt>
+                  <dd>{{ turn.answer.trust.fresh_tomato_reason }}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="drawer-section" aria-labelledby="source-excerpt-title-{{ turn.turn_index }}-{{ citation.citation_id }}">
+              <h4 id="source-excerpt-title-{{ turn.turn_index }}-{{ citation.citation_id }}">Source Excerpt</h4>
+              <p>{{ citation.source_excerpt }}</p>
+            </section>
+          </div>
+        </dialog>
+        {% endfor %}
       </section>
     </article>
     {% endfor %}

@@ -236,6 +236,7 @@ def validate_answer(
     sanitized_sections: list[dict[str, Any]] = []
     used_citation_ids: set[str] = set()
     official_fact_count = 0
+    cited_official_fact_count = 0
     for index, section in enumerate(sections, start=1):
         if not isinstance(section, dict):
             raise AnswerValidationError(f"Answer section {index} was not an object.")
@@ -261,6 +262,7 @@ def validate_answer(
                 raise AnswerValidationError(
                     "Answer validation failed: every official fact needs an adjacent citation."
                 )
+            cited_official_fact_count += 1
         used_citation_ids.update(normalized_citation_ids)
         sanitized_sections.append(
             {
@@ -283,15 +285,13 @@ def validate_answer(
     ]
     trust = _trust_indicators(
         official_fact_count=official_fact_count,
+        cited_official_fact_count=cited_official_fact_count,
         used_evidence=used_evidence,
     )
     return {
         "summary": summary.strip(),
         "sections": sanitized_sections,
-        "citations": [
-            _citation_from_evidence(item)
-            for item in sorted(used_evidence, key=lambda evidence_item: evidence_item["citation_id"])
-        ],
+        "citations": _material_sources(sanitized_sections, used_evidence),
         "trust": trust,
     }
 
@@ -352,6 +352,7 @@ def _parse_provider_content(content: Any) -> dict[str, Any]:
 
 def _citation_from_evidence(evidence: dict[str, Any]) -> dict[str, str]:
     checked_at = str(evidence["checked_at_utc"])
+    fresh_tomato_score, fresh_tomato_reason = _fresh_tomato_indicator(evidence)
     return {
         "citation_id": str(evidence["citation_id"]),
         "title": str(evidence["title"]),
@@ -360,31 +361,91 @@ def _citation_from_evidence(evidence: dict[str, Any]) -> dict[str, str]:
         "checked_at_utc": checked_at,
         "checked_at_display": checked_at[:10],
         "corpus_identity": str(evidence["knowledge_release_id"]),
+        "review_state": str(evidence.get("review_state", "unknown")),
+        "source_health": str(evidence.get("source_health", "unknown")),
+        "source_excerpt": str(evidence.get("content", "")),
+        "fresh_tomato_score": fresh_tomato_score,
+        "fresh_tomato_reason": fresh_tomato_reason,
     }
+
+
+def _material_sources(
+    sections: list[dict[str, Any]],
+    used_evidence: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    sources: list[dict[str, Any]] = []
+    for item in sorted(used_evidence, key=lambda evidence_item: evidence_item["citation_id"]):
+        citation = _citation_from_evidence(item)
+        citation["claim_support"] = [
+            {
+                "label": section["label"],
+                "text": section["text"],
+            }
+            for section in sections
+            if citation["citation_id"] in section["citation_ids"]
+        ]
+        sources.append(citation)
+    return sources
 
 
 def _trust_indicators(
     *,
     official_fact_count: int,
+    cited_official_fact_count: int,
     used_evidence: list[dict[str, Any]],
 ) -> dict[str, str]:
-    source_health_values = {item.get("source_health") for item in used_evidence}
-    fresh_tomato_score = "High"
-    fresh_reason = "All material sources are current, healthy, and reviewed."
-    if "overdue-policy-usable" in source_health_values:
-        fresh_tomato_score = "Medium"
-        fresh_reason = "At least one material source is policy-usable but overdue for review."
-    if not used_evidence:
-        fresh_tomato_score = "Low"
-        fresh_reason = "No material source could be attached to the answer."
-    return {
-        "evidence_confidence": "High",
-        "evidence_confidence_reason": (
+    source_scores = [_fresh_tomato_indicator(item)[0] for item in used_evidence]
+    fresh_tomato_score = _lowest_indicator(source_scores)
+    fresh_reason = _fresh_tomato_reason(fresh_tomato_score)
+    if official_fact_count and cited_official_fact_count == official_fact_count:
+        evidence_confidence = "High"
+        evidence_reason = (
+            f"Evidence coverage is complete for {official_fact_count} official fact(s); "
+            "cited material sources are attached directly to the claims and no conflicting "
+            "approved source was retrieved for this answer."
+        )
+    else:
+        evidence_confidence = "Low"
+        evidence_reason = (
+            f"Evidence coverage is incomplete: {cited_official_fact_count} of "
             f"{official_fact_count} official fact(s) have adjacent approved-source citations."
-        ),
+        )
+    return {
+        "evidence_confidence": evidence_confidence,
+        "evidence_confidence_reason": evidence_reason,
         "fresh_tomato_score": fresh_tomato_score,
         "fresh_tomato_reason": fresh_reason,
     }
+
+
+def _fresh_tomato_indicator(evidence: dict[str, Any]) -> tuple[str, str]:
+    source_health = str(evidence.get("source_health", "unknown"))
+    if source_health == "healthy":
+        return "High", "Source freshness is high: the material source is current and healthy."
+    if source_health == "overdue-policy-usable":
+        return (
+            "Medium",
+            "Source freshness is medium: the material source is policy-usable but overdue for review.",
+        )
+    return "Low", "Source freshness is low: the material source is not current and healthy."
+
+
+def _lowest_indicator(scores: list[str]) -> str:
+    if not scores:
+        return "Low"
+    order = {"Low": 0, "Medium": 1, "High": 2}
+    return min(scores, key=lambda score: order.get(score, 0))
+
+
+def _fresh_tomato_reason(score: str) -> str:
+    if score == "High":
+        return "Source freshness is high because all material sources are current and healthy."
+    if score == "Medium":
+        return (
+            "Source freshness is medium because the lowest material-source freshness score "
+            "is Medium."
+        )
+    return "Source freshness is low because no current healthy material source could be attached."
 
 
 def _section_label(kind: str) -> str:
