@@ -12,8 +12,10 @@ class BrowserLevelApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         config_path = Path(self.tempdir.name) / "provider-config.json"
+        data_dir = Path(self.tempdir.name) / "data"
         app = create_app(
             config_path=config_path,
+            data_dir=data_dir,
             capability_tester=capability_tester,
         )
         client = httpx.AsyncClient(

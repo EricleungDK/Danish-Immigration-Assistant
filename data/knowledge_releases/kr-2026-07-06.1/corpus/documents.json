@@ -1,0 +1,22 @@
+[
+  {
+    "approval_state": "approved",
+    "checked_at_utc": "2026-06-15T09:00:00Z",
+    "content": "Permanent opholdstilladelse kan kræve dokumentation for bestået Prøve i Dansk 2 eller en tilsvarende danskprøve. Denne minimale reviewed fixture beskriver kun sprogkravet for permanent ophold og ikke familiesammenføring, statsborgerskab eller en personlig afgørelse.",
+    "content_origin": "project-authored-fixture",
+    "document_id": "di-rag-doc-permanent-residence-language",
+    "english_search_terms": "permanent residence language requirement Danish test Danish exam passed Prøve i Dansk 2 equivalent Danish test",
+    "final_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+    "language": "da",
+    "official_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+    "publisher": "SIRI",
+    "review_state": "approved-current",
+    "source_health": "healthy",
+    "source_id": "nyidanmark-permanent-residence-language-requirements",
+    "title": "Permanent residence language requirements",
+    "topic_tags": [
+      "permanent-residence",
+      "language-requirement"
+    ]
+  }
+]

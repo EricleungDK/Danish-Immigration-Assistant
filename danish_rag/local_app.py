@@ -13,6 +13,18 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from .answer_pipeline import (
+    AnswerPipelineError,
+    AnswerService,
+    AnswerValidationError,
+    LocalProviderAnswerGenerator,
+)
+from .conversation_store import ConversationStore
+from .knowledge_release import (
+    active_corpus_summary,
+    default_data_dir,
+    ensure_minimal_knowledge_release,
+)
 from .provider_setup import (
     CapabilityTestResult,
     ProviderCapabilityTester,
@@ -25,6 +37,7 @@ from .provider_setup import (
     validate_provider_configuration,
     validated_configuration,
 )
+from .retrieval import HybridRetriever
 from .runtime_policy import load_runtime_policy
 
 
@@ -39,6 +52,8 @@ TEMPLATES = Environment(
 def create_app(
     *,
     config_path: str | Path | None = None,
+    data_dir: str | Path | None = None,
+    answer_generator: Any | None = None,
     capability_tester: Callable[[ProviderConfiguration], CapabilityTestResult | dict[str, Any]]
     | None = None,
 ) -> FastAPI:
@@ -46,7 +61,10 @@ def create_app(
     app.mount("/static", StaticFiles(directory=WEB_ROOT / "static"), name="static")
 
     resolved_config_path = Path(config_path) if config_path else default_config_path()
+    resolved_data_dir = Path(data_dir) if data_dir else default_data_dir()
     tester = capability_tester or ProviderCapabilityTester()
+    generator = answer_generator or LocalProviderAnswerGenerator()
+    store = ConversationStore(resolved_data_dir / "conversations.sqlite3")
 
     def render_home(
         *,
@@ -56,22 +74,56 @@ def create_app(
         setup_reason: str = "",
         active_question: str = "",
         composer_error: str = "",
+        active_conversation: dict[str, Any] | None = None,
     ) -> HTMLResponse:
-        configuration = _load_configuration_or_none(resolved_config_path)
-        if setup_form is None:
-            setup_form = configuration or _default_provider_configuration()
         template = TEMPLATES.get_template("home.html")
         return HTMLResponse(
             template.render(
-                configuration=configuration.to_public_dict() if configuration else None,
-                providers=provider_options(),
-                form=setup_form,
-                setup_error=setup_error,
-                setup_reason=setup_reason,
-                active_question=active_question,
-                composer_error=composer_error,
+                _page_context(
+                    setup_form=setup_form,
+                    setup_error=setup_error,
+                    setup_reason=setup_reason,
+                    active_question=active_question,
+                    composer_error=composer_error,
+                    active_conversation=active_conversation,
+                )
             ),
             status_code=status_code,
+        )
+
+    def render_conversation_main(
+        *,
+        status_code: int = 200,
+        active_question: str = "",
+        composer_error: str = "",
+        active_conversation: dict[str, Any] | None = None,
+    ) -> HTMLResponse:
+        template = TEMPLATES.get_template("conversation_main.html")
+        return HTMLResponse(
+            template.render(
+                _page_context(
+                    active_question=active_question,
+                    composer_error=composer_error,
+                    active_conversation=active_conversation,
+                )
+            ),
+            status_code=status_code,
+        )
+
+    def render_ask_response(
+        request: Request,
+        *,
+        status_code: int = 200,
+        active_question: str = "",
+        composer_error: str = "",
+        active_conversation: dict[str, Any] | None = None,
+    ) -> HTMLResponse:
+        renderer = render_conversation_main if _is_htmx_request(request) else render_home
+        return renderer(
+            status_code=status_code,
+            active_question=active_question,
+            composer_error=composer_error,
+            active_conversation=active_conversation,
         )
 
     def render_setup_panel(
@@ -96,9 +148,43 @@ def create_app(
             status_code=status_code,
         )
 
+    def _page_context(
+        *,
+        setup_form: ProviderConfiguration | None = None,
+        setup_error: str = "",
+        setup_reason: str = "",
+        active_question: str = "",
+        composer_error: str = "",
+        active_conversation: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        ensure_minimal_knowledge_release(resolved_data_dir)
+        configuration = _load_configuration_or_none(resolved_config_path)
+        if setup_form is None:
+            setup_form = configuration or _default_provider_configuration()
+        return {
+            "configuration": configuration.to_public_dict() if configuration else None,
+            "providers": provider_options(),
+            "form": setup_form,
+            "setup_error": setup_error,
+            "setup_reason": setup_reason,
+            "active_question": active_question,
+            "composer_error": composer_error,
+            "active_conversation": active_conversation,
+            "conversations": store.list_conversations(),
+            "corpus": active_corpus_summary(resolved_data_dir),
+        }
+
     @app.get("/", response_class=HTMLResponse)
     async def home() -> HTMLResponse:
         return render_home()
+
+    @app.get("/conversations/{conversation_id}", response_class=HTMLResponse)
+    async def conversation(conversation_id: str) -> HTMLResponse:
+        try:
+            record = store.get_conversation(conversation_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Conversation not found.") from exc
+        return render_home(active_conversation=record)
 
     @app.get("/vendor/htmx.min.js", include_in_schema=False)
     async def htmx_asset() -> FileResponse:
@@ -147,9 +233,17 @@ def create_app(
         _validate_state_changing_request(request)
         form_data = await _read_urlencoded_form(request)
         question = form_data.get("question", "").strip()
+        if not question:
+            return render_ask_response(
+                request,
+                status_code=422,
+                active_question=question,
+                composer_error="Enter a question before sending.",
+            )
         configuration = _load_configuration_or_none(resolved_config_path)
         if not configuration:
-            return render_home(
+            return render_ask_response(
+                request,
                 status_code=409,
                 active_question=question,
                 composer_error=(
@@ -157,7 +251,50 @@ def create_app(
                     "the first question."
                 ),
             )
-        return render_home(status_code=202, active_question=question)
+        try:
+            ensure_minimal_knowledge_release(resolved_data_dir)
+            retriever = HybridRetriever.from_data_dir(resolved_data_dir)
+            result = AnswerService(
+                retriever=retriever,
+                generator=generator,
+            ).answer(question, configuration)
+            record = store.save_answer(
+                question=result.question,
+                normalized_question=result.normalized_question,
+                answer=result.answer,
+                model_identity=result.model_identity,
+                corpus_identity=result.corpus_identity,
+            )
+        except AnswerValidationError as exc:
+            return render_ask_response(
+                request,
+                status_code=422,
+                active_question=question,
+                composer_error=str(exc),
+            )
+        except AnswerPipelineError as exc:
+            return render_ask_response(
+                request,
+                status_code=503,
+                active_question=question,
+                composer_error=str(exc),
+            )
+        except Exception as exc:
+            return render_ask_response(
+                request,
+                status_code=503,
+                active_question=question,
+                composer_error=(
+                    "The answer path failed safely before saving a complete answer. "
+                    "Check the active corpus, local index, and local storage, then retry. "
+                    f"Detail: {exc}"
+                ),
+            )
+        return render_ask_response(
+            request,
+            status_code=200,
+            active_conversation=record,
+        )
 
     @app.get("/status")
     async def status() -> dict[str, Any]:

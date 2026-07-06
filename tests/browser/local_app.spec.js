@@ -48,3 +48,34 @@ test("successful provider setup shows active provider and survives page reload",
   await expect(page.locator("body")).not.toContainText("api_key");
   await expect(page.locator("body")).not.toContainText("secret");
 });
+
+test("supported question produces cited answer and persists across reload", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("radio", { name: /OpenAI-compatible local server/i }).check();
+  await page.getByRole("textbox", { name: "Endpoint" }).fill("http://127.0.0.1:1234");
+  await page.getByRole("textbox", { name: "Generation model" }).fill("browser-model");
+  await page.getByRole("button", { name: "Test and Save" }).click();
+
+  await expect(page.getByText("Provider verified")).toBeVisible();
+
+  await page.getByRole("textbox", { name: "Question" }).fill("What Danish test do I need for permanent residence?");
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await expect(page.getByRole("heading", { name: "Current Conversation" })).toBeVisible();
+  await expect(page.getByText("Official fact", { exact: true })).toBeVisible();
+  await expect(page.getByText("Interpretation", { exact: true })).toBeVisible();
+  await expect(page.getByText("Prøve i Dansk 2").first()).toBeVisible();
+  await expect(page.getByText("Permanent residence language requirements").first()).toBeVisible();
+  await expect(page.getByText("Checked: 2026-06-15").first()).toBeVisible();
+  await expect(page.getByText("Corpus: kr-2026-07-06.1").first()).toBeVisible();
+  await expect(page.getByText("Evidence Confidence: High")).toBeVisible();
+  await expect(page.getByText("Fresh Tomato Score: High")).toBeVisible();
+
+  await page.reload();
+  await page.getByRole("link", { name: "What Danish test do I need for permanent residence?" }).click();
+
+  await expect(page.getByRole("heading", { name: "Current Conversation" })).toBeVisible();
+  await expect(page.getByText("Prøve i Dansk 2").first()).toBeVisible();
+  await expect(page.getByText("Corpus: kr-2026-07-06.1").first()).toBeVisible();
+});

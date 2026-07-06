@@ -1,0 +1,99 @@
+<section id="conversation-main" class="conversation" aria-labelledby="conversation-title">
+  <header class="conversation-head">
+    <div>
+      <p class="eyebrow">Conversation First</p>
+      {% if active_conversation %}
+      <h1 id="conversation-title" class="conversation-title-active">Current Conversation</h1>
+      {% else %}
+      <h1 id="conversation-title">Ask about Danish language requirements.</h1>
+      {% endif %}
+    </div>
+    <p class="privacy-badge">local-only answer path</p>
+  </header>
+
+  {% if active_conversation %}
+  <article class="turn" aria-labelledby="current-question-title">
+    <header class="turn-question">
+      <h2 id="current-question-title">Question</h2>
+      <p>{{ active_conversation.question }}</p>
+    </header>
+    <section class="answer" aria-labelledby="answer-title">
+      <div class="answer-meta">
+        <span>Provider: {{ active_conversation.model_identity.provider_id }}</span>
+        <span>Model: {{ active_conversation.model_identity.model }}</span>
+        <span>Corpus: {{ active_conversation.corpus_identity }}</span>
+      </div>
+      <h2 id="answer-title">Answer</h2>
+      <p class="answer-summary">{{ active_conversation.answer.summary }}</p>
+
+      <div class="answer-sections">
+        {% for section in active_conversation.answer.sections %}
+        <section class="answer-section answer-section-{{ section.kind }}">
+          <p class="section-label">{{ section.label }}</p>
+          <p>{{ section.text }}</p>
+          {% if section.citations %}
+          <ol class="inline-citations" aria-label="Citations for {{ section.label }}">
+            {% for citation in section.citations %}
+            <li>
+              <a href="{{ citation.official_url }}" rel="noreferrer">{{ citation.title }}</a>
+              <span>{{ citation.publisher }}</span>
+              <span>Checked: {{ citation.checked_at_display }}</span>
+              <span>Corpus: {{ citation.corpus_identity }}</span>
+            </li>
+            {% endfor %}
+          </ol>
+          {% endif %}
+        </section>
+        {% endfor %}
+      </div>
+
+      <dl class="trust-list" aria-label="Answer trust indicators">
+        <div>
+          <dt>Evidence Confidence: {{ active_conversation.answer.trust.evidence_confidence }}</dt>
+          <dd>{{ active_conversation.answer.trust.evidence_confidence_reason }}</dd>
+        </div>
+        <div>
+          <dt>Fresh Tomato Score: {{ active_conversation.answer.trust.fresh_tomato_score }}</dt>
+          <dd>{{ active_conversation.answer.trust.fresh_tomato_reason }}</dd>
+        </div>
+      </dl>
+    </section>
+  </article>
+  {% else %}
+  <section class="empty-state" aria-labelledby="boundary-title">
+    <h2 id="boundary-title">Danish Immigration RAG is an information assistant, not an authority or lawyer.</h2>
+    <p>
+      Use it to understand approved official information about Danish permanent-residence
+      language requirements and Danish language examinations. It does not calculate
+      personal eligibility or make legal conclusions.
+    </p>
+    <ul class="boundary-list" aria-label="Product boundaries">
+      <li>Questions, retrieved evidence, model inference, answers, indexes, and conversation records stay on this computer.</li>
+      <li>Network activity is limited to explicit release checks and user-approved knowledge-release downloads.</li>
+      <li>Answers must stay bounded by approved official sources once the answer pipeline is connected.</li>
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if composer_error %}
+  <p class="error composer-error" role="alert">{{ composer_error }}</p>
+  {% endif %}
+
+  <form
+    class="composer"
+    method="post"
+    action="/ask"
+    hx-post="/ask"
+    hx-target="#conversation-main"
+    hx-swap="outerHTML"
+    hx-indicator="#answer-progress"
+  >
+    <label for="question">Question</label>
+    <textarea id="question" name="question" rows="4" placeholder="Ask about Prøve i Dansk, permanent residence language requirements, or exam logistics.">{{ active_question }}</textarea>
+    <div class="composer-footer">
+      <span>{% if configuration %}{{ configuration.provider_name }} - {{ configuration.model }}{% else %}Setup required before answers{% endif %}</span>
+      <span id="answer-progress" class="answer-progress htmx-indicator" role="status" aria-live="polite">Preparing answer...</span>
+      <button type="submit">{% if composer_error %}Retry{% else %}Send{% endif %}</button>
+    </div>
+  </form>
+</section>

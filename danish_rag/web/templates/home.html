@@ -32,7 +32,33 @@
       <a class="new-link" href="/">New conversation</a>
       <section>
         <h2>Local History</h2>
+        {% if conversations %}
+        <nav aria-label="Saved conversations">
+          <ol class="history-list">
+            {% for conversation in conversations %}
+            <li>
+              <a href="/conversations/{{ conversation.id }}">{{ conversation.title }}</a>
+              <small>Corpus: {{ conversation.corpus_identity }}</small>
+            </li>
+            {% endfor %}
+          </ol>
+        </nav>
+        {% else %}
         <p>No conversation records yet.</p>
+        {% endif %}
+      </section>
+      <section>
+        <h2>Corpus</h2>
+        <dl class="runtime-list">
+          <div>
+            <dt>Release</dt>
+            <dd>{{ corpus.knowledge_release_id }}</dd>
+          </div>
+          <div>
+            <dt>Registry</dt>
+            <dd>{{ corpus.source_registry_version }}</dd>
+          </div>
+        </dl>
       </section>
       <section>
         <h2>Runtime</h2>
@@ -57,52 +83,7 @@
       </section>
     </aside>
 
-    <section id="conversation-main" class="conversation" aria-labelledby="conversation-title">
-      <header class="conversation-head">
-        <div>
-          <p class="eyebrow">Conversation First</p>
-          <h1 id="conversation-title">Ask about Danish language requirements.</h1>
-        </div>
-        <p class="privacy-badge">local-only answer path</p>
-      </header>
-
-      <section class="empty-state" aria-labelledby="boundary-title">
-        <h2 id="boundary-title">Danish Immigration RAG is an information assistant, not an authority or lawyer.</h2>
-        <p>
-          Use it to understand approved official information about Danish permanent-residence
-          language requirements and Danish language examinations. It does not calculate
-          personal eligibility or make legal conclusions.
-        </p>
-        <ul class="boundary-list" aria-label="Product boundaries">
-          <li>Questions, retrieved evidence, model inference, answers, indexes, and conversation records stay on this computer.</li>
-          <li>Network activity is limited to explicit release checks and user-approved knowledge-release downloads.</li>
-          <li>Answers must stay bounded by approved official sources once the answer pipeline is connected.</li>
-        </ul>
-      </section>
-
-      {% if active_question %}
-      <section class="turn-preview" aria-live="polite">
-        <h2>Current Question</h2>
-        <p>{{ active_question }}</p>
-        {% if configuration %}
-        <p class="notice">Setup is complete. Retrieval and answer generation are handled by later implementation slices.</p>
-        {% endif %}
-      </section>
-      {% endif %}
-
-      {% if composer_error %}
-      <p class="error" role="alert">{{ composer_error }}</p>
-      {% endif %}
-
-      <form class="composer" method="post" action="/ask">
-        <label for="question">Question</label>
-        <textarea id="question" name="question" rows="4" placeholder="Ask about Prøve i Dansk, permanent residence language requirements, or exam logistics.">{{ active_question }}</textarea>
-        <div class="composer-footer">
-          <span>{% if configuration %}{{ configuration.provider_name }} - {{ configuration.model }}{% else %}Setup required before answers{% endif %}</span>
-          <button type="submit">Send</button>
-        </div>
-      </form>
-    </section>
+    {% include "conversation_main.html" %}
 
     {% include "setup_panel.html" %}
   </main>

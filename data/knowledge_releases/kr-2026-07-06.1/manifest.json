@@ -1,0 +1,46 @@
+{
+  "artifacts": [
+    {
+      "bytes": 1137,
+      "path": "corpus/documents.json",
+      "sha256": "611f7c1e52db88acafaf97071da4157d97424052edbbcf739893c7dd52b5094b"
+    }
+  ],
+  "corpus_id": "kr-2026-07-06.1",
+  "corpus_schema_version": "1.0",
+  "created_at_utc": "2026-07-06T00:00:00Z",
+  "integrity": {
+    "hash_algorithm": "sha256",
+    "signature": "mvp-fixture-reviewed-release",
+    "signature_algorithm": "fixture-release-signature",
+    "trust_root_id": "project-maintainer-release-key-v1"
+  },
+  "knowledge_release_id": "kr-2026-07-06.1",
+  "manifest_schema_version": "1.0",
+  "minimum_application_version": "0.1.0",
+  "source_registry_version": "sr-2026-07-06.1",
+  "sources": [
+    {
+      "extraction_schema_version": "1.0",
+      "final_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+      "fresh_tomato_inputs": {
+        "next_review_due_utc": "2026-09-15T09:00:00Z",
+        "source_health": "current"
+      },
+      "language": "da",
+      "last_checked_at_utc": "2026-06-15T09:00:00Z",
+      "normalized_document_sha256": "611f7c1e52db88acafaf97071da4157d97424052edbbcf739893c7dd52b5094b",
+      "official_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+      "publisher": "SIRI",
+      "review_state": "approved-current",
+      "reviewed_at_utc": "2026-06-15T09:00:00Z",
+      "reviewers": [
+        "mvp-fixture-reviewer"
+      ],
+      "source_content_sha256": "611f7c1e52db88acafaf97071da4157d97424052edbbcf739893c7dd52b5094b",
+      "source_id": "nyidanmark-permanent-residence-language-requirements",
+      "title": "Permanent residence language requirements",
+      "topic": "permanent-residence language requirements"
+    }
+  ]
+}
