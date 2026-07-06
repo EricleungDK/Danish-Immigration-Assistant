@@ -28,6 +28,10 @@ class TrustLevel(Enum):
 
 
 CONFLICTING_AGREEMENT_STATES = {"conflict", "conflicts", "conflicting", "contradicts"}
+LOW_RISK_EXAM_TERM_ASSUMPTION = (
+    "You are asking for a general explanation of the Danish examination term, not "
+    "a personal eligibility decision."
+)
 
 
 class AnswerGenerator(Protocol):
@@ -50,6 +54,14 @@ class AnswerResult:
     answer: dict[str, Any]
     model_identity: dict[str, Any]
     corpus_identity: str
+
+
+@dataclass(frozen=True)
+class AmbiguityDecision:
+    response_kind: str
+    assumptions: list[str]
+    clarification_question: str = ""
+    clarification_reason: str = ""
 
 
 def answer_schema() -> dict[str, Any]:
@@ -204,21 +216,43 @@ class AnswerService:
         self.retriever = retriever
         self.generator = generator
 
-    def answer(self, question: str, configuration: ProviderConfiguration) -> AnswerResult:
-        normalized_question = normalize_question(question)
-        evidence = self.retriever.retrieve(question)
+    def answer(
+        self,
+        question: str,
+        configuration: ProviderConfiguration,
+        *,
+        conversation_turns: list[dict[str, Any]] | None = None,
+    ) -> AnswerResult:
+        effective_question = _question_with_pending_clarification(
+            question,
+            conversation_turns or [],
+        )
+        normalized_question = normalize_question(effective_question)
+        ambiguity = classify_question_ambiguity(effective_question)
+        if ambiguity.response_kind == "clarification":
+            return AnswerResult(
+                question=question,
+                normalized_question=normalized_question,
+                answer=_clarification_answer(ambiguity),
+                model_identity=_model_identity(configuration),
+                corpus_identity=str(self.retriever.manifest["corpus_id"]),
+            )
+
+        evidence = self.retriever.retrieve(effective_question)
         if not evidence:
             raise AnswerValidationError(
                 "No approved official evidence was retrieved for this question."
             )
         generated = self.generator.generate(
-            question=question,
+            question=effective_question,
             normalized_question=normalized_question,
             evidence=evidence,
             configuration=configuration,
             schema=answer_schema(),
         )
         answer = validate_answer(generated, evidence=evidence)
+        answer["response_kind"] = "answer"
+        answer["assumptions"] = ambiguity.assumptions
         return AnswerResult(
             question=question,
             normalized_question=normalized_question,
@@ -300,9 +334,168 @@ def validate_answer(
     )
     return {
         "summary": summary.strip(),
+        "response_kind": "answer",
+        "assumptions": [],
         "sections": sanitized_sections,
         "citations": _material_sources(sanitized_sections, used_evidence),
         "trust": trust,
+    }
+
+
+def classify_question_ambiguity(question: str) -> AmbiguityDecision:
+    lookup = question.casefold()
+    if _is_low_risk_exam_term_question(lookup):
+        return AmbiguityDecision(
+            response_kind="answer",
+            assumptions=[LOW_RISK_EXAM_TERM_ASSUMPTION],
+        )
+    if _has_consequential_ambiguity(lookup):
+        return AmbiguityDecision(
+            response_kind="clarification",
+            assumptions=[],
+            clarification_question=(
+                "Which application purpose or exam task are you asking about?"
+            ),
+            clarification_reason=(
+                "The official Danish-test answer can change depending on whether you mean "
+                "permanent residence, citizenship, another residence path, or exam "
+                "registration logistics."
+            ),
+        )
+    return AmbiguityDecision(response_kind="answer", assumptions=[])
+
+
+def _question_with_pending_clarification(
+    question: str,
+    conversation_turns: list[dict[str, Any]],
+) -> str:
+    if not conversation_turns:
+        return question
+    latest_turn = conversation_turns[-1]
+    latest_answer = latest_turn.get("answer", {})
+    if latest_answer.get("response_kind") != "clarification":
+        return question
+    prior_question = str(latest_turn.get("question", "")).strip()
+    if not prior_question:
+        return question
+    return f"{prior_question}\nClarification: {question.strip()}"
+
+
+def _is_low_risk_exam_term_question(lookup: str) -> bool:
+    asks_for_definition = (
+        lookup.startswith("what is ")
+        or lookup.startswith("what's ")
+        or lookup.startswith("what does ")
+        or " mean" in lookup
+    )
+    mentions_exam_term = any(
+        term in lookup
+        for term in (
+            "pd1",
+            "pd2",
+            "pd3",
+            "prøve i dansk",
+            "prove i dansk",
+            "studieprøven",
+            "studieproven",
+        )
+    )
+    asks_for_requirement = any(
+        term in lookup for term in (" need", " require", " requirement", " qualify")
+    )
+    return asks_for_definition and mentions_exam_term and not asks_for_requirement
+
+
+def _has_consequential_ambiguity(lookup: str) -> bool:
+    if _contrasts_permanent_residence_and_citizenship(lookup):
+        return True
+    if _mixes_registration_and_requirement(lookup):
+        return True
+    if not _asks_for_danish_test_requirement(lookup):
+        return False
+    return not _has_specific_application_context(lookup)
+
+
+def _contrasts_permanent_residence_and_citizenship(lookup: str) -> bool:
+    has_permanent_residence = "permanent residence" in lookup or "permanent ophold" in lookup
+    has_citizenship = "citizenship" in lookup or "statsborgerskab" in lookup
+    contrast_terms = (" or ", " versus ", " vs ", "either", "which one")
+    return has_permanent_residence and has_citizenship and any(
+        term in lookup for term in contrast_terms
+    )
+
+
+def _mixes_registration_and_requirement(lookup: str) -> bool:
+    registration_terms = ("register", "registration", "sign up", "tilmeld")
+    requirement_terms = ("requirement", "required", "application")
+    return any(term in lookup for term in registration_terms) and any(
+        term in lookup for term in requirement_terms
+    )
+
+
+def _asks_for_danish_test_requirement(lookup: str) -> bool:
+    test_terms = (
+        "danish test",
+        "danish exam",
+        "danskprøve",
+        "dansk prøve",
+        "prøve i dansk",
+        "prove i dansk",
+        "pd1",
+        "pd2",
+        "pd3",
+    )
+    requirement_terms = ("need", "required", "requirement", "which", "what")
+    return any(term in lookup for term in test_terms) and any(
+        term in lookup for term in requirement_terms
+    )
+
+
+def _has_specific_application_context(lookup: str) -> bool:
+    context_terms = (
+        "permanent residence",
+        "permanent ophold",
+        "permanent opholdstilladelse",
+        "citizenship",
+        "statsborgerskab",
+        "family reunification",
+        "familiesammenføring",
+        "register",
+        "registration",
+        "sign up",
+        "tilmeld",
+    )
+    return any(term in lookup for term in context_terms)
+
+
+def _clarification_answer(decision: AmbiguityDecision) -> dict[str, Any]:
+    question = decision.clarification_question
+    reason = decision.clarification_reason
+    return {
+        "summary": f"{question} I need to clarify before giving a Danish-test requirement.",
+        "response_kind": "clarification",
+        "assumptions": [],
+        "sections": [
+            {
+                "kind": "clarification",
+                "label": "Clarification needed",
+                "text": f"{question} {reason}",
+                "citation_ids": [],
+                "citations": [],
+            }
+        ],
+        "citations": [],
+        "trust": {
+            "evidence_confidence": "Low",
+            "evidence_confidence_reason": (
+                "No substantive answer was generated because the missing context can "
+                "change the official answer."
+            ),
+            "fresh_tomato_score": "Low",
+            "fresh_tomato_reason": (
+                "No material source has been attached to this clarification turn."
+            ),
+        },
     }
 
 

@@ -27,8 +27,19 @@
           <span>Corpus: {{ turn.corpus_identity }}</span>
           <span>Answered: {{ turn.answered_at_display }}</span>
         </div>
-        <h2 id="answer-title-{{ turn.turn_index }}">Answer</h2>
+        <h2 id="answer-title-{{ turn.turn_index }}">{% if turn.answer.response_kind == "clarification" %}Clarification{% else %}Answer{% endif %}</h2>
         <p class="answer-summary">{{ turn.answer.summary }}</p>
+
+        {% if turn.answer.assumptions %}
+        <section class="answer-assumptions" aria-label="Answer assumptions">
+          <p class="section-label">Assumptions</p>
+          <ul>
+            {% for assumption in turn.answer.assumptions %}
+            <li>{{ assumption }}</li>
+            {% endfor %}
+          </ul>
+        </section>
+        {% endif %}
 
         <div class="answer-sections">
           {% for section in turn.answer.sections %}

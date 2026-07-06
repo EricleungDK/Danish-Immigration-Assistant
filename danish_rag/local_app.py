@@ -255,10 +255,17 @@ def create_app(
         try:
             ensure_minimal_knowledge_release(resolved_data_dir)
             retriever = HybridRetriever.from_data_dir(resolved_data_dir)
+            conversation_turns = None
+            if conversation_id:
+                conversation_turns = store.get_conversation(conversation_id)["turns"]
             result = AnswerService(
                 retriever=retriever,
                 generator=generator,
-            ).answer(question, configuration)
+            ).answer(
+                question,
+                configuration,
+                conversation_turns=conversation_turns,
+            )
             record = store.save_answer(
                 question=result.question,
                 normalized_question=result.normalized_question,
