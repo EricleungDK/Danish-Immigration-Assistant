@@ -2,10 +2,10 @@
   {
     "approval_state": "approved",
     "checked_at_utc": "2026-06-15T09:00:00Z",
-    "content": "Permanent opholdstilladelse kan kræve dokumentation for bestået Prøve i Dansk 2 eller en tilsvarende danskprøve. Denne minimale reviewed fixture beskriver kun sprogkravet for permanent ophold og ikke familiesammenføring, statsborgerskab eller en personlig afgørelse.",
+    "content": "For permanent opholdstilladelse, New to Denmark states a basic Danish-language requirement: the applicant must pass Danish language test 2 (Prøve i Dansk 2), or a Danish exam of an equivalent or higher level. It also states a supplementary requirement: Danish language test 3 (Prøve i Dansk 3), or a Danish exam of an equivalent or higher level, can meet one of the supplementary requirements. The page says tests on the list equivalent to or higher than Prøve i Dansk 3 also satisfy the basic Prøve i Dansk 2 requirement. This extract supports general official facts about permanent residence language requirements only and does not decide a personal application.",
     "content_origin": "project-authored-fixture",
     "document_id": "di-rag-doc-permanent-residence-language",
-    "english_search_terms": "permanent residence language requirement Danish test Danish exam passed Prøve i Dansk 2 equivalent Danish test",
+    "english_search_terms": "permanent residence language requirement Danish language test 2 Prøve i Dansk 2 PD2 Danish language test 3 Prøve i Dansk 3 PD3 equivalent higher level supplementary requirement compare exams certificate acceptance",
     "final_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
     "language": "da",
     "official_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
@@ -16,7 +16,95 @@
     "title": "Permanent residence language requirements",
     "topic_tags": [
       "permanent-residence",
-      "language-requirement"
+      "language-requirement",
+      "exam-comparison",
+      "certificate-equivalence"
+    ]
+  },
+  {
+    "approval_state": "approved",
+    "checked_at_utc": "2026-07-06T12:00:00Z",
+    "content": "New to Denmark's list of Danish language tests equivalent to or higher than Danish language test 2 includes Danskuddannelsernes Prøve i Dansk 2 with the stated average grade threshold, FVU reading exam level 2 or 3, FVU Danish exam level 2 or 3, and any test considered equivalent to or higher than Danish language test 3. This extract documents official equivalence information for Prøve i Dansk 2 and does not determine whether a specific personal certificate will be accepted.",
+    "content_origin": "project-authored-fixture",
+    "document_id": "di-rag-doc-equivalent-tests-language-test-2",
+    "english_search_terms": "equivalent tests Danish language test 2 Prøve i Dansk 2 PD2 FVU reading FVU Danish certificate old diploma accepted permanent residence",
+    "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+    "language": "da",
+    "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+    "publisher": "The Danish Immigration Service",
+    "review_state": "approved-current",
+    "source_health": "healthy",
+    "source_id": "nyidanmark-equivalent-tests-language-test-2",
+    "title": "Tests equivalent to or higher than Danish language test 2",
+    "topic_tags": [
+      "permanent-residence",
+      "language-requirement",
+      "certificate-equivalence",
+      "exam-comparison"
+    ]
+  },
+  {
+    "approval_state": "approved",
+    "checked_at_utc": "2026-07-06T12:00:00Z",
+    "content": "New to Denmark's list of Danish language tests equivalent to or higher than Danish language test 3 includes Danish language test 3 (Prøve i Dansk 3) with the stated grade average threshold and the study test called Studieprøven with the stated grade average in each test. The list also includes several school, preparatory, FVU, International Baccalaureate, higher-education, and previous-test routes, including previous tests which still qualify. This extract supports official equivalence facts and does not decide whether SIRI will accept an individual's certificate.",
+    "content_origin": "project-authored-fixture",
+    "document_id": "di-rag-doc-equivalent-tests-language-test-3",
+    "english_search_terms": "equivalent tests Danish language test 3 Prøve i Dansk 3 PD3 Studieprøven Studieproven study test previous tests still qualify certificate old diploma accepted permanent residence",
+    "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+    "language": "da",
+    "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+    "publisher": "The Danish Immigration Service",
+    "review_state": "approved-current",
+    "source_health": "healthy",
+    "source_id": "nyidanmark-equivalent-tests-language-test-3",
+    "title": "Tests equivalent to or higher than Danish language test 3",
+    "topic_tags": [
+      "permanent-residence",
+      "language-requirement",
+      "certificate-equivalence",
+      "exam-comparison"
+    ]
+  },
+  {
+    "approval_state": "approved",
+    "checked_at_utc": "2026-07-06T12:00:00Z",
+    "content": "Dansk og Prøver describes Danish tests for citizens and course participants. It states that Prøve i Dansk 1 (PD1), Prøve i Dansk 2 (PD2), Prøve i Dansk 3 (PD3), and Studieprøven each consist of a written part and an oral part. The page also says a prøve i dansk gives documentation of Danish skills and points users to information about who can participate, what they need to know before signing up, and the requirements for passing each test.",
+    "content_origin": "project-authored-fixture",
+    "document_id": "di-rag-doc-danish-exam-overview",
+    "english_search_terms": "compare exams Prøve i Dansk 1 PD1 Prøve i Dansk 2 PD2 Prøve i Dansk 3 PD3 Studieprøven Studieproven written oral parts Danish tests overview",
+    "final_url": "https://danskogproever.dk/borger/danskproever/",
+    "language": "da",
+    "official_url": "https://danskogproever.dk/borger/danskproever/",
+    "publisher": "SIRI",
+    "review_state": "approved-current",
+    "source_health": "healthy",
+    "source_id": "danskogproever-danish-exam-overview",
+    "title": "Danskprøver overview",
+    "topic_tags": [
+      "language-requirement",
+      "exam",
+      "exam-comparison"
+    ]
+  },
+  {
+    "approval_state": "approved",
+    "checked_at_utc": "2026-07-06T12:00:00Z",
+    "content": "Dansk og Prøver states that the Danish tests, Medborgerskabsprøven, and Indfødsretsprøven are held twice a year in May/June and November/December, and that SIRI publishes exam dates and fees on the page. It says users register for a test directly at the sprogcenter where they want to take the test. For the next 2026 sitting, Prøve i Dansk 1 is listed for 12 November 2026, Prøve i Dansk 2 for 11 November 2026, Prøve i Dansk 3 for 10 November 2026, and Studieprøven for 9 November 2026. The registration deadline for those four tests is listed as 31. august 2026, and the oral parts are listed for 2.-15. december 2026 with the test provider deciding exact oral dates. The page states 2026 fees for self-students and includes guidance to contact a sprogcenter after the deadline in special cases. Current logistics must be verified on the official page before relying on dates, fees, or availability.",
+    "content_origin": "project-authored-fixture",
+    "document_id": "di-rag-doc-registration-deadlines-2026",
+    "english_search_terms": "registration logistics register sign up Prøve i Dansk 1 PD1 Prøve i Dansk 2 PD2 Prøve i Dansk 3 PD3 Studieprøven Studieproven deadline sprogcenter exam dates fees 2026 verify current official page",
+    "final_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+    "language": "da",
+    "official_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+    "publisher": "SIRI",
+    "review_state": "approved-current",
+    "source_health": "healthy",
+    "source_id": "danskogproever-registration-deadlines-2026",
+    "title": "Tilmeldingsfrister og prøvedatoer",
+    "topic_tags": [
+      "language-requirement",
+      "registration-logistics",
+      "exam"
     ]
   }
 ]

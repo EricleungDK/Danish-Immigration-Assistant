@@ -1,9 +1,9 @@
 {
   "artifacts": [
     {
-      "bytes": 1137,
+      "bytes": 8167,
       "path": "corpus/documents.json",
-      "sha256": "611f7c1e52db88acafaf97071da4157d97424052edbbcf739893c7dd52b5094b"
+      "sha256": "a51cfc1d77ec60afbc90b9581a00fa9baa6330af08e460e8f5ab52bce3b83017"
     }
   ],
   "corpus_id": "kr-2026-07-06.1",
@@ -24,12 +24,12 @@
       "extraction_schema_version": "1.0",
       "final_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
       "fresh_tomato_inputs": {
-        "next_review_due_utc": "2026-09-15T09:00:00Z",
+        "next_review_due_utc": "2026-10-06T12:00:00Z",
         "source_health": "current"
       },
       "language": "da",
       "last_checked_at_utc": "2026-06-15T09:00:00Z",
-      "normalized_document_sha256": "611f7c1e52db88acafaf97071da4157d97424052edbbcf739893c7dd52b5094b",
+      "normalized_document_sha256": "fc913515dc285d89c24421ade3dc915471df1c06bce903873aa597bf0c1eae81",
       "official_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
       "publisher": "SIRI",
       "review_state": "approved-current",
@@ -37,10 +37,98 @@
       "reviewers": [
         "mvp-fixture-reviewer"
       ],
-      "source_content_sha256": "611f7c1e52db88acafaf97071da4157d97424052edbbcf739893c7dd52b5094b",
+      "source_content_sha256": "fc913515dc285d89c24421ade3dc915471df1c06bce903873aa597bf0c1eae81",
       "source_id": "nyidanmark-permanent-residence-language-requirements",
       "title": "Permanent residence language requirements",
       "topic": "permanent-residence language requirements"
+    },
+    {
+      "extraction_schema_version": "1.0",
+      "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+      "fresh_tomato_inputs": {
+        "next_review_due_utc": "2026-10-06T12:00:00Z",
+        "source_health": "current"
+      },
+      "language": "da",
+      "last_checked_at_utc": "2026-07-06T12:00:00Z",
+      "normalized_document_sha256": "b00fcec98f076d76881defd7fc8b0ec2f154ea3c1924ebe6764fd123cf2d406e",
+      "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+      "publisher": "The Danish Immigration Service",
+      "review_state": "approved-current",
+      "reviewed_at_utc": "2026-07-06T12:00:00Z",
+      "reviewers": [
+        "mvp-fixture-reviewer"
+      ],
+      "source_content_sha256": "b00fcec98f076d76881defd7fc8b0ec2f154ea3c1924ebe6764fd123cf2d406e",
+      "source_id": "nyidanmark-equivalent-tests-language-test-2",
+      "title": "Tests equivalent to or higher than Danish language test 2",
+      "topic": "permanent-residence certificate equivalence"
+    },
+    {
+      "extraction_schema_version": "1.0",
+      "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+      "fresh_tomato_inputs": {
+        "next_review_due_utc": "2026-10-06T12:00:00Z",
+        "source_health": "current"
+      },
+      "language": "da",
+      "last_checked_at_utc": "2026-07-06T12:00:00Z",
+      "normalized_document_sha256": "65ab910e47c22fab4bd78d9d26bc037bcb15983dd19170529471e3c3d363492f",
+      "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+      "publisher": "The Danish Immigration Service",
+      "review_state": "approved-current",
+      "reviewed_at_utc": "2026-07-06T12:00:00Z",
+      "reviewers": [
+        "mvp-fixture-reviewer"
+      ],
+      "source_content_sha256": "65ab910e47c22fab4bd78d9d26bc037bcb15983dd19170529471e3c3d363492f",
+      "source_id": "nyidanmark-equivalent-tests-language-test-3",
+      "title": "Tests equivalent to or higher than Danish language test 3",
+      "topic": "permanent-residence certificate equivalence"
+    },
+    {
+      "extraction_schema_version": "1.0",
+      "final_url": "https://danskogproever.dk/borger/danskproever/",
+      "fresh_tomato_inputs": {
+        "next_review_due_utc": "2026-10-06T12:00:00Z",
+        "source_health": "current"
+      },
+      "language": "da",
+      "last_checked_at_utc": "2026-07-06T12:00:00Z",
+      "normalized_document_sha256": "df572773dd7f85321103aba5a11a213d32fcec51ea5378da44a5fb6bb6311db8",
+      "official_url": "https://danskogproever.dk/borger/danskproever/",
+      "publisher": "SIRI",
+      "review_state": "approved-current",
+      "reviewed_at_utc": "2026-07-06T12:00:00Z",
+      "reviewers": [
+        "mvp-fixture-reviewer"
+      ],
+      "source_content_sha256": "df572773dd7f85321103aba5a11a213d32fcec51ea5378da44a5fb6bb6311db8",
+      "source_id": "danskogproever-danish-exam-overview",
+      "title": "Danskprøver overview",
+      "topic": "Danish exam comparison"
+    },
+    {
+      "extraction_schema_version": "1.0",
+      "final_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+      "fresh_tomato_inputs": {
+        "next_review_due_utc": "2026-08-31T23:59:59Z",
+        "source_health": "current"
+      },
+      "language": "da",
+      "last_checked_at_utc": "2026-07-06T12:00:00Z",
+      "normalized_document_sha256": "a3a1f6d9017f02d15488a27669aa55ae958848f8b91a444b044d5c67fba0f331",
+      "official_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+      "publisher": "SIRI",
+      "review_state": "approved-current",
+      "reviewed_at_utc": "2026-07-06T12:00:00Z",
+      "reviewers": [
+        "mvp-fixture-reviewer"
+      ],
+      "source_content_sha256": "a3a1f6d9017f02d15488a27669aa55ae958848f8b91a444b044d5c67fba0f331",
+      "source_id": "danskogproever-registration-deadlines-2026",
+      "title": "Tilmeldingsfrister og prøvedatoer",
+      "topic": "Danish exam registration logistics"
     }
   ]
 }

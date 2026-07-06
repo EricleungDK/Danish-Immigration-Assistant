@@ -408,6 +408,16 @@ def classify_question_safety(question: str) -> SafetyDecision:
             ),
             skip_generation=True,
         )
+    if _asks_for_certificate_acceptance(lookup):
+        return SafetyDecision(
+            response_kind="answer",
+            refusal_text=(
+                "I cannot decide whether SIRI will accept a personal certificate or "
+                "document. I can only explain the documented official equivalence "
+                "information from approved sources and point you back to the cited "
+                "authority for your individual case."
+            ),
+        )
     if _asks_for_personal_eligibility(lookup):
         return SafetyDecision(
             response_kind="answer",
@@ -629,6 +639,27 @@ def _asks_for_personal_eligibility(lookup: str) -> bool:
         "recommend whether i should apply",
     )
     return any(term in lookup for term in eligibility_terms)
+
+
+def _asks_for_certificate_acceptance(lookup: str) -> bool:
+    certificate_terms = (
+        "certificate",
+        "diploma",
+        "old danish",
+        "documentation",
+        "bevis",
+    )
+    acceptance_terms = (
+        "will accept",
+        "will be accepted",
+        "whether siri will accept",
+        "count for me",
+        "valid for me",
+        "accepted for permanent residence",
+    )
+    return any(term in lookup for term in certificate_terms) and any(
+        term in lookup for term in acceptance_terms
+    )
 
 
 def _clarification_answer(decision: AmbiguityDecision) -> dict[str, Any]:
@@ -867,6 +898,10 @@ def _reject_prohibited_safety_claims(
         "you should apply",
         "you do not qualify",
         "you are not eligible",
+        "siri will accept",
+        "will accept your certificate",
+        "your certificate will be accepted",
+        "your diploma will be accepted",
         "you should argue",
         "your legal strategy",
     ]

@@ -39,11 +39,19 @@ def normalize_question(question: str) -> str:
         "danish exam": "Prøve i Dansk danskprøve dansk prøve",
         "language requirement": "sprogkrav danskkrav danskprøve",
         "language requirements": "sprogkrav danskkrav danskprøve",
+        "compare": "sammenlign forskel exam-comparison Prøve i Dansk Studieprøven",
+        "registration": "tilmelding tilmeldingsfrist prøvedatoer sprogcenter",
+        "register": "tilmelding tilmeldingsfrist prøvedatoer sprogcenter",
+        "sign up": "tilmelding tilmeldingsfrist prøvedatoer sprogcenter",
+        "certificate": "equivalence equivalent higher level diploma bevis dokumentation",
+        "accepted": "accept certificate equivalence equivalent higher level",
         "passed": "bestået",
         "pass": "bestået",
         "need": "kræve kræver krav",
+        "pd1": "Prøve i Dansk 1",
         "pd2": "Prøve i Dansk 2",
         "pd3": "Prøve i Dansk 3",
+        "studieproven": "Studieprøven",
     }
     for phrase, expansion in phrase_expansions.items():
         if phrase in lookup:
@@ -370,7 +378,10 @@ def _is_release_eligible(document: dict[str, Any]) -> bool:
 def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:
     lookup = normalized_question.casefold()
     topic_tags: list[str] = []
-    if "permanent" in lookup or "ophold" in lookup:
+    is_exam_comparison = any(
+        term in lookup for term in ("compare", "sammenlign", "exam-comparison")
+    )
+    if ("permanent" in lookup or "ophold" in lookup) and not is_exam_comparison:
         topic_tags.append("permanent-residence")
     if (
         "language" in lookup
@@ -381,6 +392,18 @@ def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:
         or "exam" in lookup
     ):
         topic_tags.append("language-requirement")
+    if is_exam_comparison:
+        topic_tags.append("exam-comparison")
+    if any(
+        term in lookup
+        for term in ("register", "registration", "sign up", "tilmeld", "tilmelding")
+    ):
+        topic_tags.append("registration-logistics")
+    if any(
+        term in lookup
+        for term in ("certificate", "diploma", "bevis", "equivalent", "equivalence")
+    ):
+        topic_tags.append("certificate-equivalence")
     return {"topic_tags": topic_tags, "language": "da"} if topic_tags else {"language": "da"}
 
 
