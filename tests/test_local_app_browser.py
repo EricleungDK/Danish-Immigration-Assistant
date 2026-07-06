@@ -102,7 +102,12 @@ class BrowserLevelApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(config_path.exists())
 
         restarted = httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=create_app(config_path=config_path)),
+            transport=httpx.ASGITransport(
+                app=create_app(
+                    config_path=config_path,
+                    data_dir=config_path.parent / "data",
+                )
+            ),
             base_url="http://testserver",
         )
         self.addAsyncCleanup(restarted.aclose)

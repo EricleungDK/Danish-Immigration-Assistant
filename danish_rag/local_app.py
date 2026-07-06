@@ -233,6 +233,7 @@ def create_app(
         _validate_state_changing_request(request)
         form_data = await _read_urlencoded_form(request)
         question = form_data.get("question", "").strip()
+        conversation_id = form_data.get("conversation_id", "").strip() or None
         if not question:
             return render_ask_response(
                 request,
@@ -264,6 +265,14 @@ def create_app(
                 answer=result.answer,
                 model_identity=result.model_identity,
                 corpus_identity=result.corpus_identity,
+                conversation_id=conversation_id,
+            )
+        except KeyError:
+            return render_ask_response(
+                request,
+                status_code=404,
+                active_question=question,
+                composer_error="Conversation not found. Start a new conversation and retry.",
             )
         except AnswerValidationError as exc:
             return render_ask_response(

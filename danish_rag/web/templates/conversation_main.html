@@ -12,53 +12,59 @@
   </header>
 
   {% if active_conversation %}
-  <article class="turn" aria-labelledby="current-question-title">
-    <header class="turn-question">
-      <h2 id="current-question-title">Question</h2>
-      <p>{{ active_conversation.question }}</p>
-    </header>
-    <section class="answer" aria-labelledby="answer-title">
-      <div class="answer-meta">
-        <span>Provider: {{ active_conversation.model_identity.provider_id }}</span>
-        <span>Model: {{ active_conversation.model_identity.model }}</span>
-        <span>Corpus: {{ active_conversation.corpus_identity }}</span>
-      </div>
-      <h2 id="answer-title">Answer</h2>
-      <p class="answer-summary">{{ active_conversation.answer.summary }}</p>
-
-      <div class="answer-sections">
-        {% for section in active_conversation.answer.sections %}
-        <section class="answer-section answer-section-{{ section.kind }}">
-          <p class="section-label">{{ section.label }}</p>
-          <p>{{ section.text }}</p>
-          {% if section.citations %}
-          <ol class="inline-citations" aria-label="Citations for {{ section.label }}">
-            {% for citation in section.citations %}
-            <li>
-              <a href="{{ citation.official_url }}" rel="noreferrer">{{ citation.title }}</a>
-              <span>{{ citation.publisher }}</span>
-              <span>Checked: {{ citation.checked_at_display }}</span>
-              <span>Corpus: {{ citation.corpus_identity }}</span>
-            </li>
-            {% endfor %}
-          </ol>
-          {% endif %}
-        </section>
-        {% endfor %}
-      </div>
-
-      <dl class="trust-list" aria-label="Answer trust indicators">
-        <div>
-          <dt>Evidence Confidence: {{ active_conversation.answer.trust.evidence_confidence }}</dt>
-          <dd>{{ active_conversation.answer.trust.evidence_confidence_reason }}</dd>
+  <div class="turn-stack">
+    {% for turn in active_conversation.turns %}
+    <article class="turn" aria-labelledby="question-title-{{ turn.turn_index }}">
+      <header class="turn-question">
+        <p class="turn-count">Turn {{ turn.turn_index }}</p>
+        <h2 id="question-title-{{ turn.turn_index }}">Question</h2>
+        <p>{{ turn.question }}</p>
+      </header>
+      <section class="answer" aria-labelledby="answer-title-{{ turn.turn_index }}">
+        <div class="answer-meta">
+          <span>Provider: {{ turn.model_identity.provider_id }}</span>
+          <span>Model: {{ turn.model_identity.model }}</span>
+          <span>Corpus: {{ turn.corpus_identity }}</span>
+          <span>Answered: {{ turn.answered_at_display }}</span>
         </div>
-        <div>
-          <dt>Fresh Tomato Score: {{ active_conversation.answer.trust.fresh_tomato_score }}</dt>
-          <dd>{{ active_conversation.answer.trust.fresh_tomato_reason }}</dd>
+        <h2 id="answer-title-{{ turn.turn_index }}">Answer</h2>
+        <p class="answer-summary">{{ turn.answer.summary }}</p>
+
+        <div class="answer-sections">
+          {% for section in turn.answer.sections %}
+          <section class="answer-section answer-section-{{ section.kind }}">
+            <p class="section-label">{{ section.label }}</p>
+            <p>{{ section.text }}</p>
+            {% if section.citations %}
+            <ol class="inline-citations" aria-label="Citations for {{ section.label }}">
+              {% for citation in section.citations %}
+              <li>
+                <a href="{{ citation.official_url }}" rel="noreferrer">{{ citation.title }}</a>
+                <span>{{ citation.publisher }}</span>
+                <span>Checked: {{ citation.checked_at_display }}</span>
+                <span>Corpus: {{ citation.corpus_identity }}</span>
+              </li>
+              {% endfor %}
+            </ol>
+            {% endif %}
+          </section>
+          {% endfor %}
         </div>
-      </dl>
-    </section>
-  </article>
+
+        <dl class="trust-list" aria-label="Answer trust indicators">
+          <div>
+            <dt>Evidence Confidence: {{ turn.answer.trust.evidence_confidence }}</dt>
+            <dd>{{ turn.answer.trust.evidence_confidence_reason }}</dd>
+          </div>
+          <div>
+            <dt>Fresh Tomato Score: {{ turn.answer.trust.fresh_tomato_score }}</dt>
+            <dd>{{ turn.answer.trust.fresh_tomato_reason }}</dd>
+          </div>
+        </dl>
+      </section>
+    </article>
+    {% endfor %}
+  </div>
   {% else %}
   <section class="empty-state" aria-labelledby="boundary-title">
     <h2 id="boundary-title">Danish Immigration RAG is an information assistant, not an authority or lawyer.</h2>
@@ -88,6 +94,9 @@
     hx-swap="outerHTML"
     hx-indicator="#answer-progress"
   >
+    {% if active_conversation %}
+    <input type="hidden" name="conversation_id" value="{{ active_conversation.id }}">
+    {% endif %}
     <label for="question">Question</label>
     <textarea id="question" name="question" rows="4" placeholder="Ask about Prøve i Dansk, permanent residence language requirements, or exam logistics.">{{ active_question }}</textarea>
     <div class="composer-footer">

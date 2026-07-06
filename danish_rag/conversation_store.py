@@ -22,39 +22,79 @@ class ConversationStore:
         answer: dict[str, Any],
         model_identity: dict[str, Any],
         corpus_identity: str,
+        conversation_id: str | None = None,
     ) -> dict[str, Any]:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        conversation_id = uuid.uuid4().hex
         now = datetime.now(UTC).isoformat()
-        title = _title_from_question(question)
         with self._connect() as connection:
             self._ensure_schema(connection)
+            if conversation_id is None:
+                conversation_id = uuid.uuid4().hex
+                connection.execute(
+                    """
+                    INSERT INTO conversations (
+                        id,
+                        title,
+                        question,
+                        normalized_question,
+                        answer_json,
+                        model_identity_json,
+                        corpus_identity,
+                        created_at_utc,
+                        updated_at_utc
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        conversation_id,
+                        _title_from_question(question),
+                        question,
+                        normalized_question,
+                        json.dumps(answer, sort_keys=True, ensure_ascii=False),
+                        json.dumps(model_identity, sort_keys=True, ensure_ascii=False),
+                        corpus_identity,
+                        now,
+                        now,
+                    ),
+                )
+            else:
+                self._require_conversation(connection, conversation_id)
+
+            turn_index = self._next_turn_index(connection, conversation_id)
             connection.execute(
                 """
-                INSERT INTO conversations (
+                INSERT INTO conversation_turns (
                     id,
-                    title,
+                    conversation_id,
+                    turn_index,
                     question,
                     normalized_question,
                     answer_json,
                     model_identity_json,
                     corpus_identity,
-                    created_at_utc,
-                    updated_at_utc
+                    answered_at_utc
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    uuid.uuid4().hex,
                     conversation_id,
-                    title,
+                    turn_index,
                     question,
                     normalized_question,
                     json.dumps(answer, sort_keys=True, ensure_ascii=False),
                     json.dumps(model_identity, sort_keys=True, ensure_ascii=False),
                     corpus_identity,
                     now,
-                    now,
                 ),
+            )
+            connection.execute(
+                """
+                UPDATE conversations
+                SET updated_at_utc = ?
+                WHERE id = ?
+                """,
+                (now, conversation_id),
             )
             connection.commit()
         return self.get_conversation(conversation_id)
@@ -65,10 +105,30 @@ class ConversationStore:
             self._ensure_schema(connection)
             rows = connection.execute(
                 """
-                SELECT id, title, question, corpus_identity, created_at_utc, updated_at_utc
+                SELECT
+                    conversations.id,
+                    conversations.title,
+                    conversations.created_at_utc,
+                    conversations.updated_at_utc,
+                    COALESCE(latest_turn.corpus_identity, conversations.corpus_identity)
+                        AS corpus_identity,
+                    COALESCE(turn_counts.turn_count, 0) AS turn_count
                 FROM conversations
-                WHERE deleted_at_utc IS NULL
-                ORDER BY updated_at_utc DESC
+                LEFT JOIN (
+                    SELECT conversation_id, COUNT(*) AS turn_count
+                    FROM conversation_turns
+                    GROUP BY conversation_id
+                ) AS turn_counts
+                    ON turn_counts.conversation_id = conversations.id
+                LEFT JOIN conversation_turns AS latest_turn
+                    ON latest_turn.conversation_id = conversations.id
+                    AND latest_turn.turn_index = (
+                        SELECT MAX(turn_index)
+                        FROM conversation_turns
+                        WHERE conversation_id = conversations.id
+                    )
+                WHERE conversations.deleted_at_utc IS NULL
+                ORDER BY conversations.updated_at_utc DESC
                 """
             ).fetchall()
         return [dict(row) for row in rows]
@@ -79,17 +139,36 @@ class ConversationStore:
             self._ensure_schema(connection)
             row = connection.execute(
                 """
-                SELECT *
+                SELECT id, title, created_at_utc, updated_at_utc, deleted_at_utc
                 FROM conversations
                 WHERE id = ? AND deleted_at_utc IS NULL
                 """,
                 (conversation_id,),
             ).fetchone()
+            turn_rows = connection.execute(
+                """
+                SELECT *
+                FROM conversation_turns
+                WHERE conversation_id = ?
+                ORDER BY turn_index
+                """,
+                (conversation_id,),
+            ).fetchall()
         if row is None:
             raise KeyError(conversation_id)
         record = dict(row)
-        record["answer"] = json.loads(record.pop("answer_json"))
-        record["model_identity"] = json.loads(record.pop("model_identity_json"))
+        turns = [_turn_from_row(turn_row) for turn_row in turn_rows]
+        if not turns:
+            raise KeyError(conversation_id)
+        latest_turn = turns[-1]
+        record["turns"] = turns
+        record["question"] = latest_turn["question"]
+        record["normalized_question"] = latest_turn["normalized_question"]
+        record["answer"] = latest_turn["answer"]
+        record["model_identity"] = latest_turn["model_identity"]
+        record["corpus_identity"] = latest_turn["corpus_identity"]
+        record["answered_at_utc"] = latest_turn["answered_at_utc"]
+        record["answered_at_display"] = latest_turn["answered_at_display"]
         return record
 
     def _connect(self) -> sqlite3.Connection:
@@ -114,6 +193,91 @@ class ConversationStore:
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS conversation_turns (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT NOT NULL,
+                turn_index INTEGER NOT NULL,
+                question TEXT NOT NULL,
+                normalized_question TEXT NOT NULL,
+                answer_json TEXT NOT NULL,
+                model_identity_json TEXT NOT NULL,
+                corpus_identity TEXT NOT NULL,
+                answered_at_utc TEXT NOT NULL,
+                FOREIGN KEY (conversation_id) REFERENCES conversations(id),
+                UNIQUE (conversation_id, turn_index)
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_conversation_turns_conversation
+            ON conversation_turns(conversation_id, turn_index)
+            """
+        )
+        self._migrate_legacy_conversations(connection)
+
+    def _migrate_legacy_conversations(self, connection: sqlite3.Connection) -> None:
+        connection.execute(
+            """
+            INSERT INTO conversation_turns (
+                id,
+                conversation_id,
+                turn_index,
+                question,
+                normalized_question,
+                answer_json,
+                model_identity_json,
+                corpus_identity,
+                answered_at_utc
+            )
+            SELECT
+                conversations.id || ':turn:1',
+                conversations.id,
+                1,
+                conversations.question,
+                conversations.normalized_question,
+                conversations.answer_json,
+                conversations.model_identity_json,
+                conversations.corpus_identity,
+                conversations.updated_at_utc
+            FROM conversations
+            WHERE conversations.question != ''
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM conversation_turns
+                    WHERE conversation_turns.conversation_id = conversations.id
+                )
+            """
+        )
+
+    def _require_conversation(
+        self,
+        connection: sqlite3.Connection,
+        conversation_id: str,
+    ) -> None:
+        row = connection.execute(
+            """
+            SELECT id
+            FROM conversations
+            WHERE id = ? AND deleted_at_utc IS NULL
+            """,
+            (conversation_id,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(conversation_id)
+
+    def _next_turn_index(self, connection: sqlite3.Connection, conversation_id: str) -> int:
+        row = connection.execute(
+            """
+            SELECT COALESCE(MAX(turn_index), 0) + 1 AS next_turn_index
+            FROM conversation_turns
+            WHERE conversation_id = ?
+            """,
+            (conversation_id,),
+        ).fetchone()
+        return int(row["next_turn_index"])
 
 
 def _title_from_question(question: str) -> str:
@@ -121,3 +285,17 @@ def _title_from_question(question: str) -> str:
     if len(compact) <= 64:
         return compact
     return compact[:61].rstrip() + "..."
+
+
+def _turn_from_row(row: sqlite3.Row) -> dict[str, Any]:
+    turn = dict(row)
+    turn["answer"] = json.loads(turn.pop("answer_json"))
+    turn["model_identity"] = json.loads(turn.pop("model_identity_json"))
+    turn["answered_at_display"] = _timestamp_display(turn["answered_at_utc"])
+    return turn
+
+
+def _timestamp_display(timestamp: str) -> str:
+    if len(timestamp) >= 16:
+        return timestamp[:16].replace("T", " ")
+    return timestamp
