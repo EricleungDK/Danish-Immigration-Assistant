@@ -472,6 +472,32 @@ h1 {
   color: var(--muted);
 }
 
+.suggested-followups {
+  display: grid;
+  gap: 0.65rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.9rem;
+}
+
+.suggested-followups form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.suggested-followups button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--blue);
+  text-align: left;
+}
+
+.suggested-followups button:hover {
+  border-color: var(--green);
+  background: var(--surface-quiet);
+  color: var(--green);
+}
+
 .evidence-drawer {
   width: min(34rem, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);

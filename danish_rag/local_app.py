@@ -252,12 +252,14 @@ def create_app(
                     "the first question."
                 ),
             )
+        active_conversation_for_error = None
         try:
             ensure_minimal_knowledge_release(resolved_data_dir)
             retriever = HybridRetriever.from_data_dir(resolved_data_dir)
             conversation_turns = None
             if conversation_id:
-                conversation_turns = store.get_conversation(conversation_id)["turns"]
+                active_conversation_for_error = store.get_conversation(conversation_id)
+                conversation_turns = active_conversation_for_error["turns"]
             result = AnswerService(
                 retriever=retriever,
                 generator=generator,
@@ -287,6 +289,7 @@ def create_app(
                 status_code=422,
                 active_question=question,
                 composer_error=str(exc),
+                active_conversation=active_conversation_for_error,
             )
         except AnswerPipelineError as exc:
             return render_ask_response(
@@ -294,12 +297,14 @@ def create_app(
                 status_code=503,
                 active_question=question,
                 composer_error=str(exc),
+                active_conversation=active_conversation_for_error,
             )
         except Exception as exc:
             return render_ask_response(
                 request,
                 status_code=503,
                 active_question=question,
+                active_conversation=active_conversation_for_error,
                 composer_error=(
                     "The answer path failed safely before saving a complete answer. "
                     "Check the active corpus, local index, and local storage, then retry. "

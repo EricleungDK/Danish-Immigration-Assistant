@@ -237,7 +237,7 @@ class AnswerService:
         *,
         conversation_turns: list[dict[str, Any]] | None = None,
     ) -> AnswerResult:
-        effective_question = _question_with_pending_clarification(
+        effective_question = _question_with_local_conversation_context(
             question,
             conversation_turns or [],
         )
@@ -288,6 +288,10 @@ class AnswerService:
         answer = validate_answer(generated, evidence=eligible_evidence)
         answer["response_kind"] = safety.response_kind
         answer["assumptions"] = ambiguity.assumptions
+        answer["suggested_follow_ups"] = _suggested_follow_ups(
+            answer=answer,
+            evidence=eligible_evidence,
+        )
         return AnswerResult(
             question=question,
             normalized_question=normalized_question,
@@ -442,7 +446,7 @@ def classify_question_ambiguity(question: str) -> AmbiguityDecision:
     return AmbiguityDecision(response_kind="answer", assumptions=[])
 
 
-def _question_with_pending_clarification(
+def _question_with_local_conversation_context(
     question: str,
     conversation_turns: list[dict[str, Any]],
 ) -> str:
@@ -451,11 +455,58 @@ def _question_with_pending_clarification(
     latest_turn = conversation_turns[-1]
     latest_answer = latest_turn.get("answer", {})
     if latest_answer.get("response_kind") != "clarification":
-        return question
+        if not _needs_follow_up_context(question):
+            return question
+        prior_question = _latest_substantive_question(conversation_turns)
+        if not prior_question:
+            return question
+        return (
+            "In the context of the previous question: "
+            f"{prior_question}\nFollow-up question: {question.strip()}"
+        )
     prior_question = str(latest_turn.get("question", "")).strip()
     if not prior_question:
         return question
     return f"{prior_question}\nClarification: {question.strip()}"
+
+
+def _needs_follow_up_context(question: str) -> bool:
+    compact = " ".join(question.split())
+    if not compact:
+        return False
+    lookup = compact.casefold()
+    if "in this context" in lookup or "the cited source" in lookup:
+        return True
+    contextual_starts = (
+        "what about ",
+        "how about ",
+        "and ",
+        "also ",
+        "what if ",
+        "does that ",
+        "does this ",
+        "is that ",
+        "is this ",
+        "can that ",
+        "can this ",
+        "which one ",
+    )
+    if lookup.startswith(contextual_starts):
+        return True
+    words = lookup.split()
+    pronouns = {"it", "that", "this", "those", "they", "there"}
+    return len(words) <= 8 and bool(pronouns.intersection(words))
+
+
+def _latest_substantive_question(conversation_turns: list[dict[str, Any]]) -> str:
+    for turn in reversed(conversation_turns):
+        answer = turn.get("answer", {})
+        if answer.get("response_kind") == "clarification":
+            continue
+        question = str(turn.get("question", "")).strip()
+        if question:
+            return question
+    return ""
 
 
 def _is_low_risk_exam_term_question(lookup: str) -> bool:
@@ -914,6 +965,68 @@ def _material_sources(
         ]
         sources.append(citation)
     return sources
+
+
+def _suggested_follow_ups(
+    *,
+    answer: dict[str, Any],
+    evidence: list[dict[str, Any]],
+) -> list[str]:
+    if not answer.get("citations"):
+        return []
+
+    material_citation_ids = {
+        str(citation["citation_id"])
+        for citation in answer.get("citations", [])
+    }
+    material_evidence = [
+        item
+        for item in evidence
+        if str(item.get("citation_id")) in material_citation_ids
+    ]
+    if not material_evidence:
+        return []
+
+    evidence_text = " ".join(
+        [
+            *[str(item.get("title", "")) for item in material_evidence],
+            *[str(item.get("content", "")) for item in material_evidence],
+            *[
+                " ".join(str(tag) for tag in item.get("topic_tags", []))
+                for item in material_evidence
+            ],
+        ]
+    ).casefold()
+    suggestions = ["Which cited source supports this answer?"]
+    if "prøve i dansk 2" in evidence_text or "prove i dansk 2" in evidence_text:
+        suggestions.insert(0, "What does Prøve i Dansk 2 mean in this context?")
+    if "equivalent" in evidence_text or "tilsvarende" in evidence_text:
+        suggestions.append("What does the cited source say about equivalent Danish tests?")
+    if "registration" in evidence_text or "tilmeld" in evidence_text:
+        suggestions.append("What does the cited source say about exam registration?")
+    return _safe_suggested_follow_ups(suggestions)
+
+
+def _safe_suggested_follow_ups(suggestions: list[str]) -> list[str]:
+    unsafe_phrases = (
+        "do i qualify",
+        "am i eligible",
+        "should i apply",
+        "recommend",
+        "legal advice",
+        "legal strategy",
+    )
+    safe: list[str] = []
+    for suggestion in suggestions:
+        compact = " ".join(suggestion.split()).strip()
+        if not compact:
+            continue
+        lookup = compact.casefold()
+        if any(phrase in lookup for phrase in unsafe_phrases):
+            continue
+        if compact not in safe:
+            safe.append(compact)
+    return safe[:3]
 
 
 def _trust_indicators(

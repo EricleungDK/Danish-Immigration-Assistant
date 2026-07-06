@@ -81,6 +81,25 @@
           </div>
         </dl>
 
+        {% if loop.last and turn.answer.suggested_follow_ups %}
+        <section class="suggested-followups" aria-labelledby="suggested-followups-title-{{ turn.turn_index }}">
+          <p id="suggested-followups-title-{{ turn.turn_index }}" class="section-label">Suggested follow-ups</p>
+          <form
+            method="post"
+            action="/ask"
+            hx-post="/ask"
+            hx-target="#conversation-main"
+            hx-swap="outerHTML"
+            hx-indicator="#answer-progress"
+          >
+            <input type="hidden" name="conversation_id" value="{{ active_conversation.id }}">
+            {% for suggestion in turn.answer.suggested_follow_ups %}
+            <button type="submit" name="question" value="{{ suggestion }}">{{ suggestion }}</button>
+            {% endfor %}
+          </form>
+        </section>
+        {% endif %}
+
         {% for citation in turn.answer.citations %}
         {% set evidence_id = turn.turn_index ~ '-' ~ citation.citation_id %}
         {% set drawer_id = 'evidence-drawer-' ~ evidence_id %}
