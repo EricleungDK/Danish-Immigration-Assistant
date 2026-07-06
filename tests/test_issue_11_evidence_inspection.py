@@ -8,6 +8,7 @@ def evidence_fixture(
     *,
     source_health: str = "healthy",
     review_state: str = "approved-current",
+    agreement_state: str = "supports",
 ) -> dict[str, object]:
     return {
         "citation_id": citation_id,
@@ -21,6 +22,7 @@ def evidence_fixture(
         "corpus_identity": "kr-fixture",
         "review_state": review_state,
         "source_health": source_health,
+        "agreement_state": agreement_state,
         "content": f"Official fixture content for {citation_id}.",
     }
 
@@ -54,6 +56,28 @@ class Issue11EvidenceInspectionTests(unittest.TestCase):
         self.assertIn("coverage", overdue["trust"]["evidence_confidence_reason"].casefold())
         self.assertIn("source freshness", overdue["trust"]["fresh_tomato_reason"].casefold())
 
+    def test_conflicting_material_source_lowers_evidence_confidence(self):
+        payload = {
+            "summary": "Supported answer.",
+            "sections": [
+                {
+                    "kind": "official_fact",
+                    "text": "Prøve i Dansk 2 can support the language requirement.",
+                    "citation_ids": ["source-a"],
+                }
+            ],
+        }
+
+        answer = validate_answer(
+            payload,
+            evidence=[evidence_fixture("source-a", agreement_state="conflicts")],
+        )
+
+        self.assertEqual(answer["trust"]["evidence_confidence"], "Low")
+        reason = answer["trust"]["evidence_confidence_reason"].casefold()
+        self.assertIn("agreement", reason)
+        self.assertIn("conflict", reason)
+
     def test_answer_fresh_tomato_score_is_lowest_material_source_score(self):
         payload = {
             "summary": "Supported answer with two material sources.",
@@ -84,7 +108,13 @@ class Issue11EvidenceInspectionTests(unittest.TestCase):
             [source["fresh_tomato_score"] for source in answer["citations"]],
             ["High", "Medium"],
         )
-        self.assertEqual(answer["citations"][1]["claim_support"][0]["text"], payload["sections"][1]["text"])
+        self.assertEqual(
+            answer["citations"][1]["claim_support"][0]["text"],
+            payload["sections"][1]["text"],
+        )
+        self.assertNotIn("review_state", answer["citations"][0])
+        self.assertNotIn("source_health", answer["citations"][0])
+        self.assertNotIn("source_excerpt", answer["citations"][0])
 
     def test_changing_evidence_coverage_does_not_increase_source_freshness(self):
         one_claim = {

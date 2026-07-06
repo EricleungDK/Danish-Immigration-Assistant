@@ -38,11 +38,13 @@
             {% if section.citations %}
             <ol class="inline-citations" aria-label="Citations for {{ section.label }}">
               {% for citation in section.citations %}
+              {% set evidence_id = turn.turn_index ~ '-' ~ citation.citation_id %}
+              {% set drawer_id = 'evidence-drawer-' ~ evidence_id %}
               <li>
                 <button
                   type="button"
                   class="citation-button"
-                  data-evidence-target="evidence-drawer-{{ turn.turn_index }}-{{ citation.citation_id }}"
+                  data-evidence-target="{{ drawer_id }}"
                 >
                   Inspect evidence: {{ citation.title }}
                 </button>
@@ -69,17 +71,22 @@
         </dl>
 
         {% for citation in turn.answer.citations %}
+        {% set evidence_id = turn.turn_index ~ '-' ~ citation.citation_id %}
+        {% set drawer_id = 'evidence-drawer-' ~ evidence_id %}
+        {% set title_id = 'evidence-title-' ~ evidence_id %}
+        {% set claim_support_id = 'claim-support-title-' ~ evidence_id %}
+        {% set trust_reasons_id = 'trust-reasons-title-' ~ evidence_id %}
         <dialog
-          id="evidence-drawer-{{ turn.turn_index }}-{{ citation.citation_id }}"
+          id="{{ drawer_id }}"
           class="evidence-drawer"
-          aria-labelledby="evidence-title-{{ turn.turn_index }}-{{ citation.citation_id }}"
+          aria-labelledby="{{ title_id }}"
         >
           <div class="drawer-panel">
             <form method="dialog" class="drawer-actions">
               <button type="submit" class="drawer-close">Close</button>
             </form>
             <p class="eyebrow">Material Source</p>
-            <h3 id="evidence-title-{{ turn.turn_index }}-{{ citation.citation_id }}" tabindex="-1">{{ citation.title }}</h3>
+            <h3 id="{{ title_id }}" tabindex="-1">{{ citation.title }}</h3>
             <dl class="drawer-facts" aria-label="Evidence provenance">
               <div>
                 <dt>Publisher</dt>
@@ -111,8 +118,8 @@
               </div>
             </dl>
 
-            <section class="drawer-section" aria-labelledby="claim-support-title-{{ turn.turn_index }}-{{ citation.citation_id }}">
-              <h4 id="claim-support-title-{{ turn.turn_index }}-{{ citation.citation_id }}">Claim Support</h4>
+            <section class="drawer-section" aria-labelledby="{{ claim_support_id }}">
+              <h4 id="{{ claim_support_id }}">Claim Support</h4>
               <ol>
                 {% for claim in citation.claim_support %}
                 <li>
@@ -123,8 +130,8 @@
               </ol>
             </section>
 
-            <section class="drawer-section" aria-labelledby="trust-reasons-title-{{ turn.turn_index }}-{{ citation.citation_id }}">
-              <h4 id="trust-reasons-title-{{ turn.turn_index }}-{{ citation.citation_id }}">Trust Reasons</h4>
+            <section class="drawer-section" aria-labelledby="{{ trust_reasons_id }}">
+              <h4 id="{{ trust_reasons_id }}">Trust Reasons</h4>
               <dl class="trust-list" aria-label="Independent trust indicator reasons">
                 <div>
                   <dt>Evidence Confidence: {{ turn.answer.trust.evidence_confidence }}</dt>
@@ -135,11 +142,6 @@
                   <dd>{{ turn.answer.trust.fresh_tomato_reason }}</dd>
                 </div>
               </dl>
-            </section>
-
-            <section class="drawer-section" aria-labelledby="source-excerpt-title-{{ turn.turn_index }}-{{ citation.citation_id }}">
-              <h4 id="source-excerpt-title-{{ turn.turn_index }}-{{ citation.citation_id }}">Source Excerpt</h4>
-              <p>{{ citation.source_excerpt }}</p>
             </section>
           </div>
         </dialog>

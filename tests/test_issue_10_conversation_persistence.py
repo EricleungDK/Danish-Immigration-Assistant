@@ -1,3 +1,4 @@
+import hashlib
 import json
 import re
 import shutil
@@ -86,14 +87,31 @@ class Issue10ConversationPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.addAsyncCleanup(client.aclose)
         return client
 
-    def install_release_variant(self, release_id: str) -> None:
+    def install_release_variant(
+        self,
+        release_id: str,
+        *,
+        source_health: str = "healthy",
+    ) -> None:
         release_dir = self.root / release_id
         shutil.copytree(BUNDLED_MINIMAL_RELEASE, release_dir)
+        documents_path = release_dir / "corpus" / "documents.json"
+        documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        for document in documents:
+            document["source_health"] = source_health
+        documents_payload = json.dumps(documents, indent=2, sort_keys=True) + "\n"
+        documents_path.write_text(documents_payload, encoding="utf-8")
+
         manifest_path = release_dir / "manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest["knowledge_release_id"] = release_id
         manifest["corpus_id"] = release_id
         manifest["source_registry_version"] = f"sr-{release_id}"
+        for artifact in manifest["artifacts"]:
+            if artifact["path"] == "corpus/documents.json":
+                encoded_documents = documents_payload.encode("utf-8")
+                artifact["sha256"] = hashlib.sha256(encoded_documents).hexdigest()
+                artifact["bytes"] = len(encoded_documents)
         manifest_path.write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
@@ -141,7 +159,10 @@ class Issue10ConversationPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Answered:", first.text)
 
         self.save_provider("fixture-model-v2")
-        self.install_release_variant("kr-issue-10-fixture.2")
+        self.install_release_variant(
+            "kr-issue-10-fixture.2",
+            source_health="overdue-policy-usable",
+        )
 
         second = await self.post_question(
             client,
@@ -156,6 +177,8 @@ class Issue10ConversationPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("fixture-model-v2", second.text)
         self.assertIn("Corpus: kr-2026-07-06.1", second.text)
         self.assertIn("Corpus: kr-issue-10-fixture.2", second.text)
+        self.assertIn("Fresh Tomato Score: High", second.text)
+        self.assertIn("Fresh Tomato Score: Medium", second.text)
 
         restarted = self.make_client()
         home = await restarted.get("/")
@@ -174,7 +197,8 @@ class Issue10ConversationPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Corpus: kr-2026-07-06.1", reopened.text)
         self.assertIn("Corpus: kr-issue-10-fixture.2", reopened.text)
         self.assertGreaterEqual(reopened.text.count("Evidence Confidence: High"), 2)
-        self.assertGreaterEqual(reopened.text.count("Fresh Tomato Score: High"), 2)
+        self.assertIn("Fresh Tomato Score: High", reopened.text)
+        self.assertIn("Fresh Tomato Score: Medium", reopened.text)
         self.assertEqual(reopened.text.count("Answered:"), 2)
 
 

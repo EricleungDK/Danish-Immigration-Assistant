@@ -6,6 +6,7 @@ import json
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Protocol
 
 from .provider_setup import ProviderConfiguration
@@ -18,6 +19,15 @@ class AnswerPipelineError(RuntimeError):
 
 class AnswerValidationError(AnswerPipelineError):
     """Raised when generated structured output is not evidence-bounded."""
+
+
+class TrustLevel(Enum):
+    LOW = "Low"
+    MEDIUM = "Medium"
+    HIGH = "High"
+
+
+CONFLICTING_AGREEMENT_STATES = {"conflict", "conflicts", "conflicting", "contradicts"}
 
 
 class AnswerGenerator(Protocol):
@@ -361,10 +371,7 @@ def _citation_from_evidence(evidence: dict[str, Any]) -> dict[str, str]:
         "checked_at_utc": checked_at,
         "checked_at_display": checked_at[:10],
         "corpus_identity": str(evidence["knowledge_release_id"]),
-        "review_state": str(evidence.get("review_state", "unknown")),
-        "source_health": str(evidence.get("source_health", "unknown")),
-        "source_excerpt": str(evidence.get("content", "")),
-        "fresh_tomato_score": fresh_tomato_score,
+        "fresh_tomato_score": fresh_tomato_score.value,
         "fresh_tomato_reason": fresh_tomato_reason,
     }
 
@@ -397,50 +404,78 @@ def _trust_indicators(
     source_scores = [_fresh_tomato_indicator(item)[0] for item in used_evidence]
     fresh_tomato_score = _lowest_indicator(source_scores)
     fresh_reason = _fresh_tomato_reason(fresh_tomato_score)
-    if official_fact_count and cited_official_fact_count == official_fact_count:
-        evidence_confidence = "High"
+    conflicting_sources = [
+        str(item["citation_id"])
+        for item in used_evidence
+        if _is_conflicting_evidence(item)
+    ]
+    coverage_complete = (
+        bool(official_fact_count)
+        and cited_official_fact_count == official_fact_count
+    )
+    if coverage_complete and not conflicting_sources:
+        evidence_confidence = TrustLevel.HIGH
         evidence_reason = (
             f"Evidence coverage is complete for {official_fact_count} official fact(s); "
-            "cited material sources are attached directly to the claims and no conflicting "
-            "approved source was retrieved for this answer."
+            "cited material sources are attached directly to the claims and no retrieved "
+            "material source is marked as conflicting."
+        )
+    elif conflicting_sources:
+        evidence_confidence = TrustLevel.LOW
+        evidence_reason = (
+            "Evidence agreement is incomplete: conflicting material source(s) were retrieved "
+            f"for this answer ({', '.join(sorted(conflicting_sources))})."
         )
     else:
-        evidence_confidence = "Low"
+        evidence_confidence = TrustLevel.LOW
         evidence_reason = (
             f"Evidence coverage is incomplete: {cited_official_fact_count} of "
             f"{official_fact_count} official fact(s) have adjacent approved-source citations."
         )
     return {
-        "evidence_confidence": evidence_confidence,
+        "evidence_confidence": evidence_confidence.value,
         "evidence_confidence_reason": evidence_reason,
-        "fresh_tomato_score": fresh_tomato_score,
+        "fresh_tomato_score": fresh_tomato_score.value,
         "fresh_tomato_reason": fresh_reason,
     }
 
 
-def _fresh_tomato_indicator(evidence: dict[str, Any]) -> tuple[str, str]:
+def _is_conflicting_evidence(evidence: dict[str, Any]) -> bool:
+    if evidence.get("conflicts_with_answer") is True:
+        return True
+    agreement_state = str(evidence.get("agreement_state", "supports")).casefold()
+    return agreement_state in CONFLICTING_AGREEMENT_STATES
+
+
+def _fresh_tomato_indicator(evidence: dict[str, Any]) -> tuple[TrustLevel, str]:
     source_health = str(evidence.get("source_health", "unknown"))
     if source_health == "healthy":
-        return "High", "Source freshness is high: the material source is current and healthy."
+        return (
+            TrustLevel.HIGH,
+            "Source freshness is high: the material source is current and healthy.",
+        )
     if source_health == "overdue-policy-usable":
         return (
-            "Medium",
+            TrustLevel.MEDIUM,
             "Source freshness is medium: the material source is policy-usable but overdue for review.",
         )
-    return "Low", "Source freshness is low: the material source is not current and healthy."
+    return (
+        TrustLevel.LOW,
+        "Source freshness is low: the material source is not current and healthy.",
+    )
 
 
-def _lowest_indicator(scores: list[str]) -> str:
+def _lowest_indicator(scores: list[TrustLevel]) -> TrustLevel:
     if not scores:
-        return "Low"
-    order = {"Low": 0, "Medium": 1, "High": 2}
+        return TrustLevel.LOW
+    order = {TrustLevel.LOW: 0, TrustLevel.MEDIUM: 1, TrustLevel.HIGH: 2}
     return min(scores, key=lambda score: order.get(score, 0))
 
 
-def _fresh_tomato_reason(score: str) -> str:
-    if score == "High":
+def _fresh_tomato_reason(score: TrustLevel) -> str:
+    if score is TrustLevel.HIGH:
         return "Source freshness is high because all material sources are current and healthy."
-    if score == "Medium":
+    if score is TrustLevel.MEDIUM:
         return (
             "Source freshness is medium because the lowest material-source freshness score "
             "is Medium."
