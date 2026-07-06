@@ -28,6 +28,8 @@ class TrustLevel(Enum):
 
 
 CONFLICTING_AGREEMENT_STATES = {"conflict", "conflicts", "conflicting", "contradicts"}
+ELIGIBLE_REVIEW_STATES = {"approved-current", "overdue-policy-usable"}
+ELIGIBLE_SOURCE_HEALTH = {"healthy", "overdue-policy-usable"}
 LOW_RISK_EXAM_TERM_ASSUMPTION = (
     "You are asking for a general explanation of the Danish examination term, not "
     "a personal eligibility decision."
@@ -64,6 +66,13 @@ class AmbiguityDecision:
     clarification_reason: str = ""
 
 
+@dataclass(frozen=True)
+class SafetyDecision:
+    response_kind: str
+    refusal_text: str = ""
+    skip_generation: bool = False
+
+
 def answer_schema() -> dict[str, Any]:
     return {
         "type": "object",
@@ -77,7 +86,12 @@ def answer_schema() -> dict[str, Any]:
                     "properties": {
                         "kind": {
                             "type": "string",
-                            "enum": ["official_fact", "interpretation", "refusal"],
+                            "enum": [
+                                "official_fact",
+                                "interpretation",
+                                "refusal",
+                                "source_warning",
+                            ],
                         },
                         "text": {"type": "string"},
                         "citation_ids": {
@@ -239,19 +253,40 @@ class AnswerService:
             )
 
         evidence = self.retriever.retrieve(effective_question)
-        if not evidence:
-            raise AnswerValidationError(
-                "No approved official evidence was retrieved for this question."
+        eligible_evidence, blocked_evidence = _partition_evidence_by_policy(evidence)
+        safety = classify_question_safety(effective_question)
+        if not eligible_evidence:
+            answer = _unsupported_answer(
+                reason="No approved official evidence was retrieved for this question.",
+                blocked_evidence=blocked_evidence,
             )
-        generated = self.generator.generate(
-            question=effective_question,
-            normalized_question=normalized_question,
-            evidence=evidence,
-            configuration=configuration,
-            schema=answer_schema(),
+            return AnswerResult(
+                question=question,
+                normalized_question=normalized_question,
+                answer=answer,
+                model_identity=_model_identity(configuration),
+                corpus_identity=str(self.retriever.manifest["corpus_id"]),
+            )
+
+        if safety.skip_generation:
+            generated = _refusal_payload(safety, eligible_evidence)
+        else:
+            generated = self.generator.generate(
+                question=effective_question,
+                normalized_question=normalized_question,
+                evidence=eligible_evidence,
+                configuration=configuration,
+                schema=answer_schema(),
+            )
+        generated = _augment_generated_payload(
+            generated,
+            safety=safety,
+            evidence=eligible_evidence,
+            blocked_evidence=blocked_evidence,
         )
-        answer = validate_answer(generated, evidence=evidence)
-        answer["response_kind"] = "answer"
+        _reject_prohibited_safety_claims(generated, safety=safety)
+        answer = validate_answer(generated, evidence=eligible_evidence)
+        answer["response_kind"] = safety.response_kind
         answer["assumptions"] = ambiguity.assumptions
         return AnswerResult(
             question=question,
@@ -281,13 +316,14 @@ def validate_answer(
     used_citation_ids: set[str] = set()
     official_fact_count = 0
     cited_official_fact_count = 0
+    refusal_count = 0
     for index, section in enumerate(sections, start=1):
         if not isinstance(section, dict):
             raise AnswerValidationError(f"Answer section {index} was not an object.")
         kind = section.get("kind")
         text = section.get("text")
         citation_ids = section.get("citation_ids")
-        if kind not in {"official_fact", "interpretation", "refusal"}:
+        if kind not in {"official_fact", "interpretation", "refusal", "source_warning"}:
             raise AnswerValidationError(f"Answer section {index} has an unsupported kind.")
         if not isinstance(text, str) or not text.strip():
             raise AnswerValidationError(f"Answer section {index} is missing text.")
@@ -300,6 +336,16 @@ def validate_answer(
                 "Answer cited material that was not retrieved: "
                 f"{', '.join(unknown_citation_ids)}"
             )
+        ineligible_citation_ids = [
+            citation_id
+            for citation_id in normalized_citation_ids
+            if not _is_evidence_eligible(evidence_by_citation_id[citation_id])
+        ]
+        if ineligible_citation_ids:
+            raise AnswerValidationError(
+                "Answer cited material that is not eligible to support answers: "
+                f"{', '.join(sorted(ineligible_citation_ids))}"
+            )
         if kind == "official_fact":
             official_fact_count += 1
             if not normalized_citation_ids:
@@ -307,6 +353,8 @@ def validate_answer(
                     "Answer validation failed: every official fact needs an adjacent citation."
                 )
             cited_official_fact_count += 1
+        if kind == "refusal":
+            refusal_count += 1
         used_citation_ids.update(normalized_citation_ids)
         sanitized_sections.append(
             {
@@ -320,12 +368,14 @@ def validate_answer(
                 ],
             }
         )
-    if official_fact_count == 0:
-        raise AnswerValidationError("Answer validation failed: no official fact was produced.")
+    if official_fact_count == 0 and refusal_count == 0:
+        raise AnswerValidationError(
+            "Answer validation failed: no official fact or evidence-bounded refusal was produced."
+        )
 
     used_evidence = [
         evidence_by_citation_id[citation_id]
-        for citation_id in used_citation_ids
+        for citation_id in sorted(used_citation_ids)
     ]
     trust = _trust_indicators(
         official_fact_count=official_fact_count,
@@ -342,8 +392,35 @@ def validate_answer(
     }
 
 
+def classify_question_safety(question: str) -> SafetyDecision:
+    lookup = question.casefold()
+    if _asks_for_legal_advice(lookup):
+        return SafetyDecision(
+            response_kind="refusal",
+            refusal_text=(
+                "I cannot provide legal advice, legal strategy, or arguments for a "
+                "personal case. I can only answer narrower factual questions that are "
+                "supported by approved official sources."
+            ),
+            skip_generation=True,
+        )
+    if _asks_for_personal_eligibility(lookup):
+        return SafetyDecision(
+            response_kind="answer",
+            refusal_text=(
+                "I cannot decide personal eligibility or recommend an application "
+                "choice. The supported facts above are only general official "
+                "information; verify your personal case with the cited authority or a "
+                "qualified adviser."
+            ),
+        )
+    return SafetyDecision(response_kind="answer")
+
+
 def classify_question_ambiguity(question: str) -> AmbiguityDecision:
     lookup = question.casefold()
+    if _asks_about_source_conflict(lookup):
+        return AmbiguityDecision(response_kind="answer", assumptions=[])
     if _is_low_risk_exam_term_question(lookup):
         return AmbiguityDecision(
             response_kind="answer",
@@ -468,6 +545,41 @@ def _has_specific_application_context(lookup: str) -> bool:
     return any(term in lookup for term in context_terms)
 
 
+def _asks_about_source_conflict(lookup: str) -> bool:
+    source_terms = ("official page", "official source", "approved source", "source says")
+    conflict_terms = ("another", "different", "conflict", "conflicting", "which one is right")
+    return any(term in lookup for term in source_terms) and any(
+        term in lookup for term in conflict_terms
+    )
+
+
+def _asks_for_legal_advice(lookup: str) -> bool:
+    legal_advice_terms = (
+        "legal advice",
+        "legal strategy",
+        "how to argue",
+        "argue that",
+        "lawyer",
+        "appeal argument",
+        "represent me",
+    )
+    return any(term in lookup for term in legal_advice_terms)
+
+
+def _asks_for_personal_eligibility(lookup: str) -> bool:
+    eligibility_terms = (
+        "do i qualify",
+        "do i personally qualify",
+        "am i eligible",
+        "do i meet",
+        "can i get permanent residence",
+        "will i get permanent residence",
+        "should i apply",
+        "recommend whether i should apply",
+    )
+    return any(term in lookup for term in eligibility_terms)
+
+
 def _clarification_answer(decision: AmbiguityDecision) -> dict[str, Any]:
     question = decision.clarification_question
     reason = decision.clarification_reason
@@ -497,6 +609,222 @@ def _clarification_answer(decision: AmbiguityDecision) -> dict[str, Any]:
             ),
         },
     }
+
+
+def _unsupported_answer(
+    *,
+    reason: str,
+    blocked_evidence: list[dict[str, Any]],
+) -> dict[str, Any]:
+    sections = [
+        {
+            "kind": "refusal",
+            "label": "Evidence-bounded refusal",
+            "text": (
+                f"{reason} I will not substitute a generation-model fact for missing "
+                "approved official evidence. Ask a narrower question or install an "
+                "approved knowledge release that contains the required source."
+            ),
+            "citation_ids": [],
+            "citations": [],
+        }
+    ]
+    if blocked_evidence:
+        sections.append(_blocked_source_warning_section(blocked_evidence))
+    return {
+        "summary": reason,
+        "response_kind": "refusal",
+        "assumptions": [],
+        "sections": sections,
+        "citations": [],
+        "trust": {
+            "evidence_confidence": "Low",
+            "evidence_confidence_reason": (
+                "No eligible approved official material source could support a "
+                "substantive answer."
+            ),
+            "fresh_tomato_score": "Low",
+            "fresh_tomato_reason": (
+                "Source freshness is low because no current healthy material source "
+                "could be attached."
+            ),
+        },
+    }
+
+
+def _refusal_payload(
+    decision: SafetyDecision,
+    evidence: list[dict[str, Any]],
+) -> dict[str, Any]:
+    citation_ids = [
+        str(item["citation_id"])
+        for item in evidence
+        if "safety-boundary" in item.get("topic_tags", [])
+        or "evidence-boundary" in item.get("topic_tags", [])
+    ]
+    return {
+        "summary": "I need to refuse this part of the request.",
+        "sections": [
+            {
+                "kind": "refusal",
+                "text": decision.refusal_text,
+                "citation_ids": citation_ids,
+            }
+        ],
+    }
+
+
+def _augment_generated_payload(
+    payload: dict[str, Any],
+    *,
+    safety: SafetyDecision,
+    evidence: list[dict[str, Any]],
+    blocked_evidence: list[dict[str, Any]],
+) -> dict[str, Any]:
+    augmented = dict(payload)
+    sections = [dict(section) for section in augmented.get("sections", [])]
+    if safety.refusal_text and not _has_refusal_section(sections, safety.refusal_text):
+        sections.append(
+            {
+                "kind": "refusal",
+                "text": safety.refusal_text,
+                "citation_ids": [],
+            }
+        )
+    conflict_warning = _conflict_warning_section(evidence)
+    if conflict_warning:
+        sections.append(conflict_warning)
+    stale_warning = _stale_warning_section(evidence)
+    if stale_warning:
+        sections.append(stale_warning)
+    if blocked_evidence:
+        sections.append(_blocked_source_warning_section(blocked_evidence))
+    augmented["sections"] = sections
+    return augmented
+
+
+def _has_refusal_section(sections: list[dict[str, Any]], refusal_text: str) -> bool:
+    refusal_lookup = refusal_text.casefold()
+    for section in sections:
+        if section.get("kind") != "refusal":
+            continue
+        if refusal_lookup in str(section.get("text", "")).casefold():
+            return True
+    return False
+
+
+def _conflict_warning_section(evidence: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not any(_is_conflicting_evidence(item) for item in evidence):
+        return None
+    return {
+        "kind": "source_warning",
+        "text": (
+            "Retrieved approved official sources include a conflict. This answer must "
+            "not silently choose which source is right; verify the current official "
+            "authority before relying on the disputed point."
+        ),
+        "citation_ids": sorted(str(item["citation_id"]) for item in evidence),
+    }
+
+
+def _stale_warning_section(evidence: list[dict[str, Any]]) -> dict[str, Any] | None:
+    stale_ids = sorted(
+        str(item["citation_id"])
+        for item in evidence
+        if item.get("source_health") == "overdue-policy-usable"
+    )
+    if not stale_ids:
+        return None
+    return {
+        "kind": "source_warning",
+        "text": (
+            "At least one material source is policy-usable but overdue for review. "
+            "Use the supported fact only within the cited source's scope and check "
+            "the official page before relying on current logistics or deadlines."
+        ),
+        "citation_ids": stale_ids,
+    }
+
+
+def _blocked_source_warning_section(
+    blocked_evidence: list[dict[str, Any]],
+) -> dict[str, Any]:
+    blocked_descriptions = [
+        (
+            f"{item.get('citation_id', item.get('document_id', '<unknown>'))} "
+            f"({item.get('review_state', '<unknown>')}/"
+            f"{item.get('source_health', '<unknown>')}/"
+            f"{item.get('approval_state', 'approved')})"
+        )
+        for item in blocked_evidence
+    ]
+    return {
+        "kind": "source_warning",
+        "label": "Source warning",
+        "text": (
+            "Some retrieved source material was blocked by source policy and was not "
+            "sent as answer-supporting evidence: "
+            f"{', '.join(sorted(blocked_descriptions))}."
+        ),
+        "citation_ids": [],
+        "citations": [],
+    }
+
+
+def _partition_evidence_by_policy(
+    evidence: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    eligible: list[dict[str, Any]] = []
+    blocked: list[dict[str, Any]] = []
+    for item in evidence:
+        if _is_evidence_eligible(item):
+            eligible.append(item)
+        else:
+            blocked.append(item)
+    return eligible, blocked
+
+
+def _is_evidence_eligible(evidence: dict[str, Any]) -> bool:
+    return (
+        evidence.get("review_state") in ELIGIBLE_REVIEW_STATES
+        and evidence.get("source_health") in ELIGIBLE_SOURCE_HEALTH
+        and evidence.get("approval_state", "approved") == "approved"
+    )
+
+
+def _reject_prohibited_safety_claims(
+    payload: dict[str, Any],
+    *,
+    safety: SafetyDecision,
+) -> None:
+    if not safety.refusal_text:
+        return
+    answer_text = " ".join(
+        [
+            str(payload.get("summary", "")),
+            *[
+                str(section.get("text", ""))
+                for section in payload.get("sections", [])
+                if section.get("kind") != "refusal"
+            ],
+        ]
+    ).casefold()
+    prohibited_phrases = [
+        "you qualify",
+        "you do qualify",
+        "you are eligible",
+        "you should apply",
+        "you do not qualify",
+        "you are not eligible",
+        "you should argue",
+        "your legal strategy",
+    ]
+    matched = [phrase for phrase in prohibited_phrases if phrase in answer_text]
+    if matched:
+        raise AnswerValidationError(
+            "Answer validation failed: safety-sensitive request produced a prohibited "
+            f"personal or legal conclusion ({', '.join(sorted(matched))})."
+        )
 
 
 def _answer_messages(
@@ -606,7 +934,13 @@ def _trust_indicators(
         bool(official_fact_count)
         and cited_official_fact_count == official_fact_count
     )
-    if coverage_complete and not conflicting_sources:
+    if official_fact_count == 0:
+        evidence_confidence = TrustLevel.LOW
+        evidence_reason = (
+            "No official fact was produced; the response is limited to an "
+            "evidence-bounded refusal or source warning."
+        )
+    elif coverage_complete and not conflicting_sources:
         evidence_confidence = TrustLevel.HIGH
         evidence_reason = (
             f"Evidence coverage is complete for {official_fact_count} official fact(s); "
@@ -681,6 +1015,7 @@ def _section_label(kind: str) -> str:
         "official_fact": "Official fact",
         "interpretation": "Interpretation",
         "refusal": "Evidence-bounded refusal",
+        "source_warning": "Source warning",
     }
     return labels[kind]
 
