@@ -1,4 +1,5 @@
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,6 +12,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _gate(report, gate_id):
     return next(gate for gate in report["gate_results"] if gate["id"] == gate_id)
+
+
+def _copy_release_fixture(target):
+    shutil.copytree(ROOT / "config", target / "config")
+    (target / "docs").mkdir()
+    shutil.copytree(ROOT / "docs" / "progress", target / "docs" / "progress")
 
 
 class ReleaseEvaluationReportTests(unittest.TestCase):
@@ -102,6 +109,109 @@ class ReleaseEvaluationReportTests(unittest.TestCase):
 
             self.assertFalse(output_path.exists())
             json.dumps(report, sort_keys=True)
+
+    def test_missing_retrieval_evidence_marks_retrieval_gate_not_run(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fixture_root = Path(tmpdir)
+            _copy_release_fixture(fixture_root)
+            (
+                fixture_root
+                / "docs"
+                / "progress"
+                / "issue-29-hybrid-retrieval-comparison.json"
+            ).unlink()
+
+            report = generate_release_evaluation(
+                fixture_root,
+                generated_at_utc="2026-07-07T00:00:00Z",
+            )
+
+            gate = _gate(report, "retrieval-required-evidence-baseline")
+            self.assertEqual(gate["status"], "not_run")
+            self.assertEqual(gate["evaluated_status"], "not_run")
+            self.assertTrue(
+                any("missing evidence file" in failure for failure in gate["failures"]),
+                gate["failures"],
+            )
+
+    def test_malformed_retrieval_evidence_raises_runner_error(self):
+        from danish_rag.release_evaluation import ReleaseEvaluationError
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fixture_root = Path(tmpdir)
+            _copy_release_fixture(fixture_root)
+            (
+                fixture_root
+                / "docs"
+                / "progress"
+                / "issue-29-hybrid-retrieval-comparison.json"
+            ).write_text("{not json", encoding="utf-8")
+
+            with self.assertRaises(ReleaseEvaluationError):
+                generate_release_evaluation(
+                    fixture_root,
+                    generated_at_utc="2026-07-07T00:00:00Z",
+                )
+
+    def test_weakened_retrieval_evidence_fails_gate(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fixture_root = Path(tmpdir)
+            _copy_release_fixture(fixture_root)
+            evidence_path = (
+                fixture_root
+                / "docs"
+                / "progress"
+                / "issue-29-hybrid-retrieval-comparison.json"
+            )
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            evidence["candidates"]["hybrid"]["summary"]["recall_at_3"] = 0.5
+            evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+            report = generate_release_evaluation(
+                fixture_root,
+                generated_at_utc="2026-07-07T00:00:00Z",
+            )
+
+            gate = _gate(report, "retrieval-required-evidence-baseline")
+            self.assertEqual(gate["status"], "failed")
+            self.assertTrue(
+                any("below" in failure for failure in gate["failures"]),
+                gate["failures"],
+            )
+
+    def test_cli_writes_report_and_strict_mode_fails_for_blocked_release(self):
+        from danish_rag.release_evaluation import main
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "release-evaluation-current.json"
+
+            default_status = main(
+                [
+                    "--repo-root",
+                    str(ROOT),
+                    "--output",
+                    str(output_path),
+                    "--generated-at-utc",
+                    "2026-07-07T00:00:00Z",
+                ]
+            )
+            strict_status = main(
+                [
+                    "--repo-root",
+                    str(ROOT),
+                    "--output",
+                    str(output_path),
+                    "--strict",
+                    "--generated-at-utc",
+                    "2026-07-07T00:00:00Z",
+                ]
+            )
+
+            self.assertEqual(default_status, 0)
+            self.assertEqual(strict_status, 1)
+            self.assertTrue(output_path.exists())
+            written_report = json.loads(output_path.read_text(encoding="utf-8"))
+            self.assertEqual(written_report["generated_at_utc"], "2026-07-07T00:00:00Z")
 
 
 if __name__ == "__main__":
