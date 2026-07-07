@@ -293,8 +293,8 @@ class HybridRetriever:
                 """,
                 (expression,),
             ).fetchall()
-        except sqlite3.OperationalError:
-            return []
+        except sqlite3.DatabaseError as exc:
+            raise RetrievalError("Local lexical index is unavailable; re-index required.") from exc
         finally:
             connection.close()
         ranked_ids = [str(row["document_id"]) for row in rows]

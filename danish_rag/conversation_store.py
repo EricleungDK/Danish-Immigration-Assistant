@@ -7,12 +7,18 @@ import sqlite3
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 class ConversationStore:
-    def __init__(self, path: str | Path) -> None:
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        fault_injector: Callable[[str], None] | None = None,
+    ) -> None:
         self.path = Path(path)
+        self.fault_injector = fault_injector
 
     def save_answer(
         self,
@@ -57,6 +63,7 @@ class ConversationStore:
                         now,
                     ),
                 )
+                self._inject_write_fault("after_conversation_header")
             else:
                 self._require_conversation(connection, conversation_id)
 
@@ -88,6 +95,7 @@ class ConversationStore:
                     now,
                 ),
             )
+            self._inject_write_fault("after_turn_insert")
             connection.execute(
                 """
                 UPDATE conversations
@@ -128,6 +136,7 @@ class ConversationStore:
                         WHERE conversation_id = conversations.id
                     )
                 WHERE conversations.deleted_at_utc IS NULL
+                    AND COALESCE(turn_counts.turn_count, 0) > 0
                 ORDER BY conversations.updated_at_utc DESC
                 """
             ).fetchall()
@@ -336,6 +345,10 @@ class ConversationStore:
             (conversation_id,),
         ).fetchone()
         return int(row["next_turn_index"])
+
+    def _inject_write_fault(self, phase: str) -> None:
+        if self.fault_injector is not None:
+            self.fault_injector(phase)
 
 
 def _title_from_question(question: str) -> str:

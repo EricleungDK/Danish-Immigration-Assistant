@@ -190,10 +190,15 @@ def ensure_minimal_knowledge_release(data_dir: str | Path) -> dict[str, Any]:
 
 
 def load_active_release(data_dir: str | Path) -> dict[str, Any]:
-    active_path = Path(data_dir) / ACTIVE_RELEASE_FILE
+    resolved_data_dir = Path(data_dir)
+    active_path = resolved_data_dir / ACTIVE_RELEASE_FILE
     if not active_path.exists():
         raise FileNotFoundError(active_path)
-    return json.loads(active_path.read_text(encoding="utf-8"))
+    active_release = json.loads(active_path.read_text(encoding="utf-8"))
+    if not isinstance(active_release, dict):
+        raise KnowledgeReleaseError("Active release record must be a JSON object.")
+    _validate_active_release_pair(resolved_data_dir, active_release)
+    return active_release
 
 
 def load_active_documents(data_dir: str | Path) -> list[dict[str, Any]]:
@@ -539,6 +544,83 @@ def _load_active_release_file(data_dir: Path) -> dict[str, Any] | None:
     if not active_path.exists():
         return None
     return json.loads(active_path.read_text(encoding="utf-8"))
+
+
+def _validate_active_release_pair(data_dir: Path, active_release: dict[str, Any]) -> None:
+    manifest = active_release.get("manifest")
+    if not isinstance(manifest, dict):
+        raise KnowledgeReleaseError(
+            "Installed active corpus/index pair is incomplete: missing manifest."
+        )
+    release_id = str(manifest.get("knowledge_release_id", ""))
+    corpus_id = str(manifest.get("corpus_id", ""))
+    if not release_id or not corpus_id:
+        raise KnowledgeReleaseError(
+            "Installed active corpus/index pair is incomplete: missing release identity."
+        )
+
+    expected_documents_path = data_dir / "corpus" / release_id / "documents.json"
+    expected_index_path = data_dir / "index" / release_id
+    documents_path = Path(str(active_release.get("documents_path", "")))
+    index_path = Path(str(active_release.get("index_path", "")))
+    if _normalized_path(documents_path) != _normalized_path(expected_documents_path):
+        raise KnowledgeReleaseError(
+            "Installed active corpus/index pair is mismatched: documents path does not "
+            f"match active release {release_id}."
+        )
+    if _normalized_path(index_path) != _normalized_path(expected_index_path):
+        raise KnowledgeReleaseError(
+            "Installed active corpus/index pair is mismatched: index path does not "
+            f"match active release {release_id}."
+        )
+    if not documents_path.exists():
+        raise KnowledgeReleaseError(
+            "Installed active corpus/index pair is incomplete: corpus documents are missing."
+        )
+    if not index_path.exists():
+        raise KnowledgeReleaseError(
+            "Installed active corpus/index pair is incomplete: retrieval index is missing."
+        )
+
+    documents = json.loads(documents_path.read_text(encoding="utf-8"))
+    if not isinstance(documents, list):
+        raise KnowledgeReleaseError(
+            "Installed active corpus/index pair is invalid: corpus documents must be a JSON array."
+        )
+
+    metadata_path = index_path / "index-metadata.json"
+    dense_index_path = index_path / "dense-index.json"
+    lexical_index_path = index_path / "lexical.sqlite3"
+    for path, label in (
+        (metadata_path, "index metadata"),
+        (dense_index_path, "dense index"),
+        (lexical_index_path, "lexical index"),
+    ):
+        if not path.exists():
+            raise KnowledgeReleaseError(
+                f"Installed active corpus/index pair is incomplete: {label} is missing."
+            )
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    dense_index = json.loads(dense_index_path.read_text(encoding="utf-8"))
+    dense_metadata = dense_index.get("metadata") if isinstance(dense_index, dict) else None
+    if not isinstance(metadata, dict) or not isinstance(dense_metadata, dict):
+        raise KnowledgeReleaseError(
+            "Installed active corpus/index pair is invalid: index metadata is malformed."
+        )
+    for field, expected in {
+        "knowledge_release_id": release_id,
+        "corpus_identity": corpus_id,
+    }.items():
+        if metadata.get(field) != expected or dense_metadata.get(field) != expected:
+            raise KnowledgeReleaseError(
+                "Installed active corpus/index pair is mismatched: index metadata does "
+                f"not match active release {release_id}."
+            )
+
+
+def _normalized_path(path: Path) -> Path:
+    return path.expanduser().resolve(strict=False)
 
 
 def _load_index_metadata(data_dir: Path, release_id: str) -> dict[str, Any]:

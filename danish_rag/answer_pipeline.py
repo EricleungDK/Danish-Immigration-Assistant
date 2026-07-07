@@ -221,6 +221,24 @@ class LocalProviderAnswerGenerator:
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
             raise AnswerPipelineError(f"Local provider returned HTTP {exc.code}: {detail}") from exc
+        except TimeoutError as exc:
+            raise AnswerPipelineError(
+                "Local generation provider timed out while preparing the answer. "
+                "Keep the question in the composer, confirm the local provider is "
+                "running, and retry."
+            ) from exc
+        except urllib.error.URLError as exc:
+            raise AnswerPipelineError(
+                "Local generation provider is unavailable. Start the configured local "
+                f"provider at {endpoint.rstrip('/')}, confirm the selected model is "
+                "loaded, and retry."
+            ) from exc
+        except json.JSONDecodeError as exc:
+            raise AnswerPipelineError(
+                "Local generation provider returned malformed JSON before answer "
+                "validation. Confirm the configured model supports structured output "
+                "and retry."
+            ) from exc
         except Exception as exc:
             raise AnswerPipelineError(f"Local provider failed during answer generation: {exc}") from exc
 

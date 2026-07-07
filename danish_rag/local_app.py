@@ -22,6 +22,7 @@ from .answer_pipeline import (
 from .conversation_store import ConversationStore
 from .knowledge_release import (
     DEFAULT_RELEASE_CATALOG_DIR,
+    KnowledgeReleaseError,
     active_corpus_summary,
     default_data_dir,
     discover_knowledge_update,
@@ -43,7 +44,7 @@ from .provider_setup import (
     validate_provider_configuration,
     validated_configuration,
 )
-from .retrieval import HybridRetriever
+from .retrieval import HybridRetriever, RetrievalError
 from .runtime_policy import load_runtime_policy
 
 
@@ -167,10 +168,26 @@ def create_app(
         composer_error: str = "",
         active_conversation: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        ensure_minimal_knowledge_release(resolved_data_dir)
+        corpus_error = ""
+        try:
+            ensure_minimal_knowledge_release(resolved_data_dir)
+            corpus = active_corpus_summary(resolved_data_dir)
+        except Exception as exc:
+            corpus_error = _retrieval_failure_message(exc)
+            corpus = _unavailable_corpus_summary()
         configuration = _load_configuration_or_none(resolved_config_path)
         if setup_form is None:
             setup_form = configuration or _default_provider_configuration()
+        storage_error = ""
+        try:
+            conversations = store.list_conversations()
+        except Exception as exc:
+            storage_error = _storage_failure_message("opening conversation history", exc)
+            conversations = []
+        try:
+            pending_update = load_pending_knowledge_update(resolved_data_dir)
+        except Exception:
+            pending_update = None
         return {
             "configuration": configuration.to_public_dict() if configuration else None,
             "providers": provider_options(),
@@ -180,9 +197,11 @@ def create_app(
             "active_question": active_question,
             "composer_error": composer_error,
             "active_conversation": active_conversation,
-            "conversations": store.list_conversations(),
-            "corpus": active_corpus_summary(resolved_data_dir),
-            "pending_update": load_pending_knowledge_update(resolved_data_dir),
+            "conversations": conversations,
+            "storage_error": storage_error,
+            "corpus": corpus,
+            "corpus_error": corpus_error,
+            "pending_update": pending_update,
         }
 
     @app.get("/", response_class=HTMLResponse)
@@ -191,8 +210,15 @@ def create_app(
 
     @app.get("/conversations/export.json")
     async def export_conversations() -> Response:
+        try:
+            payload = store.export_conversations()
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=_storage_failure_message("exporting conversation records", exc),
+            ) from exc
         return _json_download_response(
-            store.export_conversations(),
+            payload,
             filename="danish-rag-conversation-records.json",
         )
 
@@ -202,6 +228,11 @@ def create_app(
             record = store.get_conversation(conversation_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Conversation not found.") from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=_storage_failure_message("opening a conversation record", exc),
+            ) from exc
         return render_home(active_conversation=record)
 
     @app.get("/conversations/{conversation_id}/export.json")
@@ -210,6 +241,11 @@ def create_app(
             payload = store.export_conversation(conversation_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Conversation not found.") from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=_storage_failure_message("exporting conversation records", exc),
+            ) from exc
         return _json_download_response(
             payload,
             filename=f"danish-rag-conversation-{conversation_id}.json",
@@ -222,6 +258,11 @@ def create_app(
             store.delete_conversation(conversation_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Conversation not found.") from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=_storage_failure_message("deleting conversation records", exc),
+            ) from exc
         return RedirectResponse("/", status_code=303)
 
     @app.post("/conversations/delete-all")
@@ -234,18 +275,30 @@ def create_app(
                 status_code=422,
                 detail='Type "DELETE ALL LOCAL CONVERSATIONS" to delete all records.',
             )
-        store.delete_all_conversations()
+        try:
+            store.delete_all_conversations()
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=_storage_failure_message("deleting conversation records", exc),
+            ) from exc
         return RedirectResponse("/", status_code=303)
 
     @app.post("/knowledge-updates/check")
     async def check_knowledge_updates(request: Request) -> RedirectResponse:
         _validate_state_changing_request(request)
-        ensure_minimal_knowledge_release(resolved_data_dir)
-        update = discover_knowledge_update(
-            resolved_data_dir,
-            resolved_release_catalog_dir,
-        )
-        save_pending_knowledge_update(resolved_data_dir, update)
+        try:
+            ensure_minimal_knowledge_release(resolved_data_dir)
+            update = discover_knowledge_update(
+                resolved_data_dir,
+                resolved_release_catalog_dir,
+            )
+            save_pending_knowledge_update(resolved_data_dir, update)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=_knowledge_update_failure_message("checking", exc),
+            ) from exc
         return RedirectResponse("/", status_code=303)
 
     @app.post("/knowledge-updates/dismiss")
@@ -259,15 +312,27 @@ def create_app(
         _validate_state_changing_request(request)
         form_data = await _read_urlencoded_form(request)
         requested_release_id = form_data.get("release_id", "").strip()
-        pending_update = load_pending_knowledge_update(resolved_data_dir)
+        try:
+            pending_update = load_pending_knowledge_update(resolved_data_dir)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=_knowledge_update_failure_message("loading pending update", exc),
+            ) from exc
         if not pending_update:
             raise HTTPException(status_code=409, detail="No reviewed knowledge update is pending.")
         pending_release_id = pending_update["release"]["knowledge_release_id"]
         if requested_release_id != pending_release_id:
             raise HTTPException(status_code=409, detail="Requested release is not pending review.")
         release_dir = resolved_release_catalog_dir / requested_release_id
-        install_knowledge_release(resolved_data_dir, release_dir=release_dir)
-        dismiss_pending_knowledge_update(resolved_data_dir)
+        try:
+            install_knowledge_release(resolved_data_dir, release_dir=release_dir)
+            dismiss_pending_knowledge_update(resolved_data_dir)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=_knowledge_update_failure_message("installing", exc),
+            ) from exc
         return RedirectResponse("/", status_code=303)
 
     @app.get("/vendor/htmx.min.js", include_in_schema=False)
@@ -337,13 +402,31 @@ def create_app(
                 ),
             )
         active_conversation_for_error = None
+        conversation_turns = None
+        if conversation_id:
+            try:
+                active_conversation_for_error = store.get_conversation(conversation_id)
+                conversation_turns = active_conversation_for_error["turns"]
+            except KeyError:
+                return render_ask_response(
+                    request,
+                    status_code=404,
+                    active_question=question,
+                    composer_error="Conversation not found. Start a new conversation and retry.",
+                )
+            except Exception as exc:
+                return render_ask_response(
+                    request,
+                    status_code=503,
+                    active_question=question,
+                    composer_error=_storage_failure_message(
+                        "opening a conversation record",
+                        exc,
+                    ),
+                )
         try:
             ensure_minimal_knowledge_release(resolved_data_dir)
             retriever = HybridRetriever.from_data_dir(resolved_data_dir)
-            conversation_turns = None
-            if conversation_id:
-                active_conversation_for_error = store.get_conversation(conversation_id)
-                conversation_turns = active_conversation_for_error["turns"]
             result = AnswerService(
                 retriever=retriever,
                 generator=generator,
@@ -352,27 +435,35 @@ def create_app(
                 configuration,
                 conversation_turns=conversation_turns,
             )
-            record = store.save_answer(
-                question=result.question,
-                normalized_question=result.normalized_question,
-                answer=result.answer,
-                model_identity=result.model_identity,
-                corpus_identity=result.corpus_identity,
-                conversation_id=conversation_id,
-            )
-        except KeyError:
-            return render_ask_response(
-                request,
-                status_code=404,
-                active_question=question,
-                composer_error="Conversation not found. Start a new conversation and retry.",
-            )
+            try:
+                record = store.save_answer(
+                    question=result.question,
+                    normalized_question=result.normalized_question,
+                    answer=result.answer,
+                    model_identity=result.model_identity,
+                    corpus_identity=result.corpus_identity,
+                    conversation_id=conversation_id,
+                )
+            except Exception as exc:
+                return render_ask_response(
+                    request,
+                    status_code=503,
+                    active_question=question,
+                    active_conversation=active_conversation_for_error,
+                    composer_error=_storage_failure_message(
+                        "saving conversation records",
+                        exc,
+                    ),
+                )
         except AnswerValidationError as exc:
             return render_ask_response(
                 request,
                 status_code=422,
                 active_question=question,
-                composer_error=str(exc),
+                composer_error=(
+                    "Structured answer validation failed; no answer was saved. "
+                    f"{exc}"
+                ),
                 active_conversation=active_conversation_for_error,
             )
         except AnswerPipelineError as exc:
@@ -380,7 +471,21 @@ def create_app(
                 request,
                 status_code=503,
                 active_question=question,
-                composer_error=str(exc),
+                composer_error=_provider_failure_message(exc),
+                active_conversation=active_conversation_for_error,
+            )
+        except (
+            FileNotFoundError,
+            json.JSONDecodeError,
+            KeyError,
+            KnowledgeReleaseError,
+            RetrievalError,
+        ) as exc:
+            return render_ask_response(
+                request,
+                status_code=503,
+                active_question=question,
+                composer_error=_retrieval_failure_message(exc),
                 active_conversation=active_conversation_for_error,
             )
         except Exception as exc:
@@ -404,11 +509,18 @@ def create_app(
     @app.get("/status")
     async def status() -> dict[str, Any]:
         configuration = _load_configuration_or_none(resolved_config_path)
-        ensure_minimal_knowledge_release(resolved_data_dir)
+        corpus_error = ""
+        try:
+            ensure_minimal_knowledge_release(resolved_data_dir)
+            corpus = active_corpus_summary(resolved_data_dir)
+        except Exception as exc:
+            corpus_error = _retrieval_failure_message(exc)
+            corpus = _unavailable_corpus_summary()
         return {
             "configured": configuration is not None,
             "configuration": configuration.to_public_dict() if configuration else None,
-            "corpus": active_corpus_summary(resolved_data_dir),
+            "corpus": corpus,
+            "corpus_error": corpus_error,
         }
 
     return app
@@ -492,6 +604,49 @@ def _host_without_port(host_header: str) -> str:
 
 def _normalize_netloc(value: str) -> str:
     return value.strip().lower()
+
+
+def _provider_failure_message(exc: BaseException) -> str:
+    return (
+        "Local generation provider failed while preparing the answer; no answer was "
+        "saved. Check that the configured local provider is running and that the "
+        f"selected model can return structured JSON, then retry. Detail: {exc}"
+    )
+
+
+def _retrieval_failure_message(exc: BaseException) -> str:
+    return (
+        "Local retrieval index is unavailable for the active corpus; no answer was "
+        "generated or saved. Reinstall or rebuild the active knowledge release, then "
+        f"retry. Detail: {exc}"
+    )
+
+
+def _storage_failure_message(action: str, exc: BaseException) -> str:
+    return (
+        f"Local conversation storage failed while {action}; no persistence, deletion, "
+        "or export success was reported. Check local disk access and retry. "
+        f"Detail: {exc}"
+    )
+
+
+def _knowledge_update_failure_message(action: str, exc: BaseException) -> str:
+    return (
+        f"Knowledge update failed while {action}; the previously active corpus/index "
+        f"pair remains the only trusted active data. Detail: {exc}"
+    )
+
+
+def _unavailable_corpus_summary() -> dict[str, str]:
+    return {
+        "knowledge_release_id": "Unavailable",
+        "corpus_id": "Unavailable",
+        "source_registry_version": "Unavailable",
+        "created_at_utc": "Unavailable",
+        "embedding_model": "Unavailable",
+        "embedding_vector_dimensions": "Unavailable",
+        "index_schema_version": "Unavailable",
+    }
 
 
 def _json_download_response(payload: dict[str, Any], *, filename: str) -> Response:
