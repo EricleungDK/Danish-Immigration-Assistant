@@ -14,6 +14,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLED_MINIMAL_RELEASE = ROOT / "data" / "knowledge_releases" / "kr-2026-07-06.1"
 ACTIVE_RELEASE_FILE = "active-release.json"
+APPLICATION_VERSION = "0.1.0"
 
 
 class KnowledgeReleaseError(ValueError):
@@ -125,6 +126,20 @@ def active_corpus_summary(data_dir: str | Path) -> dict[str, str]:
     }
 
 
+def verify_knowledge_release(
+    release_dir: str | Path,
+    *,
+    application_version: str = APPLICATION_VERSION,
+) -> dict[str, Any]:
+    """Verify a publishable knowledge-release directory against the release contract."""
+
+    resolved_release_dir = Path(release_dir)
+    manifest = _load_manifest(resolved_release_dir)
+    documents = _load_release_documents(resolved_release_dir, manifest)
+    _validate_release(manifest, documents, application_version=application_version)
+    return {"manifest": manifest, "documents": documents}
+
+
 def _load_manifest(release_dir: Path) -> dict[str, Any]:
     manifest_path = release_dir / "manifest.json"
     if not manifest_path.exists():
@@ -153,7 +168,12 @@ def _load_release_documents(
     return [dict(document) for document in documents]
 
 
-def _validate_release(manifest: dict[str, Any], documents: list[dict[str, Any]]) -> None:
+def _validate_release(
+    manifest: dict[str, Any],
+    documents: list[dict[str, Any]],
+    *,
+    application_version: str = APPLICATION_VERSION,
+) -> None:
     required_manifest_fields = {
         "manifest_schema_version",
         "knowledge_release_id",
@@ -171,14 +191,58 @@ def _validate_release(manifest: dict[str, Any], documents: list[dict[str, Any]])
         raise KnowledgeReleaseError(f"Release manifest missing field(s): {', '.join(missing)}")
     if manifest["manifest_schema_version"] != "1.0":
         raise KnowledgeReleaseError("Unsupported manifest schema version.")
+    if _version_tuple(manifest["minimum_application_version"]) > _version_tuple(
+        application_version
+    ):
+        raise KnowledgeReleaseError(
+            "Knowledge release requires application "
+            f"{manifest['minimum_application_version']} or newer."
+        )
+    integrity = manifest.get("integrity")
+    if not isinstance(integrity, dict):
+        raise KnowledgeReleaseError("Release manifest missing integrity evidence.")
+    for field in {
+        "hash_algorithm",
+        "signature_algorithm",
+        "signature",
+        "trust_root_id",
+    }:
+        if not integrity.get(field):
+            raise KnowledgeReleaseError(
+                f"Release manifest missing integrity evidence: {field}."
+            )
+    if integrity["hash_algorithm"] != "sha256":
+        raise KnowledgeReleaseError("Unsupported integrity hash algorithm.")
     source_ids = set()
     for source in manifest["sources"]:
+        provenance_fields = {
+            "source_id",
+            "publisher",
+            "official_url",
+            "final_url",
+            "topic",
+            "language",
+            "last_checked_at_utc",
+            "source_content_sha256",
+            "normalized_document_sha256",
+            "extraction_schema_version",
+        }
+        missing_provenance = sorted(provenance_fields - set(source))
+        if missing_provenance:
+            raise KnowledgeReleaseError(
+                f"Source {source.get('source_id', '<unknown>')} missing provenance "
+                f"field(s): {', '.join(missing_provenance)}"
+            )
         state = source.get("review_state")
         if state not in {"approved-current", "overdue-policy-usable"}:
             raise KnowledgeReleaseError(
                 f"Source {source.get('source_id', '<unknown>')} is not release-eligible."
             )
         if not source.get("reviewers"):
+            raise KnowledgeReleaseError(
+                f"Source {source.get('source_id', '<unknown>')} lacks human reviewer evidence."
+            )
+        if not source.get("reviewed_at_utc"):
             raise KnowledgeReleaseError(
                 f"Source {source.get('source_id', '<unknown>')} lacks human reviewer evidence."
             )
@@ -212,6 +276,16 @@ def _validate_release(manifest: dict[str, Any], documents: list[dict[str, Any]])
             raise KnowledgeReleaseError(
                 f"Document {document['document_id']} is not approved for answer support."
             )
+        if document.get("approval_state") != "approved":
+            raise KnowledgeReleaseError(
+                f"Document {document['document_id']} is missing approval evidence."
+            )
+        for provenance_field in {"official_url", "final_url", "publisher"}:
+            if not document.get(provenance_field):
+                raise KnowledgeReleaseError(
+                    f"Document {document['document_id']} missing provenance "
+                    f"field: {provenance_field}."
+                )
 
 
 def _documents_artifact(manifest: dict[str, Any]) -> dict[str, Any]:
@@ -249,3 +323,12 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: file.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _version_tuple(version: str) -> tuple[int, ...]:
+    parts: list[int] = []
+    for part in str(version).split("."):
+        if not part.isdigit():
+            break
+        parts.append(int(part))
+    return tuple(parts or [0])
