@@ -21,9 +21,15 @@ from .answer_pipeline import (
 )
 from .conversation_store import ConversationStore
 from .knowledge_release import (
+    DEFAULT_RELEASE_CATALOG_DIR,
     active_corpus_summary,
     default_data_dir,
+    discover_knowledge_update,
+    dismiss_pending_knowledge_update,
     ensure_minimal_knowledge_release,
+    install_knowledge_release,
+    load_pending_knowledge_update,
+    save_pending_knowledge_update,
 )
 from .provider_setup import (
     CapabilityTestResult,
@@ -56,12 +62,16 @@ def create_app(
     answer_generator: Any | None = None,
     capability_tester: Callable[[ProviderConfiguration], CapabilityTestResult | dict[str, Any]]
     | None = None,
+    release_catalog_dir: str | Path | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Danish Immigration RAG")
     app.mount("/static", StaticFiles(directory=WEB_ROOT / "static"), name="static")
 
     resolved_config_path = Path(config_path) if config_path else default_config_path()
     resolved_data_dir = Path(data_dir) if data_dir else default_data_dir()
+    resolved_release_catalog_dir = (
+        Path(release_catalog_dir) if release_catalog_dir else DEFAULT_RELEASE_CATALOG_DIR
+    )
     tester = capability_tester or ProviderCapabilityTester()
     generator = answer_generator or LocalProviderAnswerGenerator()
     store = ConversationStore(resolved_data_dir / "conversations.sqlite3")
@@ -172,6 +182,7 @@ def create_app(
             "active_conversation": active_conversation,
             "conversations": store.list_conversations(),
             "corpus": active_corpus_summary(resolved_data_dir),
+            "pending_update": load_pending_knowledge_update(resolved_data_dir),
         }
 
     @app.get("/", response_class=HTMLResponse)
@@ -224,6 +235,39 @@ def create_app(
                 detail='Type "DELETE ALL LOCAL CONVERSATIONS" to delete all records.',
             )
         store.delete_all_conversations()
+        return RedirectResponse("/", status_code=303)
+
+    @app.post("/knowledge-updates/check")
+    async def check_knowledge_updates(request: Request) -> RedirectResponse:
+        _validate_state_changing_request(request)
+        ensure_minimal_knowledge_release(resolved_data_dir)
+        update = discover_knowledge_update(
+            resolved_data_dir,
+            resolved_release_catalog_dir,
+        )
+        save_pending_knowledge_update(resolved_data_dir, update)
+        return RedirectResponse("/", status_code=303)
+
+    @app.post("/knowledge-updates/dismiss")
+    async def dismiss_knowledge_update(request: Request) -> RedirectResponse:
+        _validate_state_changing_request(request)
+        dismiss_pending_knowledge_update(resolved_data_dir)
+        return RedirectResponse("/", status_code=303)
+
+    @app.post("/knowledge-updates/install")
+    async def install_knowledge_update(request: Request) -> RedirectResponse:
+        _validate_state_changing_request(request)
+        form_data = await _read_urlencoded_form(request)
+        requested_release_id = form_data.get("release_id", "").strip()
+        pending_update = load_pending_knowledge_update(resolved_data_dir)
+        if not pending_update:
+            raise HTTPException(status_code=409, detail="No reviewed knowledge update is pending.")
+        pending_release_id = pending_update["release"]["knowledge_release_id"]
+        if requested_release_id != pending_release_id:
+            raise HTTPException(status_code=409, detail="Requested release is not pending review.")
+        release_dir = resolved_release_catalog_dir / requested_release_id
+        install_knowledge_release(resolved_data_dir, release_dir=release_dir)
+        dismiss_pending_knowledge_update(resolved_data_dir)
         return RedirectResponse("/", status_code=303)
 
     @app.get("/vendor/htmx.min.js", include_in_schema=False)

@@ -267,6 +267,58 @@ textarea:focus-visible {
   padding: 0.55rem 0.6rem;
 }
 
+.update-check-form {
+  margin: 0.9rem 0 0;
+}
+
+.update-check-form button,
+.update-actions button {
+  width: 100%;
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  background: var(--green);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0.55rem 0.65rem;
+}
+
+.update-review {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0.9rem;
+}
+
+.update-review h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.update-source-list {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.45rem 0 0;
+  padding-left: 1rem;
+}
+
+.update-actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.update-actions form {
+  margin: 0;
+}
+
+.update-actions .link-button {
+  background: transparent;
+  color: var(--blue);
+}
+
 .runtime-list div {
   display: grid;
   gap: 0.1rem;

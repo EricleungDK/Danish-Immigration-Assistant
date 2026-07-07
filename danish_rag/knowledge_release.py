@@ -13,7 +13,9 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLED_MINIMAL_RELEASE = ROOT / "data" / "knowledge_releases" / "kr-2026-07-06.1"
+DEFAULT_RELEASE_CATALOG_DIR = ROOT / "data" / "knowledge_releases"
 ACTIVE_RELEASE_FILE = "active-release.json"
+PENDING_UPDATE_FILE = "pending-knowledge-update.json"
 APPLICATION_VERSION = "0.1.0"
 
 
@@ -33,6 +35,16 @@ def install_minimal_knowledge_release(
     release_dir: str | Path = BUNDLED_MINIMAL_RELEASE,
 ) -> dict[str, Any]:
     """Install the bundled minimal reviewed release and build its local hybrid index."""
+
+    return install_knowledge_release(data_dir, release_dir=release_dir)
+
+
+def install_knowledge_release(
+    data_dir: str | Path,
+    *,
+    release_dir: str | Path,
+) -> dict[str, Any]:
+    """Install a verified reviewed knowledge release and build its local hybrid index."""
 
     resolved_data_dir = Path(data_dir)
     resolved_release_dir = Path(release_dir)
@@ -123,6 +135,151 @@ def active_corpus_summary(data_dir: str | Path) -> dict[str, str]:
         "corpus_id": str(manifest["corpus_id"]),
         "source_registry_version": str(manifest["source_registry_version"]),
         "created_at_utc": str(manifest["created_at_utc"]),
+    }
+
+
+def discover_knowledge_update(
+    data_dir: str | Path,
+    release_catalog_dir: str | Path = DEFAULT_RELEASE_CATALOG_DIR,
+    *,
+    application_version: str = APPLICATION_VERSION,
+) -> dict[str, Any] | None:
+    """Find the newest compatible reviewed release without installing artifacts."""
+
+    active = load_active_release(data_dir)
+    active_manifest = active["manifest"]
+    active_release_id = str(active_manifest["knowledge_release_id"])
+    active_created_at = str(active_manifest["created_at_utc"])
+    candidates: list[dict[str, Any]] = []
+    catalog = Path(release_catalog_dir)
+    if not catalog.exists():
+        return None
+
+    for release_dir in sorted(path for path in catalog.iterdir() if path.is_dir()):
+        try:
+            verified = verify_knowledge_release(
+                release_dir,
+                application_version=application_version,
+            )
+        except (KnowledgeReleaseError, OSError, json.JSONDecodeError):
+            continue
+        manifest = verified["manifest"]
+        release_id = str(manifest["knowledge_release_id"])
+        created_at = str(manifest["created_at_utc"])
+        if release_id == active_release_id:
+            continue
+        if (created_at, release_id) <= (active_created_at, active_release_id):
+            continue
+        candidates.append(
+            _update_summary(
+                active_manifest=active_manifest,
+                manifest=manifest,
+                documents=verified["documents"],
+                application_version=application_version,
+            )
+        )
+
+    if not candidates:
+        return None
+    return max(
+        candidates,
+        key=lambda update: (
+            update["release"]["created_at_utc"],
+            update["release"]["knowledge_release_id"],
+        ),
+    )
+
+
+def save_pending_knowledge_update(
+    data_dir: str | Path,
+    update: dict[str, Any] | None,
+) -> None:
+    path = Path(data_dir) / PENDING_UPDATE_FILE
+    if update is None:
+        dismiss_pending_knowledge_update(data_dir)
+        return
+    _write_json_atomic(update, path)
+
+
+def load_pending_knowledge_update(data_dir: str | Path) -> dict[str, Any] | None:
+    path = Path(data_dir) / PENDING_UPDATE_FILE
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def dismiss_pending_knowledge_update(data_dir: str | Path) -> None:
+    path = Path(data_dir) / PENDING_UPDATE_FILE
+    if path.exists():
+        path.unlink()
+
+
+def _update_summary(
+    *,
+    active_manifest: dict[str, Any],
+    manifest: dict[str, Any],
+    documents: list[dict[str, Any]],
+    application_version: str,
+) -> dict[str, Any]:
+    active_sources = {
+        str(source["source_id"]): source for source in active_manifest.get("sources", [])
+    }
+    candidate_sources = {
+        str(source["source_id"]): source for source in manifest.get("sources", [])
+    }
+    added = sorted(set(candidate_sources) - set(active_sources))
+    removed = sorted(set(active_sources) - set(candidate_sources))
+    updated = sorted(
+        source_id
+        for source_id in set(active_sources) & set(candidate_sources)
+        if _source_change_fingerprint(active_sources[source_id])
+        != _source_change_fingerprint(candidate_sources[source_id])
+    )
+    artifact = _documents_artifact(manifest)
+    return {
+        "release": {
+            "knowledge_release_id": str(manifest["knowledge_release_id"]),
+            "corpus_id": str(manifest["corpus_id"]),
+            "source_registry_version": str(manifest["source_registry_version"]),
+            "created_at_utc": str(manifest["created_at_utc"]),
+        },
+        "compatibility": {
+            "status": "compatible",
+            "minimum_application_version": str(manifest["minimum_application_version"]),
+            "application_version": application_version,
+        },
+        "reviewed_source_changes": {
+            "added": len(added),
+            "updated": len(updated),
+            "removed": len(removed),
+            "added_sources": [_source_summary(candidate_sources[source_id]) for source_id in added],
+            "updated_sources": [
+                _source_summary(candidate_sources[source_id]) for source_id in updated
+            ],
+            "removed_sources": [_source_summary(active_sources[source_id]) for source_id in removed],
+        },
+        "expected_local_indexing_work": {
+            "document_count": len(documents),
+            "artifact_bytes": int(artifact["bytes"]),
+            "work": "copy reviewed corpus artifact and rebuild local hybrid index",
+        },
+    }
+
+
+def _source_change_fingerprint(source: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(source.get("source_content_sha256", "")),
+        str(source.get("normalized_document_sha256", "")),
+        str(source.get("reviewed_at_utc", "")),
+    )
+
+
+def _source_summary(source: dict[str, Any]) -> dict[str, str]:
+    return {
+        "source_id": str(source["source_id"]),
+        "title": str(source.get("title", source["source_id"])),
+        "publisher": str(source.get("publisher", "")),
+        "topic": str(source.get("topic", "")),
     }
 
 
