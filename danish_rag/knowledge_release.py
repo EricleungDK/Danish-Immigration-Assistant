@@ -34,21 +34,32 @@ def install_minimal_knowledge_release(
     data_dir: str | Path,
     *,
     release_dir: str | Path = BUNDLED_MINIMAL_RELEASE,
+    embedding_model: str | None = None,
+    fault_injector: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Install the bundled minimal reviewed release and build its local hybrid index."""
 
-    return install_knowledge_release(data_dir, release_dir=release_dir)
+    return install_knowledge_release(
+        data_dir,
+        release_dir=release_dir,
+        embedding_model=embedding_model,
+        fault_injector=fault_injector,
+    )
 
 
 def install_knowledge_release(
     data_dir: str | Path,
     *,
     release_dir: str | Path,
+    embedding_model: str | None = None,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
     fault_injector: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Install a verified reviewed knowledge release and build its local hybrid index."""
 
+    from .retrieval import embedding_model_profile
+
+    embedding_profile = embedding_model_profile(embedding_model)
     resolved_data_dir = Path(data_dir)
     resolved_release_dir = Path(release_dir)
     progress = _InstallProgress(progress_callback)
@@ -63,7 +74,15 @@ def install_knowledge_release(
     documents = verified["documents"]
     release_id = str(manifest["knowledge_release_id"])
     active = _load_active_release_file(resolved_data_dir)
-    if active and active.get("manifest", {}).get("knowledge_release_id") == release_id:
+    if (
+        active
+        and active.get("manifest", {}).get("knowledge_release_id") == release_id
+        and _active_index_matches_embedding_model(
+            resolved_data_dir,
+            release_id,
+            embedding_profile["name"],
+        )
+    ):
         try:
             progress.report("already_active", "Knowledge release is already active.", 100)
             return {
@@ -97,6 +116,7 @@ def install_knowledge_release(
         staging_dir,
         documents,
         manifest=manifest,
+        embedding_model=str(embedding_profile["name"]),
         progress_callback=progress.report_from_event,
         fault_injector=fault_injector,
     )
@@ -122,6 +142,7 @@ def install_knowledge_release(
         active_release=staged_active_release,
         documents=documents,
         dense_index=dense_index,
+        embedding_model=str(embedding_profile["name"]),
     )
 
     progress.report("activation", "Activating verified corpus and local index.", 95)
@@ -187,11 +208,15 @@ def load_active_documents(data_dir: str | Path) -> list[dict[str, Any]]:
 def active_corpus_summary(data_dir: str | Path) -> dict[str, str]:
     active = load_active_release(data_dir)
     manifest = active["manifest"]
+    index = _load_index_metadata(Path(data_dir), str(manifest["knowledge_release_id"]))
     return {
         "knowledge_release_id": str(manifest["knowledge_release_id"]),
         "corpus_id": str(manifest["corpus_id"]),
         "source_registry_version": str(manifest["source_registry_version"]),
         "created_at_utc": str(manifest["created_at_utc"]),
+        "embedding_model": str(index["embedding_model"]),
+        "embedding_vector_dimensions": str(index["vector_dimensions"]),
+        "index_schema_version": str(index["schema_version"]),
     }
 
 
@@ -519,6 +544,18 @@ def _load_active_release_file(data_dir: Path) -> dict[str, Any] | None:
 def _load_index_metadata(data_dir: Path, release_id: str) -> dict[str, Any]:
     metadata_path = data_dir / "index" / release_id / "index-metadata.json"
     return json.loads(metadata_path.read_text(encoding="utf-8"))
+
+
+def _active_index_matches_embedding_model(
+    data_dir: Path,
+    release_id: str,
+    embedding_model: str,
+) -> bool:
+    try:
+        index = _load_index_metadata(data_dir, release_id)
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        return False
+    return index.get("embedding_model") == embedding_model
 
 
 class _InstallProgress:

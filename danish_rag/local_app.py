@@ -404,9 +404,11 @@ def create_app(
     @app.get("/status")
     async def status() -> dict[str, Any]:
         configuration = _load_configuration_or_none(resolved_config_path)
+        ensure_minimal_knowledge_release(resolved_data_dir)
         return {
             "configured": configuration is not None,
             "configuration": configuration.to_public_dict() if configuration else None,
+            "corpus": active_corpus_summary(resolved_data_dir),
         }
 
     return app

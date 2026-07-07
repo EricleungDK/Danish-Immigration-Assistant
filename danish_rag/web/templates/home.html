@@ -79,6 +79,14 @@
             <dt>Registry</dt>
             <dd>{{ corpus.source_registry_version }}</dd>
           </div>
+          <div>
+            <dt>Embedding model</dt>
+            <dd>{{ corpus.embedding_model }}</dd>
+          </div>
+          <div>
+            <dt>Index schema</dt>
+            <dd>{{ corpus.index_schema_version }}</dd>
+          </div>
         </dl>
         <form class="update-check-form" method="post" action="/knowledge-updates/check">
           <button type="submit">Check for knowledge updates</button>
