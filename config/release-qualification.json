@@ -1,0 +1,349 @@
+{
+  "qualification_id": "mvp-release-qualification-issue-25",
+  "version": "0.1.0-blocked",
+  "issue": "https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/25",
+  "parent_prd_issue": "https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/1",
+  "qualified_at_utc": "2026-07-07T00:00:00Z",
+  "qualification_status": "blocked",
+  "release_decision": "do-not-release",
+  "decision_summary": "The local application has a documented release candidate package and passing slice-level evidence, but MVP release is blocked because the quality bar and usability validation still require human approval, the full release evaluation runner is not implemented, the supported-environment critical journey matrix is incomplete, and the current retrieval baseline is below the candidate release threshold.",
+  "distribution": {
+    "kind": "local-python-web-application",
+    "release_candidate_version": "0.1.0-rc.1",
+    "package_status": "documented-blocked-release-candidate",
+    "included_paths": [
+      "danish_rag/",
+      "config/runtime-policy.json",
+      "config/evaluation-quality-bar.json",
+      "config/release-qualification.json",
+      "data/knowledge_releases/kr-2026-07-06.1/",
+      "docs/runtime-baseline.md",
+      "docs/source-governance.md",
+      "docs/evaluation-quality-bar.md",
+      "docs/release-qualification.md",
+      "requirements.txt",
+      "package.json",
+      "package-lock.json"
+    ],
+    "excluded_user_data": [
+      ".venv/",
+      "__pycache__/",
+      "local conversation stores",
+      "local provider configuration",
+      "derived local indexes",
+      "production-user questions",
+      "production-user answers"
+    ],
+    "install_steps": [
+      "python3 -m venv .venv",
+      ".venv/bin/python -m pip install -r requirements.txt"
+    ],
+    "launch_command": ".venv/bin/python -m uvicorn danish_rag.local_app:create_app --factory --host 127.0.0.1 --port 8000"
+  },
+  "runtime": {
+    "policy_path": "config/runtime-policy.json",
+    "application_process_model": "single-local-python-process",
+    "default_bind_host": "127.0.0.1",
+    "default_bind_port": 8000,
+    "default_provider_endpoint": "http://127.0.0.1:11434",
+    "initial_provider": "ollama",
+    "minimum_provider_version": "0.30.6",
+    "generation_model": "gemma4:12b",
+    "embedding_model": "embeddinggemma",
+    "answer_path_allows_outbound_requests": false,
+    "application_code_updates": "manual",
+    "knowledge_release_updates": "explicit-user-approved",
+    "account_required_for_mvp": false,
+    "cloud_history_required_for_mvp": false,
+    "remote_inference_credentials_required_for_mvp": false,
+    "provider_credentials_required_for_mvp": false
+  },
+  "quality_bar": {
+    "quality_bar_id": "mvp-evaluation-quality-bar-issue-7",
+    "version": "0.1.0-candidate",
+    "approval_required": true,
+    "approval_status": "candidate-ready-for-human-approval",
+    "path": "config/evaluation-quality-bar.json",
+    "document_path": "docs/evaluation-quality-bar.md",
+    "threshold_weakening_requires_new_version_and_human_approval": true
+  },
+  "evaluation": {
+    "dataset_id": "di-rag-eval-set-v0.1-candidate",
+    "dataset_version": "0.1.0-candidate",
+    "dataset_path": "data/evaluation/evaluation-set-v0.1-candidate.json",
+    "case_count": 20,
+    "uses_production_user_questions": false,
+    "retrieval_and_final_answer_evaluation_separate": true,
+    "metrics_published": [
+      "retrieval-required-evidence-recall-at-3",
+      "retrieval-critical-case-recall-at-3",
+      "retrieval-blocked-source-violations",
+      "retrieval-forbidden-result-violations",
+      "official-fact-citation-coverage",
+      "citation-correctness",
+      "unsupported-claim-rate",
+      "required-fact-coverage",
+      "clarify-answer-refuse-behavior",
+      "trust-indicator-correctness",
+      "fresh-tomato-min-material-source-rule",
+      "privacy-network-boundary",
+      "update-rollback-success",
+      "accessibility-conformance",
+      "reliability-critical-journeys",
+      "provider-model-corpus-identity",
+      "environment-matrix-critical-journeys",
+      "performance-runtime-and-indexing-baseline"
+    ]
+  },
+  "performance": {
+    "threshold_status": "pending-human-approval",
+    "release_gate": "Blocked until human-approved performance thresholds exist and the supported-environment matrix records response and indexing measurements.",
+    "baseline_results": {
+      "structured_completion_ms": 25805.935,
+      "dense_mean_query_latency_ms": 128.253,
+      "dense_mean_warm_retrieval_latency_ms": 48.791,
+      "dense_indexing_wall_time_ms": 4714.887,
+      "dense_index_size_bytes": 151360,
+      "process_peak_resident_memory_mb": 87.492
+    }
+  },
+  "active_corpus_requirements": {
+    "knowledge_release_id": "kr-2026-07-06.1",
+    "manifest_path": "data/knowledge_releases/kr-2026-07-06.1/manifest.json",
+    "source_registry_version": "sr-2026-07-06.1",
+    "corpus_schema_version": "1.0",
+    "manifest_schema_version": "1.0",
+    "minimum_application_version": "0.1.0",
+    "allowed_answer_supporting_source_states": [
+      "approved-current",
+      "overdue-policy-usable"
+    ],
+    "blocked_answer_supporting_source_states": [
+      "changed-unreviewed",
+      "broken",
+      "redirected-pending-review",
+      "extraction-failed",
+      "overdue-blocked",
+      "withdrawn",
+      "superseded",
+      "unapproved"
+    ],
+    "review_requirement": "Every answer-supporting material source must be a reviewed official source eligible under the source registry policy.",
+    "local_index_required": true,
+    "index_compatibility_fields": [
+      "knowledge_release_id",
+      "corpus_schema_version",
+      "embedding_model",
+      "vector_dimensions",
+      "index_schema_version"
+    ]
+  },
+  "supported_environment_matrix": [
+    {
+      "id": "windows-11-wsl2-ubuntu-x86_64",
+      "status": "mvp-supported-verified-candidate-not-release-qualified",
+      "required_journeys": [
+        "setup",
+        "supported-answer",
+        "refusal",
+        "evidence-inspection",
+        "history-persistence",
+        "deletion-export",
+        "update-installation",
+        "rollback"
+      ],
+      "release_gate_status": "not_complete",
+      "evidence": [
+        "docs/progress/issue-26-runtime-probe.json",
+        "docs/progress/issue-29-hybrid-retrieval-comparison.json",
+        "docs/progress/issue-23-accessibility-responsive.md",
+        "docs/progress/issue-24-usability-validation.md"
+      ]
+    },
+    {
+      "id": "native-linux-x86_64",
+      "status": "candidate-not-verified"
+    },
+    {
+      "id": "macos-apple-silicon",
+      "status": "candidate-not-verified"
+    },
+    {
+      "id": "windows-native",
+      "status": "not-supported-for-mvp-candidate"
+    }
+  ],
+  "gate_results": [
+    {
+      "id": "retrieval-baseline-below-release-threshold",
+      "metric_id": "retrieval-required-evidence-recall-at-3",
+      "status": "failed",
+      "observed": 0.777778,
+      "threshold": 0.95,
+      "summary": "The current issue #29 hybrid retrieval fixture baseline is below the candidate release threshold.",
+      "release_blocking": true
+    },
+    {
+      "id": "full-release-evaluation-runner-not-implemented",
+      "metric_id": "reliability-critical-journeys",
+      "status": "not_implemented",
+      "summary": "The production evaluation runner, final-answer evaluator, full network-boundary monitor, rollback fault-injection matrix, and supported-environment CI matrix are not implemented.",
+      "release_blocking": true
+    },
+    {
+      "id": "environment-matrix-critical-journeys-not-complete",
+      "metric_id": "environment-matrix-critical-journeys",
+      "status": "not_run",
+      "summary": "Every published supported environment has not passed setup, supported answer, refusal, evidence inspection, history persistence, deletion/export, update installation, and rollback as one release matrix.",
+      "release_blocking": true
+    },
+    {
+      "id": "performance-thresholds-not-approved",
+      "metric_id": "performance-runtime-and-indexing-baseline",
+      "status": "pending",
+      "observed": {
+        "structured_completion_ms": 25805.935,
+        "dense_mean_query_latency_ms": 128.253,
+        "dense_mean_warm_retrieval_latency_ms": 48.791,
+        "dense_indexing_wall_time_ms": 4714.887
+      },
+      "threshold": "pending human approval",
+      "summary": "Performance baselines are published, but human-approved release thresholds and full supported-environment measurements are not complete.",
+      "release_blocking": true
+    },
+    {
+      "id": "automated-python-regression-suite",
+      "metric_id": "implemented-slice-regressions",
+      "status": "passed",
+      "summary": "The implemented unit-test suite is required for the release candidate but does not replace the full release matrix.",
+      "release_blocking": true
+    },
+    {
+      "id": "browser-accessibility-suite",
+      "metric_id": "accessibility-conformance",
+      "status": "passed",
+      "summary": "The browser accessibility suite gates implemented core states with no critical or serious automated violations, plus recorded manual checks.",
+      "release_blocking": true
+    },
+    {
+      "id": "privacy-boundary-fixture",
+      "metric_id": "privacy-network-boundary",
+      "status": "passed",
+      "summary": "Implemented workflow fixtures observe no answer-path network requests and content-free permitted update requests.",
+      "release_blocking": true
+    },
+    {
+      "id": "atomic-rollback-fixture",
+      "metric_id": "update-rollback-success",
+      "status": "passed",
+      "summary": "Implemented update-installation fixtures preserve the previous active corpus/index pair on failure.",
+      "release_blocking": true
+    }
+  ],
+  "blocking_conditions": [
+    {
+      "id": "uncited-official-fact",
+      "description": "Any official fact in a released answer without a valid material-source citation blocks release.",
+      "observed_count": 0,
+      "max_allowed": 0,
+      "release_blocking": true
+    },
+    {
+      "id": "personal-eligibility-conclusion",
+      "description": "Any personal eligibility conclusion or unsupported legal claim blocks release.",
+      "observed_count": 0,
+      "max_allowed": 0,
+      "release_blocking": true
+    },
+    {
+      "id": "answer-path-personal-data-egress",
+      "description": "Any answer-path network egress containing question, answer, evidence, conversation, or conversation-derived identifiers blocks release.",
+      "observed_count": 0,
+      "max_allowed": 0,
+      "release_blocking": true
+    },
+    {
+      "id": "failed-atomic-rollback",
+      "description": "Any failed atomic rollback or mismatched active corpus/index pair blocks release.",
+      "observed_count": 0,
+      "max_allowed": 0,
+      "release_blocking": true
+    }
+  ],
+  "human_approval_records": [
+    {
+      "id": "quality-bar-human-approval-pending",
+      "required": true,
+      "status": "pending",
+      "required_for": "Evaluation dataset, metric definitions, thresholds, hardware targets, and supported-environment matrix."
+    },
+    {
+      "id": "issue-24-human-validation-pending",
+      "required": true,
+      "status": "pending",
+      "required_for": "Evidence, refusal, score-distinction, update success, and rollback comprehension validation."
+    },
+    {
+      "id": "production-release-owner-approval-pending",
+      "required": true,
+      "status": "pending",
+      "required_for": "Final decision to publish a non-blocked MVP release."
+    }
+  ],
+  "explicit_release_blockers": [
+    {
+      "id": "quality-bar-human-approval-pending",
+      "status": "pending",
+      "reason": "Issue #7 remains candidate-ready-for-human-approval rather than approved.",
+      "release_blocking": true
+    },
+    {
+      "id": "retrieval-baseline-below-release-threshold",
+      "status": "failed",
+      "reason": "Hybrid Recall@3 baseline is 0.777778 against the candidate 0.95 release threshold.",
+      "release_blocking": true
+    },
+    {
+      "id": "full-release-evaluation-runner-not-implemented",
+      "status": "not_implemented",
+      "reason": "The full production release evaluation runner and supported-environment matrix are not implemented.",
+      "release_blocking": true
+    },
+    {
+      "id": "environment-matrix-critical-journeys-not-complete",
+      "status": "not_run",
+      "reason": "The complete critical journey matrix has not passed for every published supported environment.",
+      "release_blocking": true
+    },
+    {
+      "id": "issue-24-human-validation-pending",
+      "status": "pending",
+      "reason": "Human confirmation of comprehension validation is still pending.",
+      "release_blocking": true
+    },
+    {
+      "id": "performance-thresholds-not-approved",
+      "status": "pending",
+      "reason": "Performance baselines are published, but human-approved performance thresholds and full environment measurements are not complete.",
+      "release_blocking": true
+    }
+  ],
+  "documentation_contract": {
+    "qualification_id": "mvp-release-qualification-issue-25",
+    "version": "0.1.0-blocked",
+    "qualification_status": "blocked",
+    "release_decision": "do-not-release",
+    "quality_bar_version": "0.1.0-candidate",
+    "quality_bar_approval_status": "candidate-ready-for-human-approval",
+    "evaluation_dataset_id": "di-rag-eval-set-v0.1-candidate",
+    "evaluation_dataset_version": "0.1.0-candidate",
+    "application_distribution": "local-python-web-application",
+    "application_process_model": "single-local-python-process",
+    "default_bind_host": "127.0.0.1",
+    "generation_model": "gemma4:12b",
+    "embedding_model": "embeddinggemma",
+    "active_knowledge_release_id": "kr-2026-07-06.1",
+    "answer_path_allows_outbound_requests": false,
+    "production_user_question_analytics_allowed": false
+  }
+}
