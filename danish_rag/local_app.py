@@ -178,6 +178,13 @@ def create_app(
     async def home() -> HTMLResponse:
         return render_home()
 
+    @app.get("/conversations/export.json")
+    async def export_conversations() -> Response:
+        return _json_download_response(
+            store.export_conversations(),
+            filename="danish-rag-conversation-records.json",
+        )
+
     @app.get("/conversations/{conversation_id}", response_class=HTMLResponse)
     async def conversation(conversation_id: str) -> HTMLResponse:
         try:
@@ -185,6 +192,39 @@ def create_app(
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Conversation not found.") from exc
         return render_home(active_conversation=record)
+
+    @app.get("/conversations/{conversation_id}/export.json")
+    async def export_conversation(conversation_id: str) -> Response:
+        try:
+            payload = store.export_conversation(conversation_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Conversation not found.") from exc
+        return _json_download_response(
+            payload,
+            filename=f"danish-rag-conversation-{conversation_id}.json",
+        )
+
+    @app.post("/conversations/{conversation_id}/delete")
+    async def delete_conversation(request: Request, conversation_id: str) -> RedirectResponse:
+        _validate_state_changing_request(request)
+        try:
+            store.delete_conversation(conversation_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Conversation not found.") from exc
+        return RedirectResponse("/", status_code=303)
+
+    @app.post("/conversations/delete-all")
+    async def delete_all_conversations(request: Request) -> RedirectResponse:
+        _validate_state_changing_request(request)
+        form_data = await _read_urlencoded_form(request)
+        confirmation = form_data.get("confirmation", "").strip()
+        if confirmation != "DELETE ALL LOCAL CONVERSATIONS":
+            raise HTTPException(
+                status_code=422,
+                detail='Type "DELETE ALL LOCAL CONVERSATIONS" to delete all records.',
+            )
+        store.delete_all_conversations()
+        return RedirectResponse("/", status_code=303)
 
     @app.get("/vendor/htmx.min.js", include_in_schema=False)
     async def htmx_asset() -> FileResponse:
@@ -406,6 +446,14 @@ def _host_without_port(host_header: str) -> str:
 
 def _normalize_netloc(value: str) -> str:
     return value.strip().lower()
+
+
+def _json_download_response(payload: dict[str, Any], *, filename: str) -> Response:
+    return Response(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 if __name__ == "__main__":

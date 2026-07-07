@@ -4,6 +4,12 @@
       <p class="eyebrow">Conversation First</p>
       {% if active_conversation %}
       <h1 id="conversation-title" class="conversation-title-active">Current Conversation</h1>
+      <div class="conversation-actions" aria-label="Current conversation actions">
+        <a href="/conversations/{{ active_conversation.id }}/export.json">Export record</a>
+        <form method="post" action="/conversations/{{ active_conversation.id }}/delete">
+          <button type="submit" class="danger-button">Delete record</button>
+        </form>
+      </div>
       {% else %}
       <h1 id="conversation-title">Ask about Danish language requirements.</h1>
       {% endif %}

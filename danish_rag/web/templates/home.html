@@ -40,10 +40,30 @@
             <li>
               <a href="/conversations/{{ conversation.id }}">{{ conversation.title }}</a>
               <small>Corpus: {{ conversation.corpus_identity }}</small>
+              <div class="record-actions" aria-label="Actions for {{ conversation.title }}">
+                <a href="/conversations/{{ conversation.id }}/export.json">Export</a>
+                <form method="post" action="/conversations/{{ conversation.id }}/delete">
+                  <button type="submit" class="link-button danger-button">Delete</button>
+                </form>
+              </div>
             </li>
             {% endfor %}
           </ol>
         </nav>
+        <div class="history-bulk-actions" aria-label="All conversation record actions">
+          <a href="/conversations/export.json">Export all records</a>
+          <form method="post" action="/conversations/delete-all">
+            <label for="delete-all-confirmation">Type DELETE ALL LOCAL CONVERSATIONS</label>
+            <input
+              id="delete-all-confirmation"
+              name="confirmation"
+              type="text"
+              autocomplete="off"
+              required
+            >
+            <button type="submit" class="danger-button">Delete all local records</button>
+          </form>
+        </div>
         {% else %}
         <p>No conversation records yet.</p>
         {% endif %}

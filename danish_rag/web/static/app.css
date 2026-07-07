@@ -214,6 +214,59 @@ textarea:focus-visible {
   font-size: 0.78rem;
 }
 
+.record-actions,
+.conversation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  margin-top: 0.45rem;
+}
+
+.record-actions a,
+.conversation-actions a,
+.history-bulk-actions > a {
+  color: var(--blue);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.record-actions form,
+.conversation-actions form,
+.history-bulk-actions form {
+  margin: 0;
+}
+
+.history-bulk-actions {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+
+.history-bulk-actions label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.history-bulk-actions input {
+  width: 100%;
+  margin-bottom: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.55rem 0.6rem;
+}
+
 .runtime-list div {
   display: grid;
   gap: 0.1rem;
@@ -277,6 +330,10 @@ h1 {
   max-width: 100%;
   font-size: 1.8rem;
   line-height: 1.12;
+}
+
+.conversation-actions {
+  margin-top: 0.75rem;
 }
 
 .empty-state {
@@ -692,6 +749,42 @@ button {
 
 button:hover {
   background: #0d4f3d;
+}
+
+.link-button {
+  display: inline;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--blue);
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.link-button:hover {
+  background: transparent;
+  color: var(--green);
+}
+
+.danger-button {
+  background: var(--tomato);
+}
+
+.danger-button:hover {
+  background: #943423;
+}
+
+.link-button.danger-button {
+  background: transparent;
+  color: var(--tomato);
+}
+
+.link-button.danger-button:hover {
+  background: transparent;
+  color: #943423;
 }
 
 .setup-form {
