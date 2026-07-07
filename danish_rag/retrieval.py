@@ -68,10 +68,19 @@ def build_hybrid_index(
     documents: list[dict[str, Any]],
     *,
     manifest: dict[str, Any],
+    progress_callback: Any | None = None,
+    fault_injector: Any | None = None,
 ) -> dict[str, Any]:
     release_id = str(manifest["knowledge_release_id"])
     index_dir = Path(data_dir) / "index" / release_id
     index_dir.mkdir(parents=True, exist_ok=True)
+    _report_install_phase(
+        progress_callback,
+        "indexing",
+        "Building lexical retrieval index.",
+        45,
+    )
+    _inject_install_fault(fault_injector, "indexing")
 
     lexical_path = index_dir / "lexical.sqlite3"
     if lexical_path.exists():
@@ -121,6 +130,13 @@ def build_hybrid_index(
     finally:
         connection.close()
 
+    _report_install_phase(
+        progress_callback,
+        "embedding",
+        "Embedding release documents locally.",
+        70,
+    )
+    _inject_install_fault(fault_injector, "embedding")
     vectors = [
         {
             "document_id": document["document_id"],
@@ -434,3 +450,18 @@ def _write_json(path: Path, value: dict[str, Any]) -> None:
         encoding="utf-8",
     )
     temporary_path.replace(path)
+
+
+def _report_install_phase(
+    progress_callback: Any | None,
+    phase: str,
+    message: str,
+    percent: int,
+) -> None:
+    if progress_callback is not None:
+        progress_callback({"phase": phase, "message": message, "percent": percent})
+
+
+def _inject_install_fault(fault_injector: Any | None, phase: str) -> None:
+    if fault_injector is not None:
+        fault_injector(phase)

@@ -6,9 +6,10 @@ import hashlib
 import json
 import os
 import shutil
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,55 +44,111 @@ def install_knowledge_release(
     data_dir: str | Path,
     *,
     release_dir: str | Path,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    fault_injector: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Install a verified reviewed knowledge release and build its local hybrid index."""
 
     resolved_data_dir = Path(data_dir)
     resolved_release_dir = Path(release_dir)
-    manifest = _load_manifest(resolved_release_dir)
+    progress = _InstallProgress(progress_callback)
+    progress.report(
+        "verification",
+        "Verifying release manifest, compatibility, and artifact integrity.",
+        10,
+    )
+    _inject_install_fault(fault_injector, "verification")
+    verified = verify_knowledge_release(resolved_release_dir)
+    manifest = verified["manifest"]
+    documents = verified["documents"]
     release_id = str(manifest["knowledge_release_id"])
     active = _load_active_release_file(resolved_data_dir)
     if active and active.get("manifest", {}).get("knowledge_release_id") == release_id:
         try:
+            progress.report("already_active", "Knowledge release is already active.", 100)
             return {
                 "manifest": active["manifest"],
                 "documents": load_active_documents(resolved_data_dir),
                 "index": _load_index_metadata(resolved_data_dir, release_id),
                 "active": active,
+                "progress": progress.entries,
             }
         except Exception:
             pass
 
-    documents = _load_release_documents(resolved_release_dir, manifest)
-    _validate_release(manifest, documents)
-
-    corpus_dir = resolved_data_dir / "corpus" / release_id
-    corpus_dir.mkdir(parents=True, exist_ok=True)
+    staging_dir = _staging_dir(resolved_data_dir, release_id)
+    if staging_dir.exists():
+        shutil.rmtree(staging_dir)
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    progress.report("extraction", "Preparing reviewed corpus artifact locally.", 30)
+    _inject_install_fault(fault_injector, "extraction")
     source_documents_path = resolved_release_dir / "corpus" / "documents.json"
-    installed_documents_path = corpus_dir / "documents.json"
+    staging_corpus_dir = staging_dir / "corpus" / release_id
+    staging_corpus_dir.mkdir(parents=True, exist_ok=True)
+    installed_documents_path = staging_corpus_dir / "documents.json"
     temporary_documents_path = installed_documents_path.with_suffix(".json.tmp")
     shutil.copyfile(source_documents_path, temporary_documents_path)
     temporary_documents_path.replace(installed_documents_path)
 
     from .retrieval import build_hybrid_index
+    from .retrieval import HybridRetriever
 
     index = build_hybrid_index(
-        resolved_data_dir,
+        staging_dir,
         documents,
         manifest=manifest,
+        progress_callback=progress.report_from_event,
+        fault_injector=fault_injector,
     )
-    active_release = {
+    progress.report(
+        "compatibility",
+        "Checking staged corpus and index compatibility.",
+        85,
+    )
+    _inject_install_fault(fault_injector, "compatibility")
+    staged_active_release = {
         "manifest": manifest,
         "documents_path": str(installed_documents_path),
-        "index_path": str(resolved_data_dir / "index" / release_id),
+        "index_path": str(staging_dir / "index" / release_id),
+        "installed_at_utc": datetime.now(UTC).isoformat(),
+    }
+    dense_index = json.loads(
+        (staging_dir / "index" / release_id / "dense-index.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    HybridRetriever(
+        data_dir=staging_dir,
+        active_release=staged_active_release,
+        documents=documents,
+        dense_index=dense_index,
+    )
+
+    progress.report("activation", "Activating verified corpus and local index.", 95)
+    _inject_install_fault(fault_injector, "activation")
+    final_documents_path, final_index_path = _promote_staged_release(
+        resolved_data_dir,
+        staging_dir,
+        release_id,
+        fault_injector=fault_injector,
+    )
+    _inject_install_fault(fault_injector, "activation")
+    active_release = {
+        "manifest": manifest,
+        "documents_path": str(final_documents_path),
+        "index_path": str(final_index_path),
         "installed_at_utc": datetime.now(UTC).isoformat(),
     }
     _write_json_atomic(active_release, resolved_data_dir / ACTIVE_RELEASE_FILE)
+    progress.report("complete", "Knowledge release installation is active.", 100)
+    if staging_dir.exists():
+        shutil.rmtree(staging_dir)
     return {
         "manifest": manifest,
         "documents": documents,
         "index": index,
         "active": active_release,
+        "progress": progress.entries,
     }
 
 
@@ -462,6 +519,105 @@ def _load_active_release_file(data_dir: Path) -> dict[str, Any] | None:
 def _load_index_metadata(data_dir: Path, release_id: str) -> dict[str, Any]:
     metadata_path = data_dir / "index" / release_id / "index-metadata.json"
     return json.loads(metadata_path.read_text(encoding="utf-8"))
+
+
+class _InstallProgress:
+    def __init__(
+        self,
+        callback: Callable[[dict[str, Any]], None] | None,
+    ) -> None:
+        self.callback = callback
+        self.entries: list[dict[str, Any]] = []
+
+    def report(self, phase: str, message: str, percent: int) -> None:
+        event = {"phase": phase, "message": message, "percent": percent}
+        self.entries.append(event)
+        if self.callback is not None:
+            self.callback(dict(event))
+
+    def report_from_event(self, event: dict[str, Any]) -> None:
+        self.report(
+            str(event["phase"]),
+            str(event["message"]),
+            int(event["percent"]),
+        )
+
+
+def _inject_install_fault(
+    fault_injector: Callable[[str], None] | None,
+    phase: str,
+) -> None:
+    if fault_injector is not None:
+        fault_injector(phase)
+
+
+def _staging_dir(data_dir: Path, release_id: str) -> Path:
+    return data_dir / ".installing" / f"{release_id}-{uuid.uuid4().hex}"
+
+
+def _promote_staged_release(
+    data_dir: Path,
+    staging_dir: Path,
+    release_id: str,
+    *,
+    fault_injector: Callable[[str], None] | None,
+) -> tuple[Path, Path]:
+    final_corpus_dir = data_dir / "corpus" / release_id
+    final_index_dir = data_dir / "index" / release_id
+    staged_corpus_dir = staging_dir / "corpus" / release_id
+    staged_index_dir = staging_dir / "index" / release_id
+    pending_corpus_dir = data_dir / "corpus" / f".{release_id}.pending"
+    pending_index_dir = data_dir / "index" / f".{release_id}.pending"
+    backup_corpus_dir = data_dir / "corpus" / f".{release_id}.backup"
+    backup_index_dir = data_dir / "index" / f".{release_id}.backup"
+
+    for temporary_dir in (
+        pending_corpus_dir,
+        pending_index_dir,
+        backup_corpus_dir,
+        backup_index_dir,
+    ):
+        if temporary_dir.exists():
+            shutil.rmtree(temporary_dir)
+
+    pending_corpus_dir.parent.mkdir(parents=True, exist_ok=True)
+    pending_index_dir.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(staged_corpus_dir, pending_corpus_dir)
+    shutil.copytree(staged_index_dir, pending_index_dir)
+    _inject_install_fault(fault_injector, "activation")
+
+    try:
+        if final_corpus_dir.exists():
+            final_corpus_dir.replace(backup_corpus_dir)
+        if final_index_dir.exists():
+            final_index_dir.replace(backup_index_dir)
+        _inject_install_fault(fault_injector, "activation")
+
+        pending_corpus_dir.replace(final_corpus_dir)
+        _inject_install_fault(fault_injector, "activation")
+        pending_index_dir.replace(final_index_dir)
+        _inject_install_fault(fault_injector, "activation")
+    except Exception:
+        _restore_directory_backup(final_corpus_dir, backup_corpus_dir)
+        _restore_directory_backup(final_index_dir, backup_index_dir)
+        raise
+    finally:
+        for temporary_dir in (
+            pending_corpus_dir,
+            pending_index_dir,
+            backup_corpus_dir,
+            backup_index_dir,
+        ):
+            if temporary_dir.exists():
+                shutil.rmtree(temporary_dir)
+    return final_corpus_dir / "documents.json", final_index_dir
+
+
+def _restore_directory_backup(final_dir: Path, backup_dir: Path) -> None:
+    if final_dir.exists():
+        shutil.rmtree(final_dir)
+    if backup_dir.exists():
+        backup_dir.replace(final_dir)
 
 
 def _write_json_atomic(value: dict[str, Any], path: Path) -> None:
