@@ -81,6 +81,16 @@
         {% if corpus_error %}
         <p class="error" role="alert">{{ corpus_error }}</p>
         {% endif %}
+        {% if update_status %}
+        <section
+          class="update-status update-status-{{ update_status.kind }}"
+          role="{{ update_status.role }}"
+          aria-labelledby="update-status-title"
+        >
+          <h3 id="update-status-title">{{ update_status.title }}</h3>
+          <p>{{ update_status.message }}</p>
+        </section>
+        {% endif %}
         <dl class="runtime-list">
           <div>
             <dt>Release</dt>

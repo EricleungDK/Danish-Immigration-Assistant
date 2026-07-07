@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any, Callable
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
@@ -86,6 +86,7 @@ def create_app(
         active_question: str = "",
         composer_error: str = "",
         active_conversation: dict[str, Any] | None = None,
+        update_status: dict[str, str] | None = None,
     ) -> HTMLResponse:
         template = TEMPLATES.get_template("home.html")
         return HTMLResponse(
@@ -97,6 +98,7 @@ def create_app(
                     active_question=active_question,
                     composer_error=composer_error,
                     active_conversation=active_conversation,
+                    update_status=update_status,
                 )
             ),
             status_code=status_code,
@@ -167,6 +169,7 @@ def create_app(
         active_question: str = "",
         composer_error: str = "",
         active_conversation: dict[str, Any] | None = None,
+        update_status: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         corpus_error = ""
         try:
@@ -202,11 +205,14 @@ def create_app(
             "corpus": corpus,
             "corpus_error": corpus_error,
             "pending_update": pending_update,
+            "update_status": update_status,
         }
 
     @app.get("/", response_class=HTMLResponse)
-    async def home() -> HTMLResponse:
-        return render_home()
+    async def home(request: Request) -> HTMLResponse:
+        return render_home(
+            update_status=_update_status_from_request(request, resolved_data_dir)
+        )
 
     @app.get("/conversations/export.json")
     async def export_conversations() -> Response:
@@ -329,11 +335,15 @@ def create_app(
             install_knowledge_release(resolved_data_dir, release_dir=release_dir)
             dismiss_pending_knowledge_update(resolved_data_dir)
         except Exception as exc:
-            raise HTTPException(
+            return render_home(
                 status_code=503,
-                detail=_knowledge_update_failure_message("installing", exc),
-            ) from exc
-        return RedirectResponse("/", status_code=303)
+                update_status=_rollback_update_status(resolved_data_dir, exc),
+            )
+        return RedirectResponse(
+            "/?"
+            f"update_status=installed&release_id={quote(pending_release_id, safe='')}",
+            status_code=303,
+        )
 
     @app.get("/vendor/htmx.min.js", include_in_schema=False)
     async def htmx_asset() -> FileResponse:
@@ -633,8 +643,56 @@ def _storage_failure_message(action: str, exc: BaseException) -> str:
 def _knowledge_update_failure_message(action: str, exc: BaseException) -> str:
     return (
         f"Knowledge update failed while {action}; the previously active corpus/index "
-        f"pair remains the only trusted active data. Detail: {exc}"
+        f"pair remains active. Detail: {exc}"
     )
+
+
+def _update_status_from_request(request: Request, data_dir: Path) -> dict[str, str] | None:
+    if request.query_params.get("update_status") != "installed":
+        return None
+    active_release = _active_release_id(data_dir)
+    if not active_release:
+        return None
+    requested_release_id = request.query_params.get("release_id", "").strip()
+    if requested_release_id and requested_release_id != active_release:
+        return {
+            "kind": "error",
+            "role": "alert",
+            "title": "Knowledge update status expired",
+            "message": (
+                "The requested install status no longer matches the local active "
+                f"corpus. Active corpus: {active_release}."
+            ),
+        }
+    return {
+        "kind": "success",
+        "role": "status",
+        "title": "Knowledge update installed",
+        "message": (
+            f"Active corpus: {active_release}. Future answers use this reviewed knowledge "
+            "release; historical conversation records keep their original corpus identity."
+        ),
+    }
+
+
+def _rollback_update_status(data_dir: Path, exc: BaseException) -> dict[str, str]:
+    active_release = _active_release_id(data_dir) or "Unavailable"
+    return {
+        "kind": "error",
+        "role": "alert",
+        "title": "Knowledge update rolled back",
+        "message": (
+            f"{_knowledge_update_failure_message('installing', exc)} "
+            f"Active corpus: {active_release}."
+        ),
+    }
+
+
+def _active_release_id(data_dir: Path) -> str:
+    try:
+        return active_corpus_summary(data_dir)["knowledge_release_id"]
+    except Exception:
+        return ""
 
 
 def _unavailable_corpus_summary() -> dict[str, str]:
