@@ -49,14 +49,31 @@ class Issue25ReleaseQualificationTests(unittest.TestCase):
         self.assertTrue(
             {
                 "quality-bar-human-approval-pending",
-                "retrieval-baseline-below-release-threshold",
-                "full-release-evaluation-runner-not-implemented",
+                "final-answer-evaluator-not-implemented",
+                "full-network-boundary-monitor-not-implemented",
+                "rollback-fault-injection-matrix-not-implemented",
                 "environment-matrix-critical-journeys-not-complete",
                 "performance-thresholds-not-approved",
                 "issue-24-human-validation-pending",
             }.issubset(blocker_ids),
             blocker_ids,
         )
+        self.assertNotIn("retrieval-required-evidence-baseline", blocker_ids)
+        self.assertNotIn("full-release-evaluation-runner-not-implemented", blocker_ids)
+        runner_gate = next(
+            gate
+            for gate in qualification["gate_results"]
+            if gate["id"] == "release-evaluation-runner-report"
+        )
+        self.assertEqual(runner_gate["status"], "passed")
+        retrieval_gate = next(
+            gate
+            for gate in qualification["gate_results"]
+            if gate["id"] == "retrieval-required-evidence-baseline"
+        )
+        self.assertEqual(retrieval_gate["status"], "passed")
+        self.assertEqual(retrieval_gate["observed"], 1.0)
+        self.assertEqual(retrieval_gate["threshold"], 0.95)
         self.assertIn(
             "performance-runtime-and-indexing-baseline",
             qualification["evaluation"]["metrics_published"],

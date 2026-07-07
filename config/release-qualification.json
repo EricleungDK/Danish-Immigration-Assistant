@@ -6,7 +6,7 @@
   "qualified_at_utc": "2026-07-07T00:00:00Z",
   "qualification_status": "blocked",
   "release_decision": "do-not-release",
-  "decision_summary": "The local application has a documented release candidate package and passing slice-level evidence, but MVP release is blocked because the quality bar and usability validation still require human approval, the full release evaluation runner is not implemented, the supported-environment critical journey matrix is incomplete, and the current retrieval baseline is below the candidate release threshold.",
+  "decision_summary": "The local application has a documented release candidate package, passing slice-level evidence, and an offline release evaluation runner, but MVP release is blocked because the quality bar and usability validation still require human approval, final-answer evaluation and full release monitors are incomplete, the supported-environment critical journey matrix is incomplete, and human-approved performance thresholds are still pending.",
   "distribution": {
     "kind": "local-python-web-application",
     "release_candidate_version": "0.1.0-rc.1",
@@ -100,11 +100,11 @@
     "release_gate": "Blocked until human-approved performance thresholds exist and the supported-environment matrix records response and indexing measurements.",
     "baseline_results": {
       "structured_completion_ms": 25805.935,
-      "dense_mean_query_latency_ms": 128.253,
-      "dense_mean_warm_retrieval_latency_ms": 48.791,
-      "dense_indexing_wall_time_ms": 4714.887,
+      "dense_mean_query_latency_ms": 146.602,
+      "dense_mean_warm_retrieval_latency_ms": 64.659,
+      "dense_indexing_wall_time_ms": 1408.696,
       "dense_index_size_bytes": 151360,
-      "process_peak_resident_memory_mb": 87.492
+      "process_peak_resident_memory_mb": 101.434
     }
   },
   "active_corpus_requirements": {
@@ -175,19 +175,40 @@
   ],
   "gate_results": [
     {
-      "id": "retrieval-baseline-below-release-threshold",
+      "id": "retrieval-required-evidence-baseline",
       "metric_id": "retrieval-required-evidence-recall-at-3",
-      "status": "failed",
-      "observed": 0.777778,
+      "status": "passed",
+      "observed": 1.0,
       "threshold": 0.95,
-      "summary": "The current issue #29 hybrid retrieval fixture baseline is below the candidate release threshold.",
+      "summary": "The current issue #29 hybrid retrieval fixture baseline meets the candidate required-evidence Recall@3 threshold over 7 evaluable required-evidence queries while retaining zero blocked-source and forbidden-result violations.",
       "release_blocking": true
     },
     {
-      "id": "full-release-evaluation-runner-not-implemented",
+      "id": "release-evaluation-runner-report",
       "metric_id": "reliability-critical-journeys",
+      "status": "passed",
+      "summary": "The offline release evaluation runner evaluates every published release gate and writes docs/progress/release-evaluation-current.json without running live provider, browser, or environment-matrix commands by default.",
+      "release_blocking": true
+    },
+    {
+      "id": "final-answer-evaluator-not-implemented",
+      "metric_id": "official-fact-citation-coverage",
       "status": "not_implemented",
-      "summary": "The production evaluation runner, final-answer evaluator, full network-boundary monitor, rollback fault-injection matrix, and supported-environment CI matrix are not implemented.",
+      "summary": "The final-answer evaluator for citation coverage, citation correctness, unsupported claims, required fact coverage, clarify/answer/refuse behavior, and trust indicators is not implemented.",
+      "release_blocking": true
+    },
+    {
+      "id": "full-network-boundary-monitor-not-implemented",
+      "metric_id": "privacy-network-boundary",
+      "status": "not_implemented",
+      "summary": "The implemented privacy fixtures pass, but a full release monitor for answer-path network egress across the supported critical-journey matrix is not implemented.",
+      "release_blocking": true
+    },
+    {
+      "id": "rollback-fault-injection-matrix-not-implemented",
+      "metric_id": "update-rollback-success",
+      "status": "not_implemented",
+      "summary": "The implemented rollback fixture passes, but the full release fault-injection matrix for installation and activation failures is not implemented.",
       "release_blocking": true
     },
     {
@@ -203,9 +224,9 @@
       "status": "pending",
       "observed": {
         "structured_completion_ms": 25805.935,
-        "dense_mean_query_latency_ms": 128.253,
-        "dense_mean_warm_retrieval_latency_ms": 48.791,
-        "dense_indexing_wall_time_ms": 4714.887
+        "dense_mean_query_latency_ms": 146.602,
+        "dense_mean_warm_retrieval_latency_ms": 64.659,
+        "dense_indexing_wall_time_ms": 1408.696
       },
       "threshold": "pending human approval",
       "summary": "Performance baselines are published, but human-approved release thresholds and full supported-environment measurements are not complete.",
@@ -295,18 +316,6 @@
       "id": "quality-bar-human-approval-pending",
       "status": "pending",
       "reason": "Issue #7 remains candidate-ready-for-human-approval rather than approved.",
-      "release_blocking": true
-    },
-    {
-      "id": "retrieval-baseline-below-release-threshold",
-      "status": "failed",
-      "reason": "Hybrid Recall@3 baseline is 0.777778 against the candidate 0.95 release threshold.",
-      "release_blocking": true
-    },
-    {
-      "id": "full-release-evaluation-runner-not-implemented",
-      "status": "not_implemented",
-      "reason": "The full production release evaluation runner and supported-environment matrix are not implemented.",
       "release_blocking": true
     },
     {
