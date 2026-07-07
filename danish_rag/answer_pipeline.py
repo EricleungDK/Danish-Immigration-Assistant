@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Protocol
 
+from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
 from .provider_setup import ProviderConfiguration
 from .retrieval import normalize_question
 
@@ -204,6 +205,10 @@ class LocalProviderAnswerGenerator:
         path: str,
         payload: dict[str, Any],
     ) -> dict[str, Any]:
+        try:
+            require_loopback_endpoint(endpoint, purpose="Answer generation")
+        except PrivacyBoundaryError as exc:
+            raise AnswerPipelineError(str(exc)) from exc
         request = urllib.request.Request(
             f"{endpoint.rstrip('/')}{path}",
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),

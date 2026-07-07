@@ -18,7 +18,47 @@ This document records the issue #26 MVP runtime baseline for Danish Immigration 
   "application_code_updates": "manual",
   "knowledge_release_updates": "explicit-user-approved",
   "answer_path_allows_outbound_requests": false,
-  "knowledge_release_checks_allowed": true
+  "knowledge_release_checks_allowed": true,
+  "answer_path_observed_workflows": [
+    "question",
+    "retrieval",
+    "generation",
+    "evidence_inspection",
+    "history",
+    "deletion",
+    "export",
+    "local_indexing",
+    "knowledge_update_review"
+  ],
+  "permitted_release_network_operations": [
+    "knowledge_release_discovery",
+    "approved_knowledge_release_artifact_retrieval",
+    "project_release_discovery"
+  ],
+  "permitted_update_request_fields": [
+    "operation",
+    "application_version",
+    "active_knowledge_release_id",
+    "requested_knowledge_release_id",
+    "artifact_name"
+  ],
+  "prohibited_update_request_fields": [
+    "question",
+    "normalized_question",
+    "answer",
+    "evidence",
+    "conversation_id",
+    "conversation_record",
+    "turn_index",
+    "citation_id",
+    "prompt",
+    "messages",
+    "stable_conversation_derived_identifier"
+  ],
+  "send_questions_answers_evidence_or_conversation_records_to_updates": false,
+  "account_required_for_mvp": false,
+  "cloud_history_required_for_mvp": false,
+  "remote_inference_credentials_required_for_mvp": false
 }
 ```
 <!-- runtime-policy-contract:end -->
@@ -45,11 +85,15 @@ The application and provider endpoints use loopback defaults:
 - Application bind host: `127.0.0.1`
 - Ollama endpoint: `http://127.0.0.1:11434`
 
-Non-loopback application exposure is unsupported in the MVP baseline. State-changing browser requests must validate Host and Origin once the web application exists. Provider configuration and any future secrets must not be placed in URLs, logs, or test output. The MVP does not require provider credentials.
+Non-loopback application exposure is unsupported in the MVP baseline. State-changing browser requests must validate Host and Origin once the web application exists. Provider configuration and any future secrets must not be placed in URLs, logs, or test output. The MVP does not require an account, cloud history, remote inference credential, or provider credential.
 
 ## Permitted release-network operations
 
 Release network activity is separate from the local-only answer path. The MVP may check for project and knowledge releases, and it may retrieve an approved knowledge release artifact only after explicit user approval. Knowledge release installation is separate from application-code updates.
+
+Automated privacy observation covers question handling, retrieval, generation, evidence inspection, history, deletion, export, local indexing, and implemented knowledge update controls. Permitted update requests are limited to operation, application version, active knowledge release id, requested knowledge release id, and artifact name.
+
+Permitted update requests must not contain questions, answers, retrieved evidence, conversation records, citation ids, turn indexes, normalized questions, prompts, messages, or stable conversation-derived identifiers.
 
 The running product must not use `git pull` as an update mechanism. Application-code updates are manual for this baseline.
 

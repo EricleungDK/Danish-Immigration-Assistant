@@ -48,6 +48,7 @@ def validate_policy_document_contract(
     models = policy["models"]
     app = policy["application"]
     network = policy["network"]
+    privacy = policy["privacy"]
     expected_values = {
         "baseline_id": policy["baseline_id"],
         "initial_provider": provider["id"],
@@ -64,6 +65,20 @@ def validate_policy_document_contract(
         ],
         "knowledge_release_checks_allowed": network[
             "knowledge_release_checks_allowed"
+        ],
+        "answer_path_observed_workflows": network["answer_path_observed_workflows"],
+        "permitted_release_network_operations": network[
+            "permitted_release_network_operations"
+        ],
+        "permitted_update_request_fields": network["permitted_update_request_fields"],
+        "prohibited_update_request_fields": network["prohibited_update_request_fields"],
+        "send_questions_answers_evidence_or_conversation_records_to_updates": privacy[
+            "send_questions_answers_evidence_or_conversation_records_to_updates"
+        ],
+        "account_required_for_mvp": privacy["account_required_for_mvp"],
+        "cloud_history_required_for_mvp": privacy["cloud_history_required_for_mvp"],
+        "remote_inference_credentials_required_for_mvp": privacy[
+            "remote_inference_credentials_required_for_mvp"
         ],
     }
     for key, expected_value in expected_values.items():
@@ -157,7 +172,10 @@ def validate_runtime_baseline_prose_contract(
             "non-loopback application exposure is unsupported",
             "state-changing browser requests must validate host and origin",
             "must not be placed in urls, logs, or test output",
-            "does not require provider credentials",
+            (
+                "does not require an account, cloud history, remote inference "
+                "credential, or provider credential"
+            ),
         ],
     )
     if not browser_security["reject_non_loopback_by_default"]:
@@ -166,6 +184,12 @@ def validate_runtime_baseline_prose_contract(
         failures.append("loopback policy must require Host and Origin validation")
     if privacy["provider_credentials_required_for_mvp"]:
         failures.append("loopback policy must not require provider credentials for the MVP")
+    if privacy["account_required_for_mvp"]:
+        failures.append("loopback policy must not require an account for the MVP")
+    if privacy["cloud_history_required_for_mvp"]:
+        failures.append("loopback policy must not require cloud history for the MVP")
+    if privacy["remote_inference_credentials_required_for_mvp"]:
+        failures.append("loopback policy must not require remote inference credentials")
     _reject_phrases(
         failures,
         "loopback and browser security",
@@ -174,6 +198,9 @@ def validate_runtime_baseline_prose_contract(
             "non-loopback application exposure is supported by default",
             "do not need host or origin validation",
             "provider credentials are required",
+            "account is required",
+            "cloud history is required",
+            "remote inference credential is required",
         ],
     )
 
@@ -185,6 +212,22 @@ def validate_runtime_baseline_prose_contract(
             "release network activity is separate from the local-only answer path",
             "approved knowledge release artifact only after explicit user approval",
             "knowledge release installation is separate from application-code updates",
+            (
+                "automated privacy observation covers question handling, retrieval, "
+                "generation, evidence inspection, history, deletion, export, local "
+                "indexing, and implemented knowledge update controls"
+            ),
+            (
+                "permitted update requests are limited to operation, application "
+                "version, active knowledge release id, requested knowledge release "
+                "id, and artifact name"
+            ),
+            (
+                "permitted update requests must not contain questions, answers, "
+                "retrieved evidence, conversation records, citation ids, turn "
+                "indexes, normalized questions, prompts, messages, or stable "
+                "conversation-derived identifiers"
+            ),
             "must not use git pull as an update mechanism",
             "application-code updates are manual",
         ],
@@ -197,6 +240,8 @@ def validate_runtime_baseline_prose_contract(
         failures.append("Knowledge release updates must remain separate from code updates")
     if not knowledge_releases["application_must_not_run_git_pull"]:
         failures.append("Knowledge release policy must prohibit git pull updates")
+    if privacy["send_questions_answers_evidence_or_conversation_records_to_updates"]:
+        failures.append("Knowledge release update traffic must not include answer-path content")
     _reject_phrases(
         failures,
         "Knowledge release update separation",
@@ -392,5 +437,62 @@ def _validate_runtime_policy_shape(policy: dict[str, Any]) -> list[str]:
         failures.append("local-only answer path must not allow outbound requests")
     if policy["privacy"]["put_user_content_in_urls_or_logs"]:
         failures.append("user content must not be placed in URLs or logs")
+    if policy["privacy"]["provider_credentials_required_for_mvp"]:
+        failures.append("MVP must not require provider credentials")
+    if policy["privacy"]["account_required_for_mvp"]:
+        failures.append("MVP must not require an account")
+    if policy["privacy"]["cloud_history_required_for_mvp"]:
+        failures.append("MVP must not require cloud history")
+    if policy["privacy"]["remote_inference_credentials_required_for_mvp"]:
+        failures.append("MVP must not require remote inference credentials")
+    if policy["privacy"][
+        "send_questions_answers_evidence_or_conversation_records_to_updates"
+    ]:
+        failures.append("update traffic must not include answer-path content")
+    observed_workflows = set(policy["network"].get("answer_path_observed_workflows", []))
+    required_workflows = {
+        "question",
+        "retrieval",
+        "generation",
+        "evidence_inspection",
+        "history",
+        "deletion",
+        "export",
+        "local_indexing",
+        "knowledge_update_review",
+    }
+    missing_workflows = sorted(required_workflows - observed_workflows)
+    if missing_workflows:
+        failures.append(
+            "privacy observation must cover workflow(s): "
+            + ", ".join(missing_workflows)
+        )
+    approved_operations = {
+        "knowledge_release_discovery",
+        "approved_knowledge_release_artifact_retrieval",
+        "project_release_discovery",
+    }
+    configured_operations = set(
+        policy["network"].get("permitted_release_network_operations", [])
+    )
+    if configured_operations != approved_operations:
+        failures.append("permitted release network operations must match approved set")
+    permitted_update_fields = set(
+        policy["network"].get("permitted_update_request_fields", [])
+    )
+    prohibited_update_fields = set(
+        policy["network"].get("prohibited_update_request_fields", [])
+    )
+    approved_update_fields = {
+        "operation",
+        "application_version",
+        "active_knowledge_release_id",
+        "requested_knowledge_release_id",
+        "artifact_name",
+    }
+    if permitted_update_fields != approved_update_fields:
+        failures.append("permitted update request fields must match approved set")
+    if permitted_update_fields & prohibited_update_fields:
+        failures.append("update request fields cannot be both permitted and prohibited")
 
     return failures
