@@ -15,6 +15,15 @@ async function ensureBrowserProvider(page) {
   await expect(page.getByText("Provider verified")).toBeVisible();
 }
 
+async function currentConversationId(page) {
+  const exportAction = await page
+    .locator('.conversation-actions form[action$="/export.json"]')
+    .getAttribute("action");
+  const conversationId = exportAction?.match(/\/conversations\/([^/]+)\/export\.json$/)?.[1];
+  expect(conversationId).toBeTruthy();
+  return conversationId;
+}
+
 test("first launch shows product boundary, setup, htmx, and composer", async ({ page }) => {
   await page.goto("/");
 
@@ -95,6 +104,33 @@ test("supported question produces cited answer and persists across reload", asyn
   await expect(page.getByText("Corpus: kr-2026-07-06.1").first()).toBeVisible();
 });
 
+test("new conversation resets the composer without deleting saved history", async ({ page }) => {
+  await page.goto("/");
+
+  await ensureBrowserProvider(page);
+
+  const questionText = `What Danish test do I need for permanent residence? new thread ${Date.now()}`;
+  await page.getByRole("textbox", { name: "Question" }).fill(questionText);
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await expect(page.getByRole("heading", { name: "Current Conversation" })).toBeVisible();
+  await expect(page.getByText(questionText)).toBeVisible();
+  const conversationId = await currentConversationId(page);
+
+  await page.getByRole("link", { name: "New conversation" }).click();
+
+  await expect(page.getByRole("heading", { name: /Ask about Danish language requirements/i })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Question" })).toHaveValue("");
+  await expect(page.locator("#conversation-main input[name='conversation_id']")).toHaveCount(0);
+
+  const savedLink = page
+    .getByRole("navigation", { name: "Saved conversations" })
+    .locator(`a[href="/conversations/${conversationId}"]`);
+  await expect(savedLink).toBeVisible();
+  await savedLink.click();
+  await expect(page.getByText(questionText)).toBeVisible();
+});
+
 test("inline citation opens accessible evidence drawer with preserved trust state", async ({ page }) => {
   await page.goto("/");
 
@@ -135,4 +171,37 @@ test("inline citation opens accessible evidence drawer with preserved trust stat
   await expect(persistedDrawer).toContainText("Evidence Confidence: High");
   await expect(persistedDrawer).toContainText("Fresh Tomato Score: High");
   await expect(persistedDrawer).toContainText("browser-model");
+});
+
+test("knowledge update review can be dismissed and installed from the GUI", async ({ page }) => {
+  await page.goto("/");
+
+  const corpusPanel = page.getByRole("complementary", { name: "Local tools" });
+  const corpusSection = corpusPanel.locator("section").filter({
+    has: page.getByRole("heading", { name: "Corpus" }),
+  });
+  await expect(corpusSection.locator(".runtime-list").first()).toContainText("kr-2026-07-06.1");
+
+  await corpusPanel.getByRole("button", { name: "Check for knowledge updates" }).click();
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByRole("heading", { name: "Knowledge update available" })).toBeVisible();
+  await expect(page.getByText("kr-2026-07-07.1")).toBeVisible();
+  await expect(page.getByText("Compatible with this application")).toBeVisible();
+  await expect(page.getByText("Expected local indexing work")).toBeVisible();
+
+  await page.getByRole("button", { name: "Dismiss" }).click();
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByRole("heading", { name: "Knowledge update available" })).toHaveCount(0);
+  await expect(corpusSection.locator(".runtime-list").first()).toContainText("kr-2026-07-06.1");
+
+  await corpusPanel.getByRole("button", { name: "Check for knowledge updates" }).click();
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByRole("heading", { name: "Knowledge update available" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Install reviewed release" }).click();
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByRole("heading", { name: "Knowledge update installed" })).toBeVisible();
+  await expect(page.getByText("Active corpus: kr-2026-07-07.1")).toBeVisible();
+  await expect(corpusSection.locator(".runtime-list").first()).toContainText("kr-2026-07-07.1");
+  await expect(page.getByRole("heading", { name: "Knowledge update available" })).toHaveCount(0);
 });
