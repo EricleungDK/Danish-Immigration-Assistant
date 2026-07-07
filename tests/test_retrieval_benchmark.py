@@ -149,11 +149,17 @@ class RetrievalBenchmarkTests(unittest.TestCase):
         self.assertEqual(result["index"]["engine"], "sqlite-fts5")
         self.assertGreater(result["index"]["document_count"], 0)
         self.assertEqual(result["summary"]["query_count"], 6)
+        self.assertEqual(result["summary"]["required_evidence_query_count"], 5)
         self.assertIn("recall_at_1", result["summary"])
         self.assertIn("recall_at_3", result["summary"])
+        self.assertEqual(result["summary"]["recall_at_3"], 1.0)
         self.assertIn("mean_reciprocal_rank", result["summary"])
         self.assertEqual(result["summary"]["forbidden_result_violations"], 0)
         self.assertEqual(result["summary"]["blocked_source_violations"], 0)
+        blocked_category = result["category_metrics"]["blocked-source-exclusion"]
+        self.assertEqual(blocked_category["query_count"], 1)
+        self.assertEqual(blocked_category["required_evidence_query_count"], 0)
+        self.assertEqual(blocked_category["blocked_source_violations"], 0)
         self.assertIn("fixture_identity", result)
         self.assertRegex(result["executed_at_utc"], r"^\d{4}-\d{2}-\d{2}T")
 
@@ -432,7 +438,22 @@ class RetrievalBenchmarkTests(unittest.TestCase):
             self.assertIn("dense", result["candidates"])
             self.assertIn("hybrid", result["candidates"])
             self.assertEqual(result["candidates"]["hybrid"]["fusion"]["algorithm"], "rrf")
+            self.assertEqual(result["candidates"]["hybrid"]["summary"]["query_count"], 9)
+            self.assertEqual(
+                result["candidates"]["hybrid"]["summary"][
+                    "required_evidence_query_count"
+                ],
+                7,
+            )
+            self.assertEqual(result["candidates"]["hybrid"]["summary"]["recall_at_3"], 1.0)
             self.assertEqual(result["candidates"]["hybrid"]["summary"]["blocked_source_violations"], 0)
+            blocked_category = result["candidates"]["hybrid"]["category_metrics"][
+                "blocked-source-exclusion"
+            ]
+            self.assertEqual(blocked_category["query_count"], 2)
+            self.assertEqual(blocked_category["required_evidence_query_count"], 0)
+            self.assertEqual(blocked_category["blocked_source_violations"], 0)
+            self.assertEqual(blocked_category["forbidden_result_violations"], 0)
             self.assertEqual(
                 result["candidates"]["hybrid"]["category_metrics"]["exact-danish-terminology"][
                     "recall_at_3"
@@ -502,6 +523,7 @@ class RetrievalBenchmarkTests(unittest.TestCase):
             self.assertTrue(output_path.exists())
             recommendation = recommendation_path.read_text(encoding="utf-8")
             self.assertIn("Selected candidate: hybrid", recommendation)
+            self.assertIn("Required-evidence query count: `7`", recommendation)
             self.assertIn(f"Machine-readable result: `{output_path}`", recommendation)
             self.assertIn("Production thresholds remain out of scope", recommendation)
             self.assertIn("Non-Selected Alternatives", recommendation)

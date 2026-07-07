@@ -62,5 +62,5 @@ The agent cannot satisfy the final human-approval acceptance criterion by itself
 ## Remaining Limitations
 
 - This work does not implement the production evaluation runner, final-answer evaluator, browser accessibility test harness, network-boundary monitor, rollback fault injection, or supported-environment CI matrix.
-- The current issue #29 retrieval fixture baseline does not meet the proposed release Recall@3 threshold; it is baseline evidence, not release acceptance.
+- The current issue #29 retrieval fixture baseline meets the proposed required-evidence Recall@3 threshold on 7 evaluable required-evidence queries, with blocked-source and forbidden-result violations still at 0. It remains baseline fixture evidence, not full release acceptance.
 - Human approval is still required before this candidate becomes the release-blocking quality bar.

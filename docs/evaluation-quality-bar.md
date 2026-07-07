@@ -109,10 +109,10 @@ Current evidence from the approved runtime and retrieval decisions:
 - The probe host recorded x86-64, 16 CPU threads, and 15908 MB RAM.
 - Structured completion took 25805.935 ms in the issue #26 probe.
 - The issue #29 comparison selected hybrid retrieval with `embeddinggemma`, vector dimensions 768, and reciprocal-rank fusion with `k=60`.
-- The comparison recorded hybrid Recall@3 0.777778, MRR 0.777778, blocked-source violations 0, and forbidden-result violations 0 on the reviewed benchmark fixture set.
-- Dense retrieval evidence recorded mean query latency 128.253 ms, mean warm retrieval latency 48.791 ms, dense indexing wall time 4714.887 ms, index size 151360 bytes, and process peak resident memory 87.492 MB.
+- The comparison recorded hybrid required-evidence Recall@3 1.0 and MRR 1.0 across 7 evaluable required-evidence queries, with blocked-source violations 0 and forbidden-result violations 0 on the reviewed 9-query benchmark fixture set.
+- Dense retrieval evidence in the comparison recorded mean query latency 146.602 ms, mean warm retrieval latency 64.659 ms, dense indexing wall time 1408.696 ms, index size 151360 bytes, and process peak resident memory 101.434 MB.
 
-The release-quality dataset is broader than the issue #29 retrieval fixture set. The current retrieval numbers are baselines that justify the hardware and environment candidate, not release acceptance results.
+The release-quality dataset is broader than the issue #29 retrieval fixture set. The current retrieval numbers are baselines that justify the hardware and environment candidate, not full release acceptance results.
 
 ## Hardware Targets
 

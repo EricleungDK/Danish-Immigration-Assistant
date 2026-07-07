@@ -280,20 +280,21 @@
     },
     "retrieval_comparison": {
       "evidence_path": "docs/progress/issue-29-hybrid-retrieval-comparison.json",
-      "executed_at_utc": "2026-07-04T12:32:17.894334+00:00",
+      "executed_at_utc": "2026-07-07T21:14:34.320717+00:00",
       "selected_candidate": "hybrid",
       "query_count": 9,
-      "lexical_recall_at_3": 0.777778,
-      "dense_recall_at_3": 0.777778,
-      "hybrid_recall_at_3": 0.777778,
-      "hybrid_mrr": 0.777778,
+      "required_evidence_query_count": 7,
+      "lexical_recall_at_3": 1.0,
+      "dense_recall_at_3": 1.0,
+      "hybrid_recall_at_3": 1.0,
+      "hybrid_mrr": 1.0,
       "hybrid_blocked_source_violations": 0,
       "hybrid_forbidden_result_violations": 0,
-      "dense_mean_query_latency_ms": 128.253,
-      "dense_mean_warm_retrieval_latency_ms": 48.791,
-      "dense_indexing_wall_time_ms": 4714.887,
+      "dense_mean_query_latency_ms": 146.602,
+      "dense_mean_warm_retrieval_latency_ms": 64.659,
+      "dense_indexing_wall_time_ms": 1408.696,
       "dense_index_size_bytes": 151360,
-      "process_peak_resident_memory_mb": 87.492
+      "process_peak_resident_memory_mb": 101.434
     }
   },
   "hardware_targets": {

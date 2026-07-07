@@ -1,7 +1,7 @@
 # Issue 29 Hybrid Retrieval Recommendation
 
 Machine-readable result: `docs/progress/issue-29-hybrid-retrieval-comparison.json`
-Executed at UTC: `2026-07-04T12:32:17.894334+00:00`
+Executed at UTC: `2026-07-07T21:14:34.320717+00:00`
 Selected candidate: hybrid
 
 Production thresholds remain out of scope and must be decided by the later evaluation decision ticket.
@@ -10,30 +10,33 @@ Production thresholds remain out of scope and must be decided by the later evalu
 
 ### lexical
 
-- Recall@1: `0.777778`
-- Recall@3: `0.777778`
-- Mean reciprocal rank: `0.777778`
+- Required-evidence query count: `7`
+- Recall@1: `1.0`
+- Recall@3: `1.0`
+- Mean reciprocal rank: `1.0`
 - Blocked-source violations: `0`
 - Forbidden-result violations: `0`
-- Mean latency ms: `0.117`
+- Mean latency ms: `0.106`
 
 ### dense
 
-- Recall@1: `0.555556`
-- Recall@3: `0.777778`
-- Mean reciprocal rank: `0.666667`
+- Required-evidence query count: `7`
+- Recall@1: `0.714286`
+- Recall@3: `1.0`
+- Mean reciprocal rank: `0.857143`
 - Blocked-source violations: `0`
 - Forbidden-result violations: `0`
-- Mean latency ms: `128.253`
+- Mean latency ms: `146.602`
 
 ### hybrid
 
-- Recall@1: `0.777778`
-- Recall@3: `0.777778`
-- Mean reciprocal rank: `0.777778`
+- Required-evidence query count: `7`
+- Recall@1: `1.0`
+- Recall@3: `1.0`
+- Mean reciprocal rank: `1.0`
 - Blocked-source violations: `0`
 - Forbidden-result violations: `0`
-- Mean latency ms: `0.021`
+- Mean latency ms: `0.019`
 
 ## Non-Selected Alternatives
 

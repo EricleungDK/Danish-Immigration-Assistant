@@ -36,7 +36,7 @@ The JSON comparison and markdown recommendation are generated measurements. They
 
 Latest generated hybrid comparison evidence currently records:
 
-- Executed at UTC: `2026-07-04T12:32:17.894334+00:00`
+- Executed at UTC: `2026-07-07T21:14:34.320717+00:00`
 - Benchmark id: `mvp-hybrid-retrieval-comparison-issue-29`
 - Runtime baseline: `mvp-runtime-baseline-issue-26`
 - Observed Ollama provider version: `0.30.6`
@@ -48,12 +48,13 @@ Latest generated hybrid comparison evidence currently records:
 - Corpus SHA-256: `51f5c891fd742c1f67f076ccd13d5381bdd7ec9d46b3fb436acf6eb4ad143679`
 - Fusion algorithm: reciprocal-rank fusion with `k=60`
 - Query count: `9`
-- Lexical Recall@3: `0.777778`
-- Dense Recall@3: `0.777778`
-- Hybrid Recall@3: `0.777778`
-- Lexical MRR: `0.777778`
-- Dense MRR: `0.666667`
-- Hybrid MRR: `0.777778`
+- Required-evidence query count: `7`
+- Lexical Recall@3: `1.0`
+- Dense Recall@3: `1.0`
+- Hybrid Recall@3: `1.0`
+- Lexical MRR: `1.0`
+- Dense MRR: `0.857143`
+- Hybrid MRR: `1.0`
 - Hybrid blocked-source violations: `0`
 - Hybrid forbidden-result violations: `0`
 - Selected candidate: `hybrid`
