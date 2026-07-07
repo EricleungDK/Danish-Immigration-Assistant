@@ -16,6 +16,7 @@ This slice packages the local application release candidate as a documented sour
 
 - Machine-readable release qualification: [config/release-qualification.json](../../config/release-qualification.json)
 - Human-readable release qualification and operating documentation: [docs/release-qualification.md](../release-qualification.md)
+- Current release evaluation report: [docs/progress/release-evaluation-current.json](release-evaluation-current.json)
 - Release qualification contract code: [danish_rag/release_qualification.py](../../danish_rag/release_qualification.py)
 - Contract tests: [tests/test_issue_25_release_qualification.py](../../tests/test_issue_25_release_qualification.py)
 - Runtime baseline: [docs/runtime-baseline.md](../runtime-baseline.md), [config/runtime-policy.json](../../config/runtime-policy.json)
@@ -31,7 +32,7 @@ This slice packages the local application release candidate as a documented sour
 ## Acceptance Criteria Mapping
 
 - Every supported environment passes setup, supported answer, refusal, evidence inspection, history persistence, deletion/export, update installation, and rollback: blocked. `windows-11-wsl2-ubuntu-x86_64` is still a verified candidate, not a release-qualified environment matrix result. Native Linux and macOS remain candidates; native Windows is not supported for the MVP candidate.
-- Retrieval, citation, unsupported-claim, clarify/answer/refuse, trust-indicator, privacy, reliability, accessibility, and performance gates meet approved thresholds: blocked. The issue #7 quality bar still requires human approval, and the current hybrid retrieval baseline is below the candidate Recall@3 release threshold.
+- Retrieval, citation, unsupported-claim, clarify/answer/refuse, trust-indicator, privacy, reliability, accessibility, and performance gates meet approved thresholds: blocked. The issue #29 hybrid retrieval fixture now meets the candidate required-evidence Recall@3 threshold with zero blocked-source and forbidden-result violations, and the offline release evaluation runner publishes the current gate report, but the issue #7 quality bar still requires human approval and final-answer evaluation, full release monitors, the supported-environment matrix, and approved performance thresholds remain incomplete.
 - Any uncited official fact, personal eligibility conclusion, answer-path data egress, or failed atomic rollback blocks release: encoded as release-blocking zero-tolerance conditions in `config/release-qualification.json` and verified by contract tests.
 - Distribution and documentation match approved runtime, model, hardware, security, and application-update decisions: documented in `docs/release-qualification.md` and checked against the release qualification contract.
 - Evaluation dataset version, metrics, thresholds, results, known limitations, and active corpus requirements are published without user-question analytics: documented in `docs/release-qualification.md`; the qualification contract records `uses_production_user_questions: false`.
@@ -40,9 +41,8 @@ This slice packages the local application release candidate as a documented sour
 
 - Human approval pending for issue #7 evaluation dataset, metrics, thresholds, hardware targets, and environment matrix.
 - Human confirmation pending for issue #24 usability validation.
-- Current issue #29 hybrid retrieval baseline Recall@3 is `0.777778`, below the candidate release threshold of `0.95`.
 - Performance baselines are published, but human-approved performance thresholds and full supported-environment measurements are pending.
-- Full production release evaluation runner, final-answer evaluator, full network-boundary monitor, rollback fault-injection matrix, and supported-environment CI matrix are not implemented.
+- Offline release evaluation runner is implemented and publishes `docs/progress/release-evaluation-current.json`; release remains blocked by the missing final-answer evaluator, full network-boundary monitor, rollback fault-injection matrix, and full supported-environment critical journey matrix.
 - Full critical journey matrix has not passed across every published supported environment.
 
 ## Verification

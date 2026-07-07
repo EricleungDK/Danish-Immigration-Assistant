@@ -8,11 +8,10 @@ Status: `blocked`.
 
 Release decision: `do-not-release`.
 
-The local application has a documented release candidate package and passing slice-level evidence, but the MVP release is blocked. The blocking reasons are:
+The local application has a documented release candidate package, passing slice-level evidence, and an offline release evaluation runner, but the MVP release is blocked. The blocking reasons are:
 
 - Issue #7 remains `candidate-ready-for-human-approval`; a human has not approved the evaluation dataset, metrics, thresholds, hardware targets, or supported-environment matrix.
-- The issue #29 hybrid retrieval fixture baseline records required evidence Recall@3 of `0.777778`, below the candidate release threshold of `0.95`.
-- The full production release evaluation runner, final-answer evaluator, full network-boundary monitor, rollback fault-injection matrix, and supported-environment CI matrix are not implemented.
+- The final-answer evaluator, full network-boundary monitor, rollback fault-injection matrix, and supported-environment CI matrix are not implemented.
 - The supported-environment critical journey matrix has not passed setup, supported answer, refusal, evidence inspection, history persistence, deletion/export, update installation, and rollback for every published supported environment.
 - Performance baselines are published, but human-approved performance thresholds and full supported-environment measurements are not complete.
 - Issue #24 human comprehension validation is still pending.
@@ -136,6 +135,8 @@ Evaluation dataset: `di-rag-eval-set-v0.1-candidate`, version `0.1.0-candidate`,
 
 Published release-blocking metrics include required evidence Recall@3, critical retrieval Recall@3, blocked-source violations, forbidden-result violations, official-fact citation coverage, citation correctness, unsupported-claim rate, required-fact coverage, clarify/answer/refuse behavior, trust-indicator correctness, Fresh Tomato minimum material-source behavior, privacy-network boundary, update rollback success, accessibility conformance, reliability critical journeys, runtime identity, supported-environment critical journeys, and performance.
 
+The offline release evaluation runner publishes `docs/progress/release-evaluation-current.json` and evaluates every published release gate without running live provider, browser, or environment-matrix commands by default.
+
 Release-blocking thresholds include:
 
 - Required evidence Recall@3: at least `0.95`
@@ -150,18 +151,18 @@ Release-blocking thresholds include:
 Current performance baselines:
 
 - Structured completion: `25805.935` ms
-- Dense mean query latency: `128.253` ms
-- Dense mean warm retrieval latency: `48.791` ms
-- Dense indexing wall time: `4714.887` ms
+- Dense mean query latency: `146.602` ms
+- Dense mean warm retrieval latency: `64.659` ms
+- Dense indexing wall time: `1408.696` ms
 - Dense index size: `151360` bytes
-- Process peak resident memory: `87.492` MB
+- Process peak resident memory: `101.434` MB
 
 Current measured limitations:
 
-- Hybrid retrieval baseline Recall@3 is `0.777778`, below the candidate release threshold.
+- Hybrid retrieval required-evidence Recall@3 is `1.0` across 7 evaluable required-evidence queries in the 9-query issue #29 fixture set, with blocked-source violations `0` and forbidden-result violations `0`; the offline release evaluation runner records this as a passed retrieval gate.
 - Human approval of issue #7 is pending.
 - Human confirmation for issue #24 usability validation is pending.
 - Human-approved performance thresholds and full supported-environment measurements are pending.
-- Full production release evaluation and supported-environment matrix automation are not implemented.
+- Release remains blocked by missing final-answer evaluation, full network-boundary monitoring, rollback fault-injection coverage, supported-environment matrix completion, human approval, and approved performance thresholds.
 
 Any uncited official fact, personal eligibility conclusion, answer-path personal-data egress, failed atomic rollback, or mismatched active corpus/index pair blocks release.
