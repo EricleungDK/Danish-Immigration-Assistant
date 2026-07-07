@@ -9,6 +9,7 @@
   <script src="/static/app.js" defer></script>
 </head>
 <body>
+  <a class="skip-link" href="#conversation-title">Skip to conversation</a>
   <header class="topbar">
     <a class="brand" href="/" aria-label="Danish Immigration RAG home">
       <span class="brand-mark">DIR</span>
@@ -28,8 +29,12 @@
     </div>
   </header>
 
+  <div id="interaction-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+
   <main class="app-shell">
-    <aside class="local-rail" aria-label="Local conversation history">
+    {% include "conversation_main.html" %}
+
+    <aside class="local-rail" aria-label="Local tools">
       <a class="new-link" href="/">New conversation</a>
       <section>
         <h2>Local History</h2>
@@ -171,8 +176,6 @@
         {% endif %}
       </section>
     </aside>
-
-    {% include "conversation_main.html" %}
 
     {% include "setup_panel.html" %}
   </main>
