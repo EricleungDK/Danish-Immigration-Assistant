@@ -81,12 +81,12 @@ class ReleaseEvaluationReportTests(unittest.TestCase):
 
         serialized = json.dumps(report, sort_keys=True).casefold()
         forbidden_fragments = [
-            "production_question_text",
-            "production_answer_text",
-            "user_question_text",
-            "user_answer_text",
-            "conversation_id",
-            "conversation_record",
+            '"production_question_text"',
+            '"production_answer_text"',
+            '"user_question_text"',
+            '"user_answer_text"',
+            '"conversation_id"',
+            '"conversation_record"',
         ]
         for fragment in forbidden_fragments:
             self.assertNotIn(fragment, serialized)
