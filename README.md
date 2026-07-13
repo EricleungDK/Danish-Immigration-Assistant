@@ -60,9 +60,6 @@ Private, source-grounded local assistant for Danish permanent-residence language
   Create a guided personal-profile layer only after the current source-backed assistant is stable. This would require
   stronger privacy design, clearer consent, and stricter refusal behavior because personal memory increases safety risk.
 
-  Important correction: your current “What I used AI for” listed app features, not your development process. For a
-  portfolio, be explicit: AI helped you build, but you owned the direction, review, and evidence.
-
 ### Local Application
 
 Install the local web application dependencies in a virtual environment:
