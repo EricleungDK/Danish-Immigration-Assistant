@@ -9,7 +9,7 @@
     "docs/progress/issue-26-runtime-probe.json"
   ],
   "diagnostic": "Runtime baseline probe passed.",
-  "elapsed_ms": 25828.447,
+  "elapsed_ms": 29798.882,
   "environment": {
     "cpu_count": 16,
     "machine": "x86_64",
@@ -21,7 +21,7 @@
     "wsl": true
   },
   "exit_status": 0,
-  "finished_at_utc": "2026-07-02T21:28:21.625849+00:00",
+  "finished_at_utc": "2026-07-07T16:32:49.960092+00:00",
   "model": {
     "capabilities": [
       "completion",
@@ -57,14 +57,14 @@
     "id": "ollama",
     "version": "0.30.6"
   },
-  "started_at_utc": "2026-07-02T21:27:57.233089+00:00",
+  "started_at_utc": "2026-07-07T16:32:21.086880+00:00",
   "structured_response": {
     "runtime_baseline": "mvp-runtime-baseline-issue-26",
     "status": "ok"
   },
   "timings_ms": {
-    "model_inspection": 2.144,
-    "service_version": 17.277,
-    "structured_completion": 25805.935
+    "model_inspection": 18.064,
+    "service_version": 17.933,
+    "structured_completion": 29758.388
   }
 }

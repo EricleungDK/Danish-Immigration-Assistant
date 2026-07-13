@@ -43,9 +43,39 @@ textarea {
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+#conversation-title:focus,
+.evidence-drawer [tabindex="-1"]:focus {
   outline: 3px solid var(--focus);
   outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 20;
+  top: 0.75rem;
+  left: 0.75rem;
+  transform: translateY(-150%);
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fff;
+  font-weight: 800;
+  padding: 0.7rem 0.9rem;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
 }
 
 .topbar {
@@ -67,6 +97,7 @@ textarea:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
   color: inherit;
   text-decoration: none;
 }
@@ -87,6 +118,10 @@ textarea:focus-visible {
 .brand strong,
 .brand small {
   display: block;
+}
+
+.brand > span:last-child {
+  min-width: 0;
 }
 
 .brand strong {
@@ -134,6 +169,7 @@ textarea:focus-visible {
 
 .app-shell {
   display: grid;
+  grid-template-areas: "rail conversation setup";
   grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr) minmax(18rem, 24rem);
   min-height: calc(100vh - 4.25rem);
 }
@@ -145,11 +181,13 @@ textarea:focus-visible {
 }
 
 .local-rail {
+  grid-area: rail;
   padding: 1.25rem;
   border-right: 1px solid var(--line);
 }
 
 .setup-panel {
+  grid-area: setup;
   border-left: 1px solid var(--line);
 }
 
@@ -214,6 +252,140 @@ textarea:focus-visible {
   font-size: 0.78rem;
 }
 
+.record-actions,
+.conversation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  margin-top: 0.45rem;
+}
+
+.record-actions a,
+.conversation-actions a,
+.history-bulk-actions > a {
+  color: var(--blue);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.record-actions form,
+.conversation-actions form,
+.history-bulk-actions form {
+  margin: 0;
+}
+
+.history-bulk-actions {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+
+.history-bulk-actions label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.history-bulk-actions input {
+  width: 100%;
+  margin-bottom: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.55rem 0.6rem;
+}
+
+.update-check-form {
+  margin: 0.9rem 0 0;
+}
+
+.update-status {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--green);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0.75rem 0.8rem;
+}
+
+.update-status h3,
+.update-status p {
+  margin: 0;
+}
+
+.update-status h3 {
+  font-size: 0.95rem;
+}
+
+.update-status p {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.update-status-error {
+  border-left-color: var(--tomato);
+}
+
+.update-check-form button,
+.update-actions button {
+  width: 100%;
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  background: var(--green);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0.55rem 0.65rem;
+}
+
+.update-review {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0.9rem;
+}
+
+.update-review h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.update-source-list {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.45rem 0 0;
+  padding-left: 1rem;
+}
+
+.update-actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.update-actions form {
+  margin: 0;
+}
+
+.update-actions .link-button {
+  background: transparent;
+  color: var(--blue);
+}
+
 .runtime-list div {
   display: grid;
   gap: 0.1rem;
@@ -235,10 +407,15 @@ textarea:focus-visible {
 .conversation {
   position: relative;
   display: flex;
+  grid-area: conversation;
   min-width: 0;
   flex-direction: column;
   padding: clamp(1rem, 4vw, 3rem);
   padding-bottom: 10rem;
+}
+
+#conversation-title {
+  scroll-margin-top: 5.5rem;
 }
 
 .conversation-head {
@@ -277,6 +454,10 @@ h1 {
   max-width: 100%;
   font-size: 1.8rem;
   line-height: 1.12;
+}
+
+.conversation-actions {
+  margin-top: 0.75rem;
 }
 
 .empty-state {
@@ -403,6 +584,15 @@ h1 {
 
 .answer-section-interpretation {
   border-left: 5px dashed var(--blue);
+}
+
+.answer-section-refusal {
+  border-top: 3px solid var(--tomato);
+  border-left: 5px solid var(--tomato);
+}
+
+.answer-section-source_warning {
+  border-left: 6px double var(--tomato);
 }
 
 .section-label {
@@ -694,6 +884,42 @@ button:hover {
   background: #0d4f3d;
 }
 
+.link-button {
+  display: inline;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--blue);
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.link-button:hover {
+  background: transparent;
+  color: var(--green);
+}
+
+.danger-button {
+  background: var(--tomato);
+}
+
+.danger-button:hover {
+  background: #943423;
+}
+
+.link-button.danger-button {
+  background: transparent;
+  color: var(--tomato);
+}
+
+.link-button.danger-button:hover {
+  background: transparent;
+  color: #943423;
+}
+
 .setup-form {
   display: grid;
   gap: 0.9rem;
@@ -748,11 +974,17 @@ button:hover {
 
 @media (max-width: 1080px) {
   .app-shell {
+    grid-template-areas:
+      "conversation"
+      "rail"
+      "setup";
     grid-template-columns: minmax(0, 1fr);
+    padding-bottom: 11rem;
   }
 
   .local-rail {
-    display: none;
+    border-top: 1px solid var(--line);
+    border-right: 0;
   }
 
   .setup-panel {
@@ -804,5 +1036,16 @@ button:hover {
 
   .composer-footer button {
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

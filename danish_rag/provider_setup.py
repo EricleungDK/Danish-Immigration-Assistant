@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 import urllib.error
 import urllib.request
 
+from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
 from .runtime_policy import is_loopback_url, load_runtime_policy
 from .runtime_probe import OllamaClient, run_runtime_probe
 
@@ -327,6 +328,10 @@ class ProviderCapabilityTester:
         path: str,
         payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        try:
+            require_loopback_endpoint(endpoint, purpose="Provider capability testing")
+        except PrivacyBoundaryError as exc:
+            raise RuntimeError(str(exc)) from exc
         data = None
         headers = {"Accept": "application/json"}
         if payload is not None:

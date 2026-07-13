@@ -1,0 +1,313 @@
+{
+  "config_validation": {
+    "evaluation_quality_bar": [],
+    "release_qualification": [],
+    "runtime_policy": [],
+    "source_contract": []
+  },
+  "derived_release_blockers": [
+    {
+      "id": "quality-bar-human-approval-pending",
+      "reason": "Issue #7 remains candidate-ready-for-human-approval rather than approved.",
+      "source": "explicit_release_blockers",
+      "status": "pending"
+    },
+    {
+      "id": "environment-matrix-critical-journeys-not-complete",
+      "reason": "The complete critical journey matrix has not passed for every published supported environment.",
+      "source": "explicit_release_blockers",
+      "status": "not_run"
+    },
+    {
+      "id": "issue-24-human-validation-pending",
+      "reason": "Human confirmation of comprehension validation is still pending.",
+      "source": "explicit_release_blockers",
+      "status": "pending"
+    },
+    {
+      "id": "performance-thresholds-not-approved",
+      "reason": "Performance baselines are published, but human-approved performance thresholds and full environment measurements are not complete.",
+      "source": "explicit_release_blockers",
+      "status": "pending"
+    },
+    {
+      "id": "final-answer-evaluator-not-implemented",
+      "reason": "The final-answer evaluator for citation coverage, citation correctness, unsupported claims, required fact coverage, clarify/answer/refuse behavior, and trust indicators is not implemented.",
+      "source": "gate_results",
+      "status": "not_implemented"
+    },
+    {
+      "id": "full-network-boundary-monitor-not-implemented",
+      "reason": "The implemented privacy fixtures pass, but a full release monitor for answer-path network egress across the supported critical-journey matrix is not implemented.",
+      "source": "gate_results",
+      "status": "not_implemented"
+    },
+    {
+      "id": "rollback-fault-injection-matrix-not-implemented",
+      "reason": "The implemented rollback fixture passes, but the full release fault-injection matrix for installation and activation failures is not implemented.",
+      "source": "gate_results",
+      "status": "not_implemented"
+    },
+    {
+      "id": "production-release-owner-approval-pending",
+      "reason": "Final decision to publish a non-blocked MVP release.",
+      "source": "human_approval_records",
+      "status": "pending"
+    }
+  ],
+  "evidence_inputs": {
+    "accessibility_browser": {
+      "exists": true,
+      "path": "docs/progress/issue-23-accessibility-responsive.md",
+      "sha256": "f64e74bc262416916a5ef0e6a2272c77a79aa912bd3da8c5ac891d63f5dbd47d",
+      "size_bytes": 2267
+    },
+    "dense_retrieval": {
+      "exists": true,
+      "path": "docs/progress/issue-28-dense-retrieval-benchmark.json",
+      "sha256": "fb5fc6d7aae5d1a1d210f5e528a810687c468bc35df2f03061cb7e6b2d931489",
+      "size_bytes": 12769
+    },
+    "hybrid_retrieval": {
+      "exists": true,
+      "path": "docs/progress/issue-29-hybrid-retrieval-comparison.json",
+      "sha256": "f1e0f26872faa2e0ef6d9b7e4d145ec9c10f60f523f9d9e9d18eb8c2349577f4",
+      "size_bytes": 101081
+    },
+    "lexical_retrieval": {
+      "exists": true,
+      "path": "docs/progress/issue-27-retrieval-benchmark.json",
+      "sha256": "e9cd2904b85bbc22e4e6f8c55031fc685203bc7c40420cb18d2c0878661b64cc",
+      "size_bytes": 11733
+    },
+    "quality_bar": {
+      "exists": true,
+      "path": "config/evaluation-quality-bar.json",
+      "sha256": "e5a8947fa53ffe0d0790c9f2af195ee6fa5a67b11e4496d1f02214dc39556d54",
+      "size_bytes": 15599
+    },
+    "release_progress": {
+      "exists": true,
+      "path": "docs/progress/issue-25-release-qualification.md",
+      "sha256": "feefb01edcbdd62e00ed4c37e6abf93c374481d068437a0bf3eda09255573d92",
+      "size_bytes": 5185
+    },
+    "release_qualification": {
+      "exists": true,
+      "path": "config/release-qualification.json",
+      "sha256": "94a9cba688dd08637fb3760280ade2b99f9526177222390f0877ae1beb263a93",
+      "size_bytes": 14648
+    },
+    "runtime_policy": {
+      "exists": true,
+      "path": "config/runtime-policy.json",
+      "sha256": "519621afe1b8e287804adc80e9827397c80eecdd52eb55e1efe010d0f3c84aa0",
+      "size_bytes": 6158
+    },
+    "runtime_probe": {
+      "exists": true,
+      "path": "docs/progress/issue-26-runtime-probe.json",
+      "sha256": "b6d0a552706f9a7ed131692d051b37d588d783d7897d822c0638c86048cf00c7",
+      "size_bytes": 1667
+    },
+    "usability_validation": {
+      "exists": true,
+      "path": "docs/progress/issue-24-usability-validation.md",
+      "sha256": "46c5012b2c55a198ea8d924bbc6fb4cebcccba7585779181941fb2e835fe63f3",
+      "size_bytes": 6074
+    }
+  },
+  "gate_results": [
+    {
+      "evaluated_status": "passed",
+      "evidence": [
+        {
+          "exists": true,
+          "path": "docs/progress/issue-29-hybrid-retrieval-comparison.json",
+          "sha256": "f1e0f26872faa2e0ef6d9b7e4d145ec9c10f60f523f9d9e9d18eb8c2349577f4",
+          "size_bytes": 101081
+        }
+      ],
+      "failures": [],
+      "id": "retrieval-required-evidence-baseline",
+      "metric_id": "retrieval-required-evidence-recall-at-3",
+      "observed": {
+        "blocked_source_violations": 0,
+        "candidate": "hybrid",
+        "forbidden_result_violations": 0,
+        "required_evidence_query_count": 7,
+        "required_evidence_recall_at_3": 1.0
+      },
+      "release_blocking": true,
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "Hybrid retrieval required-evidence Recall@3 1.0 over 7 evaluable queries with 0 blocked-source violations and 0 forbidden-result violations.",
+      "thresholds": {
+        "blocked_source_violations_max": 0,
+        "forbidden_result_violations_max": 0,
+        "required_evidence_recall_at_3_min": 0.95
+      }
+    },
+    {
+      "evaluated_status": "passed",
+      "evidence": [],
+      "failures": [],
+      "id": "release-evaluation-runner-report",
+      "metric_id": "reliability-critical-journeys",
+      "observed": {},
+      "release_blocking": true,
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "The offline release evaluation runner evaluates every published release gate and writes docs/progress/release-evaluation-current.json without running live provider, browser, or environment-matrix commands by default.",
+      "thresholds": {}
+    },
+    {
+      "evaluated_status": "not_implemented",
+      "evidence": [],
+      "failures": [],
+      "id": "final-answer-evaluator-not-implemented",
+      "metric_id": "official-fact-citation-coverage",
+      "observed": {},
+      "release_blocking": true,
+      "source_status": "not_implemented",
+      "status": "not_implemented",
+      "summary": "The final-answer evaluator for citation coverage, citation correctness, unsupported claims, required fact coverage, clarify/answer/refuse behavior, and trust indicators is not implemented.",
+      "thresholds": {}
+    },
+    {
+      "evaluated_status": "not_implemented",
+      "evidence": [],
+      "failures": [],
+      "id": "full-network-boundary-monitor-not-implemented",
+      "metric_id": "privacy-network-boundary",
+      "observed": {},
+      "release_blocking": true,
+      "source_status": "not_implemented",
+      "status": "not_implemented",
+      "summary": "The implemented privacy fixtures pass, but a full release monitor for answer-path network egress across the supported critical-journey matrix is not implemented.",
+      "thresholds": {}
+    },
+    {
+      "evaluated_status": "not_implemented",
+      "evidence": [],
+      "failures": [],
+      "id": "rollback-fault-injection-matrix-not-implemented",
+      "metric_id": "update-rollback-success",
+      "observed": {},
+      "release_blocking": true,
+      "source_status": "not_implemented",
+      "status": "not_implemented",
+      "summary": "The implemented rollback fixture passes, but the full release fault-injection matrix for installation and activation failures is not implemented.",
+      "thresholds": {}
+    },
+    {
+      "evaluated_status": "not_run",
+      "evidence": [],
+      "failures": [],
+      "id": "environment-matrix-critical-journeys-not-complete",
+      "metric_id": "environment-matrix-critical-journeys",
+      "observed": {},
+      "release_blocking": true,
+      "source_status": "not_run",
+      "status": "not_run",
+      "summary": "Every published supported environment has not passed setup, supported answer, refusal, evidence inspection, history persistence, deletion/export, update installation, and rollback as one release matrix.",
+      "thresholds": {}
+    },
+    {
+      "evaluated_status": "pending",
+      "evidence": [],
+      "failures": [],
+      "id": "performance-thresholds-not-approved",
+      "metric_id": "performance-runtime-and-indexing-baseline",
+      "observed": {},
+      "release_blocking": true,
+      "source_status": "pending",
+      "status": "pending",
+      "summary": "Performance baselines are published, but human-approved release thresholds and full supported-environment measurements are not complete.",
+      "thresholds": {}
+    },
+    {
+      "evaluated_status": "passed",
+      "evidence": [
+        {
+          "command": ".venv/bin/python -m unittest -v",
+          "kind": "manual-command-record"
+        }
+      ],
+      "failures": [],
+      "id": "automated-python-regression-suite",
+      "metric_id": "implemented-slice-regressions",
+      "observed": {},
+      "release_blocking": true,
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "The implemented unit-test suite is required for the release candidate but does not replace the full release matrix.",
+      "thresholds": {}
+    },
+    {
+      "evaluated_status": "passed",
+      "evidence": [
+        {
+          "command": "DI_RAG_BROWSER_PORT=8927 npm run test:browser",
+          "kind": "manual-command-record"
+        }
+      ],
+      "failures": [],
+      "id": "browser-accessibility-suite",
+      "metric_id": "accessibility-conformance",
+      "observed": {},
+      "release_blocking": true,
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "The browser accessibility suite gates implemented core states with no critical or serious automated violations, plus recorded manual checks.",
+      "thresholds": {}
+    },
+    {
+      "evaluated_status": "passed",
+      "evidence": [
+        {
+          "exists": true,
+          "path": "docs/progress/issue-26-runtime-probe.json",
+          "sha256": "b6d0a552706f9a7ed131692d051b37d588d783d7897d822c0638c86048cf00c7",
+          "size_bytes": 1667
+        }
+      ],
+      "failures": [],
+      "id": "privacy-boundary-fixture",
+      "metric_id": "privacy-network-boundary",
+      "observed": {
+        "answer_path_allows_outbound_requests": false
+      },
+      "release_blocking": true,
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "Implemented workflow fixtures observe no answer-path network requests and content-free permitted update requests.",
+      "thresholds": {}
+    },
+    {
+      "evaluated_status": "passed",
+      "evidence": [],
+      "failures": [],
+      "id": "atomic-rollback-fixture",
+      "metric_id": "update-rollback-success",
+      "observed": {},
+      "release_blocking": true,
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "Implemented update-installation fixtures preserve the previous active corpus/index pair on failure.",
+      "thresholds": {}
+    }
+  ],
+  "generated_at_utc": "2026-07-07T00:00:00Z",
+  "privacy_assertions": {
+    "ran_live_network_or_provider_calls": false,
+    "uses_conversation_identifiers": false,
+    "uses_production_answers": false,
+    "uses_production_user_questions": false
+  },
+  "qualification_status": "blocked",
+  "release_decision": "do-not-release",
+  "release_qualification_id": "mvp-release-qualification-issue-25",
+  "schema_version": "1.0",
+  "strict_release_passed": false
+}

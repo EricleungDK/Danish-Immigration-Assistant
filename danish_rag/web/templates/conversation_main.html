@@ -3,9 +3,17 @@
     <div>
       <p class="eyebrow">Conversation First</p>
       {% if active_conversation %}
-      <h1 id="conversation-title" class="conversation-title-active">Current Conversation</h1>
+      <h1 id="conversation-title" class="conversation-title-active" tabindex="-1">Current Conversation</h1>
+      <div class="conversation-actions" aria-label="Current conversation actions">
+        <form method="get" action="/conversations/{{ active_conversation.id }}/export.json">
+          <button type="submit" class="link-button">Export record</button>
+        </form>
+        <form method="post" action="/conversations/{{ active_conversation.id }}/delete">
+          <button type="submit" class="danger-button">Delete record</button>
+        </form>
+      </div>
       {% else %}
-      <h1 id="conversation-title">Ask about Danish language requirements.</h1>
+      <h1 id="conversation-title" tabindex="-1">Ask about Danish language requirements.</h1>
       {% endif %}
     </div>
     <p class="privacy-badge">local-only answer path</p>
@@ -110,10 +118,11 @@
           id="{{ drawer_id }}"
           class="evidence-drawer"
           aria-labelledby="{{ title_id }}"
+          aria-describedby="{{ claim_support_id }} {{ trust_reasons_id }}"
         >
           <div class="drawer-panel">
             <form method="dialog" class="drawer-actions">
-              <button type="submit" class="drawer-close">Close</button>
+              <button type="submit" class="drawer-close">Close evidence drawer</button>
             </form>
             <p class="eyebrow">Material Source</p>
             <h3 id="{{ title_id }}" tabindex="-1">{{ citation.title }}</h3>
@@ -190,7 +199,7 @@
     </p>
     <ul class="boundary-list" aria-label="Product boundaries">
       <li>Questions, retrieved evidence, model inference, answers, indexes, and conversation records stay on this computer.</li>
-      <li>Network activity is limited to explicit release checks and user-approved knowledge-release downloads.</li>
+      <li>Release checks use only release metadata; they do not send questions, answers, evidence, or conversation records.</li>
       <li>Answers must stay bounded by approved official sources once the answer pipeline is connected.</li>
     </ul>
   </section>

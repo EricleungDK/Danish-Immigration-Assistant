@@ -28,6 +28,56 @@ class RetrievalError(ValueError):
     """Raised when the local retrieval index is missing or incompatible."""
 
 
+SUPPORTED_EMBEDDING_MODELS: dict[str, dict[str, Any]] = {
+    "embeddinggemma": {
+        "name": "embeddinggemma",
+        "implementation": "deterministic-local-vector-fixture",
+        "capabilities": ["embedding"],
+        "vector_dimensions": VECTOR_DIMENSIONS,
+    },
+    "embeddinggemma:latest": {
+        "name": "embeddinggemma:latest",
+        "implementation": "deterministic-local-vector-fixture",
+        "capabilities": ["embedding"],
+        "vector_dimensions": VECTOR_DIMENSIONS,
+    },
+}
+
+
+class UnsupportedEmbeddingModelError(RetrievalError):
+    """Raised when a requested embedding model is not approved for local indexing."""
+
+
+def supported_embedding_models() -> list[dict[str, Any]]:
+    return [
+        {
+            "name": profile["name"],
+            "vector_dimensions": int(profile["vector_dimensions"]),
+            "implementation": str(profile["implementation"]),
+            "capabilities": list(profile["capabilities"]),
+        }
+        for profile in SUPPORTED_EMBEDDING_MODELS.values()
+    ]
+
+
+def embedding_model_profile(embedding_model: str | None = None) -> dict[str, Any]:
+    requested = (embedding_model or SUPPORTED_EMBEDDING_MODEL).strip()
+    profile = SUPPORTED_EMBEDDING_MODELS.get(requested)
+    if profile is None:
+        supported = ", ".join(sorted(SUPPORTED_EMBEDDING_MODELS))
+        raise UnsupportedEmbeddingModelError(
+            f"Unsupported embedding model '{requested}'. Choose a supported local "
+            f"embedding model before indexing: {supported}. Changing embedding model "
+            "requires rebuilding the local hybrid index for the active corpus."
+        )
+    if "embedding" not in profile.get("capabilities", []):
+        raise UnsupportedEmbeddingModelError(
+            f"Model '{requested}' is supported by name but lacks the embedding "
+            "capability required to build the local hybrid index."
+        )
+    return dict(profile)
+
+
 def normalize_question(question: str) -> str:
     normalized = question.strip()
     lookup = normalized.casefold()
@@ -68,10 +118,21 @@ def build_hybrid_index(
     documents: list[dict[str, Any]],
     *,
     manifest: dict[str, Any],
+    embedding_model: str | None = None,
+    progress_callback: Any | None = None,
+    fault_injector: Any | None = None,
 ) -> dict[str, Any]:
+    embedding_profile = embedding_model_profile(embedding_model)
     release_id = str(manifest["knowledge_release_id"])
     index_dir = Path(data_dir) / "index" / release_id
     index_dir.mkdir(parents=True, exist_ok=True)
+    _report_install_phase(
+        progress_callback,
+        "indexing",
+        "Building lexical retrieval index.",
+        45,
+    )
+    _inject_install_fault(fault_injector, "indexing")
 
     lexical_path = index_dir / "lexical.sqlite3"
     if lexical_path.exists():
@@ -121,20 +182,30 @@ def build_hybrid_index(
     finally:
         connection.close()
 
+    _report_install_phase(
+        progress_callback,
+        "embedding",
+        "Embedding release documents locally.",
+        70,
+    )
+    _inject_install_fault(fault_injector, "embedding")
     vectors = [
         {
             "document_id": document["document_id"],
-            "vector": embed_text(_search_text(document)),
+            "vector": embed_text(
+                _search_text(document),
+                dimensions=int(embedding_profile["vector_dimensions"]),
+            ),
         }
         for document in documents
         if _is_release_eligible(document)
     ]
     dense_index = {
-        "metadata": _index_metadata(manifest),
+        "metadata": _index_metadata(manifest, embedding_profile=embedding_profile),
         "vectors": vectors,
     }
     _write_json(index_dir / "dense-index.json", dense_index)
-    metadata = _index_metadata(manifest)
+    metadata = _index_metadata(manifest, embedding_profile=embedding_profile)
     _write_json(index_dir / "index-metadata.json", metadata)
     return metadata
 
@@ -147,6 +218,7 @@ class HybridRetriever:
         active_release: dict[str, Any],
         documents: list[dict[str, Any]],
         dense_index: dict[str, Any],
+        embedding_model: str | None = None,
     ) -> None:
         self.data_dir = Path(data_dir)
         self.active_release = active_release
@@ -154,6 +226,9 @@ class HybridRetriever:
         self.documents_by_id = {document["document_id"]: document for document in documents}
         self.dense_index = dense_index
         self.index_dir = self.data_dir / "index" / self.manifest["knowledge_release_id"]
+        self.embedding_profile = embedding_model_profile(
+            embedding_model or dense_index.get("metadata", {}).get("embedding_model")
+        )
         self._validate_index()
 
     @classmethod
@@ -218,8 +293,8 @@ class HybridRetriever:
                 """,
                 (expression,),
             ).fetchall()
-        except sqlite3.OperationalError:
-            return []
+        except sqlite3.DatabaseError as exc:
+            raise RetrievalError("Local lexical index is unavailable; re-index required.") from exc
         finally:
             connection.close()
         ranked_ids = [str(row["document_id"]) for row in rows]
@@ -235,7 +310,10 @@ class HybridRetriever:
         normalized_question: str,
         metadata_filter: dict[str, Any],
     ) -> list[str]:
-        query_vector = embed_text(normalized_question)
+        query_vector = embed_text(
+            normalized_question,
+            dimensions=int(self.embedding_profile["vector_dimensions"]),
+        )
         scored: list[tuple[str, float]] = []
         for item in self.dense_index["vectors"]:
             document_id = item["document_id"]
@@ -250,7 +328,7 @@ class HybridRetriever:
 
     def _validate_index(self) -> None:
         metadata = self.dense_index.get("metadata", {})
-        expected = _index_metadata(self.manifest)
+        expected = _index_metadata(self.manifest, embedding_profile=self.embedding_profile)
         mismatches = [
             field for field, value in expected.items() if metadata.get(field) != value
         ]
@@ -349,18 +427,26 @@ def _search_text(document: dict[str, Any]) -> str:
     )
 
 
-def _index_metadata(manifest: dict[str, Any]) -> dict[str, Any]:
+def _index_metadata(
+    manifest: dict[str, Any],
+    *,
+    embedding_profile: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    profile = embedding_model_profile(
+        str(embedding_profile["name"]) if embedding_profile else SUPPORTED_EMBEDDING_MODEL
+    )
     return {
         "schema_version": INDEX_SCHEMA_VERSION,
         "retrieval": "hybrid",
         "lexical_engine": LEXICAL_ENGINE,
         "dense_engine": DENSE_ENGINE,
-        "embedding_model": SUPPORTED_EMBEDDING_MODEL,
+        "embedding_model": profile["name"],
         "embedding_model_identity": {
-            "name": SUPPORTED_EMBEDDING_MODEL,
-            "implementation": "deterministic-local-vector-fixture",
+            "name": profile["name"],
+            "implementation": profile["implementation"],
+            "capabilities": list(profile["capabilities"]),
         },
-        "vector_dimensions": VECTOR_DIMENSIONS,
+        "vector_dimensions": int(profile["vector_dimensions"]),
         "corpus_identity": manifest["corpus_id"],
         "knowledge_release_id": manifest["knowledge_release_id"],
         "rrf_k": RRF_K,
@@ -434,3 +520,18 @@ def _write_json(path: Path, value: dict[str, Any]) -> None:
         encoding="utf-8",
     )
     temporary_path.replace(path)
+
+
+def _report_install_phase(
+    progress_callback: Any | None,
+    phase: str,
+    message: str,
+    percent: int,
+) -> None:
+    if progress_callback is not None:
+        progress_callback({"phase": phase, "message": message, "percent": percent})
+
+
+def _inject_install_fault(fault_injector: Any | None, phase: str) -> None:
+    if fault_injector is not None:
+        fault_injector(phase)

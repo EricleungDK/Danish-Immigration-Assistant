@@ -37,7 +37,7 @@ The JSON files are generated measurements. They are not hand-authored architectu
 
 Latest generated dense benchmark evidence currently records:
 
-- Executed at UTC: `2026-07-04T12:28:11.457147+00:00`
+- Executed at UTC: `2026-07-07T21:13:03.122064+00:00`
 - Benchmark id: `mvp-dense-retrieval-benchmark-issue-28`
 - Embedding model: `embeddinggemma`
 - Embedding endpoint: `http://127.0.0.1:11434`
@@ -45,18 +45,19 @@ Latest generated dense benchmark evidence currently records:
 - Configuration: corpus `data/retrieval_benchmark/corpus-fixtures.json`, queries `data/retrieval_benchmark/dense-evaluation-queries.json`, policy `config/runtime-policy.json`, index mode `rebuild`, timeout `60.0` seconds
 - Vector dimensions: `768`
 - Dense index size: `151360` bytes
-- Dense indexing wall time: `4714.887` ms
+- Dense indexing wall time: `1364.947` ms
 - Embedding calls: `12`
-- Process peak resident memory: `87.492` MB
+- Process peak resident memory: `98.785` MB
 - Query count: `3`
-- Recall@1: `0.333333`
-- Recall@3: `0.666667`
-- Mean reciprocal rank: `0.5`
+- Required-evidence query count: `2`
+- Recall@1: `0.5`
+- Recall@3: `1.0`
+- Mean reciprocal rank: `0.75`
 - Blocked-source violations: `0`
 - Forbidden-result violations: `0`
-- Mean query latency: `136.491` ms
-- Mean warm retrieval latency: `48.791` ms
-- Mean embedding load duration: `87.699` ms
+- Mean query latency: `132.741` ms
+- Mean warm retrieval latency: `59.086` ms
+- Mean embedding load duration: `73.655` ms
 
 ## Recommendation
 

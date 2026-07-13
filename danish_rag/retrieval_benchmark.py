@@ -244,6 +244,7 @@ def run_retrieval_benchmark(
             "document_count": len(fixtures),
         },
         "summary": _summarize_results(query_results),
+        "category_metrics": _category_metrics(query_results),
         "queries": query_results,
     }
     if output_path is not None:
@@ -869,9 +870,23 @@ def _evaluate_ranked_result_ids(
         elif _is_blocked_source(fixture):
             blocked_result_ids.append(fixture["id"])
 
-    required_ids = set(query["required_document_ids"])
+    required_evidence_ids = [
+        result_id
+        for result_id in query["required_document_ids"]
+        if _is_eligible_for_query(fixtures_by_id[result_id], query)
+    ]
+    required_evidence_set = set(required_evidence_ids)
     forbidden_ids = set(query["forbidden_document_ids"])
-    first_required_rank = _first_required_rank(eligible_result_ids, required_ids)
+    first_required_rank = _first_required_rank(
+        eligible_result_ids, required_evidence_set
+    )
+    required_evidence_query = bool(required_evidence_ids)
+    recall_at_1_hit = required_evidence_query and required_evidence_set <= set(
+        eligible_result_ids[:1]
+    )
+    recall_at_3_hit = required_evidence_query and required_evidence_set <= set(
+        eligible_result_ids[:3]
+    )
     forbidden_violations = sorted(forbidden_ids & set(eligible_result_ids))
     blocked_credit = [
         result_id
@@ -887,12 +902,14 @@ def _evaluate_ranked_result_ids(
         "latency_ms": latency_ms,
         "raw_result_ids": raw_result_ids,
         "eligible_result_ids": eligible_result_ids,
+        "required_evidence_result_ids": required_evidence_ids,
+        "required_evidence_query": required_evidence_query,
         "blocked_result_ids": blocked_result_ids,
         "overdue_result_ids": overdue_result_ids,
-        "required_result_credit": 1 if first_required_rank is not None else 0,
+        "required_result_credit": 1 if recall_at_3_hit else 0,
         "required_rank": first_required_rank,
-        "recall_at_1_hit": bool(eligible_result_ids[:1] and eligible_result_ids[0] in required_ids),
-        "recall_at_3_hit": bool(required_ids & set(eligible_result_ids[:3])),
+        "recall_at_1_hit": recall_at_1_hit,
+        "recall_at_3_hit": recall_at_3_hit,
         "reciprocal_rank": round(1 / first_required_rank, 6)
         if first_required_rank is not None
         else 0.0,
@@ -907,15 +924,32 @@ def _evaluate_ranked_result_ids(
 
 def _summarize_results(query_results: list[dict[str, Any]]) -> dict[str, Any]:
     query_count = len(query_results)
+    required_evidence_results = [
+        query for query in query_results if query.get("required_evidence_query")
+    ]
+    required_evidence_query_count = len(required_evidence_results)
     latency_values = [query["latency_ms"] for query in query_results]
     summary = {
         "query_count": query_count,
+        "required_evidence_query_count": required_evidence_query_count,
         "categories": sorted({query["category"] for query in query_results}),
-        "recall_at_1": _mean(query["recall_at_1_hit"] for query in query_results),
-        "recall_at_3": _mean(query["recall_at_3_hit"] for query in query_results),
+        "recall_at_1": _mean(
+            query["recall_at_1_hit"] for query in required_evidence_results
+        )
+        if required_evidence_results
+        else 0.0,
+        "recall_at_3": _mean(
+            query["recall_at_3_hit"] for query in required_evidence_results
+        )
+        if required_evidence_results
+        else 0.0,
         "mean_reciprocal_rank": round(
-            sum(query["reciprocal_rank"] for query in query_results) / query_count, 6
-        ),
+            sum(query["reciprocal_rank"] for query in required_evidence_results)
+            / required_evidence_query_count,
+            6,
+        )
+        if required_evidence_results
+        else 0.0,
         "forbidden_result_violations": sum(
             query["forbidden_result_violations"] for query in query_results
         ),
@@ -1624,6 +1658,10 @@ def _format_hybrid_recommendation(result: dict[str, Any]) -> str:
             [
                 f"### {name}",
                 "",
+                (
+                    "- Required-evidence query count: "
+                    f"`{summary['required_evidence_query_count']}`"
+                ),
                 f"- Recall@1: `{summary['recall_at_1']}`",
                 f"- Recall@3: `{summary['recall_at_3']}`",
                 f"- Mean reciprocal rank: `{summary['mean_reciprocal_rank']}`",

@@ -7,12 +7,18 @@ import sqlite3
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 class ConversationStore:
-    def __init__(self, path: str | Path) -> None:
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        fault_injector: Callable[[str], None] | None = None,
+    ) -> None:
         self.path = Path(path)
+        self.fault_injector = fault_injector
 
     def save_answer(
         self,
@@ -57,6 +63,7 @@ class ConversationStore:
                         now,
                     ),
                 )
+                self._inject_write_fault("after_conversation_header")
             else:
                 self._require_conversation(connection, conversation_id)
 
@@ -88,6 +95,7 @@ class ConversationStore:
                     now,
                 ),
             )
+            self._inject_write_fault("after_turn_insert")
             connection.execute(
                 """
                 UPDATE conversations
@@ -128,6 +136,7 @@ class ConversationStore:
                         WHERE conversation_id = conversations.id
                     )
                 WHERE conversations.deleted_at_utc IS NULL
+                    AND COALESCE(turn_counts.turn_count, 0) > 0
                 ORDER BY conversations.updated_at_utc DESC
                 """
             ).fetchall()
@@ -170,6 +179,64 @@ class ConversationStore:
         record["answered_at_utc"] = latest_turn["answered_at_utc"]
         record["answered_at_display"] = latest_turn["answered_at_display"]
         return record
+
+    def export_conversation(self, conversation_id: str) -> dict[str, Any]:
+        record = self.get_conversation(conversation_id)
+        return _export_record(record)
+
+    def export_conversations(self) -> dict[str, Any]:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self._connect() as connection:
+            self._ensure_schema(connection)
+            rows = connection.execute(
+                """
+                SELECT id
+                FROM conversations
+                WHERE deleted_at_utc IS NULL
+                ORDER BY updated_at_utc DESC
+                """
+            ).fetchall()
+        return {
+            "export_schema": "danish-rag.conversation-records.v1",
+            "exported_at_utc": datetime.now(UTC).isoformat(),
+            "conversations": [
+                self.export_conversation(str(row["id"]))["conversation"]
+                for row in rows
+            ],
+        }
+
+    def delete_conversation(self, conversation_id: str) -> None:
+        now = datetime.now(UTC).isoformat()
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self._connect() as connection:
+            self._ensure_schema(connection)
+            cursor = connection.execute(
+                """
+                UPDATE conversations
+                SET deleted_at_utc = ?, updated_at_utc = ?
+                WHERE id = ? AND deleted_at_utc IS NULL
+                """,
+                (now, now, conversation_id),
+            )
+            if cursor.rowcount == 0:
+                raise KeyError(conversation_id)
+            connection.commit()
+
+    def delete_all_conversations(self) -> int:
+        now = datetime.now(UTC).isoformat()
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self._connect() as connection:
+            self._ensure_schema(connection)
+            cursor = connection.execute(
+                """
+                UPDATE conversations
+                SET deleted_at_utc = ?, updated_at_utc = ?
+                WHERE deleted_at_utc IS NULL
+                """,
+                (now, now),
+            )
+            connection.commit()
+            return int(cursor.rowcount)
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.path)
@@ -279,6 +346,10 @@ class ConversationStore:
         ).fetchone()
         return int(row["next_turn_index"])
 
+    def _inject_write_fault(self, phase: str) -> None:
+        if self.fault_injector is not None:
+            self.fault_injector(phase)
+
 
 def _title_from_question(question: str) -> str:
     compact = " ".join(question.split())
@@ -299,3 +370,38 @@ def _timestamp_display(timestamp: str) -> str:
     if len(timestamp) >= 16:
         return timestamp[:16].replace("T", " ")
     return timestamp
+
+
+def _export_record(record: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "export_schema": "danish-rag.conversation-record.v1",
+        "exported_at_utc": datetime.now(UTC).isoformat(),
+        "conversation": {
+            "id": record["id"],
+            "title": record["title"],
+            "created_at_utc": record["created_at_utc"],
+            "updated_at_utc": record["updated_at_utc"],
+            "turns": [_export_turn(turn) for turn in record["turns"]],
+        },
+    }
+
+
+def _export_turn(turn: dict[str, Any]) -> dict[str, Any]:
+    trust = dict(turn["answer"].get("trust") or {})
+    return {
+        "turn_index": turn["turn_index"],
+        "question": turn["question"],
+        "normalized_question": turn["normalized_question"],
+        "answered_at_utc": turn["answered_at_utc"],
+        "model_identity": turn["model_identity"],
+        "corpus_version": turn["corpus_identity"],
+        "corpus_identity": turn["corpus_identity"],
+        "answer": turn["answer"],
+        "citations": turn["answer"].get("citations", []),
+        "trust_indicators": {
+            "evidence_confidence": trust.get("evidence_confidence"),
+            "evidence_confidence_reason": trust.get("evidence_confidence_reason"),
+            "fresh_tomato_score": trust.get("fresh_tomato_score"),
+            "fresh_tomato_reason": trust.get("fresh_tomato_reason"),
+        },
+    }

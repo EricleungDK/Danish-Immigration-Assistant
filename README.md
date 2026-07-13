@@ -12,6 +12,8 @@ Private, source-grounded local assistant for Danish permanent-residence language
 - Issue #6 source governance approval: [docs/progress/issue-6-source-governance-approval.md](docs/progress/issue-6-source-governance-approval.md)
 - Issue #7 evaluation quality-bar progress: [docs/progress/issue-7-evaluation-quality-bar.md](docs/progress/issue-7-evaluation-quality-bar.md)
 - Issue #8 local app setup progress: [docs/progress/issue-8-local-app-setup.md](docs/progress/issue-8-local-app-setup.md)
+- Issue #23 accessibility and responsive review: [docs/progress/issue-23-accessibility-responsive.md](docs/progress/issue-23-accessibility-responsive.md)
+- Issue #24 usability validation packet: [docs/progress/issue-24-usability-validation.md](docs/progress/issue-24-usability-validation.md)
 - Issue #26 progress: [docs/progress/issue-26-runtime-baseline.md](docs/progress/issue-26-runtime-baseline.md)
 - Issue #28 dense benchmark progress: [docs/progress/issue-28-dense-retrieval-benchmark.md](docs/progress/issue-28-dense-retrieval-benchmark.md)
 - Issue #29 hybrid comparison progress: [docs/progress/issue-29-hybrid-retrieval-comparison.md](docs/progress/issue-29-hybrid-retrieval-comparison.md)
@@ -21,7 +23,47 @@ Private, source-grounded local assistant for Danish permanent-residence language
 - Retrieval benchmark queries: [data/retrieval_benchmark/evaluation-queries.json](data/retrieval_benchmark/evaluation-queries.json)
 - Dense retrieval benchmark queries: [data/retrieval_benchmark/dense-evaluation-queries.json](data/retrieval_benchmark/dense-evaluation-queries.json)
 
-## Local Application
+## Portfolio Case Study
+
+  ### Problem
+  Official Danish immigration websites are written for the general public, not for someone trying to understand how the
+  rules apply to their own situation. Immigration processes can also take months or years, so users need answers that stay
+  connected to current official sources.
+
+  ### User
+  People preparing for Danish permanent residence, especially applicants who need to understand Danish language and exam
+  requirements.
+
+  ### Architecture
+  The app runs locally as a private web assistant. It uses an approved knowledge release of official Danish immigration
+  sources, builds a local retrieval index, retrieves relevant source passages for a user question, and then asks a local
+  language model to generate an answer only from that evidence. The answer pipeline separates official facts,
+  interpretation, refusals, citations, source freshness, and conversation history.
+
+  ### Safety/Evals
+  The project treats immigration guidance as a high-trust domain, so the app does not give legal advice or personal
+  eligibility decisions. It checks that official facts have citations, blocks unsupported claims, refuses unsafe questions,
+  and separates retrieval evaluation from final-answer evaluation. The test suite covers retrieval, citation validation,
+  privacy boundaries, source governance, rollback behavior, conversation history, accessibility, and browser workflows.
+
+  ### What I used AI for
+  I used AI coding agents to help draft implementation code, tests, documentation, architecture notes, and issue-based
+  development plans. I also plan to use AI-generated HTML explainers to study the system until I can explain the
+  architecture and evaluation design myself.
+
+  ### What I personally reviewed/owned
+  I owned the project scope, user problem, issue tickets, acceptance criteria, product boundaries, documentation direction,
+  test runs, and final portfolio story. I also reviewed whether the app’s behavior matched the safety goal: source-backed
+  guidance, not legal authority.
+
+  ### What I would improve next
+  Create a guided personal-profile layer only after the current source-backed assistant is stable. This would require
+  stronger privacy design, clearer consent, and stricter refusal behavior because personal memory increases safety risk.
+
+  Important correction: your current “What I used AI for” listed app features, not your development process. For a
+  portfolio, be explicit: AI helped you build, but you owned the direction, review, and evidence.
+
+### Local Application
 
 Install the local web application dependencies in a virtual environment:
 

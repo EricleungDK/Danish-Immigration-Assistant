@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Protocol
 
+from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
 from .provider_setup import ProviderConfiguration
 from .retrieval import normalize_question
 
@@ -204,6 +205,10 @@ class LocalProviderAnswerGenerator:
         path: str,
         payload: dict[str, Any],
     ) -> dict[str, Any]:
+        try:
+            require_loopback_endpoint(endpoint, purpose="Answer generation")
+        except PrivacyBoundaryError as exc:
+            raise AnswerPipelineError(str(exc)) from exc
         request = urllib.request.Request(
             f"{endpoint.rstrip('/')}{path}",
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -216,6 +221,24 @@ class LocalProviderAnswerGenerator:
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
             raise AnswerPipelineError(f"Local provider returned HTTP {exc.code}: {detail}") from exc
+        except TimeoutError as exc:
+            raise AnswerPipelineError(
+                "Local generation provider timed out while preparing the answer. "
+                "Keep the question in the composer, confirm the local provider is "
+                "running, and retry."
+            ) from exc
+        except urllib.error.URLError as exc:
+            raise AnswerPipelineError(
+                "Local generation provider is unavailable. Start the configured local "
+                f"provider at {endpoint.rstrip('/')}, confirm the selected model is "
+                "loaded, and retry."
+            ) from exc
+        except json.JSONDecodeError as exc:
+            raise AnswerPipelineError(
+                "Local generation provider returned malformed JSON before answer "
+                "validation. Confirm the configured model supports structured output "
+                "and retry."
+            ) from exc
         except Exception as exc:
             raise AnswerPipelineError(f"Local provider failed during answer generation: {exc}") from exc
 

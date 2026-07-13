@@ -25,8 +25,7 @@
 │
 ├── SOP/                           # Standard operating procedures
 │   ├── development_workflow.md    # Dev setup and daily workflow
-│   ├── database_migrations.md     # Placeholder; no database migrations in this MVP
-│   └── deployment.md              # Packaging and distribution notes
+│   └── database_migrations.md     # Placeholder; no database migrations in this MVP
 │
 ├── Reports/                       # Implementation reports
 │   ├── 2026-06-15-local-coding-agent-mvp.md
