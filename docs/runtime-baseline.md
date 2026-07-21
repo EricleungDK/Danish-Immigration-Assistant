@@ -10,8 +10,10 @@ This document records the issue #26 MVP runtime baseline for Danish Immigration 
   "baseline_id": "mvp-runtime-baseline-issue-26",
   "initial_provider": "ollama",
   "minimum_ollama_version": "0.30.6",
+  "minimum_chromium_major": 150,
+  "browser_baseline_reviewed_on": "2026-07-14",
   "initial_generation_model": "gemma4:12b",
-  "provisional_embedding_candidate": "embeddinggemma",
+  "initial_supported_embedding_model": "embeddinggemma",
   "default_application_bind_host": "127.0.0.1",
   "default_provider_endpoint": "http://127.0.0.1:11434",
   "application_process_model": "single-local-python-process",
@@ -74,7 +76,7 @@ Generation and embedding are separate capabilities:
 - Generation accepts messages, a response schema, and runtime options, then returns structured output with provider and model identity.
 - Embedding accepts text inputs, then returns vectors with model identity and vector dimensions.
 
-`embeddinggemma` is only a provisional embedding candidate. It is not a supported embedding model until the retrieval benchmark and later human architecture approval accept it.
+`embeddinggemma` is the initial supported embedding model. Issue #4 approved it after the issue #29 retrieval benchmark. Its provider contract, model identity, vector dimensions, corpus identity, and index schema remain separate from generation and must match before an index can be queried.
 
 ## Local-only answer path
 
@@ -103,7 +105,7 @@ The MVP application shape remains one local Python process serving both the web 
 
 ## First Verified Environment
 
-The first verified environment is Windows 11 with WSL2 Ubuntu on x86-64, Python 3.11 or newer, Ollama 0.30.6 or newer, `gemma4:12b`, and an evergreen local browser.
+The first verified environment is Windows 11 with WSL2 Ubuntu on x86-64, Python 3.11 or newer, Ollama 0.30.6 or newer, `gemma4:12b`, and an evergreen local browser. For this release-qualification cycle, evergreen means Chrome or Chromium major 150 or newer. The floor was reviewed on 2026-07-14 against the official Chrome desktop stable release and must be reviewed before each release-qualification run rather than remaining a permanent hard-coded assumption.
 
 For the approved `gemma4:12b` Q4_K_M artifact, 16 GB system RAM is the initial minimum. 24 GB is recommended when generation and indexing overlap. GPU acceleration is recommended. CPU-only compatibility and latency are measured rather than guaranteed.
 

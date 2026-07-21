@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .knowledge_release import KnowledgeReleaseError, verify_knowledge_release
+from .release_trust import ReleaseTrustError, sign_manifest
 
 
 ELIGIBLE_RELEASE_STATES = {"approved-current", "overdue-policy-usable"}
@@ -151,6 +152,8 @@ def build_publishable_knowledge_release(
     minimum_application_version: str,
     corpus_schema_version: str = "1.0",
     manifest_schema_version: str = "1.0",
+    signing_private_key_path: str | Path | None = None,
+    trust_root_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """Write a release directory only from reviewed release-eligible sources."""
 
@@ -163,6 +166,19 @@ def build_publishable_knowledge_release(
             raise KnowledgeReleaseError(
                 f"Source {source.get('source_id', '<unknown>')} lacks human reviewer evidence."
             )
+
+    if signing_private_key_path is None or trust_root_path is None:
+        raise KnowledgeReleaseError(
+            "Publishing a knowledge release requires an Ed25519 private signing key "
+            "and an application-owned trust root."
+        )
+    try:
+        trust_root = json.loads(Path(trust_root_path).read_text(encoding="utf-8"))
+        trust_root_id = str(trust_root["trust_root_id"])
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise KnowledgeReleaseError("Release trust root metadata is invalid.") from exc
+    if not trust_root_id:
+        raise KnowledgeReleaseError("Release trust root ID is empty.")
 
     source_by_id = {str(source["source_id"]): source for source in sources}
     normalized_documents = [_release_document(document, source_by_id) for document in documents]
@@ -184,9 +200,9 @@ def build_publishable_knowledge_release(
         "artifacts": [artifact],
         "integrity": {
             "hash_algorithm": "sha256",
-            "signature_algorithm": "fixture-release-signature",
-            "signature": f"{release_id}-reviewed-release",
-            "trust_root_id": "project-maintainer-release-key-v1",
+            "signature_algorithm": "ed25519",
+            "signature": "manifest.sig",
+            "trust_root_id": trust_root_id,
         },
     }
 
@@ -194,11 +210,23 @@ def build_publishable_knowledge_release(
     corpus_dir = resolved_release_dir / "corpus"
     corpus_dir.mkdir(parents=True, exist_ok=True)
     (corpus_dir / "documents.json").write_text(documents_json, encoding="utf-8")
-    (resolved_release_dir / "manifest.json").write_text(
+    manifest_path = resolved_release_dir / "manifest.json"
+    manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    verify_knowledge_release(resolved_release_dir)
+    try:
+        sign_manifest(
+            manifest_path,
+            signing_private_key_path,
+            resolved_release_dir / "manifest.sig",
+        )
+    except ReleaseTrustError as exc:
+        raise KnowledgeReleaseError(f"Could not sign knowledge release: {exc}") from exc
+    verify_knowledge_release(
+        resolved_release_dir,
+        trust_root_path=trust_root_path,
+    )
     return {"manifest": manifest, "documents": normalized_documents, "artifact": artifact}
 
 

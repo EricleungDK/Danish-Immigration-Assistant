@@ -199,7 +199,7 @@ Each knowledge release should include a manifest with these fields:
   ],
   "integrity": {
     "hash_algorithm": "sha256",
-    "signature_algorithm": "minisign-or-sigstore",
+    "signature_algorithm": "ed25519",
     "signature": "<detached signature reference>",
     "trust_root_id": "project-maintainer-release-key-v1"
   }
@@ -207,6 +207,50 @@ Each knowledge release should include a manifest with these fields:
 ```
 
 The manifest is the installation contract. Retrieval indexes are local derived data and should record compatibility with this manifest rather than become the authoritative source of provenance.
+
+## Current MVP Fixture Registry Evidence
+
+The repository now records the governance status of the bundled
+`kr-2026-07-06.1` corpus in the machine-readable source registry
+[`data/source_registry/sr-2026-07-06.1.json`](../data/source_registry/sr-2026-07-06.1.json).
+This record is deliberately release-blocking:
+
+- All five bundled documents declare `content_origin` as
+  `project-authored-fixture`; they are summaries written for project testing,
+  not archived normalized extracts of the linked official pages.
+- The two provenance-named hashes for each source in the bundled manifest
+  equal the hash of its project-authored summary. No official-page snapshot
+  hash or independently reviewed extraction hash is recorded.
+- `mvp-fixture-reviewer` and the manifest's review/check timestamps, extraction
+  schema, and freshness inputs are preserved only inside the fixture
+  projection. They are not accepted as human source-review or official-fetch
+  records, and the registry does not invent a reviewer identity, review event,
+  or approval decision.
+- Each production registry entry therefore remains `discovered`, records
+  curation, monitoring, and human review as `not-recorded`, and is not
+  production-release eligible. The
+  manifest's fixture `approved-current` state remains visible in a separate
+  `fixture_projection` so the mismatch cannot be hidden.
+
+[`danish_rag/source_registry.py`](../danish_rag/source_registry.py) validates
+the registry, cross-checks it against the bundled manifest and corpus, and
+derives a machine-readable `blocked` production-qualification result. A
+mechanically valid signed fixture release is not thereby a production-reviewed
+knowledge release.
+
+Production qualification still requires maintainers to:
+
+1. Admit each official URL through the curator transition and archive the
+   retrieved official content with retrieval/final-URL metadata and SHA-256
+   hashes.
+2. Normalize the official content, then have a named human reviewer compare
+   the snapshot and extraction and record the review time, decision,
+   materiality, notes, and interpretation risks.
+3. Apply the material-change separation rule (or document the MVP single-
+   maintainer fallback and obtain the required post-publication second review).
+4. Rebuild and sign a knowledge release whose provenance hashes cover those
+   official snapshots and reviewed normalized extracts, then record release
+   operator and approver evidence.
 
 ## Integrity And Trust-Root Options
 
@@ -235,6 +279,14 @@ Compared options:
 | Threshold signatures | Best protection against single maintainer compromise. | Heavy for a small early project. | Defer until release volume or risk justifies it. |
 
 Preferred baseline: publish a signed manifest with SHA-256 hashes for every artifact. Keep the first trust root in the application or in a separately verified project configuration. Document key rotation, revoked key IDs, and emergency withdrawal handling before the first public knowledge release.
+
+The repository contains only the public trust root. A production private signing
+key must never be committed, included in a release artifact, or kept as an
+unmanaged transient build file. Before the first public knowledge release, the
+recovery owner must record durable off-repository custody, backup/recovery access,
+the active key ID, the revoked-key record, and the rotation/withdrawal procedure.
+The current signed project-authored fixture proves verification mechanics only;
+it does not prove production signing-key custody.
 
 ## Maintainer Roles
 

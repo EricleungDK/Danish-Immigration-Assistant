@@ -17,8 +17,11 @@ from danish_rag.knowledge_release import (
 )
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
+from danish_rag.release_trust import sign_manifest
 from danish_rag.retrieval import HybridRetriever
 from danish_rag.source_maintenance import build_publishable_knowledge_release
+from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.release_trust_fixture import create_test_release_trust_fixture
 
 
 class FixtureAnswerGenerator:
@@ -56,7 +59,14 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
         self.data_dir = self.root / "data"
         self.release_catalog = self.root / "release-catalog"
         self.config_path = self.root / "config" / "provider-config.json"
-        install_minimal_knowledge_release(self.data_dir)
+        self.embedding_provider = DeterministicEmbeddingProviderFixture()
+        self.release_trust = create_test_release_trust_fixture(
+            self.root / "test-only-release-trust"
+        )
+        install_minimal_knowledge_release(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
         save_provider_configuration(
             self.config_path,
             ProviderConfiguration(
@@ -114,6 +124,8 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
             documents=documents,
             created_at_utc="2026-07-07T13:00:00Z",
             minimum_application_version=minimum_application_version,
+            signing_private_key_path=self.release_trust.signing_private_key_path,
+            trust_root_path=self.release_trust.trust_root_path,
         )
         return self.release_catalog / release_id
 
@@ -122,9 +134,10 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
             active_corpus_summary(self.data_dir)["knowledge_release_id"],
             "kr-2026-07-06.1",
         )
-        results = HybridRetriever.from_data_dir(self.data_dir).retrieve(
-            "What Danish test do I need for permanent residence?"
-        )
+        results = HybridRetriever.from_data_dir(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        ).retrieve("What Danish test do I need for permanent residence?")
         self.assertTrue(results)
         self.assertEqual(results[0]["knowledge_release_id"], "kr-2026-07-06.1")
 
@@ -135,6 +148,8 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
         result = install_knowledge_release(
             self.data_dir,
             release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
             progress_callback=streamed_progress.append,
         )
 
@@ -158,9 +173,19 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["progress"][-1]["percent"], 100)
         self.assertTrue((self.data_dir / "corpus" / "kr-2026-07-07.1").exists())
         self.assertTrue((self.data_dir / "index" / "kr-2026-07-07.1").exists())
-        self.assertTrue(HybridRetriever.from_data_dir(self.data_dir).retrieve("permanent residence"))
+        self.assertTrue(
+            HybridRetriever.from_data_dir(
+                self.data_dir,
+                embedding_provider=self.embedding_provider,
+            ).retrieve("permanent residence")
+        )
 
-        repeated = install_knowledge_release(self.data_dir, release_dir=release_dir)
+        repeated = install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
         self.assertEqual(repeated["progress"][-1]["phase"], "already_active")
         self.assertEqual(repeated["progress"][-1]["percent"], 100)
 
@@ -176,7 +201,10 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
         for phase in phases:
             with self.subTest(phase=phase):
                 shutil.rmtree(self.data_dir)
-                install_minimal_knowledge_release(self.data_dir)
+                install_minimal_knowledge_release(
+                    self.data_dir,
+                    embedding_provider=self.embedding_provider,
+                )
                 release_dir = self.make_newer_release(
                     release_id=f"kr-2026-07-07.{phases.index(phase) + 1}"
                 )
@@ -189,6 +217,8 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
                     install_knowledge_release(
                         self.data_dir,
                         release_dir=release_dir,
+                        embedding_provider=self.embedding_provider,
+                        trust_root_path=self.release_trust.trust_root_path,
                         fault_injector=fault_injector,
                     )
 
@@ -210,6 +240,8 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
             install_knowledge_release(
                 self.data_dir,
                 release_dir=release_dir,
+                embedding_provider=self.embedding_provider,
+                trust_root_path=self.release_trust.trust_root_path,
                 fault_injector=fault_injector,
             )
 
@@ -226,9 +258,19 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
             json.dumps(manifest, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        sign_manifest(
+            manifest_path,
+            self.release_trust.signing_private_key_path,
+            release_dir / "manifest.sig",
+        )
 
         with self.assertRaisesRegex(KnowledgeReleaseError, "requires application"):
-            install_knowledge_release(self.data_dir, release_dir=release_dir)
+            install_knowledge_release(
+                self.data_dir,
+                release_dir=release_dir,
+                embedding_provider=self.embedding_provider,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
 
         self.assert_previous_release_still_queryable()
         self.assertFalse((self.data_dir / "corpus" / "kr-2026-07-07.1").exists())
@@ -240,6 +282,8 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
             config_path=self.config_path,
             data_dir=self.data_dir,
             answer_generator=FixtureAnswerGenerator(),
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -258,7 +302,12 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
             "What Danish test do I need for permanent residence?",
         )
 
-        install_knowledge_release(self.data_dir, release_dir=release_dir)
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
 
         second = await client.post(
             "/ask",

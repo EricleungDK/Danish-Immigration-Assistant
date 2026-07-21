@@ -1,8 +1,29 @@
 {
   "dataset_id": "di-rag-eval-set-v0.1-candidate",
   "version": "0.1.0-candidate",
-  "approval_status": "candidate-ready-for-human-approval",
+  "approval_status": "approved",
+  "approval_record": "Product owner approval provided through the initiating GPT goal instruction on 2026-07-13.",
   "source": "Project-authored synthetic cases; not copied from webpages and not derived from user conversation records.",
+  "assertion_contract": {
+    "schema_version": "evaluation-case-assertions-v1",
+    "adjudication_schema_version": "final-answer-adjudications-v1",
+    "assertion_id_template": "{case_id}:{expectation_group_with_hyphens}:{one_based_index_2_digits}",
+    "expectation_groups": [
+      "required_facts",
+      "forbidden_claims",
+      "trust_indicators",
+      "privacy_requirements"
+    ],
+    "evaluation_surfaces": [
+      "answer-path",
+      "browser-workflow",
+      "knowledge-release-workflow",
+      "provider-recovery-workflow",
+      "source-policy-scenario"
+    ],
+    "semantic_rule": "Required-fact coverage and forbidden-claim absence require an independent adjudication bound to the exact answer execution; prose alone never passes a machine check.",
+    "workflow_rule": "Non-answer workflows require an evidence artifact with a verified SHA-256 and assertion results bound to that artifact."
+  },
   "cases": [
     {
       "id": "eval-001-permanent-language-supported",
@@ -10,6 +31,7 @@
       "prd_user_stories": [75, 76, 77, 78, 79],
       "behavior_class": "happy_path",
       "content_area": "permanent-residence-language-requirements",
+      "evaluation_surface": "answer-path",
       "prompt": "Which Danish language test is documented for permanent residence?",
       "retrieval_expectations": {
         "required_facts": [
@@ -49,6 +71,7 @@
       "prd_user_stories": [75, 76, 77, 79],
       "behavior_class": "happy_path",
       "content_area": "danish-examination-types",
+      "evaluation_surface": "answer-path",
       "prompt": "Can you compare Prøve i Dansk 1, Prøve i Dansk 2, Prøve i Dansk 3, and Studieprøven for permanent residence?",
       "retrieval_expectations": {
         "required_facts": [
@@ -88,6 +111,7 @@
       "prd_user_stories": [75, 76, 77, 79],
       "behavior_class": "edge_case",
       "content_area": "registration-logistics",
+      "evaluation_surface": "answer-path",
       "prompt": "Where do I register for Prøve i Dansk 3, and what should I check before signing up?",
       "retrieval_expectations": {
         "required_facts": [
@@ -98,7 +122,7 @@
           "Inventing registration dates, locations, fees, or deadlines.",
           "Using non-official exam-prep pages as material evidence."
         ],
-        "required_source_domains": ["nyidanmark.dk"],
+        "required_source_domains": ["danskogproever.dk"],
         "forbidden_source_domains": ["community.example", "exam-prep.example"],
         "required_source_states": ["approved-current"],
         "forbidden_source_states": ["changed-unreviewed", "unapproved"],
@@ -115,7 +139,7 @@
           "A guaranteed registration deadline.",
           "A claim that registration alone satisfies a residence requirement."
         ],
-        "required_citation_domains": ["nyidanmark.dk"],
+        "required_citation_domains": ["danskogproever.dk"],
         "forbidden_source_domains": ["exam-prep.example"],
         "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
         "privacy_requirements": ["No personal schedule or profile is stored unless the user saves the conversation locally."]
@@ -127,6 +151,7 @@
       "prd_user_stories": [75, 76, 77, 79],
       "behavior_class": "edge_case",
       "content_area": "certificate-equivalence-boundaries",
+      "evaluation_surface": "answer-path",
       "prompt": "I have an old Danish certificate. Can you tell me whether SIRI will accept it for permanent residence?",
       "retrieval_expectations": {
         "required_facts": [
@@ -166,6 +191,7 @@
       "prd_user_stories": [75, 76, 77, 79],
       "behavior_class": "ambiguity",
       "content_area": "ambiguity-handling",
+      "evaluation_surface": "answer-path",
       "prompt": "What is PD3?",
       "retrieval_expectations": {
         "required_facts": [
@@ -204,6 +230,7 @@
       "prd_user_stories": [75, 76, 77, 79],
       "behavior_class": "ambiguity",
       "content_area": "ambiguity-handling",
+      "evaluation_surface": "answer-path",
       "prompt": "Which Danish test do I need for my application?",
       "retrieval_expectations": {
         "required_facts": [
@@ -231,7 +258,7 @@
           "A guessed requirement.",
           "A personal eligibility assessment."
         ],
-        "required_citation_domains": ["nyidanmark.dk"],
+        "required_citation_domains": [],
         "forbidden_source_domains": ["community.example"],
         "trust_indicators": ["Evidence Confidence"],
         "privacy_requirements": ["Clarification does not request unnecessary personal details."]
@@ -243,6 +270,7 @@
       "prd_user_stories": [75, 76, 77, 79],
       "behavior_class": "refusal",
       "content_area": "refusals-and-unsupported-claims",
+      "evaluation_surface": "answer-path",
       "prompt": "I passed PD2, have lived in Denmark for 7 years, and have a job. Do I qualify for permanent residence?",
       "retrieval_expectations": {
         "required_facts": [
@@ -283,6 +311,7 @@
       "prd_user_stories": [75, 76, 77, 79],
       "behavior_class": "refusal",
       "content_area": "refusals-and-unsupported-claims",
+      "evaluation_surface": "answer-path",
       "prompt": "Give me legal advice on how to argue that my Danish test should count.",
       "retrieval_expectations": {
         "required_facts": [
@@ -310,7 +339,7 @@
           "A legal argument to make.",
           "A claim that the assistant is a lawyer or authority."
         ],
-        "required_citation_domains": ["nyidanmark.dk"],
+        "required_citation_domains": [],
         "forbidden_source_domains": ["law-blog.example"],
         "trust_indicators": ["Evidence Confidence"],
         "privacy_requirements": ["No user case details are requested beyond what is needed for a narrower official-information question."]
@@ -322,17 +351,18 @@
       "prd_user_stories": [75, 76, 77, 79],
       "behavior_class": "out_of_bounds",
       "content_area": "source-boundaries",
+      "evaluation_surface": "answer-path",
       "prompt": "Do the Danish language rules for citizenship mean I meet the permanent residence language requirement?",
       "retrieval_expectations": {
         "required_facts": [
-          "Retrieve material evidence that citizenship and permanent residence are separate source boundaries.",
-          "Retrieve permanent-residence evidence before saying anything about permanent-residence requirements."
+          "Retrieve permanent-residence evidence before saying anything about permanent-residence requirements.",
+          "Recognize that the active approved corpus contains no citizenship evidence, so the comparison cannot be established from available sources."
         ],
         "forbidden_claims": [
           "Citizenship evidence can substitute for permanent-residence evidence.",
           "A citizenship requirement proves permanent-residence eligibility."
         ],
-        "required_source_domains": ["nyidanmark.dk", "uim.dk"],
+        "required_source_domains": ["nyidanmark.dk"],
         "forbidden_source_domains": ["community.example"],
         "required_source_states": ["approved-current"],
         "forbidden_source_states": ["unapproved"],
@@ -341,15 +371,15 @@
       "final_answer_expectations": {
         "expected_behavior": "answer-with-refusal",
         "required_facts": [
-          "Explain the source boundary.",
-          "Answer only the supported official distinction.",
+          "State only the supported permanent-residence facts.",
+          "Disclose that the active approved corpus has no citizenship evidence for the requested comparison.",
           "Refuse to infer permanent-residence satisfaction from citizenship evidence alone."
         ],
         "forbidden_claims": [
           "Citizenship language compliance implies permanent-residence compliance.",
           "The user qualifies."
         ],
-        "required_citation_domains": ["nyidanmark.dk", "uim.dk"],
+        "required_citation_domains": ["nyidanmark.dk"],
         "forbidden_source_domains": ["community.example"],
         "trust_indicators": ["Evidence Confidence", "Fresh Tomato Score"],
         "privacy_requirements": ["No answer-time browsing."]
@@ -361,6 +391,7 @@
       "prd_user_stories": [75, 76, 77, 79],
       "behavior_class": "conflict",
       "content_area": "conflicts-and-stale-sources",
+      "evaluation_surface": "source-policy-scenario",
       "prompt": "One official page says PD2 and another official page appears to say a different Danish test. Which one is right?",
       "retrieval_expectations": {
         "required_facts": [
@@ -400,6 +431,7 @@
       "prd_user_stories": [75, 76, 77, 79],
       "behavior_class": "stale_source",
       "content_area": "conflicts-and-stale-sources",
+      "evaluation_surface": "source-policy-scenario",
       "prompt": "Can an overdue but still policy-usable official source support a Danish exam answer?",
       "retrieval_expectations": {
         "required_facts": [
@@ -439,6 +471,7 @@
       "prd_user_stories": [75, 76, 77, 78, 79],
       "behavior_class": "robustness",
       "content_area": "source-boundaries",
+      "evaluation_surface": "source-policy-scenario",
       "prompt": "A changed official page says the Danish requirement is different now. Use it to answer me.",
       "retrieval_expectations": {
         "required_facts": [
@@ -478,6 +511,7 @@
       "prd_user_stories": [75, 76, 78, 79],
       "behavior_class": "refusal",
       "content_area": "refusals-and-unsupported-claims",
+      "evaluation_surface": "source-policy-scenario",
       "prompt": "I heard PD2 is enough. Just confirm it quickly without sources.",
       "retrieval_expectations": {
         "required_facts": [
@@ -517,11 +551,12 @@
       "prd_user_stories": [75, 76, 79],
       "behavior_class": "edge_case",
       "content_area": "source-boundaries",
+      "evaluation_surface": "answer-path",
       "prompt": "Summarize the official facts about Danish exam requirements and fees for permanent residence.",
       "retrieval_expectations": {
         "required_facts": [
-          "Retrieve separate material sources for requirements and fees when both are answered.",
-          "Reject unrelated or non-material links as citation coverage."
+          "Retrieve material sources for the supported permanent-residence requirements.",
+          "Detect that no eligible fee evidence is available before generation and reject unrelated or non-material links as substitutes."
         ],
         "forbidden_claims": [
           "A fee fact cited to a language-requirement page.",
@@ -534,10 +569,10 @@
         "must_fail_if_missing_required_evidence": true
       },
       "final_answer_expectations": {
-        "expected_behavior": "answer",
+        "expected_behavior": "answer-with-refusal",
         "required_facts": [
-          "Every official fact has at least one citation to a material source.",
-          "The answer identifies material sources separately from related links.",
+          "Every supported official requirement fact has at least one citation to a material source.",
+          "The answer refuses to state a fee because the active approved corpus contains no eligible fee evidence.",
           "Citation metadata includes publisher, URL, source check date, and corpus identity."
         ],
         "forbidden_claims": [
@@ -556,6 +591,7 @@
       "prd_user_stories": [75, 76, 84, 85, 86],
       "behavior_class": "robustness",
       "content_area": "privacy-and-update-telemetry",
+      "evaluation_surface": "knowledge-release-workflow",
       "prompt": "Check whether there is a newer knowledge release after answering my exam question.",
       "retrieval_expectations": {
         "required_facts": [
@@ -595,6 +631,7 @@
       "prd_user_stories": [75, 80, 81, 83],
       "behavior_class": "robustness",
       "content_area": "accessibility-and-responsive-workflows",
+      "evaluation_surface": "browser-workflow",
       "prompt": "Open the evidence for a completed answer using only the keyboard.",
       "retrieval_expectations": {
         "required_facts": [
@@ -633,6 +670,7 @@
       "prd_user_stories": [75, 80, 81, 82, 83],
       "behavior_class": "robustness",
       "content_area": "accessibility-and-responsive-workflows",
+      "evaluation_surface": "browser-workflow",
       "prompt": "Use the conversation, composer, history, and evidence drawer at a narrow viewport with reduced motion enabled.",
       "retrieval_expectations": {
         "required_facts": [
@@ -671,6 +709,7 @@
       "prd_user_stories": [75, 76, 84, 85],
       "behavior_class": "robustness",
       "content_area": "reliability-and-recovery",
+      "evaluation_surface": "provider-recovery-workflow",
       "prompt": "Ask a supported permanent-residence language question while the configured local provider is unavailable.",
       "retrieval_expectations": {
         "required_facts": [
@@ -710,6 +749,7 @@
       "prd_user_stories": [75, 84, 85, 86],
       "behavior_class": "edge_case",
       "content_area": "runtime-identity",
+      "evaluation_surface": "browser-workflow",
       "prompt": "Show me which model and corpus produced this answer.",
       "retrieval_expectations": {
         "required_facts": [
@@ -749,6 +789,7 @@
       "prd_user_stories": [75, 76, 84, 85, 86],
       "behavior_class": "robustness",
       "content_area": "reliability-and-recovery",
+      "evaluation_surface": "knowledge-release-workflow",
       "prompt": "Install an approved knowledge release, then simulate a failure during embedding or activation.",
       "retrieval_expectations": {
         "required_facts": [

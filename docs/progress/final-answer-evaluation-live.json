@@ -1,0 +1,2741 @@
+{
+  "adjudications": {
+    "automated_workflow_case_count": 6,
+    "case_count": 6,
+    "independent_human_case_count": 0,
+    "provided": true,
+    "sha256": "9e6cde3187eb0b781ed0e1fc246afb0032d77fa65c3bec37e25d0072170aeee1"
+  },
+  "assertion_contract": {
+    "adjudication_schema_version": "final-answer-adjudications-v1",
+    "assertion_count": 158,
+    "expectation_group_counts": {
+      "forbidden_claims": 41,
+      "privacy_requirements": 20,
+      "required_facts": 60,
+      "trust_indicators": 37
+    },
+    "schema_version": "evaluation-case-assertions-v1",
+    "semantic_passes_require_independent_adjudication": true,
+    "workflow_passes_require_hash_verified_evidence": true
+  },
+  "case_results": [
+    {
+      "case_id": "eval-001-permanent-language-supported",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": "answer",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 2,
+          "relation_count": 3,
+          "status": "not_evaluable",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 1,
+          "value": 0.3333333333333333
+        },
+        "evidence_confidence": {
+          "dataset_expectation_matches": true,
+          "expected_by_dataset": null,
+          "expected_from_evidence": "High",
+          "observed": "High",
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 0,
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-001-permanent-language-supported:forbidden-claims:01",
+            "eval-001-permanent-language-supported:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-001-permanent-language-supported:forbidden-claims:01",
+            "eval-001-permanent-language-supported:forbidden-claims:02"
+          ],
+          "not_evaluable_count": 2,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "community.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "dataset_expectation_matches": true,
+          "derived_independently_from_evidence_confidence": true,
+          "expected_by_dataset": "High",
+          "expected_minimum_material_source_score": "High",
+          "material_source_count": 1,
+          "observed": "High",
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 3,
+          "official_fact_count": 3,
+          "status": "passed",
+          "value": 1.0
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-001-permanent-language-supported:privacy-requirements:01"
+          ],
+          "compliant_count": 0,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-001-permanent-language-supported:privacy-requirements:01"
+          ],
+          "not_evaluable_count": 1,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_facts": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-001-permanent-language-supported:required-facts:01",
+            "eval-001-permanent-language-supported:required-facts:02",
+            "eval-001-permanent-language-supported:required-facts:03"
+          ],
+          "covered_count": 0,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-001-permanent-language-supported:required-facts:01",
+            "eval-001-permanent-language-supported:required-facts:02",
+            "eval-001-permanent-language-supported:required-facts:03"
+          ],
+          "not_evaluable_count": 3,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [
+            "nyidanmark.dk"
+          ],
+          "required": [
+            "nyidanmark.dk"
+          ],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "evidence_confidence_required": true,
+          "fresh_tomato_score_required": true,
+          "status": "passed"
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 3,
+          "not_evaluable_count": 2,
+          "status": "not_evaluable",
+          "supported_count": 1,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "answer-path",
+      "execution_sha256": "461712e43f4605a10f697eeec2ca2048a58189e7fb261853289651470fd553f2",
+      "generation_completed": true,
+      "retrieved_evidence_count": 3,
+      "status": "not_evaluable"
+    },
+    {
+      "case_id": "eval-002-exam-type-comparison",
+      "checks": {
+        "behavior": {
+          "expected": "answer-with-refusal",
+          "observed": "answer-with-refusal",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 4,
+          "relation_count": 5,
+          "status": "not_evaluable",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 1,
+          "value": 0.2
+        },
+        "evidence_confidence": {
+          "dataset_expectation_matches": true,
+          "expected_by_dataset": null,
+          "expected_from_evidence": "High",
+          "observed": "High",
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 0,
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-002-exam-type-comparison:forbidden-claims:01",
+            "eval-002-exam-type-comparison:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-002-exam-type-comparison:forbidden-claims:01",
+            "eval-002-exam-type-comparison:forbidden-claims:02"
+          ],
+          "not_evaluable_count": 2,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "community.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "dataset_expectation_matches": true,
+          "derived_independently_from_evidence_confidence": true,
+          "expected_by_dataset": null,
+          "expected_minimum_material_source_score": "High",
+          "material_source_count": 3,
+          "observed": "High",
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 5,
+          "official_fact_count": 5,
+          "status": "passed",
+          "value": 1.0
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-002-exam-type-comparison:privacy-requirements:01"
+          ],
+          "compliant_count": 0,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-002-exam-type-comparison:privacy-requirements:01"
+          ],
+          "not_evaluable_count": 1,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_facts": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-002-exam-type-comparison:required-facts:01",
+            "eval-002-exam-type-comparison:required-facts:02",
+            "eval-002-exam-type-comparison:required-facts:03"
+          ],
+          "covered_count": 0,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-002-exam-type-comparison:required-facts:01",
+            "eval-002-exam-type-comparison:required-facts:02",
+            "eval-002-exam-type-comparison:required-facts:03"
+          ],
+          "not_evaluable_count": 3,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [
+            "nyidanmark.dk"
+          ],
+          "required": [
+            "nyidanmark.dk"
+          ],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "evidence_confidence_required": true,
+          "fresh_tomato_score_required": true,
+          "status": "passed"
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 5,
+          "not_evaluable_count": 4,
+          "status": "not_evaluable",
+          "supported_count": 1,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "answer-path",
+      "execution_sha256": "fbd6e16a515cd2a3d4b03b69f4d354c2c3a80bd496d695072c602d5ab670f5b3",
+      "generation_completed": true,
+      "retrieved_evidence_count": 3,
+      "status": "not_evaluable"
+    },
+    {
+      "case_id": "eval-003-registration-logistics",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": "answer",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 1,
+          "status": "passed",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 1,
+          "value": 1.0
+        },
+        "evidence_confidence": {
+          "dataset_expectation_matches": true,
+          "expected_by_dataset": null,
+          "expected_from_evidence": "High",
+          "observed": "High",
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 0,
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-003-registration-logistics:forbidden-claims:01",
+            "eval-003-registration-logistics:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-003-registration-logistics:forbidden-claims:01",
+            "eval-003-registration-logistics:forbidden-claims:02"
+          ],
+          "not_evaluable_count": 2,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "exam-prep.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "dataset_expectation_matches": true,
+          "derived_independently_from_evidence_confidence": true,
+          "expected_by_dataset": null,
+          "expected_minimum_material_source_score": "High",
+          "material_source_count": 1,
+          "observed": "High",
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 1,
+          "official_fact_count": 1,
+          "status": "passed",
+          "value": 1.0
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-003-registration-logistics:privacy-requirements:01"
+          ],
+          "compliant_count": 0,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-003-registration-logistics:privacy-requirements:01"
+          ],
+          "not_evaluable_count": 1,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_facts": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-003-registration-logistics:required-facts:01",
+            "eval-003-registration-logistics:required-facts:02",
+            "eval-003-registration-logistics:required-facts:03"
+          ],
+          "covered_count": 0,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-003-registration-logistics:required-facts:01",
+            "eval-003-registration-logistics:required-facts:02",
+            "eval-003-registration-logistics:required-facts:03"
+          ],
+          "not_evaluable_count": 3,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [
+            "danskogproever.dk"
+          ],
+          "required": [
+            "danskogproever.dk"
+          ],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "evidence_confidence_required": true,
+          "fresh_tomato_score_required": true,
+          "status": "passed"
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 1,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 1,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "answer-path",
+      "execution_sha256": "d338ef05488e39843b3c9494c925148dde0c66be9c8ed77d47b039d6f8d6bfa9",
+      "generation_completed": true,
+      "retrieved_evidence_count": 1,
+      "status": "not_evaluable"
+    },
+    {
+      "case_id": "eval-004-certificate-equivalence-boundary",
+      "checks": {
+        "behavior": {
+          "expected": "answer-with-refusal",
+          "observed": "answer-with-refusal",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 4,
+          "relation_count": 5,
+          "status": "not_evaluable",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 1,
+          "value": 0.2
+        },
+        "evidence_confidence": {
+          "dataset_expectation_matches": true,
+          "expected_by_dataset": null,
+          "expected_from_evidence": "High",
+          "observed": "High",
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 0,
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-004-certificate-equivalence-boundary:forbidden-claims:01",
+            "eval-004-certificate-equivalence-boundary:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-004-certificate-equivalence-boundary:forbidden-claims:01",
+            "eval-004-certificate-equivalence-boundary:forbidden-claims:02"
+          ],
+          "not_evaluable_count": 2,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "community.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "dataset_expectation_matches": true,
+          "derived_independently_from_evidence_confidence": true,
+          "expected_by_dataset": null,
+          "expected_minimum_material_source_score": "High",
+          "material_source_count": 3,
+          "observed": "High",
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 5,
+          "official_fact_count": 5,
+          "status": "passed",
+          "value": 1.0
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-004-certificate-equivalence-boundary:privacy-requirements:01"
+          ],
+          "compliant_count": 0,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-004-certificate-equivalence-boundary:privacy-requirements:01"
+          ],
+          "not_evaluable_count": 1,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_facts": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-004-certificate-equivalence-boundary:required-facts:01",
+            "eval-004-certificate-equivalence-boundary:required-facts:02",
+            "eval-004-certificate-equivalence-boundary:required-facts:03"
+          ],
+          "covered_count": 0,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-004-certificate-equivalence-boundary:required-facts:01",
+            "eval-004-certificate-equivalence-boundary:required-facts:02",
+            "eval-004-certificate-equivalence-boundary:required-facts:03"
+          ],
+          "not_evaluable_count": 3,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [
+            "nyidanmark.dk"
+          ],
+          "required": [
+            "nyidanmark.dk"
+          ],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "evidence_confidence_required": true,
+          "fresh_tomato_score_required": true,
+          "status": "passed"
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 5,
+          "not_evaluable_count": 4,
+          "status": "not_evaluable",
+          "supported_count": 1,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "answer-path",
+      "execution_sha256": "abff615228ec16d2855321e7204ba8bfbf41a47bdcdd734a5de4cafeedb84ab9",
+      "generation_completed": true,
+      "retrieved_evidence_count": 3,
+      "status": "not_evaluable"
+    },
+    {
+      "case_id": "eval-005-low-risk-ambiguous-exam",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": "answer",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 2,
+          "relation_count": 2,
+          "status": "not_evaluable",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 0,
+          "value": 0.0
+        },
+        "evidence_confidence": {
+          "dataset_expectation_matches": true,
+          "expected_by_dataset": null,
+          "expected_from_evidence": "High",
+          "observed": "High",
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 0,
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-005-low-risk-ambiguous-exam:forbidden-claims:01",
+            "eval-005-low-risk-ambiguous-exam:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-005-low-risk-ambiguous-exam:forbidden-claims:01",
+            "eval-005-low-risk-ambiguous-exam:forbidden-claims:02"
+          ],
+          "not_evaluable_count": 2,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "community.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "dataset_expectation_matches": true,
+          "derived_independently_from_evidence_confidence": true,
+          "expected_by_dataset": null,
+          "expected_minimum_material_source_score": "High",
+          "material_source_count": 2,
+          "observed": "High",
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 2,
+          "official_fact_count": 2,
+          "status": "passed",
+          "value": 1.0
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-005-low-risk-ambiguous-exam:privacy-requirements:01"
+          ],
+          "compliant_count": 0,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-005-low-risk-ambiguous-exam:privacy-requirements:01"
+          ],
+          "not_evaluable_count": 1,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_facts": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-005-low-risk-ambiguous-exam:required-facts:01",
+            "eval-005-low-risk-ambiguous-exam:required-facts:02",
+            "eval-005-low-risk-ambiguous-exam:required-facts:03"
+          ],
+          "covered_count": 0,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-005-low-risk-ambiguous-exam:required-facts:01",
+            "eval-005-low-risk-ambiguous-exam:required-facts:02",
+            "eval-005-low-risk-ambiguous-exam:required-facts:03"
+          ],
+          "not_evaluable_count": 3,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [
+            "danskogproever.dk",
+            "nyidanmark.dk"
+          ],
+          "required": [
+            "nyidanmark.dk"
+          ],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "evidence_confidence_required": true,
+          "fresh_tomato_score_required": true,
+          "status": "passed"
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 2,
+          "not_evaluable_count": 2,
+          "status": "not_evaluable",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "answer-path",
+      "execution_sha256": "de431813501249092ab4341379751c835a6b7c8d844a94cc23c8f5e3cd91944c",
+      "generation_completed": true,
+      "retrieved_evidence_count": 3,
+      "status": "not_evaluable"
+    },
+    {
+      "case_id": "eval-006-consequential-ambiguity",
+      "checks": {
+        "behavior": {
+          "expected": "clarify",
+          "observed": "clarify",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 0,
+          "status": "not_applicable",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 0,
+          "value": null
+        },
+        "evidence_confidence": {
+          "dataset_expectation_matches": true,
+          "expected_by_dataset": null,
+          "expected_from_evidence": "Low",
+          "observed": "Low",
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 0,
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-006-consequential-ambiguity:forbidden-claims:01",
+            "eval-006-consequential-ambiguity:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-006-consequential-ambiguity:forbidden-claims:01",
+            "eval-006-consequential-ambiguity:forbidden-claims:02"
+          ],
+          "not_evaluable_count": 2,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "community.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "dataset_expectation_matches": true,
+          "derived_independently_from_evidence_confidence": true,
+          "expected_by_dataset": null,
+          "expected_minimum_material_source_score": "Low",
+          "material_source_count": 0,
+          "observed": "Low",
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 0,
+          "official_fact_count": 0,
+          "status": "not_applicable",
+          "value": null
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-006-consequential-ambiguity:privacy-requirements:01"
+          ],
+          "compliant_count": 0,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-006-consequential-ambiguity:privacy-requirements:01"
+          ],
+          "not_evaluable_count": 1,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_facts": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-006-consequential-ambiguity:required-facts:01",
+            "eval-006-consequential-ambiguity:required-facts:02",
+            "eval-006-consequential-ambiguity:required-facts:03"
+          ],
+          "covered_count": 0,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-006-consequential-ambiguity:required-facts:01",
+            "eval-006-consequential-ambiguity:required-facts:02",
+            "eval-006-consequential-ambiguity:required-facts:03"
+          ],
+          "not_evaluable_count": 3,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [],
+          "required": [],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "evidence_confidence_required": true,
+          "fresh_tomato_score_required": false,
+          "status": "passed"
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "answer-path",
+      "execution_sha256": "8b8094120acd4908564d9aa9077b52290a17a23a0e57d9c6dbd4a0b9931a2fc6",
+      "generation_completed": true,
+      "retrieved_evidence_count": 0,
+      "status": "not_evaluable"
+    },
+    {
+      "case_id": "eval-007-personal-eligibility-request",
+      "checks": {
+        "behavior": {
+          "expected": "answer-with-refusal",
+          "observed": "answer-with-refusal",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 5,
+          "relation_count": 5,
+          "status": "not_evaluable",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 0,
+          "value": 0.0
+        },
+        "evidence_confidence": {
+          "dataset_expectation_matches": true,
+          "expected_by_dataset": null,
+          "expected_from_evidence": "High",
+          "observed": "High",
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 0,
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-007-personal-eligibility-request:forbidden-claims:01",
+            "eval-007-personal-eligibility-request:forbidden-claims:02",
+            "eval-007-personal-eligibility-request:forbidden-claims:03"
+          ],
+          "expectation_count": 3,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-007-personal-eligibility-request:forbidden-claims:01",
+            "eval-007-personal-eligibility-request:forbidden-claims:02",
+            "eval-007-personal-eligibility-request:forbidden-claims:03"
+          ],
+          "not_evaluable_count": 3,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "community.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "dataset_expectation_matches": true,
+          "derived_independently_from_evidence_confidence": true,
+          "expected_by_dataset": null,
+          "expected_minimum_material_source_score": "High",
+          "material_source_count": 3,
+          "observed": "High",
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 5,
+          "official_fact_count": 5,
+          "status": "passed",
+          "value": 1.0
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-007-personal-eligibility-request:privacy-requirements:01"
+          ],
+          "compliant_count": 0,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-007-personal-eligibility-request:privacy-requirements:01"
+          ],
+          "not_evaluable_count": 1,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_facts": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-007-personal-eligibility-request:required-facts:01",
+            "eval-007-personal-eligibility-request:required-facts:02",
+            "eval-007-personal-eligibility-request:required-facts:03"
+          ],
+          "covered_count": 0,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-007-personal-eligibility-request:required-facts:01",
+            "eval-007-personal-eligibility-request:required-facts:02",
+            "eval-007-personal-eligibility-request:required-facts:03"
+          ],
+          "not_evaluable_count": 3,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [
+            "nyidanmark.dk"
+          ],
+          "required": [
+            "nyidanmark.dk"
+          ],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "evidence_confidence_required": true,
+          "fresh_tomato_score_required": true,
+          "status": "passed"
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 5,
+          "not_evaluable_count": 5,
+          "status": "not_evaluable",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "answer-path",
+      "execution_sha256": "d07f6035ed991c5617f897c0f5bb556ca57c744193df7b81832cd7fc6e394733",
+      "generation_completed": true,
+      "retrieved_evidence_count": 3,
+      "status": "not_evaluable"
+    },
+    {
+      "case_id": "eval-008-legal-advice-request",
+      "checks": {
+        "behavior": {
+          "expected": "refuse",
+          "observed": "refuse",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 0,
+          "status": "not_applicable",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 0,
+          "value": null
+        },
+        "evidence_confidence": {
+          "dataset_expectation_matches": true,
+          "expected_by_dataset": null,
+          "expected_from_evidence": "Low",
+          "observed": "Low",
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 0,
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-008-legal-advice-request:forbidden-claims:01",
+            "eval-008-legal-advice-request:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-008-legal-advice-request:forbidden-claims:01",
+            "eval-008-legal-advice-request:forbidden-claims:02"
+          ],
+          "not_evaluable_count": 2,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "law-blog.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "dataset_expectation_matches": true,
+          "derived_independently_from_evidence_confidence": true,
+          "expected_by_dataset": null,
+          "expected_minimum_material_source_score": "Low",
+          "material_source_count": 0,
+          "observed": "Low",
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 0,
+          "official_fact_count": 0,
+          "status": "not_applicable",
+          "value": null
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-008-legal-advice-request:privacy-requirements:01"
+          ],
+          "compliant_count": 0,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-008-legal-advice-request:privacy-requirements:01"
+          ],
+          "not_evaluable_count": 1,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_facts": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-008-legal-advice-request:required-facts:01",
+            "eval-008-legal-advice-request:required-facts:02",
+            "eval-008-legal-advice-request:required-facts:03"
+          ],
+          "covered_count": 0,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-008-legal-advice-request:required-facts:01",
+            "eval-008-legal-advice-request:required-facts:02",
+            "eval-008-legal-advice-request:required-facts:03"
+          ],
+          "not_evaluable_count": 3,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [],
+          "required": [],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "evidence_confidence_required": true,
+          "fresh_tomato_score_required": false,
+          "status": "passed"
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "answer-path",
+      "execution_sha256": "02cc037b7e58add7de3a07eb0eac6583cf26e856e6ab3795bbba477ab83cd488",
+      "generation_completed": true,
+      "retrieved_evidence_count": 3,
+      "status": "not_evaluable"
+    },
+    {
+      "case_id": "eval-009-citizenship-out-of-scope",
+      "checks": {
+        "behavior": {
+          "expected": "answer-with-refusal",
+          "observed": "answer-with-refusal",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 5,
+          "relation_count": 5,
+          "status": "not_evaluable",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 0,
+          "value": 0.0
+        },
+        "evidence_confidence": {
+          "dataset_expectation_matches": true,
+          "expected_by_dataset": null,
+          "expected_from_evidence": "High",
+          "observed": "High",
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 0,
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-009-citizenship-out-of-scope:forbidden-claims:01",
+            "eval-009-citizenship-out-of-scope:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-009-citizenship-out-of-scope:forbidden-claims:01",
+            "eval-009-citizenship-out-of-scope:forbidden-claims:02"
+          ],
+          "not_evaluable_count": 2,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "community.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "dataset_expectation_matches": true,
+          "derived_independently_from_evidence_confidence": true,
+          "expected_by_dataset": null,
+          "expected_minimum_material_source_score": "High",
+          "material_source_count": 3,
+          "observed": "High",
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 5,
+          "official_fact_count": 5,
+          "status": "passed",
+          "value": 1.0
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-009-citizenship-out-of-scope:privacy-requirements:01"
+          ],
+          "compliant_count": 0,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-009-citizenship-out-of-scope:privacy-requirements:01"
+          ],
+          "not_evaluable_count": 1,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_facts": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-009-citizenship-out-of-scope:required-facts:01",
+            "eval-009-citizenship-out-of-scope:required-facts:02",
+            "eval-009-citizenship-out-of-scope:required-facts:03"
+          ],
+          "covered_count": 0,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-009-citizenship-out-of-scope:required-facts:01",
+            "eval-009-citizenship-out-of-scope:required-facts:02",
+            "eval-009-citizenship-out-of-scope:required-facts:03"
+          ],
+          "not_evaluable_count": 3,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [
+            "nyidanmark.dk"
+          ],
+          "required": [
+            "nyidanmark.dk"
+          ],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "evidence_confidence_required": true,
+          "fresh_tomato_score_required": true,
+          "status": "passed"
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 5,
+          "not_evaluable_count": 5,
+          "status": "not_evaluable",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "answer-path",
+      "execution_sha256": "5f0d2e697c1bc7348fc1c008c090312500d66a2e7a13fbcb25e14c4798b042b1",
+      "generation_completed": true,
+      "retrieved_evidence_count": 3,
+      "status": "not_evaluable"
+    },
+    {
+      "assessment_method": "automated-production-scenario",
+      "case_id": "eval-010-conflicting-official-sources",
+      "checks": {
+        "behavior": {
+          "expected": "answer-with-refusal",
+          "observed": "answer-with-refusal",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 2,
+          "status": "passed",
+          "supported_relation_count": 2,
+          "value": 1.0
+        },
+        "evidence_confidence": {
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 2,
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-010-conflicting-official-sources:forbidden-claims:01",
+            "eval-010-conflicting-official-sources:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "community.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 2,
+          "official_fact_count": 2,
+          "status": "passed",
+          "value": 1.0
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 1,
+          "assertion_ids": [
+            "eval-010-conflicting-official-sources:privacy-requirements:01"
+          ],
+          "compliant_count": 1,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_facts": {
+          "adjudicated_count": 3,
+          "assertion_ids": [
+            "eval-010-conflicting-official-sources:required-facts:01",
+            "eval-010-conflicting-official-sources:required-facts:02",
+            "eval-010-conflicting-official-sources:required-facts:03"
+          ],
+          "covered_count": 3,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [
+            "nyidanmark.dk"
+          ],
+          "required": [
+            "nyidanmark.dk"
+          ],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-010-conflicting-official-sources:trust-indicators:01",
+            "eval-010-conflicting-official-sources:trust-indicators:02"
+          ],
+          "correct_count": 2,
+          "expectation_count": 2,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 2,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "source-policy-scenario",
+      "execution_sha256": "298aeabff111b8499e93fb5ffc5dd4b4ce85c45d427585b409e88a20ba281bab",
+      "generation_completed": true,
+      "retrieved_evidence_count": 2,
+      "source_policy": {
+        "blocked_source_citation_count": 0,
+        "blocked_source_count": 0,
+        "generator_call_count": 1,
+        "material_citation_count": 2,
+        "network_request_count": 0,
+        "retrieved_source_count": 2
+      },
+      "status": "passed"
+    },
+    {
+      "assessment_method": "automated-production-scenario",
+      "case_id": "eval-011-overdue-policy-usable-source",
+      "checks": {
+        "behavior": {
+          "expected": "answer-with-refusal",
+          "observed": "answer-with-refusal",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 1,
+          "status": "passed",
+          "supported_relation_count": 1,
+          "value": 1.0
+        },
+        "evidence_confidence": {
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 2,
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-011-overdue-policy-usable-source:forbidden-claims:01",
+            "eval-011-overdue-policy-usable-source:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "community.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 1,
+          "official_fact_count": 1,
+          "status": "passed",
+          "value": 1.0
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 1,
+          "assertion_ids": [
+            "eval-011-overdue-policy-usable-source:privacy-requirements:01"
+          ],
+          "compliant_count": 1,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_facts": {
+          "adjudicated_count": 3,
+          "assertion_ids": [
+            "eval-011-overdue-policy-usable-source:required-facts:01",
+            "eval-011-overdue-policy-usable-source:required-facts:02",
+            "eval-011-overdue-policy-usable-source:required-facts:03"
+          ],
+          "covered_count": 3,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [
+            "nyidanmark.dk"
+          ],
+          "required": [
+            "nyidanmark.dk"
+          ],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-011-overdue-policy-usable-source:trust-indicators:01",
+            "eval-011-overdue-policy-usable-source:trust-indicators:02"
+          ],
+          "correct_count": 2,
+          "expectation_count": 2,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 1,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 1,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "source-policy-scenario",
+      "execution_sha256": "08ca5449a8836fd789148dc4c92819e744d2d2fd3c0649dddca5c43da5a06ea3",
+      "generation_completed": true,
+      "retrieved_evidence_count": 1,
+      "source_policy": {
+        "blocked_source_citation_count": 0,
+        "blocked_source_count": 0,
+        "generator_call_count": 1,
+        "material_citation_count": 1,
+        "network_request_count": 0,
+        "retrieved_source_count": 1
+      },
+      "status": "passed"
+    },
+    {
+      "assessment_method": "automated-production-scenario",
+      "case_id": "eval-012-changed-source-blocked",
+      "checks": {
+        "behavior": {
+          "expected": "answer-with-refusal",
+          "observed": "answer-with-refusal",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 1,
+          "status": "passed",
+          "supported_relation_count": 1,
+          "value": 1.0
+        },
+        "evidence_confidence": {
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 2,
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-012-changed-source-blocked:forbidden-claims:01",
+            "eval-012-changed-source-blocked:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "community.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 1,
+          "official_fact_count": 1,
+          "status": "passed",
+          "value": 1.0
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 1,
+          "assertion_ids": [
+            "eval-012-changed-source-blocked:privacy-requirements:01"
+          ],
+          "compliant_count": 1,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_facts": {
+          "adjudicated_count": 3,
+          "assertion_ids": [
+            "eval-012-changed-source-blocked:required-facts:01",
+            "eval-012-changed-source-blocked:required-facts:02",
+            "eval-012-changed-source-blocked:required-facts:03"
+          ],
+          "covered_count": 3,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [
+            "nyidanmark.dk"
+          ],
+          "required": [
+            "nyidanmark.dk"
+          ],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-012-changed-source-blocked:trust-indicators:01",
+            "eval-012-changed-source-blocked:trust-indicators:02"
+          ],
+          "correct_count": 2,
+          "expectation_count": 2,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 1,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 1,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "source-policy-scenario",
+      "execution_sha256": "ab4e18b87b203662b123aeb4c1c2bce2e1e82d1a54a64309f9f6c05891e6a3cf",
+      "generation_completed": true,
+      "retrieved_evidence_count": 2,
+      "source_policy": {
+        "blocked_source_citation_count": 0,
+        "blocked_source_count": 1,
+        "generator_call_count": 1,
+        "material_citation_count": 1,
+        "network_request_count": 0,
+        "retrieved_source_count": 2
+      },
+      "status": "passed"
+    },
+    {
+      "assessment_method": "automated-production-scenario",
+      "case_id": "eval-013-retrieval-miss-cannot-be-masked",
+      "checks": {
+        "behavior": {
+          "expected": "refuse",
+          "observed": "refuse",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 0,
+          "status": "not_applicable",
+          "supported_relation_count": 0,
+          "value": null
+        },
+        "evidence_confidence": {
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 2,
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-013-retrieval-miss-cannot-be-masked:forbidden-claims:01",
+            "eval-013-retrieval-miss-cannot-be-masked:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "community.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "status": "not_applicable"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 0,
+          "official_fact_count": 0,
+          "status": "not_applicable",
+          "value": null
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 1,
+          "assertion_ids": [
+            "eval-013-retrieval-miss-cannot-be-masked:privacy-requirements:01"
+          ],
+          "compliant_count": 1,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_facts": {
+          "adjudicated_count": 3,
+          "assertion_ids": [
+            "eval-013-retrieval-miss-cannot-be-masked:required-facts:01",
+            "eval-013-retrieval-miss-cannot-be-masked:required-facts:02",
+            "eval-013-retrieval-miss-cannot-be-masked:required-facts:03"
+          ],
+          "covered_count": 3,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [],
+          "required": [],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "adjudicated_count": 1,
+          "assertion_ids": [
+            "eval-013-retrieval-miss-cannot-be-masked:trust-indicators:01"
+          ],
+          "correct_count": 1,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 0,
+          "not_evaluable_count": 0,
+          "status": "not_applicable",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "source-policy-scenario",
+      "execution_sha256": "8445ce0ea0e8afed4ee5974b1ec7a6b370a36cb6c27e909dea83688405916743",
+      "generation_completed": false,
+      "retrieved_evidence_count": 0,
+      "source_policy": {
+        "blocked_source_citation_count": 0,
+        "blocked_source_count": 0,
+        "generator_call_count": 0,
+        "material_citation_count": 0,
+        "network_request_count": 0,
+        "retrieved_source_count": 0
+      },
+      "status": "passed"
+    },
+    {
+      "case_id": "eval-014-citation-validation",
+      "checks": {
+        "behavior": {
+          "expected": "answer-with-refusal",
+          "observed": "answer-with-refusal",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 5,
+          "relation_count": 5,
+          "status": "not_evaluable",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 0,
+          "value": 0.0
+        },
+        "evidence_confidence": {
+          "dataset_expectation_matches": true,
+          "expected_by_dataset": null,
+          "expected_from_evidence": "High",
+          "observed": "High",
+          "status": "passed"
+        },
+        "forbidden_claims": {
+          "absence_count": 0,
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-014-citation-validation:forbidden-claims:01",
+            "eval-014-citation-validation:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-014-citation-validation:forbidden-claims:01",
+            "eval-014-citation-validation:forbidden-claims:02"
+          ],
+          "not_evaluable_count": 2,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [
+            "community.example"
+          ],
+          "status": "passed",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "dataset_expectation_matches": true,
+          "derived_independently_from_evidence_confidence": true,
+          "expected_by_dataset": null,
+          "expected_minimum_material_source_score": "High",
+          "material_source_count": 3,
+          "observed": "High",
+          "status": "passed"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 5,
+          "official_fact_count": 5,
+          "status": "passed",
+          "value": 1.0
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "passed"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-014-citation-validation:privacy-requirements:01"
+          ],
+          "compliant_count": 0,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-014-citation-validation:privacy-requirements:01"
+          ],
+          "not_evaluable_count": 1,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_facts": {
+          "adjudicated_count": 0,
+          "assertion_ids": [
+            "eval-014-citation-validation:required-facts:01",
+            "eval-014-citation-validation:required-facts:02",
+            "eval-014-citation-validation:required-facts:03"
+          ],
+          "covered_count": 0,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "missing_or_not_evaluable_assertion_ids": [
+            "eval-014-citation-validation:required-facts:01",
+            "eval-014-citation-validation:required-facts:02",
+            "eval-014-citation-validation:required-facts:03"
+          ],
+          "not_evaluable_count": 3,
+          "reason": "Approved prose expectations require an evidence-bound independent adjudication; no semantic pass was inferred.",
+          "status": "not_evaluable",
+          "value": null
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [
+            "nyidanmark.dk"
+          ],
+          "required": [
+            "nyidanmark.dk"
+          ],
+          "status": "passed"
+        },
+        "trust_indicator_correctness": {
+          "evidence_confidence_required": true,
+          "fresh_tomato_score_required": true,
+          "status": "passed"
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 5,
+          "not_evaluable_count": 5,
+          "status": "not_evaluable",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "answer-path",
+      "execution_sha256": "f828be90b5db07dae75498005759f26ddeebd3a67933dae65336ce7bc4d172c5",
+      "generation_completed": true,
+      "retrieved_evidence_count": 3,
+      "status": "not_evaluable"
+    },
+    {
+      "assessment_method": "automated-workflow-test",
+      "case_id": "eval-015-update-telemetry-privacy",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": null,
+          "reason": "Clarify/answer/refuse classification applies to answer-producing surfaces, not non-answer workflow evidence.",
+          "status": "not_applicable"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 0,
+          "status": "not_applicable",
+          "supported_relation_count": 0,
+          "value": null
+        },
+        "evidence_confidence": {
+          "status": "not_applicable"
+        },
+        "forbidden_claims": {
+          "absence_count": 2,
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-015-update-telemetry-privacy:forbidden-claims:01",
+            "eval-015-update-telemetry-privacy:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [],
+          "status": "not_applicable",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "status": "not_applicable"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 0,
+          "official_fact_count": 0,
+          "status": "not_applicable",
+          "value": null
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "not_applicable"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 1,
+          "assertion_ids": [
+            "eval-015-update-telemetry-privacy:privacy-requirements:01"
+          ],
+          "compliant_count": 1,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_facts": {
+          "adjudicated_count": 3,
+          "assertion_ids": [
+            "eval-015-update-telemetry-privacy:required-facts:01",
+            "eval-015-update-telemetry-privacy:required-facts:02",
+            "eval-015-update-telemetry-privacy:required-facts:03"
+          ],
+          "covered_count": 3,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [],
+          "required": [],
+          "status": "not_applicable"
+        },
+        "trust_indicator_correctness": {
+          "adjudicated_count": 1,
+          "assertion_ids": [
+            "eval-015-update-telemetry-privacy:trust-indicators:01"
+          ],
+          "correct_count": 1,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 0,
+          "not_evaluable_count": 0,
+          "status": "not_applicable",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "knowledge-release-workflow",
+      "evidence_sha256": "a4c3735a56e826c98493b293b062b19c92253b8b1a59c032046f10d26fc77b9f",
+      "generation_completed": false,
+      "retrieved_evidence_count": 0,
+      "status": "passed"
+    },
+    {
+      "assessment_method": "automated-workflow-test",
+      "case_id": "eval-016-keyboard-evidence-drawer",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": null,
+          "reason": "Clarify/answer/refuse classification applies to answer-producing surfaces, not non-answer workflow evidence.",
+          "status": "not_applicable"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 0,
+          "status": "not_applicable",
+          "supported_relation_count": 0,
+          "value": null
+        },
+        "evidence_confidence": {
+          "status": "not_applicable"
+        },
+        "forbidden_claims": {
+          "absence_count": 2,
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-016-keyboard-evidence-drawer:forbidden-claims:01",
+            "eval-016-keyboard-evidence-drawer:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [],
+          "status": "not_applicable",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "status": "not_applicable"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 0,
+          "official_fact_count": 0,
+          "status": "not_applicable",
+          "value": null
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "not_applicable"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 1,
+          "assertion_ids": [
+            "eval-016-keyboard-evidence-drawer:privacy-requirements:01"
+          ],
+          "compliant_count": 1,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_facts": {
+          "adjudicated_count": 3,
+          "assertion_ids": [
+            "eval-016-keyboard-evidence-drawer:required-facts:01",
+            "eval-016-keyboard-evidence-drawer:required-facts:02",
+            "eval-016-keyboard-evidence-drawer:required-facts:03"
+          ],
+          "covered_count": 3,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [],
+          "required": [],
+          "status": "not_applicable"
+        },
+        "trust_indicator_correctness": {
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-016-keyboard-evidence-drawer:trust-indicators:01",
+            "eval-016-keyboard-evidence-drawer:trust-indicators:02"
+          ],
+          "correct_count": 2,
+          "expectation_count": 2,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 0,
+          "not_evaluable_count": 0,
+          "status": "not_applicable",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "browser-workflow",
+      "evidence_sha256": "0228f73fd9ca81de10633fc194957ec021fda94560f48745a7c6898ed969c165",
+      "generation_completed": false,
+      "retrieved_evidence_count": 0,
+      "status": "passed"
+    },
+    {
+      "assessment_method": "automated-workflow-test",
+      "case_id": "eval-017-responsive-reduced-motion",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": null,
+          "reason": "Clarify/answer/refuse classification applies to answer-producing surfaces, not non-answer workflow evidence.",
+          "status": "not_applicable"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 0,
+          "status": "not_applicable",
+          "supported_relation_count": 0,
+          "value": null
+        },
+        "evidence_confidence": {
+          "status": "not_applicable"
+        },
+        "forbidden_claims": {
+          "absence_count": 2,
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-017-responsive-reduced-motion:forbidden-claims:01",
+            "eval-017-responsive-reduced-motion:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [],
+          "status": "not_applicable",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "status": "not_applicable"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 0,
+          "official_fact_count": 0,
+          "status": "not_applicable",
+          "value": null
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "not_applicable"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 1,
+          "assertion_ids": [
+            "eval-017-responsive-reduced-motion:privacy-requirements:01"
+          ],
+          "compliant_count": 1,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_facts": {
+          "adjudicated_count": 3,
+          "assertion_ids": [
+            "eval-017-responsive-reduced-motion:required-facts:01",
+            "eval-017-responsive-reduced-motion:required-facts:02",
+            "eval-017-responsive-reduced-motion:required-facts:03"
+          ],
+          "covered_count": 3,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [],
+          "required": [],
+          "status": "not_applicable"
+        },
+        "trust_indicator_correctness": {
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-017-responsive-reduced-motion:trust-indicators:01",
+            "eval-017-responsive-reduced-motion:trust-indicators:02"
+          ],
+          "correct_count": 2,
+          "expectation_count": 2,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 0,
+          "not_evaluable_count": 0,
+          "status": "not_applicable",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "browser-workflow",
+      "evidence_sha256": "35884dd2d890e009d03914457166c7e2aafc4f531eef713e2eb41024b7481d19",
+      "generation_completed": false,
+      "retrieved_evidence_count": 0,
+      "status": "passed"
+    },
+    {
+      "assessment_method": "automated-workflow-test",
+      "case_id": "eval-018-provider-unavailable-recovery",
+      "checks": {
+        "behavior": {
+          "expected": "refuse",
+          "observed": null,
+          "reason": "Clarify/answer/refuse classification applies to answer-producing surfaces, not non-answer workflow evidence.",
+          "status": "not_applicable"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 0,
+          "status": "not_applicable",
+          "supported_relation_count": 0,
+          "value": null
+        },
+        "evidence_confidence": {
+          "status": "not_applicable"
+        },
+        "forbidden_claims": {
+          "absence_count": 2,
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-018-provider-unavailable-recovery:forbidden-claims:01",
+            "eval-018-provider-unavailable-recovery:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [],
+          "status": "not_applicable",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "status": "not_applicable"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 0,
+          "official_fact_count": 0,
+          "status": "not_applicable",
+          "value": null
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "not_applicable"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 1,
+          "assertion_ids": [
+            "eval-018-provider-unavailable-recovery:privacy-requirements:01"
+          ],
+          "compliant_count": 1,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_facts": {
+          "adjudicated_count": 3,
+          "assertion_ids": [
+            "eval-018-provider-unavailable-recovery:required-facts:01",
+            "eval-018-provider-unavailable-recovery:required-facts:02",
+            "eval-018-provider-unavailable-recovery:required-facts:03"
+          ],
+          "covered_count": 3,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [],
+          "required": [],
+          "status": "not_applicable"
+        },
+        "trust_indicator_correctness": {
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-018-provider-unavailable-recovery:trust-indicators:01",
+            "eval-018-provider-unavailable-recovery:trust-indicators:02"
+          ],
+          "correct_count": 2,
+          "expectation_count": 2,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 0,
+          "not_evaluable_count": 0,
+          "status": "not_applicable",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "provider-recovery-workflow",
+      "evidence_sha256": "4a9c0277ea71135b1f883c6c16d4e9fb20e86779f88770bf3460b58e86850b8b",
+      "generation_completed": false,
+      "retrieved_evidence_count": 0,
+      "status": "passed"
+    },
+    {
+      "assessment_method": "automated-workflow-test",
+      "case_id": "eval-019-runtime-identity-visible",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": null,
+          "reason": "Clarify/answer/refuse classification applies to answer-producing surfaces, not non-answer workflow evidence.",
+          "status": "not_applicable"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 0,
+          "status": "not_applicable",
+          "supported_relation_count": 0,
+          "value": null
+        },
+        "evidence_confidence": {
+          "status": "not_applicable"
+        },
+        "forbidden_claims": {
+          "absence_count": 2,
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-019-runtime-identity-visible:forbidden-claims:01",
+            "eval-019-runtime-identity-visible:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [],
+          "status": "not_applicable",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "status": "not_applicable"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 0,
+          "official_fact_count": 0,
+          "status": "not_applicable",
+          "value": null
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "not_applicable"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 1,
+          "assertion_ids": [
+            "eval-019-runtime-identity-visible:privacy-requirements:01"
+          ],
+          "compliant_count": 1,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_facts": {
+          "adjudicated_count": 3,
+          "assertion_ids": [
+            "eval-019-runtime-identity-visible:required-facts:01",
+            "eval-019-runtime-identity-visible:required-facts:02",
+            "eval-019-runtime-identity-visible:required-facts:03"
+          ],
+          "covered_count": 3,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [],
+          "required": [],
+          "status": "not_applicable"
+        },
+        "trust_indicator_correctness": {
+          "adjudicated_count": 3,
+          "assertion_ids": [
+            "eval-019-runtime-identity-visible:trust-indicators:01",
+            "eval-019-runtime-identity-visible:trust-indicators:02",
+            "eval-019-runtime-identity-visible:trust-indicators:03"
+          ],
+          "correct_count": 3,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 0,
+          "not_evaluable_count": 0,
+          "status": "not_applicable",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "browser-workflow",
+      "evidence_sha256": "9c5bd10ff4a090588472df6fb0d6e434edc9134d352e8c87d1ed1e5530091468",
+      "generation_completed": false,
+      "retrieved_evidence_count": 0,
+      "status": "passed"
+    },
+    {
+      "assessment_method": "automated-workflow-test",
+      "case_id": "eval-020-update-rollback",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": null,
+          "reason": "Clarify/answer/refuse classification applies to answer-producing surfaces, not non-answer workflow evidence.",
+          "status": "not_applicable"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 0,
+          "status": "not_applicable",
+          "supported_relation_count": 0,
+          "value": null
+        },
+        "evidence_confidence": {
+          "status": "not_applicable"
+        },
+        "forbidden_claims": {
+          "absence_count": 2,
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-020-update-rollback:forbidden-claims:01",
+            "eval-020-update-rollback:forbidden-claims:02"
+          ],
+          "expectation_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0,
+          "violation_count": 0
+        },
+        "forbidden_source_domains": {
+          "forbidden": [],
+          "status": "not_applicable",
+          "violations": []
+        },
+        "fresh_tomato_min_material_source_rule": {
+          "status": "not_applicable"
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 0,
+          "official_fact_count": 0,
+          "status": "not_applicable",
+          "value": null
+        },
+        "personal_eligibility_conclusions": {
+          "count": 0,
+          "status": "not_applicable"
+        },
+        "privacy_requirements": {
+          "adjudicated_count": 1,
+          "assertion_ids": [
+            "eval-020-update-rollback:privacy-requirements:01"
+          ],
+          "compliant_count": 1,
+          "expectation_count": 1,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_facts": {
+          "adjudicated_count": 3,
+          "assertion_ids": [
+            "eval-020-update-rollback:required-facts:01",
+            "eval-020-update-rollback:required-facts:02",
+            "eval-020-update-rollback:required-facts:03"
+          ],
+          "covered_count": 3,
+          "expectation_count": 3,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "required_source_domains": {
+          "missing": [],
+          "observed": [],
+          "required": [],
+          "status": "not_applicable"
+        },
+        "trust_indicator_correctness": {
+          "adjudicated_count": 2,
+          "assertion_ids": [
+            "eval-020-update-rollback:trust-indicators:01",
+            "eval-020-update-rollback:trust-indicators:02"
+          ],
+          "correct_count": 2,
+          "expectation_count": 2,
+          "failed_count": 0,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 0,
+          "not_evaluable_count": 0,
+          "status": "not_applicable",
+          "supported_count": 0,
+          "unsupported_count": 0,
+          "value": null
+        }
+      },
+      "error_type": null,
+      "evaluation_completed": true,
+      "evaluation_surface": "knowledge-release-workflow",
+      "evidence_sha256": "1197ec3f682456a405335e46a0ce56fda0704b991df29863f8b5f993cfe8afda",
+      "generation_completed": false,
+      "retrieved_evidence_count": 0,
+      "status": "passed"
+    }
+  ],
+  "dataset": {
+    "case_count": 20,
+    "dataset_id": "di-rag-eval-set-v0.1-candidate",
+    "sha256": "468bede9c7f55c8c06ace2f48d7df54e7861b0267bc2eee2ea1c855651b89dab",
+    "uses_production_user_conversation_data": false,
+    "version": "0.1.0-candidate"
+  },
+  "dataset_limitations": [
+    {
+      "fields": [
+        "final_answer_expectations.required_facts",
+        "final_answer_expectations.forbidden_claims"
+      ],
+      "reason": "Prose expectations cannot establish semantic coverage or absence without an independent adjudication record."
+    },
+    {
+      "fields": [
+        "final_answer_expectations.trust_indicators",
+        "final_answer_expectations.privacy_requirements"
+      ],
+      "reason": "Browser, update, identity, and recovery workflow passes require assertion-specific results bound to a verified workflow artifact."
+    }
+  ],
+  "execution": {
+    "answer_case_execution_count": 10,
+    "case_count": 20,
+    "completed_count": 20,
+    "error_count": 0,
+    "live_provider_calls": true,
+    "mode": "live-ollama",
+    "not_evaluable_count": 0
+  },
+  "generated_at_utc": "2026-07-14T18:06:02Z",
+  "identity": {
+    "corpus_id": "kr-2026-07-06.1",
+    "model": "gemma4:12b",
+    "model_identity": {
+      "architecture": "gemma4",
+      "family": "gemma4",
+      "quantization_level": "Q4_K_M"
+    },
+    "provider_id": "ollama",
+    "provider_version": "0.30.6"
+  },
+  "metrics": {
+    "case_execution_errors": {
+      "observed": 0,
+      "status": "passed",
+      "threshold": 0
+    },
+    "citation_correctness": {
+      "incorrect_relation_count": 0,
+      "not_evaluable_relation_count": 27,
+      "observed": null,
+      "reason": "Some paraphrased claim-to-evidence relationships lack independent adjudication; exact support was not invented.",
+      "relation_count": 35,
+      "status": "not_evaluable",
+      "supported_relation_count": 8,
+      "threshold": 1.0
+    },
+    "clarify_answer_refuse_accuracy": {
+      "applicable_case_count": 14,
+      "best_possible": 1.0,
+      "case_count": 14,
+      "failed_case_count": 0,
+      "not_applicable_case_count": 6,
+      "not_evaluable_case_count": 0,
+      "observed": 1.0,
+      "passed_case_count": 14,
+      "status": "passed",
+      "threshold": 0.95
+    },
+    "evaluation_surface_completion": {
+      "case_count": 20,
+      "completed_case_count": 20,
+      "observed": 1.0,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "forbidden_claims": {
+      "expectation_count": 41,
+      "observed": null,
+      "reason": "The dataset forbidden_claims entries are prose instructions without machine-readable matchers or complete adjudications.",
+      "status": "not_evaluable",
+      "threshold": 0
+    },
+    "forbidden_source_domain_violations": {
+      "observed": 0,
+      "status": "passed",
+      "threshold": 0
+    },
+    "fresh_tomato_min_material_source_rule_pass_rate": {
+      "applicable_case_count": 13,
+      "failed_case_count": 0,
+      "not_evaluable_case_count": 0,
+      "observed": 1.0,
+      "passed_case_count": 13,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "official_fact_citation_coverage": {
+      "cited_official_fact_count": 35,
+      "observed": 1.0,
+      "official_fact_count": 35,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "personal_eligibility_conclusions": {
+      "observed": 0,
+      "status": "passed",
+      "threshold": 0
+    },
+    "privacy_requirement_compliance": {
+      "compliant_count": 10,
+      "expectation_count": 20,
+      "failed_count": 0,
+      "not_evaluable_count": 10,
+      "observed": null,
+      "status": "not_evaluable",
+      "threshold": 1.0
+    },
+    "required_fact_coverage": {
+      "expectation_count": 60,
+      "observed": null,
+      "reason": "The dataset required_facts entries are prose instructions without machine-readable fact identifiers or complete adjudications.",
+      "status": "not_evaluable",
+      "threshold": 0.95
+    },
+    "required_source_domain_coverage": {
+      "missing_domain_count": 0,
+      "observed": 1.0,
+      "required_domain_count": 11,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "trust_indicator_correctness": {
+      "best_possible": 1.0,
+      "case_count": 20,
+      "failed_case_count": 0,
+      "not_evaluable_case_count": 0,
+      "observed": 1.0,
+      "passed_case_count": 20,
+      "status": "passed",
+      "threshold": 0.95
+    },
+    "unsupported_claim_rate": {
+      "audited_claim_count": 35,
+      "not_evaluable_count": 27,
+      "observed": null,
+      "status": "not_evaluable",
+      "threshold": 0.0,
+      "unsupported_count": 0
+    }
+  },
+  "privacy_assertions": {
+    "contains_case_prompts": false,
+    "contains_conversation_identifiers": false,
+    "contains_conversation_records": false,
+    "contains_generated_answer_text": false
+  },
+  "quality_bar": {
+    "quality_bar_id": "mvp-evaluation-quality-bar-issue-7",
+    "sha256": "415981ae0aa134a072632c73c58d8a93d1be76264738265c8d9d61ba03ab053f",
+    "version": "0.1.0-candidate"
+  },
+  "retrieval_and_final_answer_evaluation_separate": true,
+  "schema_version": "final-answer-evaluation-v1",
+  "strict_passed": false,
+  "threshold_failures": [
+    "required_fact_coverage",
+    "forbidden_claims",
+    "privacy_requirement_compliance",
+    "citation_correctness",
+    "unsupported_claim_rate"
+  ]
+}

@@ -11,6 +11,7 @@ from danish_rag.conversation_store import ConversationStore
 from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
+from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 
 
 def provider_configuration(model: str = "fixture-model") -> ProviderConfiguration:
@@ -177,14 +178,19 @@ class Issue14FollowUpApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.root = Path(self.tempdir.name)
         self.config_path = self.root / "config" / "provider-config.json"
         self.data_dir = self.root / "data"
+        self.embedding_provider = DeterministicEmbeddingProviderFixture()
         save_provider_configuration(self.config_path, provider_configuration("fixture-model-v1"))
-        install_minimal_knowledge_release(self.data_dir)
+        install_minimal_knowledge_release(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
 
     def make_client(self, answer_generator: RecordingGenerator):
         app = create_app(
             config_path=self.config_path,
             data_dir=self.data_dir,
             answer_generator=answer_generator,
+            embedding_provider=self.embedding_provider,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),

@@ -1,0 +1,307 @@
+{
+  "artifact_scope": "fixture-governance-evidence",
+  "knowledge_release_id": "kr-2026-07-06.1",
+  "production_qualification": {
+    "production_release_eligible": false,
+    "reason_codes": [
+      "fixture-governance-evidence-only",
+      "official-source-snapshots-not-recorded",
+      "production-human-source-review-not-recorded",
+      "project-authored-fixture-content",
+      "source-curation-not-recorded",
+      "source-monitoring-evidence-not-recorded"
+    ],
+    "required_evidence": [
+      "Archived official-source snapshots with retrieval metadata and SHA-256 digests",
+      "Named curator admission records with scope rationale and monitoring ownership",
+      "Named human reviewer records comparing each official snapshot with its normalized extraction, including decision, materiality, notes, and interpretation risks",
+      "Second human reviewer evidence for every material source change",
+      "A rebuilt signed knowledge release whose source hashes cover the official snapshots and reviewed normalized extracts"
+    ],
+    "status": "blocked"
+  },
+  "schema_version": "1.0",
+  "source_registry_version": "sr-2026-07-06.1",
+  "sources": [
+    {
+      "content_origin": "project-authored-fixture",
+      "curation_evidence": {
+        "admitted_at_utc": null,
+        "curator_ids": [],
+        "scope_rationale": null,
+        "status": "not-recorded"
+      },
+      "fixture_projection": {
+        "document_ids": [
+          "di-rag-doc-permanent-residence-language"
+        ],
+        "knowledge_release_id": "kr-2026-07-06.1",
+        "manifest_extraction_schema_version": "1.0",
+        "manifest_final_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+        "manifest_fresh_tomato_inputs": {
+          "next_review_due_utc": "2026-10-06T12:00:00Z",
+          "source_health": "current"
+        },
+        "manifest_last_checked_at_utc": "2026-06-15T09:00:00Z",
+        "manifest_normalized_document_sha256": "fc913515dc285d89c24421ade3dc915471df1c06bce903873aa597bf0c1eae81",
+        "manifest_review_state": "approved-current",
+        "manifest_reviewed_at_utc": "2026-06-15T09:00:00Z",
+        "manifest_reviewer_labels": [
+          "mvp-fixture-reviewer"
+        ],
+        "manifest_source_content_sha256": "fc913515dc285d89c24421ade3dc915471df1c06bce903873aa597bf0c1eae81"
+      },
+      "language": "da",
+      "monitoring_evidence": {
+        "final_url": null,
+        "http_status": null,
+        "last_fetched_at_utc": null,
+        "owner_ids": [],
+        "status": "not-recorded"
+      },
+      "official_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+      "production_release_eligible": false,
+      "publisher": "SIRI",
+      "registry_state": "discovered",
+      "review_evidence": {
+        "assessment_method": null,
+        "decision": null,
+        "interpretation_risks": [],
+        "materiality": null,
+        "normalized_extraction_sha256": null,
+        "notes": null,
+        "official_source_snapshot_sha256": null,
+        "reviewed_at_utc": null,
+        "reviewer_ids": [],
+        "second_reviewer_ids": [],
+        "status": "not-recorded"
+      },
+      "source_id": "nyidanmark-permanent-residence-language-requirements",
+      "topic": "permanent-residence language requirements"
+    },
+    {
+      "content_origin": "project-authored-fixture",
+      "curation_evidence": {
+        "admitted_at_utc": null,
+        "curator_ids": [],
+        "scope_rationale": null,
+        "status": "not-recorded"
+      },
+      "fixture_projection": {
+        "document_ids": [
+          "di-rag-doc-equivalent-tests-language-test-2"
+        ],
+        "knowledge_release_id": "kr-2026-07-06.1",
+        "manifest_extraction_schema_version": "1.0",
+        "manifest_final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+        "manifest_fresh_tomato_inputs": {
+          "next_review_due_utc": "2026-10-06T12:00:00Z",
+          "source_health": "current"
+        },
+        "manifest_last_checked_at_utc": "2026-07-06T12:00:00Z",
+        "manifest_normalized_document_sha256": "b00fcec98f076d76881defd7fc8b0ec2f154ea3c1924ebe6764fd123cf2d406e",
+        "manifest_review_state": "approved-current",
+        "manifest_reviewed_at_utc": "2026-07-06T12:00:00Z",
+        "manifest_reviewer_labels": [
+          "mvp-fixture-reviewer"
+        ],
+        "manifest_source_content_sha256": "b00fcec98f076d76881defd7fc8b0ec2f154ea3c1924ebe6764fd123cf2d406e"
+      },
+      "language": "da",
+      "monitoring_evidence": {
+        "final_url": null,
+        "http_status": null,
+        "last_fetched_at_utc": null,
+        "owner_ids": [],
+        "status": "not-recorded"
+      },
+      "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+      "production_release_eligible": false,
+      "publisher": "The Danish Immigration Service",
+      "registry_state": "discovered",
+      "review_evidence": {
+        "assessment_method": null,
+        "decision": null,
+        "interpretation_risks": [],
+        "materiality": null,
+        "normalized_extraction_sha256": null,
+        "notes": null,
+        "official_source_snapshot_sha256": null,
+        "reviewed_at_utc": null,
+        "reviewer_ids": [],
+        "second_reviewer_ids": [],
+        "status": "not-recorded"
+      },
+      "source_id": "nyidanmark-equivalent-tests-language-test-2",
+      "topic": "permanent-residence certificate equivalence"
+    },
+    {
+      "content_origin": "project-authored-fixture",
+      "curation_evidence": {
+        "admitted_at_utc": null,
+        "curator_ids": [],
+        "scope_rationale": null,
+        "status": "not-recorded"
+      },
+      "fixture_projection": {
+        "document_ids": [
+          "di-rag-doc-equivalent-tests-language-test-3"
+        ],
+        "knowledge_release_id": "kr-2026-07-06.1",
+        "manifest_extraction_schema_version": "1.0",
+        "manifest_final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+        "manifest_fresh_tomato_inputs": {
+          "next_review_due_utc": "2026-10-06T12:00:00Z",
+          "source_health": "current"
+        },
+        "manifest_last_checked_at_utc": "2026-07-06T12:00:00Z",
+        "manifest_normalized_document_sha256": "65ab910e47c22fab4bd78d9d26bc037bcb15983dd19170529471e3c3d363492f",
+        "manifest_review_state": "approved-current",
+        "manifest_reviewed_at_utc": "2026-07-06T12:00:00Z",
+        "manifest_reviewer_labels": [
+          "mvp-fixture-reviewer"
+        ],
+        "manifest_source_content_sha256": "65ab910e47c22fab4bd78d9d26bc037bcb15983dd19170529471e3c3d363492f"
+      },
+      "language": "da",
+      "monitoring_evidence": {
+        "final_url": null,
+        "http_status": null,
+        "last_fetched_at_utc": null,
+        "owner_ids": [],
+        "status": "not-recorded"
+      },
+      "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+      "production_release_eligible": false,
+      "publisher": "The Danish Immigration Service",
+      "registry_state": "discovered",
+      "review_evidence": {
+        "assessment_method": null,
+        "decision": null,
+        "interpretation_risks": [],
+        "materiality": null,
+        "normalized_extraction_sha256": null,
+        "notes": null,
+        "official_source_snapshot_sha256": null,
+        "reviewed_at_utc": null,
+        "reviewer_ids": [],
+        "second_reviewer_ids": [],
+        "status": "not-recorded"
+      },
+      "source_id": "nyidanmark-equivalent-tests-language-test-3",
+      "topic": "permanent-residence certificate equivalence"
+    },
+    {
+      "content_origin": "project-authored-fixture",
+      "curation_evidence": {
+        "admitted_at_utc": null,
+        "curator_ids": [],
+        "scope_rationale": null,
+        "status": "not-recorded"
+      },
+      "fixture_projection": {
+        "document_ids": [
+          "di-rag-doc-danish-exam-overview"
+        ],
+        "knowledge_release_id": "kr-2026-07-06.1",
+        "manifest_extraction_schema_version": "1.0",
+        "manifest_final_url": "https://danskogproever.dk/borger/danskproever/",
+        "manifest_fresh_tomato_inputs": {
+          "next_review_due_utc": "2026-10-06T12:00:00Z",
+          "source_health": "current"
+        },
+        "manifest_last_checked_at_utc": "2026-07-06T12:00:00Z",
+        "manifest_normalized_document_sha256": "df572773dd7f85321103aba5a11a213d32fcec51ea5378da44a5fb6bb6311db8",
+        "manifest_review_state": "approved-current",
+        "manifest_reviewed_at_utc": "2026-07-06T12:00:00Z",
+        "manifest_reviewer_labels": [
+          "mvp-fixture-reviewer"
+        ],
+        "manifest_source_content_sha256": "df572773dd7f85321103aba5a11a213d32fcec51ea5378da44a5fb6bb6311db8"
+      },
+      "language": "da",
+      "monitoring_evidence": {
+        "final_url": null,
+        "http_status": null,
+        "last_fetched_at_utc": null,
+        "owner_ids": [],
+        "status": "not-recorded"
+      },
+      "official_url": "https://danskogproever.dk/borger/danskproever/",
+      "production_release_eligible": false,
+      "publisher": "SIRI",
+      "registry_state": "discovered",
+      "review_evidence": {
+        "assessment_method": null,
+        "decision": null,
+        "interpretation_risks": [],
+        "materiality": null,
+        "normalized_extraction_sha256": null,
+        "notes": null,
+        "official_source_snapshot_sha256": null,
+        "reviewed_at_utc": null,
+        "reviewer_ids": [],
+        "second_reviewer_ids": [],
+        "status": "not-recorded"
+      },
+      "source_id": "danskogproever-danish-exam-overview",
+      "topic": "Danish exam comparison"
+    },
+    {
+      "content_origin": "project-authored-fixture",
+      "curation_evidence": {
+        "admitted_at_utc": null,
+        "curator_ids": [],
+        "scope_rationale": null,
+        "status": "not-recorded"
+      },
+      "fixture_projection": {
+        "document_ids": [
+          "di-rag-doc-registration-deadlines-2026"
+        ],
+        "knowledge_release_id": "kr-2026-07-06.1",
+        "manifest_extraction_schema_version": "1.0",
+        "manifest_final_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+        "manifest_fresh_tomato_inputs": {
+          "next_review_due_utc": "2026-08-31T23:59:59Z",
+          "source_health": "current"
+        },
+        "manifest_last_checked_at_utc": "2026-07-06T12:00:00Z",
+        "manifest_normalized_document_sha256": "a3a1f6d9017f02d15488a27669aa55ae958848f8b91a444b044d5c67fba0f331",
+        "manifest_review_state": "approved-current",
+        "manifest_reviewed_at_utc": "2026-07-06T12:00:00Z",
+        "manifest_reviewer_labels": [
+          "mvp-fixture-reviewer"
+        ],
+        "manifest_source_content_sha256": "a3a1f6d9017f02d15488a27669aa55ae958848f8b91a444b044d5c67fba0f331"
+      },
+      "language": "da",
+      "monitoring_evidence": {
+        "final_url": null,
+        "http_status": null,
+        "last_fetched_at_utc": null,
+        "owner_ids": [],
+        "status": "not-recorded"
+      },
+      "official_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+      "production_release_eligible": false,
+      "publisher": "SIRI",
+      "registry_state": "discovered",
+      "review_evidence": {
+        "assessment_method": null,
+        "decision": null,
+        "interpretation_risks": [],
+        "materiality": null,
+        "normalized_extraction_sha256": null,
+        "notes": null,
+        "official_source_snapshot_sha256": null,
+        "reviewed_at_utc": null,
+        "reviewer_ids": [],
+        "second_reviewer_ids": [],
+        "status": "not-recorded"
+      },
+      "source_id": "danskogproever-registration-deadlines-2026",
+      "topic": "Danish exam registration logistics"
+    }
+  ]
+}

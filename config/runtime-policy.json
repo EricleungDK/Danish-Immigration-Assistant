@@ -23,9 +23,10 @@
       }
     },
     "embedding": {
-      "provisional_candidate": "embeddinggemma",
-      "supported_for_production": false,
-      "approval_gate": "retrieval benchmark and human architecture approval"
+      "initial_supported": "embeddinggemma",
+      "supported_for_production": true,
+      "approval_status": "approved-by-issue-4",
+      "approval_record": "GitHub issue #4 approval comment dated 2026-07-05 after issue #29 benchmark evidence"
     }
   },
   "capabilities": [
@@ -142,6 +143,13 @@
       "ollama": "0.30.6+",
       "browser": "evergreen local browser"
     },
+    "browser_release_baseline": {
+      "engine": "chromium",
+      "minimum_chromium_major": 150,
+      "reviewed_on": "2026-07-14",
+      "maintenance": "review-before-each-release-qualification",
+      "source_url": "https://chromereleases.googleblog.com/2026/07/stable-channel-update-for-desktop.html"
+    },
     "hardware": {
       "minimum_system_ram_gb": 16,
       "recommended_system_ram_gb": 24,
@@ -159,8 +167,10 @@
     "baseline_id": "mvp-runtime-baseline-issue-26",
     "initial_provider": "ollama",
     "minimum_ollama_version": "0.30.6",
+    "minimum_chromium_major": 150,
+    "browser_baseline_reviewed_on": "2026-07-14",
     "initial_generation_model": "gemma4:12b",
-    "provisional_embedding_candidate": "embeddinggemma",
+    "initial_supported_embedding_model": "embeddinggemma",
     "default_application_bind_host": "127.0.0.1",
     "default_provider_endpoint": "http://127.0.0.1:11434",
     "application_process_model": "single-local-python-process",

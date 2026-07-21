@@ -32,7 +32,7 @@ python3 -m danish_rag.retrieval_benchmark --mode compare
 
 ## Generated Evidence
 
-The JSON comparison and markdown recommendation are generated measurements. They feed the later human architecture approval gate; they do not approve production thresholds or a production retrieval architecture.
+The JSON comparison and markdown recommendation are generated measurements. The later issue #4 approval comment dated 2026-07-05 accepted the recommended production retrieval architecture and `embeddinggemma`; these measurements do not approve production thresholds.
 
 Latest generated hybrid comparison evidence currently records:
 
@@ -61,12 +61,12 @@ Latest generated hybrid comparison evidence currently records:
 
 ## Recommendation
 
-Use `hybrid` as the evidenced retrieval candidate to bring into the later human architecture approval gate. Hybrid was selected because it met the issue #29 rule: no blocked-source violations, no exact-term Recall@3 regression against lexical retrieval, no English-paraphrase or typo Recall@3 regression against the single-mode candidates, complete compatibility metadata, and runtime-baseline compatibility.
+Use `hybrid` as the evidenced retrieval baseline approved by issue #4. Hybrid was selected because it met the issue #29 rule: no blocked-source violations, no exact-term Recall@3 regression against lexical retrieval, no English-paraphrase or typo Recall@3 regression against the single-mode candidates, complete compatibility metadata, and runtime-baseline compatibility.
 
 Production thresholds remain out of scope and must be decided by the later evaluation decision ticket.
 
 ## Remaining Limitations
 
 - The comparison uses the reviewed benchmark fixture set only.
-- The recommendation is benchmark evidence for later human architecture approval, not production architecture approval.
+- Issue #4 supplies the architecture approval; this comparison remains the supporting benchmark rather than a release-quality result.
 - Generated evidence should be refreshed after any result-schema, fixture, query, policy, or runtime-baseline change before issue #29 is closed.

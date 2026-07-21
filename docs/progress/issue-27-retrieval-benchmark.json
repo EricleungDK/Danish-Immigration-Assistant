@@ -8,9 +8,9 @@
       ],
       "forbidden_result_violations": 0,
       "latency_ms": {
-        "max": 0.014,
-        "mean": 0.014,
-        "min": 0.014
+        "max": 0.013,
+        "mean": 0.013,
+        "min": 0.013
       },
       "mean_reciprocal_rank": 0.0,
       "query_count": 1,
@@ -25,9 +25,9 @@
       ],
       "forbidden_result_violations": 0,
       "latency_ms": {
-        "max": 0.112,
-        "mean": 0.112,
-        "min": 0.112
+        "max": 0.118,
+        "mean": 0.118,
+        "min": 0.118
       },
       "mean_reciprocal_rank": 1.0,
       "query_count": 1,
@@ -42,9 +42,9 @@
       ],
       "forbidden_result_violations": 0,
       "latency_ms": {
-        "max": 0.035,
-        "mean": 0.035,
-        "min": 0.035
+        "max": 0.04,
+        "mean": 0.04,
+        "min": 0.04
       },
       "mean_reciprocal_rank": 1.0,
       "query_count": 1,
@@ -59,9 +59,9 @@
       ],
       "forbidden_result_violations": 0,
       "latency_ms": {
-        "max": 0.038,
-        "mean": 0.038,
-        "min": 0.038
+        "max": 0.033,
+        "mean": 0.033,
+        "min": 0.033
       },
       "mean_reciprocal_rank": 1.0,
       "query_count": 1,
@@ -76,9 +76,9 @@
       ],
       "forbidden_result_violations": 0,
       "latency_ms": {
-        "max": 0.032,
-        "mean": 0.032,
-        "min": 0.032
+        "max": 0.03,
+        "mean": 0.03,
+        "min": 0.03
       },
       "mean_reciprocal_rank": 1.0,
       "query_count": 1,
@@ -104,7 +104,7 @@
       "required_evidence_query_count": 1
     }
   },
-  "executed_at_utc": "2026-07-07T21:12:33.592516+00:00",
+  "executed_at_utc": "2026-07-14T17:57:53.428669+00:00",
   "fixture_identity": {
     "corpus_path": "data/retrieval_benchmark/corpus-fixtures.json",
     "corpus_sha256": "51f5c891fd742c1f67f076ccd13d5381bdd7ec9d46b3fb436acf6eb4ad143679",
@@ -149,7 +149,7 @@
       ],
       "forbidden_result_ids": [],
       "forbidden_result_violations": 0,
-      "latency_ms": 0.112,
+      "latency_ms": 0.118,
       "overdue_result_ids": [],
       "query_id": "di-rag-query-exact-danish-terminology",
       "query_text": "permanent opholdstilladelse Pr\u00f8ve i Dansk 2",
@@ -227,7 +227,7 @@
       ],
       "forbidden_result_ids": [],
       "forbidden_result_violations": 0,
-      "latency_ms": 0.038,
+      "latency_ms": 0.033,
       "overdue_result_ids": [],
       "query_id": "di-rag-query-metadata-filtering",
       "query_text": "gebyr permanent ophold",
@@ -261,7 +261,7 @@
       ],
       "forbidden_result_ids": [],
       "forbidden_result_violations": 0,
-      "latency_ms": 0.032,
+      "latency_ms": 0.03,
       "overdue_result_ids": [
         "di-rag-doc-overdue-policy-usable-exam"
       ],
@@ -292,7 +292,7 @@
       "eligible_result_ids": [],
       "forbidden_result_ids": [],
       "forbidden_result_violations": 0,
-      "latency_ms": 0.014,
+      "latency_ms": 0.013,
       "overdue_result_ids": [],
       "query_id": "di-rag-query-blocked-source-exclusion",
       "query_text": "\u00e6ndret uanmeldt danskkrav",
@@ -320,7 +320,7 @@
       ],
       "forbidden_result_ids": [],
       "forbidden_result_violations": 0,
-      "latency_ms": 0.035,
+      "latency_ms": 0.04,
       "overdue_result_ids": [],
       "query_id": "di-rag-query-forbidden-result-safety-boundary",
       "query_text": "personlig juridisk r\u00e5dgivning ophold evidensbundet svar",
@@ -356,9 +356,9 @@
     ],
     "forbidden_result_violations": 0,
     "latency_ms": {
-      "max": 0.112,
-      "mean": 0.046,
-      "min": 0.014
+      "max": 0.118,
+      "mean": 0.047,
+      "min": 0.013
     },
     "mean_reciprocal_rank": 1.0,
     "query_count": 6,

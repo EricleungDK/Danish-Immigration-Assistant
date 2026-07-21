@@ -1,9 +1,15 @@
 import json
 import unittest
 from pathlib import Path
+from typing import get_type_hints
 
 from danish_rag.runtime_policy import load_runtime_policy
-from danish_rag.runtime_probe import ProbeResult, run_runtime_probe
+from danish_rag.runtime_probe import (
+    EnvironmentEvidence,
+    ProbeExitStatus,
+    ProbeResult,
+    run_runtime_probe,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,13 +62,25 @@ class FakeOllamaClient:
 
 
 class RuntimeProbeTests(unittest.TestCase):
+    def test_probe_result_uses_named_environment_evidence_type(self):
+        self.assertIs(
+            get_type_hints(ProbeResult)["environment"],
+            EnvironmentEvidence,
+        )
+        with self.assertRaises(TypeError):
+            ProbeResult(
+                exit_status=ProbeExitStatus.INCOMPLETE,
+                diagnostic="environment evidence is required",
+            )
+
     def test_probe_succeeds_with_version_model_completion_and_structured_json(self):
         policy = load_runtime_policy(POLICY_PATH)
 
         result = run_runtime_probe(policy, client=FakeOllamaClient())
 
         self.assertIsInstance(result, ProbeResult)
-        self.assertEqual(result.exit_status, 0)
+        self.assertEqual(result.exit_status, ProbeExitStatus.PASSED)
+        self.assertEqual(json.loads(json.dumps(result.to_dict()))["exit_status"], 0)
         self.assertEqual(result.provider["version"], "0.30.6")
         self.assertEqual(result.model["name"], "gemma4:12b")
         self.assertEqual(result.model["identity"]["family"], "gemma4")
@@ -76,7 +94,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(policy, client=FakeOllamaClient(failure="service"))
 
-        self.assertEqual(result.exit_status, 2)
+        self.assertEqual(result.exit_status, ProbeExitStatus.PROVIDER_UNREACHABLE)
         self.assertIn("Ollama service is unreachable", result.diagnostic)
         self.assertIn("127.0.0.1:11434", result.diagnostic)
         self.assertIn("Start Ollama", result.diagnostic)
@@ -86,7 +104,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(policy, client=FakeOllamaClient(version="0.30.5"))
 
-        self.assertEqual(result.exit_status, 3)
+        self.assertEqual(result.exit_status, ProbeExitStatus.PROVIDER_VERSION_UNSUPPORTED)
         self.assertIn("Upgrade Ollama to 0.30.6 or newer", result.diagnostic)
 
     def test_probe_reports_missing_generation_model_with_pull_command(self):
@@ -94,7 +112,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(policy, client=FakeOllamaClient(failure="model"))
 
-        self.assertEqual(result.exit_status, 4)
+        self.assertEqual(result.exit_status, ProbeExitStatus.MODEL_UNAVAILABLE)
         self.assertIn("gemma4:12b is not installed", result.diagnostic)
         self.assertIn("ollama pull gemma4:12b", result.diagnostic)
 
@@ -106,7 +124,7 @@ class RuntimeProbeTests(unittest.TestCase):
             client=FakeOllamaClient(chat_content=json.dumps({"status": "ok"})),
         )
 
-        self.assertEqual(result.exit_status, 5)
+        self.assertEqual(result.exit_status, ProbeExitStatus.STRUCTURED_RESPONSE_INVALID)
         self.assertIn("structured JSON response did not match", result.diagnostic)
 
     def test_probe_rejects_structured_output_with_extra_fields(self):
@@ -125,7 +143,7 @@ class RuntimeProbeTests(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(result.exit_status, 5)
+        self.assertEqual(result.exit_status, ProbeExitStatus.STRUCTURED_RESPONSE_INVALID)
         self.assertIn("unexpected field(s): extra", result.diagnostic)
         self.assertIn("issue #26 schema", result.diagnostic)
 
@@ -144,7 +162,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(policy, client=client)
 
-        self.assertEqual(result.exit_status, 4)
+        self.assertEqual(result.exit_status, ProbeExitStatus.MODEL_UNAVAILABLE)
         self.assertEqual(client.chat_calls, 0)
         self.assertEqual(result.model["capabilities"], ["thinking"])
         self.assertIn("completion", result.diagnostic)
@@ -158,7 +176,7 @@ class RuntimeProbeTests(unittest.TestCase):
             client=FakeOllamaClient(chat_content=json.dumps(["not", "an", "object"])),
         )
 
-        self.assertEqual(result.exit_status, 5)
+        self.assertEqual(result.exit_status, ProbeExitStatus.STRUCTURED_RESPONSE_INVALID)
         self.assertIn("chat response JSON was not an object", result.diagnostic)
 
     def test_probe_rejects_structured_output_with_wrong_values(self):
@@ -176,7 +194,7 @@ class RuntimeProbeTests(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(result.exit_status, 5)
+        self.assertEqual(result.exit_status, ProbeExitStatus.STRUCTURED_RESPONSE_INVALID)
         self.assertIn("runtime_baseline expected", result.diagnostic)
 
     def test_probe_reports_mismatched_generation_model_family(self):
@@ -196,7 +214,7 @@ class RuntimeProbeTests(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(result.exit_status, 4)
+        self.assertEqual(result.exit_status, ProbeExitStatus.MODEL_UNAVAILABLE)
         self.assertIn("model identity", result.diagnostic)
         self.assertIn("family", result.diagnostic)
         self.assertIn("gemma4", result.diagnostic)
@@ -215,7 +233,7 @@ class RuntimeProbeTests(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(result.exit_status, 4)
+        self.assertEqual(result.exit_status, ProbeExitStatus.MODEL_UNAVAILABLE)
         self.assertIn("missing identity evidence", result.diagnostic)
         self.assertIn("/api/show", result.diagnostic)
 
@@ -236,7 +254,7 @@ class RuntimeProbeTests(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(result.exit_status, 4)
+        self.assertEqual(result.exit_status, ProbeExitStatus.MODEL_UNAVAILABLE)
         self.assertIn("quantization", result.diagnostic)
         self.assertIn("Q4_K_M", result.diagnostic)
 

@@ -9,9 +9,11 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Protocol
 
+from .claim_support import assess_claim_support
 from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
 from .provider_setup import ProviderConfiguration
 from .retrieval import normalize_question
+from .source_freshness import assess_source_freshness
 
 
 class AnswerPipelineError(RuntimeError):
@@ -29,8 +31,6 @@ class TrustLevel(Enum):
 
 
 CONFLICTING_AGREEMENT_STATES = {"conflict", "conflicts", "conflicting", "contradicts"}
-ELIGIBLE_REVIEW_STATES = {"approved-current", "overdue-policy-usable"}
-ELIGIBLE_SOURCE_HEALTH = {"healthy", "overdue-policy-usable"}
 LOW_RISK_EXAM_TERM_ASSUMPTION = (
     "You are asking for a general explanation of the Danish examination term, not "
     "a personal eligibility decision."
@@ -74,11 +74,14 @@ class SafetyDecision:
     skip_generation: bool = False
 
 
-def answer_schema() -> dict[str, Any]:
+def answer_schema(citation_ids: list[str] | None = None) -> dict[str, Any]:
+    citation_item_schema: dict[str, Any] = {"type": "string"}
+    if citation_ids is not None:
+        citation_item_schema["enum"] = sorted(set(citation_ids))
     return {
         "type": "object",
         "properties": {
-            "summary": {"type": "string"},
+            "summary": {"type": "string", "minLength": 1},
             "sections": {
                 "type": "array",
                 "minItems": 1,
@@ -94,10 +97,10 @@ def answer_schema() -> dict[str, Any]:
                                 "source_warning",
                             ],
                         },
-                        "text": {"type": "string"},
+                        "text": {"type": "string", "minLength": 1},
                         "citation_ids": {
                             "type": "array",
-                            "items": {"type": "string"},
+                            "items": citation_item_schema,
                         },
                     },
                     "required": ["kind", "text", "citation_ids"],
@@ -152,16 +155,48 @@ class LocalProviderAnswerGenerator:
         configuration: ProviderConfiguration,
         schema: dict[str, Any],
     ) -> dict[str, Any]:
+        messages = _answer_messages(
+            question,
+            normalized_question,
+            evidence,
+            schema=schema,
+        )
         payload = {
             "model": configuration.model,
-            "messages": _answer_messages(question, normalized_question, evidence),
+            "messages": messages,
             "stream": False,
             "format": schema,
+            "think": False,
             "options": {"temperature": 0},
         }
-        response = self._request_json(configuration.endpoint, "POST", "/api/chat", payload)
-        content = response.get("message", {}).get("content")
-        return _parse_provider_content(content)
+        for attempt in range(2):
+            response = self._request_json(
+                configuration.endpoint,
+                "POST",
+                "/api/chat",
+                payload,
+            )
+            content = response.get("message", {}).get("content")
+            try:
+                return _parse_provider_content(content)
+            except AnswerValidationError:
+                if attempt == 1:
+                    raise
+                payload = {
+                    **payload,
+                    "messages": [
+                        *messages,
+                        {
+                            "role": "user",
+                            "content": (
+                                "The previous structured response was invalid. Return "
+                                "exactly one JSON object matching required_output_schema, "
+                                "with no second object, prose, or code fence."
+                            ),
+                        },
+                    ],
+                }
+        raise AssertionError("unreachable")
 
     def _generate_openai_compatible(
         self,
@@ -174,7 +209,12 @@ class LocalProviderAnswerGenerator:
     ) -> dict[str, Any]:
         payload = {
             "model": configuration.model,
-            "messages": _answer_messages(question, normalized_question, evidence),
+            "messages": _answer_messages(
+                question,
+                normalized_question,
+                evidence,
+                schema=schema,
+            ),
             "temperature": 0,
             "response_format": {
                 "type": "json_schema",
@@ -299,7 +339,9 @@ class AnswerService:
                 normalized_question=normalized_question,
                 evidence=eligible_evidence,
                 configuration=configuration,
-                schema=answer_schema(),
+                schema=answer_schema(
+                    [str(item["citation_id"]) for item in eligible_evidence]
+                ),
             )
         generated = _augment_generated_payload(
             generated,
@@ -379,6 +421,18 @@ def validate_answer(
                 raise AnswerValidationError(
                     "Answer validation failed: every official fact needs an adjacent citation."
                 )
+            support = assess_claim_support(
+                text,
+                (
+                    str(evidence_by_citation_id[citation_id].get("content", ""))
+                    for citation_id in normalized_citation_ids
+                ),
+            )
+            if not support.supported:
+                raise AnswerValidationError(
+                    "Answer validation failed: an official fact is not supported by its "
+                    "cited evidence."
+                )
             cited_official_fact_count += 1
         if kind == "refusal":
             refusal_count += 1
@@ -449,6 +503,16 @@ def classify_question_safety(question: str) -> SafetyDecision:
                 "choice. The supported facts above are only general official "
                 "information; verify your personal case with the cited authority or a "
                 "qualified adviser."
+            ),
+        )
+    if _asks_for_permanent_residence_exam_comparison(lookup):
+        return SafetyDecision(
+            response_kind="answer",
+            refusal_text=(
+                "I can compare only documented official examination facts and "
+                "permanent-residence requirements. I cannot recommend which "
+                "examination you should personally take or decide which route fits "
+                "your individual case; verify that choice with the cited authority."
             ),
         )
     return SafetyDecision(response_kind="answer")
@@ -664,6 +728,28 @@ def _asks_for_personal_eligibility(lookup: str) -> bool:
     return any(term in lookup for term in eligibility_terms)
 
 
+def _asks_for_permanent_residence_exam_comparison(lookup: str) -> bool:
+    comparison_terms = ("compare", "difference between", "differences between")
+    residence_terms = (
+        "permanent residence",
+        "permanent ophold",
+        "permanent opholdstilladelse",
+    )
+    exam_terms = (
+        "prøve i dansk",
+        "prove i dansk",
+        "studieprøven",
+        "studieproeven",
+    )
+    return all(
+        (
+            any(term in lookup for term in comparison_terms),
+            any(term in lookup for term in residence_terms),
+            sum(term in lookup for term in exam_terms) >= 2,
+        )
+    )
+
+
 def _asks_for_certificate_acceptance(lookup: str) -> bool:
     certificate_terms = (
         "certificate",
@@ -788,14 +874,19 @@ def _augment_generated_payload(
 ) -> dict[str, Any]:
     augmented = dict(payload)
     sections = [dict(section) for section in augmented.get("sections", [])]
-    if safety.refusal_text and not _has_refusal_section(sections, safety.refusal_text):
-        sections.append(
-            {
-                "kind": "refusal",
-                "text": safety.refusal_text,
-                "citation_ids": [],
-            }
+    if safety.refusal_text:
+        augmented["summary"] = (
+            "This answer separates supported official facts from the personal or "
+            "legal decision I cannot make."
         )
+        if not _has_refusal_section(sections, safety.refusal_text):
+            sections.append(
+                {
+                    "kind": "refusal",
+                    "text": safety.refusal_text,
+                    "citation_ids": [],
+                }
+            )
     conflict_warning = _conflict_warning_section(evidence)
     if conflict_warning:
         sections.append(conflict_warning)
@@ -890,11 +981,7 @@ def _partition_evidence_by_policy(
 
 
 def _is_evidence_eligible(evidence: dict[str, Any]) -> bool:
-    return (
-        evidence.get("review_state") in ELIGIBLE_REVIEW_STATES
-        and evidence.get("source_health") in ELIGIBLE_SOURCE_HEALTH
-        and evidence.get("approval_state", "approved") == "approved"
-    )
+    return assess_source_freshness(evidence).answer_eligible
 
 
 def _reject_prohibited_safety_claims(
@@ -940,6 +1027,8 @@ def _answer_messages(
     question: str,
     normalized_question: str,
     evidence: list[dict[str, Any]],
+    *,
+    schema: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     evidence_payload = [
         {
@@ -952,23 +1041,34 @@ def _answer_messages(
         }
         for item in evidence
     ]
+    user_payload: dict[str, Any] = {
+        "question": question,
+        "normalized_question": normalized_question,
+        "approved_official_evidence": evidence_payload,
+    }
+    if schema is not None:
+        user_payload["required_output_schema"] = schema
     return [
         {
             "role": "system",
             "content": (
-                "Return only JSON matching the provided schema. Answer in English, preserve "
-                "Danish terms, cite each official fact with retrieved citation_ids, and do "
-                "not add official facts outside the evidence."
+                "Return only JSON matching the provided schema. Answer in English and "
+                "preserve important Danish terms. Use citation_ids exactly as provided in "
+                "approved_official_evidence; never invent or alter an ID. Cite every "
+                "official_fact. Keep each official_fact to one factual proposition and a "
+                "close paraphrase of its cited evidence. If the evidence directly supports "
+                "any part of the question, answer every part that the evidence directly "
+                "supports. Use a refusal section with no citations only for a requested "
+                "detail that the evidence does not support. Never claim that something is "
+                "absent, invalid, or disallowed unless the evidence explicitly says so. "
+                "The summary may summarize sections but must not add official facts. "
+                "The exact required_output_schema is included in the user payload."
             ),
         },
         {
             "role": "user",
             "content": json.dumps(
-                {
-                    "question": question,
-                    "normalized_question": normalized_question,
-                    "approved_official_evidence": evidence_payload,
-                },
+                user_payload,
                 ensure_ascii=False,
                 sort_keys=True,
             ),
@@ -1146,21 +1246,8 @@ def _is_conflicting_evidence(evidence: dict[str, Any]) -> bool:
 
 
 def _fresh_tomato_indicator(evidence: dict[str, Any]) -> tuple[TrustLevel, str]:
-    source_health = str(evidence.get("source_health", "unknown"))
-    if source_health == "healthy":
-        return (
-            TrustLevel.HIGH,
-            "Source freshness is high: the material source is current and healthy.",
-        )
-    if source_health == "overdue-policy-usable":
-        return (
-            TrustLevel.MEDIUM,
-            "Source freshness is medium: the material source is policy-usable but overdue for review.",
-        )
-    return (
-        TrustLevel.LOW,
-        "Source freshness is low: the material source is not current and healthy.",
-    )
+    assessment = assess_source_freshness(evidence)
+    return TrustLevel(assessment.level), assessment.reason
 
 
 def _lowest_indicator(scores: list[TrustLevel]) -> TrustLevel:

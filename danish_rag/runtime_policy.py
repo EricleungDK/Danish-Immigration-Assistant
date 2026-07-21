@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict, cast
 from urllib.parse import urlparse
 
 
@@ -12,7 +12,63 @@ CONTRACT_START = "<!-- runtime-policy-contract:start -->"
 CONTRACT_END = "<!-- runtime-policy-contract:end -->"
 
 
-def load_runtime_policy(path: str | Path) -> dict[str, Any]:
+class GenerationModelIdentityPolicy(TypedDict, total=False):
+    family: str
+    architecture: str
+    quantization_level: str
+
+
+class GenerationModelPolicy(TypedDict):
+    initial: str
+    purpose: str
+    treated_as_official_source: bool
+    identity: GenerationModelIdentityPolicy
+
+
+class EmbeddingModelPolicy(TypedDict):
+    initial_supported: str
+    supported_for_production: bool
+    approval_status: str
+    approval_record: str
+
+
+class RuntimeModelsPolicy(TypedDict):
+    generation: GenerationModelPolicy
+    embedding: EmbeddingModelPolicy
+
+
+class InitialProviderPolicy(TypedDict):
+    id: str
+    name: str
+    role: str
+    mandatory_for_future_versions: bool
+    minimum_version: str
+    default_endpoint: str
+
+
+class RuntimeProvidersPolicy(TypedDict):
+    initial: InitialProviderPolicy
+
+
+class RuntimePolicy(TypedDict):
+    """Validated machine policy consumed by runtime-facing components."""
+
+    baseline_id: str
+    issue: str
+    providers: RuntimeProvidersPolicy
+    models: RuntimeModelsPolicy
+    capabilities: list[str]
+    capability_contracts: dict[str, dict[str, list[str]]]
+    application: dict[str, Any]
+    browser_security: dict[str, Any]
+    network: dict[str, Any]
+    privacy: dict[str, Any]
+    knowledge_releases: dict[str, Any]
+    supported_environment: dict[str, Any]
+    documentation_contract: dict[str, Any]
+
+
+def load_runtime_policy(path: str | Path) -> RuntimePolicy:
     policy_path = Path(path)
     with policy_path.open(encoding="utf-8") as policy_file:
         policy: dict[str, Any] = json.load(policy_file)
@@ -21,7 +77,7 @@ def load_runtime_policy(path: str | Path) -> dict[str, Any]:
     if failures:
         joined = "; ".join(failures)
         raise ValueError(f"Invalid runtime policy {policy_path}: {joined}")
-    return policy
+    return cast(RuntimePolicy, policy)
 
 
 def extract_documented_policy_contract(path: str | Path) -> dict[str, Any]:
@@ -49,12 +105,19 @@ def validate_policy_document_contract(
     app = policy["application"]
     network = policy["network"]
     privacy = policy["privacy"]
+    browser_release_baseline = policy["supported_environment"][
+        "browser_release_baseline"
+    ]
     expected_values = {
         "baseline_id": policy["baseline_id"],
         "initial_provider": provider["id"],
         "minimum_ollama_version": provider["minimum_version"],
+        "minimum_chromium_major": browser_release_baseline[
+            "minimum_chromium_major"
+        ],
+        "browser_baseline_reviewed_on": browser_release_baseline["reviewed_on"],
         "initial_generation_model": models["generation"]["initial"],
-        "provisional_embedding_candidate": models["embedding"]["provisional_candidate"],
+        "initial_supported_embedding_model": models["embedding"]["initial_supported"],
         "default_application_bind_host": app["default_bind_host"],
         "default_provider_endpoint": provider["default_endpoint"],
         "application_process_model": app["process_model"],
@@ -102,6 +165,7 @@ def validate_runtime_baseline_prose_contract(
     supported_environment = policy["supported_environment"]
     verified_environment = supported_environment["first_verified"]
     hardware = supported_environment["hardware"]
+    browser_release_baseline = supported_environment["browser_release_baseline"]
 
     failures: list[str] = []
     _require_phrases(
@@ -138,14 +202,8 @@ def validate_runtime_baseline_prose_contract(
             "cannot supply official facts from model knowledge",
             "generation and embedding are separate capabilities",
             *_capability_contract_phrases(policy["capability_contracts"]),
-            (
-                f"{models['embedding']['provisional_candidate']} is only a "
-                "provisional embedding candidate"
-            ),
-            (
-                "not a supported embedding model until the retrieval benchmark "
-                "and later human architecture approval accept it"
-            ),
+            f"{models['embedding']['initial_supported']} is the initial supported embedding model",
+            "Issue #4 approved it after the issue #29 retrieval benchmark",
         ],
     )
     _reject_phrases(
@@ -156,7 +214,8 @@ def validate_runtime_baseline_prose_contract(
             "is an approved official source",
             "may supply official facts from model knowledge",
             "generation and embedding are interchangeable",
-            "supported embedding model for production before retrieval benchmark",
+            "only a provisional embedding candidate",
+            "not supported after issue #4 approval",
             "any embedding model",
         ],
     )
@@ -267,6 +326,11 @@ def validate_runtime_baseline_prose_contract(
             f"python {verified_environment['python'].replace('+', ' or newer')}",
             f"{provider['name']} {verified_environment['ollama'].replace('+', ' or newer')}",
             verified_environment["browser"],
+            (
+                "evergreen means chrome or chromium major "
+                f"{browser_release_baseline['minimum_chromium_major']} or newer"
+            ),
+            "must be reviewed before each release-qualification run",
             f"{hardware['minimum_system_ram_gb']} gb system ram is the initial minimum",
             f"{hardware['recommended_system_ram_gb']} gb is recommended",
             "gpu acceleration is recommended",
@@ -431,8 +495,10 @@ def _validate_runtime_policy_shape(policy: dict[str, Any]) -> list[str]:
 
     if policy["models"]["generation"]["treated_as_official_source"]:
         failures.append("generation model must not be treated as an official source")
-    if policy["models"]["embedding"]["supported_for_production"]:
-        failures.append("embeddinggemma is provisional until retrieval benchmark approval")
+    if not policy["models"]["embedding"]["supported_for_production"]:
+        failures.append("embeddinggemma must remain supported after issue #4 approval")
+    if policy["models"]["embedding"].get("approval_status") != "approved-by-issue-4":
+        failures.append("embedding model approval must remain traceable to issue #4")
     if policy["network"]["answer_path_allows_outbound_requests"]:
         failures.append("local-only answer path must not allow outbound requests")
     if policy["privacy"]["put_user_content_in_urls_or_logs"]:
@@ -494,5 +560,38 @@ def _validate_runtime_policy_shape(policy: dict[str, Any]) -> list[str]:
         failures.append("permitted update request fields must match approved set")
     if permitted_update_fields & prohibited_update_fields:
         failures.append("update request fields cannot be both permitted and prohibited")
+
+    browser_release_baseline = policy["supported_environment"].get(
+        "browser_release_baseline"
+    )
+    if not isinstance(browser_release_baseline, dict):
+        failures.append("supported environment must define a browser release baseline")
+    else:
+        minimum_chromium_major = browser_release_baseline.get(
+            "minimum_chromium_major"
+        )
+        if (
+            not isinstance(minimum_chromium_major, int)
+            or isinstance(minimum_chromium_major, bool)
+            or minimum_chromium_major < 1
+        ):
+            failures.append("browser release baseline must define a positive Chromium major")
+        if browser_release_baseline.get("maintenance") != (
+            "review-before-each-release-qualification"
+        ):
+            failures.append("browser release baseline must require per-release review")
+        reviewed_on = browser_release_baseline.get("reviewed_on")
+        if (
+            not isinstance(reviewed_on, str)
+            or len(reviewed_on) != 10
+            or reviewed_on[4:5] != "-"
+            or reviewed_on[7:8] != "-"
+            or not reviewed_on.replace("-", "").isdigit()
+        ):
+            failures.append("browser release baseline must record an ISO review date")
+        if not str(browser_release_baseline.get("source_url", "")).startswith(
+            "https://chromereleases.googleblog.com/"
+        ):
+            failures.append("browser release baseline must cite the official release source")
 
     return failures

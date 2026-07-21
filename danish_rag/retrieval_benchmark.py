@@ -1,4 +1,4 @@
-"""SQLite FTS5 retrieval benchmark for issue #27 approved-source fixtures."""
+"""Local lexical, dense, and hybrid benchmarks for approved-source fixtures."""
 
 from __future__ import annotations
 
@@ -274,7 +274,7 @@ def run_dense_retrieval_benchmark(
     if client is None or embedding_model is None:
         policy = load_runtime_policy(policy_path)
     if embedding_model is None:
-        embedding_model = policy["models"]["embedding"]["provisional_candidate"]  # type: ignore[index]
+        embedding_model = policy["models"]["embedding"]["initial_supported"]  # type: ignore[index]
     endpoint = embedding_endpoint
     if client is None:
         endpoint = embedding_endpoint or policy["providers"]["initial"]["default_endpoint"]  # type: ignore[index]
@@ -394,7 +394,7 @@ def run_hybrid_retrieval_comparison(
 
     policy = load_runtime_policy(policy_path)
     if embedding_model is None:
-        embedding_model = policy["models"]["embedding"]["provisional_candidate"]
+        embedding_model = policy["models"]["embedding"]["initial_supported"]
     if client is None:
         endpoint = embedding_endpoint or policy["providers"]["initial"]["default_endpoint"]
         client = OllamaEmbeddingClient(
@@ -599,7 +599,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--embedding-model",
         default=None,
-        help="Embedding model. Defaults to the runtime policy provisional candidate.",
+        help="Embedding model. Defaults to the runtime policy initial supported model.",
     )
     parser.add_argument(
         "--index",

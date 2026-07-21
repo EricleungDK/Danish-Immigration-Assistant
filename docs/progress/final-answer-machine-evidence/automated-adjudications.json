@@ -1,0 +1,138 @@
+{
+  "assessment_scope": "automated-non-answer-workflows-only",
+  "cases": [
+    {
+      "assertion_results": {
+        "eval-015-update-telemetry-privacy:forbidden-claims:01": "passed",
+        "eval-015-update-telemetry-privacy:forbidden-claims:02": "passed",
+        "eval-015-update-telemetry-privacy:privacy-requirements:01": "passed",
+        "eval-015-update-telemetry-privacy:required-facts:01": "passed",
+        "eval-015-update-telemetry-privacy:required-facts:02": "passed",
+        "eval-015-update-telemetry-privacy:required-facts:03": "passed",
+        "eval-015-update-telemetry-privacy:trust-indicators:01": "passed"
+      },
+      "assessment_method": "automated-workflow-test",
+      "case_id": "eval-015-update-telemetry-privacy",
+      "evaluation_surface": "knowledge-release-workflow",
+      "evidence_binding": {
+        "kind": "workflow-artifact",
+        "path": "docs/progress/final-answer-machine-evidence/eval-015-update-telemetry-privacy.json",
+        "sha256": "a4c3735a56e826c98493b293b062b19c92253b8b1a59c032046f10d26fc77b9f"
+      },
+      "schema_version": "final-answer-case-adjudication-v1"
+    },
+    {
+      "assertion_results": {
+        "eval-016-keyboard-evidence-drawer:forbidden-claims:01": "passed",
+        "eval-016-keyboard-evidence-drawer:forbidden-claims:02": "passed",
+        "eval-016-keyboard-evidence-drawer:privacy-requirements:01": "passed",
+        "eval-016-keyboard-evidence-drawer:required-facts:01": "passed",
+        "eval-016-keyboard-evidence-drawer:required-facts:02": "passed",
+        "eval-016-keyboard-evidence-drawer:required-facts:03": "passed",
+        "eval-016-keyboard-evidence-drawer:trust-indicators:01": "passed",
+        "eval-016-keyboard-evidence-drawer:trust-indicators:02": "passed"
+      },
+      "assessment_method": "automated-workflow-test",
+      "case_id": "eval-016-keyboard-evidence-drawer",
+      "evaluation_surface": "browser-workflow",
+      "evidence_binding": {
+        "kind": "workflow-artifact",
+        "path": "docs/progress/final-answer-machine-evidence/eval-016-keyboard-evidence-drawer.json",
+        "sha256": "0228f73fd9ca81de10633fc194957ec021fda94560f48745a7c6898ed969c165"
+      },
+      "schema_version": "final-answer-case-adjudication-v1"
+    },
+    {
+      "assertion_results": {
+        "eval-017-responsive-reduced-motion:forbidden-claims:01": "passed",
+        "eval-017-responsive-reduced-motion:forbidden-claims:02": "passed",
+        "eval-017-responsive-reduced-motion:privacy-requirements:01": "passed",
+        "eval-017-responsive-reduced-motion:required-facts:01": "passed",
+        "eval-017-responsive-reduced-motion:required-facts:02": "passed",
+        "eval-017-responsive-reduced-motion:required-facts:03": "passed",
+        "eval-017-responsive-reduced-motion:trust-indicators:01": "passed",
+        "eval-017-responsive-reduced-motion:trust-indicators:02": "passed"
+      },
+      "assessment_method": "automated-workflow-test",
+      "case_id": "eval-017-responsive-reduced-motion",
+      "evaluation_surface": "browser-workflow",
+      "evidence_binding": {
+        "kind": "workflow-artifact",
+        "path": "docs/progress/final-answer-machine-evidence/eval-017-responsive-reduced-motion.json",
+        "sha256": "35884dd2d890e009d03914457166c7e2aafc4f531eef713e2eb41024b7481d19"
+      },
+      "schema_version": "final-answer-case-adjudication-v1"
+    },
+    {
+      "assertion_results": {
+        "eval-018-provider-unavailable-recovery:forbidden-claims:01": "passed",
+        "eval-018-provider-unavailable-recovery:forbidden-claims:02": "passed",
+        "eval-018-provider-unavailable-recovery:privacy-requirements:01": "passed",
+        "eval-018-provider-unavailable-recovery:required-facts:01": "passed",
+        "eval-018-provider-unavailable-recovery:required-facts:02": "passed",
+        "eval-018-provider-unavailable-recovery:required-facts:03": "passed",
+        "eval-018-provider-unavailable-recovery:trust-indicators:01": "passed",
+        "eval-018-provider-unavailable-recovery:trust-indicators:02": "passed"
+      },
+      "assessment_method": "automated-workflow-test",
+      "case_id": "eval-018-provider-unavailable-recovery",
+      "evaluation_surface": "provider-recovery-workflow",
+      "evidence_binding": {
+        "kind": "workflow-artifact",
+        "path": "docs/progress/final-answer-machine-evidence/eval-018-provider-unavailable-recovery.json",
+        "sha256": "4a9c0277ea71135b1f883c6c16d4e9fb20e86779f88770bf3460b58e86850b8b"
+      },
+      "schema_version": "final-answer-case-adjudication-v1"
+    },
+    {
+      "assertion_results": {
+        "eval-019-runtime-identity-visible:forbidden-claims:01": "passed",
+        "eval-019-runtime-identity-visible:forbidden-claims:02": "passed",
+        "eval-019-runtime-identity-visible:privacy-requirements:01": "passed",
+        "eval-019-runtime-identity-visible:required-facts:01": "passed",
+        "eval-019-runtime-identity-visible:required-facts:02": "passed",
+        "eval-019-runtime-identity-visible:required-facts:03": "passed",
+        "eval-019-runtime-identity-visible:trust-indicators:01": "passed",
+        "eval-019-runtime-identity-visible:trust-indicators:02": "passed",
+        "eval-019-runtime-identity-visible:trust-indicators:03": "passed"
+      },
+      "assessment_method": "automated-workflow-test",
+      "case_id": "eval-019-runtime-identity-visible",
+      "evaluation_surface": "browser-workflow",
+      "evidence_binding": {
+        "kind": "workflow-artifact",
+        "path": "docs/progress/final-answer-machine-evidence/eval-019-runtime-identity-visible.json",
+        "sha256": "9c5bd10ff4a090588472df6fb0d6e434edc9134d352e8c87d1ed1e5530091468"
+      },
+      "schema_version": "final-answer-case-adjudication-v1"
+    },
+    {
+      "assertion_results": {
+        "eval-020-update-rollback:forbidden-claims:01": "passed",
+        "eval-020-update-rollback:forbidden-claims:02": "passed",
+        "eval-020-update-rollback:privacy-requirements:01": "passed",
+        "eval-020-update-rollback:required-facts:01": "passed",
+        "eval-020-update-rollback:required-facts:02": "passed",
+        "eval-020-update-rollback:required-facts:03": "passed",
+        "eval-020-update-rollback:trust-indicators:01": "passed",
+        "eval-020-update-rollback:trust-indicators:02": "passed"
+      },
+      "assessment_method": "automated-workflow-test",
+      "case_id": "eval-020-update-rollback",
+      "evaluation_surface": "knowledge-release-workflow",
+      "evidence_binding": {
+        "kind": "workflow-artifact",
+        "path": "docs/progress/final-answer-machine-evidence/eval-020-update-rollback.json",
+        "sha256": "1197ec3f682456a405335e46a0ce56fda0704b991df29863f8b5f993cfe8afda"
+      },
+      "schema_version": "final-answer-case-adjudication-v1"
+    }
+  ],
+  "contains_human_assessment": false,
+  "dataset": {
+    "dataset_id": "di-rag-eval-set-v0.1-candidate",
+    "sha256": "468bede9c7f55c8c06ace2f48d7df54e7861b0267bc2eee2ea1c855651b89dab",
+    "version": "0.1.0-candidate"
+  },
+  "schema_version": "final-answer-adjudications-v1"
+}

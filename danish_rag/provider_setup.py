@@ -15,7 +15,7 @@ import urllib.request
 
 from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
 from .runtime_policy import is_loopback_url, load_runtime_policy
-from .runtime_probe import OllamaClient, run_runtime_probe
+from .runtime_probe import OllamaClient, ProbeExitStatus, run_runtime_probe
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -182,7 +182,7 @@ class ProviderCapabilityTester:
         self,
         *,
         policy_path: str | Path = DEFAULT_POLICY_PATH,
-        timeout_seconds: float = 20.0,
+        timeout_seconds: float = 60.0,
     ) -> None:
         self.policy = load_runtime_policy(policy_path)
         self.timeout_seconds = timeout_seconds
@@ -211,7 +211,7 @@ class ProviderCapabilityTester:
         policy["models"]["generation"]["initial"] = configuration.model
         client = OllamaClient(configuration.endpoint, timeout_seconds=self.timeout_seconds)
         result = run_runtime_probe(policy, client=client)
-        if result.exit_status == 0:
+        if result.exit_status is ProbeExitStatus.PASSED:
             return CapabilityTestResult(
                 ok=True,
                 reason="passed",
@@ -222,11 +222,11 @@ class ProviderCapabilityTester:
             )
 
         reason_by_exit_status = {
-            2: "service_unreachable",
-            3: "incompatible_provider_version",
-            4: "model_unavailable",
-            5: "structured_output_failed",
-            6: "invalid_endpoint",
+            ProbeExitStatus.PROVIDER_UNREACHABLE: "service_unreachable",
+            ProbeExitStatus.PROVIDER_VERSION_UNSUPPORTED: "incompatible_provider_version",
+            ProbeExitStatus.MODEL_UNAVAILABLE: "model_unavailable",
+            ProbeExitStatus.STRUCTURED_RESPONSE_INVALID: "structured_output_failed",
+            ProbeExitStatus.NON_LOOPBACK_ENDPOINT: "invalid_endpoint",
         }
         return CapabilityTestResult(
             ok=False,

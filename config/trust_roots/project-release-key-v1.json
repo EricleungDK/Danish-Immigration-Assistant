@@ -1,0 +1,9 @@
+{
+  "algorithm": "ed25519",
+  "created_date": "2026-07-14",
+  "private_key_committed": false,
+  "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASQJ1Cy8eBxVXQ765ScKBZ5MW1oMX1EFtWFoQBzcTrXM=\n-----END PUBLIC KEY-----\n",
+  "schema_version": "1.0",
+  "status": "active",
+  "trust_root_id": "project-release-key-v1"
+}

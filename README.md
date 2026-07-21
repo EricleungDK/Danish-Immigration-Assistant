@@ -62,6 +62,16 @@ Private, source-grounded local assistant for Danish permanent-residence language
 
 ### Local Application
 
+Prerequisites for the published MVP environment:
+
+- Ubuntu under Windows 11 WSL2 on x86-64
+- Python 3.11 or newer
+- Node.js and npm for browser tests
+- OpenSSL with Ed25519 support for knowledge-release verification
+- An evergreen local browser
+- For the live qualification baseline: Ollama 0.30.6 or newer with
+  `gemma4:12b` and `embeddinggemma` installed
+
 Install the local web application dependencies in a virtual environment:
 
 ```bash
@@ -76,7 +86,21 @@ Launch the single local Python process:
 .venv/bin/python -m danish_rag.local_app
 ```
 
-The default bind address is `127.0.0.1:8000`, from [config/runtime-policy.json](config/runtime-policy.json). The first-launch setup page stores validated provider configuration at the per-user config path and does not require Ollama; Ollama remains the first baseline provider option.
+The default bind address is `127.0.0.1:8000`, from [config/runtime-policy.json](config/runtime-policy.json). The first-launch setup page stores validated provider configuration at the per-user config path. A compatible loopback provider may be configured manually; Ollama is the live release-qualification baseline.
+
+After the page loads, the browser sends a same-origin, loopback-only POST that starts
+a throttled check of bounded GitHub Release metadata. The ordinary page GET performs
+no release-network request, the manual check remains available, and neither check
+downloads or installs a release. Download and installation each require their own
+explicit action. During installation, the Corpus panel announces the backend's actual
+verification, extraction, embedding, indexing, compatibility, activation, and
+completion events; it reports success only after the approved release is active.
+
+Run the complete unit suite:
+
+```bash
+.venv/bin/python -B -m unittest discover -v
+```
 
 Run browser-level setup tests:
 
@@ -87,29 +111,77 @@ npm run test:browser
 Run the live local provider gate:
 
 ```bash
-python3 -m danish_rag.runtime_probe --policy config/runtime-policy.json --evidence docs/progress/issue-26-runtime-probe.json
+.venv/bin/python -B -m danish_rag.runtime_probe --policy config/runtime-policy.json --evidence docs/progress/issue-26-runtime-probe.json
 ```
 
 Run the local lexical retrieval benchmark:
 
 ```bash
-python3 -m danish_rag.retrieval_benchmark --corpus data/retrieval_benchmark/corpus-fixtures.json --queries data/retrieval_benchmark/evaluation-queries.json --output docs/progress/issue-27-retrieval-benchmark.json
+.venv/bin/python -B -m danish_rag.retrieval_benchmark --corpus data/retrieval_benchmark/corpus-fixtures.json --queries data/retrieval_benchmark/evaluation-queries.json --output docs/progress/issue-27-retrieval-benchmark.json
 ```
 
-Run the local dense retrieval benchmark with the provisional embedding candidate:
+Run the local dense retrieval benchmark with the approved initial embedding model:
 
 ```bash
-python3 -m danish_rag.retrieval_benchmark --mode dense
+.venv/bin/python -B -m danish_rag.retrieval_benchmark --mode dense
 ```
 
 Run the opt-in live dense benchmark gate:
 
 ```bash
-DI_RAG_RUN_LIVE_DENSE_BENCHMARK=1 python3 -m unittest tests.test_dense_retrieval_benchmark_live -v
+DI_RAG_RUN_LIVE_DENSE_BENCHMARK=1 .venv/bin/python -B -m unittest tests.test_dense_retrieval_benchmark_live -v
 ```
 
 Run the local hybrid retrieval comparison and recommendation:
 
 ```bash
-python3 -m danish_rag.retrieval_benchmark --mode compare
+.venv/bin/python -B -m danish_rag.retrieval_benchmark --mode compare
 ```
+
+### Live Release Evaluation
+
+The live evaluator uses the same default per-user provider configuration and
+data directories as the application: `$XDG_CONFIG_HOME` and `$XDG_DATA_HOME`
+when set, otherwise `~/.config/danish-immigration-rag/provider-config.json` and
+`~/.local/share/danish-immigration-rag`. Do not set temporary XDG overrides
+when collecting release evidence.
+
+First run the strict live release monitors:
+
+```bash
+.venv/bin/python -B -m danish_rag.release_monitors \
+  --mode live \
+  --output docs/progress/release-monitors-live.json \
+  --generated-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --strict
+```
+
+Then run the approved 20-surface final-answer evaluation. This command executes
+10 live Ollama answer cases and four source-policy scenarios, generates
+hash-bound evidence for six automated browser, knowledge-release, and provider
+recovery workflows, and writes a private review packet outside the repository:
+
+```bash
+.venv/bin/python -B -m danish_rag.final_answer_evaluation \
+  --mode live-ollama \
+  --output docs/progress/final-answer-evaluation-live.json \
+  --generate-automated-evidence docs/progress/final-answer-machine-evidence \
+  --release-monitor-report docs/progress/release-monitors-live.json \
+  --human-review-packet /tmp/danish-rag-final-answer-human-review.json \
+  --generated-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --strict
+```
+
+The human-review packet is created with mode `0600` and blank decision fields;
+it must remain outside the repository. `--strict` is expected to exit with
+status 1 until an independent reviewer completes answer-path adjudications and
+their evidence-bound bundle is supplied with `--adjudications`.
+
+The live run generated at `2026-07-14T18:06:02Z` completed all 20 surfaces with
+zero execution errors.
+Behavior, structural, source-domain, citation-coverage, trust-indicator,
+freshness, personal-conclusion, and automated-workflow gates passed. Five
+semantic metrics remain `not_evaluable` because independent human adjudication
+has not been recorded; this evidence does not establish production
+qualification. See [the evaluation quality bar](docs/evaluation-quality-bar.md)
+and [the live machine-readable report](docs/progress/final-answer-evaluation-live.json).

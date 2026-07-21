@@ -9,15 +9,15 @@
             "blocked-source-exclusion"
           ],
           "embedding_load_duration_ms": {
-            "max": 86.134,
-            "mean": 85.596,
-            "min": 85.057
+            "max": 77.765,
+            "mean": 77.588,
+            "min": 77.411
           },
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 154.114,
-            "mean": 152.456,
-            "min": 150.798
+            "max": 151.251,
+            "mean": 143.805,
+            "min": 136.36
           },
           "mean_reciprocal_rank": 0.0,
           "query_count": 2,
@@ -25,9 +25,9 @@
           "recall_at_3": 0.0,
           "required_evidence_query_count": 0,
           "warm_retrieval_latency_ms": {
-            "max": 69.057,
-            "mean": 66.861,
-            "min": 64.664
+            "max": 73.84,
+            "mean": 66.218,
+            "min": 58.595
           }
         },
         "english-paraphrase": {
@@ -36,15 +36,15 @@
             "english-paraphrase"
           ],
           "embedding_load_duration_ms": {
-            "max": 84.619,
-            "mean": 84.619,
-            "min": 84.619
+            "max": 78.073,
+            "mean": 78.073,
+            "min": 78.073
           },
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 150.351,
-            "mean": 150.351,
-            "min": 150.351
+            "max": 140.288,
+            "mean": 140.288,
+            "min": 140.288
           },
           "mean_reciprocal_rank": 0.5,
           "query_count": 1,
@@ -52,9 +52,9 @@
           "recall_at_3": 1.0,
           "required_evidence_query_count": 1,
           "warm_retrieval_latency_ms": {
-            "max": 65.732,
-            "mean": 65.732,
-            "min": 65.732
+            "max": 62.215,
+            "mean": 62.215,
+            "min": 62.215
           }
         },
         "exact-danish-terminology": {
@@ -63,15 +63,15 @@
             "exact-danish-terminology"
           ],
           "embedding_load_duration_ms": {
-            "max": 84.185,
-            "mean": 84.185,
-            "min": 84.185
+            "max": 77.129,
+            "mean": 77.129,
+            "min": 77.129
           },
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 148.748,
-            "mean": 148.748,
-            "min": 148.748
+            "max": 131.683,
+            "mean": 131.683,
+            "min": 131.683
           },
           "mean_reciprocal_rank": 0.5,
           "query_count": 1,
@@ -79,9 +79,9 @@
           "recall_at_3": 1.0,
           "required_evidence_query_count": 1,
           "warm_retrieval_latency_ms": {
-            "max": 64.563,
-            "mean": 64.563,
-            "min": 64.563
+            "max": 54.554,
+            "mean": 54.554,
+            "min": 54.554
           }
         },
         "forbidden-result-safety-boundary": {
@@ -90,15 +90,15 @@
             "forbidden-result-safety-boundary"
           ],
           "embedding_load_duration_ms": {
-            "max": 79.793,
-            "mean": 79.793,
-            "min": 79.793
+            "max": 81.077,
+            "mean": 81.077,
+            "min": 81.077
           },
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 149.199,
-            "mean": 149.199,
-            "min": 149.199
+            "max": 143.795,
+            "mean": 143.795,
+            "min": 143.795
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -106,9 +106,9 @@
           "recall_at_3": 1.0,
           "required_evidence_query_count": 1,
           "warm_retrieval_latency_ms": {
-            "max": 69.406,
-            "mean": 69.406,
-            "min": 69.406
+            "max": 62.718,
+            "mean": 62.718,
+            "min": 62.718
           }
         },
         "metadata-filtering": {
@@ -117,15 +117,15 @@
             "metadata-filtering"
           ],
           "embedding_load_duration_ms": {
-            "max": 83.951,
-            "mean": 83.951,
-            "min": 83.951
+            "max": 77.103,
+            "mean": 77.103,
+            "min": 77.103
           },
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 145.514,
-            "mean": 145.514,
-            "min": 145.514
+            "max": 132.633,
+            "mean": 132.633,
+            "min": 132.633
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -133,9 +133,9 @@
           "recall_at_3": 1.0,
           "required_evidence_query_count": 1,
           "warm_retrieval_latency_ms": {
-            "max": 61.563,
-            "mean": 61.563,
-            "min": 61.563
+            "max": 55.53,
+            "mean": 55.53,
+            "min": 55.53
           }
         },
         "realistic-typo": {
@@ -144,15 +144,15 @@
             "realistic-typo"
           ],
           "embedding_load_duration_ms": {
-            "max": 76.975,
-            "mean": 76.975,
-            "min": 76.975
+            "max": 83.923,
+            "mean": 83.923,
+            "min": 83.923
           },
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 138.04,
-            "mean": 138.04,
-            "min": 138.04
+            "max": 143.917,
+            "mean": 143.917,
+            "min": 143.917
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -160,9 +160,9 @@
           "recall_at_3": 1.0,
           "required_evidence_query_count": 1,
           "warm_retrieval_latency_ms": {
-            "max": 61.065,
-            "mean": 61.065,
-            "min": 61.065
+            "max": 59.994,
+            "mean": 59.994,
+            "min": 59.994
           }
         },
         "stale-but-policy-usable": {
@@ -171,15 +171,15 @@
             "stale-but-policy-usable"
           ],
           "embedding_load_duration_ms": {
-            "max": 78.564,
-            "mean": 78.564,
-            "min": 78.564
+            "max": 85.138,
+            "mean": 85.138,
+            "min": 85.138
           },
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 140.632,
-            "mean": 140.632,
-            "min": 140.632
+            "max": 159.83,
+            "mean": 159.83,
+            "min": 159.83
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -187,9 +187,9 @@
           "recall_at_3": 1.0,
           "required_evidence_query_count": 1,
           "warm_retrieval_latency_ms": {
-            "max": 62.068,
-            "mean": 62.068,
-            "min": 62.068
+            "max": 74.692,
+            "mean": 74.692,
+            "min": 74.692
           }
         },
         "terse-phrasing": {
@@ -198,15 +198,15 @@
             "terse-phrasing"
           ],
           "embedding_load_duration_ms": {
-            "max": 78.209,
-            "mean": 78.209,
-            "min": 78.209
+            "max": 82.135,
+            "mean": 82.135,
+            "min": 82.135
           },
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 142.023,
-            "mean": 142.023,
-            "min": 142.023
+            "max": 152.772,
+            "mean": 152.772,
+            "min": 152.772
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -214,9 +214,9 @@
           "recall_at_3": 1.0,
           "required_evidence_query_count": 1,
           "warm_retrieval_latency_ms": {
-            "max": 63.814,
-            "mean": 63.814,
-            "min": 63.814
+            "max": 70.637,
+            "mean": 70.637,
+            "min": 70.637
           }
         }
       },
@@ -234,11 +234,11 @@
             "di-rag-doc-terse-danish-exam",
             "di-rag-doc-permanent-residence-language"
           ],
-          "embedding_latency_ms": 148.286,
-          "embedding_load_duration_ms": 84.185,
+          "embedding_latency_ms": 131.188,
+          "embedding_load_duration_ms": 77.129,
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 148.748,
+          "latency_ms": 131.683,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-exact-danish-terminology",
           "query_text": "permanent opholdstilladelse Pr\u00f8ve i Dansk 2",
@@ -262,8 +262,8 @@
           ],
           "required_rank": 2,
           "required_result_credit": 1,
-          "warm_retrieval_latency_ms": 64.563,
-          "warm_similarity_latency_ms": 0.462
+          "warm_retrieval_latency_ms": 54.554,
+          "warm_similarity_latency_ms": 0.495
         },
         {
           "blocked_result_ids": [
@@ -278,11 +278,11 @@
             "di-rag-doc-permanent-residence-language",
             "di-rag-doc-permanent-residence-fees"
           ],
-          "embedding_latency_ms": 141.555,
-          "embedding_load_duration_ms": 78.209,
+          "embedding_latency_ms": 152.321,
+          "embedding_load_duration_ms": 82.135,
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 142.023,
+          "latency_ms": 152.772,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-terse-phrasing",
           "query_text": "dansk pr\u00f8ve permanent ophold",
@@ -306,8 +306,8 @@
           ],
           "required_rank": 1,
           "required_result_credit": 1,
-          "warm_retrieval_latency_ms": 63.814,
-          "warm_similarity_latency_ms": 0.468
+          "warm_retrieval_latency_ms": 70.637,
+          "warm_similarity_latency_ms": 0.451
         },
         {
           "blocked_result_ids": [
@@ -320,11 +320,11 @@
           "eligible_result_ids": [
             "di-rag-doc-permanent-residence-fees"
           ],
-          "embedding_latency_ms": 145.061,
-          "embedding_load_duration_ms": 83.951,
+          "embedding_latency_ms": 132.138,
+          "embedding_load_duration_ms": 77.103,
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 145.514,
+          "latency_ms": 132.633,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-metadata-filtering",
           "query_text": "gebyr permanent ophold",
@@ -348,8 +348,8 @@
           ],
           "required_rank": 1,
           "required_result_credit": 1,
-          "warm_retrieval_latency_ms": 61.563,
-          "warm_similarity_latency_ms": 0.453
+          "warm_retrieval_latency_ms": 55.53,
+          "warm_similarity_latency_ms": 0.495
         },
         {
           "blocked_result_ids": [
@@ -363,11 +363,11 @@
             "di-rag-doc-overdue-policy-usable-exam",
             "di-rag-doc-terse-danish-exam"
           ],
-          "embedding_latency_ms": 140.149,
-          "embedding_load_duration_ms": 78.564,
+          "embedding_latency_ms": 159.368,
+          "embedding_load_duration_ms": 85.138,
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 140.632,
+          "latency_ms": 159.83,
           "overdue_result_ids": [
             "di-rag-doc-overdue-policy-usable-exam"
           ],
@@ -393,8 +393,8 @@
           ],
           "required_rank": 1,
           "required_result_credit": 1,
-          "warm_retrieval_latency_ms": 62.068,
-          "warm_similarity_latency_ms": 0.483
+          "warm_retrieval_latency_ms": 74.692,
+          "warm_similarity_latency_ms": 0.462
         },
         {
           "blocked_result_ids": [
@@ -408,11 +408,11 @@
             "di-rag-doc-terse-danish-exam",
             "di-rag-doc-permanent-residence-language"
           ],
-          "embedding_latency_ms": 150.343,
-          "embedding_load_duration_ms": 86.134,
+          "embedding_latency_ms": 150.805,
+          "embedding_load_duration_ms": 77.411,
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 150.798,
+          "latency_ms": 151.251,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-blocked-source-exclusion",
           "query_text": "\u00e6ndret uanmeldt danskkrav",
@@ -434,8 +434,8 @@
           "required_evidence_result_ids": [],
           "required_rank": null,
           "required_result_credit": 0,
-          "warm_retrieval_latency_ms": 64.664,
-          "warm_similarity_latency_ms": 0.455
+          "warm_retrieval_latency_ms": 73.84,
+          "warm_similarity_latency_ms": 0.446
         },
         {
           "blocked_result_ids": [
@@ -448,11 +448,11 @@
           "eligible_result_ids": [
             "di-rag-doc-evidence-boundary"
           ],
-          "embedding_latency_ms": 148.739,
-          "embedding_load_duration_ms": 79.793,
+          "embedding_latency_ms": 143.343,
+          "embedding_load_duration_ms": 81.077,
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 149.199,
+          "latency_ms": 143.795,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-forbidden-result-safety-boundary",
           "query_text": "personlig juridisk r\u00e5dgivning ophold evidensbundet svar",
@@ -476,8 +476,8 @@
           ],
           "required_rank": 1,
           "required_result_credit": 1,
-          "warm_retrieval_latency_ms": 69.406,
-          "warm_similarity_latency_ms": 0.46
+          "warm_retrieval_latency_ms": 62.718,
+          "warm_similarity_latency_ms": 0.452
         },
         {
           "blocked_result_ids": [
@@ -491,11 +491,11 @@
             "di-rag-doc-terse-danish-exam",
             "di-rag-doc-permanent-residence-language"
           ],
-          "embedding_latency_ms": 149.895,
-          "embedding_load_duration_ms": 84.619,
+          "embedding_latency_ms": 139.817,
+          "embedding_load_duration_ms": 78.073,
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 150.351,
+          "latency_ms": 140.288,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-dense-english-paraphrase",
           "query_text": "Which Danish language test can count for permanent residence?",
@@ -519,8 +519,8 @@
           ],
           "required_rank": 2,
           "required_result_credit": 1,
-          "warm_retrieval_latency_ms": 65.732,
-          "warm_similarity_latency_ms": 0.456
+          "warm_retrieval_latency_ms": 62.215,
+          "warm_similarity_latency_ms": 0.471
         },
         {
           "blocked_result_ids": [
@@ -535,11 +535,11 @@
             "di-rag-doc-permanent-residence-language",
             "di-rag-doc-permanent-residence-fees"
           ],
-          "embedding_latency_ms": 137.583,
-          "embedding_load_duration_ms": 76.975,
+          "embedding_latency_ms": 143.46,
+          "embedding_load_duration_ms": 83.923,
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 138.04,
+          "latency_ms": 143.917,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-dense-realistic-typo",
           "query_text": "permanet ophold danskprove",
@@ -563,7 +563,7 @@
           ],
           "required_rank": 1,
           "required_result_credit": 1,
-          "warm_retrieval_latency_ms": 61.065,
+          "warm_retrieval_latency_ms": 59.994,
           "warm_similarity_latency_ms": 0.457
         },
         {
@@ -578,11 +578,11 @@
             "di-rag-doc-terse-danish-exam",
             "di-rag-doc-permanent-residence-language"
           ],
-          "embedding_latency_ms": 153.65,
-          "embedding_load_duration_ms": 85.057,
+          "embedding_latency_ms": 135.88,
+          "embedding_load_duration_ms": 77.765,
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 154.114,
+          "latency_ms": 136.36,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-dense-blocked-source-exclusion",
           "query_text": "changed-unreviewed \u00e6ndret uanmeldt danskkrav",
@@ -604,8 +604,8 @@
           "required_evidence_result_ids": [],
           "required_rank": null,
           "required_result_credit": 0,
-          "warm_retrieval_latency_ms": 69.057,
-          "warm_similarity_latency_ms": 0.464
+          "warm_retrieval_latency_ms": 58.595,
+          "warm_similarity_latency_ms": 0.48
         }
       ],
       "summary": {
@@ -621,15 +621,15 @@
           "terse-phrasing"
         ],
         "embedding_load_duration_ms": {
-          "max": 86.134,
-          "mean": 81.943,
-          "min": 76.975
+          "max": 85.138,
+          "mean": 79.973,
+          "min": 77.103
         },
         "forbidden_result_violations": 0,
         "latency_ms": {
-          "max": 154.114,
-          "mean": 146.602,
-          "min": 138.04
+          "max": 159.83,
+          "mean": 143.614,
+          "min": 131.683
         },
         "mean_reciprocal_rank": 0.857143,
         "query_count": 9,
@@ -637,9 +637,9 @@
         "recall_at_3": 1.0,
         "required_evidence_query_count": 7,
         "warm_retrieval_latency_ms": {
-          "max": 69.406,
-          "mean": 64.659,
-          "min": 61.065
+          "max": 74.692,
+          "mean": 63.642,
+          "min": 54.554
         }
       }
     },
@@ -652,9 +652,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.015,
+            "max": 0.016,
             "mean": 0.015,
-            "min": 0.015
+            "min": 0.014
           },
           "mean_reciprocal_rank": 0.0,
           "query_count": 2,
@@ -669,9 +669,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.017,
-            "mean": 0.017,
-            "min": 0.017
+            "max": 0.027,
+            "mean": 0.027,
+            "min": 0.027
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -686,9 +686,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.022,
-            "mean": 0.022,
-            "min": 0.022
+            "max": 0.023,
+            "mean": 0.023,
+            "min": 0.023
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -703,9 +703,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.034,
-            "mean": 0.034,
-            "min": 0.034
+            "max": 0.018,
+            "mean": 0.018,
+            "min": 0.018
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -720,9 +720,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.018,
-            "mean": 0.018,
-            "min": 0.018
+            "max": 0.019,
+            "mean": 0.019,
+            "min": 0.019
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -737,9 +737,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.018,
-            "mean": 0.018,
-            "min": 0.018
+            "max": 0.019,
+            "mean": 0.019,
+            "min": 0.019
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -754,9 +754,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.017,
-            "mean": 0.017,
-            "min": 0.017
+            "max": 0.018,
+            "mean": 0.018,
+            "min": 0.018
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -841,7 +841,7 @@
               "di-rag-doc-changed-unreviewed-language-rule"
             ]
           },
-          "latency_ms": 0.022,
+          "latency_ms": 0.023,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-exact-danish-terminology",
           "query_text": "permanent opholdstilladelse Pr\u00f8ve i Dansk 2",
@@ -988,7 +988,7 @@
               "di-rag-doc-evidence-boundary"
             ]
           },
-          "latency_ms": 0.018,
+          "latency_ms": 0.019,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-metadata-filtering",
           "query_text": "gebyr permanent ophold",
@@ -1057,7 +1057,7 @@
               "di-rag-doc-evidence-boundary"
             ]
           },
-          "latency_ms": 0.017,
+          "latency_ms": 0.018,
           "overdue_result_ids": [
             "di-rag-doc-overdue-policy-usable-exam"
           ],
@@ -1125,7 +1125,7 @@
               "di-rag-doc-changed-unreviewed-language-rule"
             ]
           },
-          "latency_ms": 0.015,
+          "latency_ms": 0.014,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-blocked-source-exclusion",
           "query_text": "\u00e6ndret uanmeldt danskkrav",
@@ -1194,7 +1194,7 @@
               "di-rag-doc-permanent-residence-language"
             ]
           },
-          "latency_ms": 0.034,
+          "latency_ms": 0.018,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-forbidden-result-safety-boundary",
           "query_text": "personlig juridisk r\u00e5dgivning ophold evidensbundet svar",
@@ -1267,7 +1267,7 @@
               "di-rag-doc-overdue-policy-usable-exam"
             ]
           },
-          "latency_ms": 0.017,
+          "latency_ms": 0.027,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-dense-english-paraphrase",
           "query_text": "Which Danish language test can count for permanent residence?",
@@ -1340,7 +1340,7 @@
               "di-rag-doc-permanent-residence-language"
             ]
           },
-          "latency_ms": 0.018,
+          "latency_ms": 0.019,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-dense-realistic-typo",
           "query_text": "permanet ophold danskprove",
@@ -1406,7 +1406,7 @@
               "di-rag-doc-changed-unreviewed-language-rule"
             ]
           },
-          "latency_ms": 0.015,
+          "latency_ms": 0.016,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-dense-blocked-source-exclusion",
           "query_text": "changed-unreviewed \u00e6ndret uanmeldt danskkrav",
@@ -1444,9 +1444,9 @@
         ],
         "forbidden_result_violations": 0,
         "latency_ms": {
-          "max": 0.034,
+          "max": 0.027,
           "mean": 0.019,
-          "min": 0.015
+          "min": 0.014
         },
         "mean_reciprocal_rank": 1.0,
         "query_count": 9,
@@ -1464,9 +1464,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.076,
-            "mean": 0.076,
-            "min": 0.076
+            "max": 0.084,
+            "mean": 0.079,
+            "min": 0.073
           },
           "mean_reciprocal_rank": 0.0,
           "query_count": 2,
@@ -1481,9 +1481,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.109,
-            "mean": 0.109,
-            "min": 0.109
+            "max": 0.122,
+            "mean": 0.122,
+            "min": 0.122
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -1498,9 +1498,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.2,
-            "mean": 0.2,
-            "min": 0.2
+            "max": 0.209,
+            "mean": 0.209,
+            "min": 0.209
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -1549,9 +1549,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.089,
-            "mean": 0.089,
-            "min": 0.089
+            "max": 0.091,
+            "mean": 0.091,
+            "min": 0.091
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -1566,9 +1566,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.096,
-            "mean": 0.096,
-            "min": 0.096
+            "max": 0.097,
+            "mean": 0.097,
+            "min": 0.097
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -1583,9 +1583,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.107,
-            "mean": 0.107,
-            "min": 0.107
+            "max": 0.111,
+            "mean": 0.111,
+            "min": 0.111
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 1,
@@ -1610,7 +1610,7 @@
           ],
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 0.2,
+          "latency_ms": 0.209,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-exact-danish-terminology",
           "query_text": "permanent opholdstilladelse Pr\u00f8ve i Dansk 2",
@@ -1650,7 +1650,7 @@
           ],
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 0.107,
+          "latency_ms": 0.111,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-terse-phrasing",
           "query_text": "dansk pr\u00f8ve permanent ophold",
@@ -1722,7 +1722,7 @@
           ],
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 0.096,
+          "latency_ms": 0.097,
           "overdue_result_ids": [
             "di-rag-doc-overdue-policy-usable-exam"
           ],
@@ -1753,7 +1753,7 @@
           "eligible_result_ids": [],
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 0.076,
+          "latency_ms": 0.073,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-blocked-source-exclusion",
           "query_text": "\u00e6ndret uanmeldt danskkrav",
@@ -1818,7 +1818,7 @@
           ],
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 0.109,
+          "latency_ms": 0.122,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-dense-english-paraphrase",
           "query_text": "Which Danish language test can count for permanent residence?",
@@ -1856,7 +1856,7 @@
           ],
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 0.089,
+          "latency_ms": 0.091,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-dense-realistic-typo",
           "query_text": "permanet ophold danskprove",
@@ -1888,7 +1888,7 @@
           "eligible_result_ids": [],
           "forbidden_result_ids": [],
           "forbidden_result_violations": 0,
-          "latency_ms": 0.076,
+          "latency_ms": 0.084,
           "overdue_result_ids": [],
           "query_id": "di-rag-query-dense-blocked-source-exclusion",
           "query_text": "changed-unreviewed \u00e6ndret uanmeldt danskkrav",
@@ -1918,9 +1918,9 @@
         ],
         "forbidden_result_violations": 0,
         "latency_ms": {
-          "max": 0.2,
-          "mean": 0.106,
-          "min": 0.076
+          "max": 0.209,
+          "mean": 0.11,
+          "min": 0.073
         },
         "mean_reciprocal_rank": 1.0,
         "query_count": 9,
@@ -1979,7 +1979,7 @@
     "runtime_policy_path": "config/runtime-policy.json",
     "runtime_probe_path": "docs/progress/issue-26-runtime-probe.json"
   },
-  "executed_at_utc": "2026-07-07T21:14:34.320717+00:00",
+  "executed_at_utc": "2026-07-14T17:58:10.534564+00:00",
   "fixture_identity": {
     "corpus_path": "data/retrieval_benchmark/corpus-fixtures.json",
     "corpus_sha256": "51f5c891fd742c1f67f076ccd13d5381bdd7ec9d46b3fb436acf6eb4ad143679",
@@ -2044,15 +2044,15 @@
           "terse-phrasing"
         ],
         "embedding_load_duration_ms": {
-          "max": 86.134,
-          "mean": 81.943,
-          "min": 76.975
+          "max": 85.138,
+          "mean": 79.973,
+          "min": 77.103
         },
         "forbidden_result_violations": 0,
         "latency_ms": {
-          "max": 154.114,
-          "mean": 146.602,
-          "min": 138.04
+          "max": 159.83,
+          "mean": 143.614,
+          "min": 131.683
         },
         "mean_reciprocal_rank": 0.857143,
         "query_count": 9,
@@ -2060,9 +2060,9 @@
         "recall_at_3": 1.0,
         "required_evidence_query_count": 7,
         "warm_retrieval_latency_ms": {
-          "max": 69.406,
-          "mean": 64.659,
-          "min": 61.065
+          "max": 74.692,
+          "mean": 63.642,
+          "min": 54.554
         }
       },
       "hybrid": {
@@ -2079,9 +2079,9 @@
         ],
         "forbidden_result_violations": 0,
         "latency_ms": {
-          "max": 0.034,
+          "max": 0.027,
           "mean": 0.019,
-          "min": 0.015
+          "min": 0.014
         },
         "mean_reciprocal_rank": 1.0,
         "query_count": 9,
@@ -2103,9 +2103,9 @@
         ],
         "forbidden_result_violations": 0,
         "latency_ms": {
-          "max": 0.2,
-          "mean": 0.106,
-          "min": 0.076
+          "max": 0.209,
+          "mean": 0.11,
+          "min": 0.073
         },
         "mean_reciprocal_rank": 1.0,
         "query_count": 9,
@@ -2194,57 +2194,57 @@
     "vector_dimensions": 768
   },
   "operations": {
-    "comparison_wall_time_ms": 2742.587,
+    "comparison_wall_time_ms": 2683.682,
     "dense": {
       "cold_embedding_load_observed": true,
       "dense_index_size_bytes": 151360,
-      "dense_indexing_wall_time_ms": 1408.696,
+      "dense_indexing_wall_time_ms": 1371.92,
       "embedding_call_count": 18,
       "embedding_service_durations_ms": {
         "load_duration": [
-          78.942,
-          84.389,
-          76.164,
-          82.668,
-          80.148,
-          80.451,
-          76.729,
-          80.17,
-          77.788,
-          84.185,
-          78.209,
-          83.951,
-          78.564,
-          86.134,
-          79.793,
-          84.619,
-          76.975,
-          85.057
+          85.067,
+          78.167,
+          84.556,
+          78.297,
+          85.734,
+          78.546,
+          81.178,
+          78.951,
+          82.038,
+          77.129,
+          82.135,
+          77.103,
+          85.138,
+          77.411,
+          81.077,
+          78.073,
+          83.923,
+          77.765
         ],
         "total_duration": [
-          165.017,
-          163.028,
-          154.331,
-          163.991,
-          157.686,
-          148.842,
-          151.868,
-          148.219,
-          147.483,
-          147.364,
-          140.679,
-          144.17,
-          139.277,
-          149.523,
-          147.907,
-          149.078,
-          136.744,
-          152.838
+          164.237,
+          157.741,
+          156.351,
+          149.626,
+          153.666,
+          149.771,
+          145.578,
+          144.196,
+          142.712,
+          130.169,
+          151.453,
+          131.293,
+          158.555,
+          149.843,
+          142.558,
+          139.027,
+          142.628,
+          135.037
         ]
       },
-      "process_peak_resident_memory_mb": 101.434
+      "process_peak_resident_memory_mb": 398.898
     },
-    "lexical_indexing_wall_time_ms": 0.482
+    "lexical_indexing_wall_time_ms": 0.592
   },
   "recommendation": {
     "candidate_metrics": {
@@ -2256,15 +2256,15 @@
               "blocked-source-exclusion"
             ],
             "embedding_load_duration_ms": {
-              "max": 86.134,
-              "mean": 85.596,
-              "min": 85.057
+              "max": 77.765,
+              "mean": 77.588,
+              "min": 77.411
             },
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 154.114,
-              "mean": 152.456,
-              "min": 150.798
+              "max": 151.251,
+              "mean": 143.805,
+              "min": 136.36
             },
             "mean_reciprocal_rank": 0.0,
             "query_count": 2,
@@ -2272,9 +2272,9 @@
             "recall_at_3": 0.0,
             "required_evidence_query_count": 0,
             "warm_retrieval_latency_ms": {
-              "max": 69.057,
-              "mean": 66.861,
-              "min": 64.664
+              "max": 73.84,
+              "mean": 66.218,
+              "min": 58.595
             }
           },
           "english-paraphrase": {
@@ -2283,15 +2283,15 @@
               "english-paraphrase"
             ],
             "embedding_load_duration_ms": {
-              "max": 84.619,
-              "mean": 84.619,
-              "min": 84.619
+              "max": 78.073,
+              "mean": 78.073,
+              "min": 78.073
             },
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 150.351,
-              "mean": 150.351,
-              "min": 150.351
+              "max": 140.288,
+              "mean": 140.288,
+              "min": 140.288
             },
             "mean_reciprocal_rank": 0.5,
             "query_count": 1,
@@ -2299,9 +2299,9 @@
             "recall_at_3": 1.0,
             "required_evidence_query_count": 1,
             "warm_retrieval_latency_ms": {
-              "max": 65.732,
-              "mean": 65.732,
-              "min": 65.732
+              "max": 62.215,
+              "mean": 62.215,
+              "min": 62.215
             }
           },
           "exact-danish-terminology": {
@@ -2310,15 +2310,15 @@
               "exact-danish-terminology"
             ],
             "embedding_load_duration_ms": {
-              "max": 84.185,
-              "mean": 84.185,
-              "min": 84.185
+              "max": 77.129,
+              "mean": 77.129,
+              "min": 77.129
             },
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 148.748,
-              "mean": 148.748,
-              "min": 148.748
+              "max": 131.683,
+              "mean": 131.683,
+              "min": 131.683
             },
             "mean_reciprocal_rank": 0.5,
             "query_count": 1,
@@ -2326,9 +2326,9 @@
             "recall_at_3": 1.0,
             "required_evidence_query_count": 1,
             "warm_retrieval_latency_ms": {
-              "max": 64.563,
-              "mean": 64.563,
-              "min": 64.563
+              "max": 54.554,
+              "mean": 54.554,
+              "min": 54.554
             }
           },
           "forbidden-result-safety-boundary": {
@@ -2337,15 +2337,15 @@
               "forbidden-result-safety-boundary"
             ],
             "embedding_load_duration_ms": {
-              "max": 79.793,
-              "mean": 79.793,
-              "min": 79.793
+              "max": 81.077,
+              "mean": 81.077,
+              "min": 81.077
             },
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 149.199,
-              "mean": 149.199,
-              "min": 149.199
+              "max": 143.795,
+              "mean": 143.795,
+              "min": 143.795
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2353,9 +2353,9 @@
             "recall_at_3": 1.0,
             "required_evidence_query_count": 1,
             "warm_retrieval_latency_ms": {
-              "max": 69.406,
-              "mean": 69.406,
-              "min": 69.406
+              "max": 62.718,
+              "mean": 62.718,
+              "min": 62.718
             }
           },
           "metadata-filtering": {
@@ -2364,15 +2364,15 @@
               "metadata-filtering"
             ],
             "embedding_load_duration_ms": {
-              "max": 83.951,
-              "mean": 83.951,
-              "min": 83.951
+              "max": 77.103,
+              "mean": 77.103,
+              "min": 77.103
             },
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 145.514,
-              "mean": 145.514,
-              "min": 145.514
+              "max": 132.633,
+              "mean": 132.633,
+              "min": 132.633
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2380,9 +2380,9 @@
             "recall_at_3": 1.0,
             "required_evidence_query_count": 1,
             "warm_retrieval_latency_ms": {
-              "max": 61.563,
-              "mean": 61.563,
-              "min": 61.563
+              "max": 55.53,
+              "mean": 55.53,
+              "min": 55.53
             }
           },
           "realistic-typo": {
@@ -2391,15 +2391,15 @@
               "realistic-typo"
             ],
             "embedding_load_duration_ms": {
-              "max": 76.975,
-              "mean": 76.975,
-              "min": 76.975
+              "max": 83.923,
+              "mean": 83.923,
+              "min": 83.923
             },
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 138.04,
-              "mean": 138.04,
-              "min": 138.04
+              "max": 143.917,
+              "mean": 143.917,
+              "min": 143.917
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2407,9 +2407,9 @@
             "recall_at_3": 1.0,
             "required_evidence_query_count": 1,
             "warm_retrieval_latency_ms": {
-              "max": 61.065,
-              "mean": 61.065,
-              "min": 61.065
+              "max": 59.994,
+              "mean": 59.994,
+              "min": 59.994
             }
           },
           "stale-but-policy-usable": {
@@ -2418,15 +2418,15 @@
               "stale-but-policy-usable"
             ],
             "embedding_load_duration_ms": {
-              "max": 78.564,
-              "mean": 78.564,
-              "min": 78.564
+              "max": 85.138,
+              "mean": 85.138,
+              "min": 85.138
             },
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 140.632,
-              "mean": 140.632,
-              "min": 140.632
+              "max": 159.83,
+              "mean": 159.83,
+              "min": 159.83
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2434,9 +2434,9 @@
             "recall_at_3": 1.0,
             "required_evidence_query_count": 1,
             "warm_retrieval_latency_ms": {
-              "max": 62.068,
-              "mean": 62.068,
-              "min": 62.068
+              "max": 74.692,
+              "mean": 74.692,
+              "min": 74.692
             }
           },
           "terse-phrasing": {
@@ -2445,15 +2445,15 @@
               "terse-phrasing"
             ],
             "embedding_load_duration_ms": {
-              "max": 78.209,
-              "mean": 78.209,
-              "min": 78.209
+              "max": 82.135,
+              "mean": 82.135,
+              "min": 82.135
             },
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 142.023,
-              "mean": 142.023,
-              "min": 142.023
+              "max": 152.772,
+              "mean": 152.772,
+              "min": 152.772
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2461,9 +2461,9 @@
             "recall_at_3": 1.0,
             "required_evidence_query_count": 1,
             "warm_retrieval_latency_ms": {
-              "max": 63.814,
-              "mean": 63.814,
-              "min": 63.814
+              "max": 70.637,
+              "mean": 70.637,
+              "min": 70.637
             }
           }
         },
@@ -2480,15 +2480,15 @@
             "terse-phrasing"
           ],
           "embedding_load_duration_ms": {
-            "max": 86.134,
-            "mean": 81.943,
-            "min": 76.975
+            "max": 85.138,
+            "mean": 79.973,
+            "min": 77.103
           },
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 154.114,
-            "mean": 146.602,
-            "min": 138.04
+            "max": 159.83,
+            "mean": 143.614,
+            "min": 131.683
           },
           "mean_reciprocal_rank": 0.857143,
           "query_count": 9,
@@ -2496,9 +2496,9 @@
           "recall_at_3": 1.0,
           "required_evidence_query_count": 7,
           "warm_retrieval_latency_ms": {
-            "max": 69.406,
-            "mean": 64.659,
-            "min": 61.065
+            "max": 74.692,
+            "mean": 63.642,
+            "min": 54.554
           }
         }
       },
@@ -2511,9 +2511,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.015,
+              "max": 0.016,
               "mean": 0.015,
-              "min": 0.015
+              "min": 0.014
             },
             "mean_reciprocal_rank": 0.0,
             "query_count": 2,
@@ -2528,9 +2528,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.017,
-              "mean": 0.017,
-              "min": 0.017
+              "max": 0.027,
+              "mean": 0.027,
+              "min": 0.027
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2545,9 +2545,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.022,
-              "mean": 0.022,
-              "min": 0.022
+              "max": 0.023,
+              "mean": 0.023,
+              "min": 0.023
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2562,9 +2562,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.034,
-              "mean": 0.034,
-              "min": 0.034
+              "max": 0.018,
+              "mean": 0.018,
+              "min": 0.018
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2579,9 +2579,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.018,
-              "mean": 0.018,
-              "min": 0.018
+              "max": 0.019,
+              "mean": 0.019,
+              "min": 0.019
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2596,9 +2596,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.018,
-              "mean": 0.018,
-              "min": 0.018
+              "max": 0.019,
+              "mean": 0.019,
+              "min": 0.019
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2613,9 +2613,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.017,
-              "mean": 0.017,
-              "min": 0.017
+              "max": 0.018,
+              "mean": 0.018,
+              "min": 0.018
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2655,9 +2655,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.034,
+            "max": 0.027,
             "mean": 0.019,
-            "min": 0.015
+            "min": 0.014
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 9,
@@ -2675,9 +2675,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.076,
-              "mean": 0.076,
-              "min": 0.076
+              "max": 0.084,
+              "mean": 0.079,
+              "min": 0.073
             },
             "mean_reciprocal_rank": 0.0,
             "query_count": 2,
@@ -2692,9 +2692,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.109,
-              "mean": 0.109,
-              "min": 0.109
+              "max": 0.122,
+              "mean": 0.122,
+              "min": 0.122
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2709,9 +2709,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.2,
-              "mean": 0.2,
-              "min": 0.2
+              "max": 0.209,
+              "mean": 0.209,
+              "min": 0.209
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2760,9 +2760,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.089,
-              "mean": 0.089,
-              "min": 0.089
+              "max": 0.091,
+              "mean": 0.091,
+              "min": 0.091
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2777,9 +2777,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.096,
-              "mean": 0.096,
-              "min": 0.096
+              "max": 0.097,
+              "mean": 0.097,
+              "min": 0.097
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2794,9 +2794,9 @@
             ],
             "forbidden_result_violations": 0,
             "latency_ms": {
-              "max": 0.107,
-              "mean": 0.107,
-              "min": 0.107
+              "max": 0.111,
+              "mean": 0.111,
+              "min": 0.111
             },
             "mean_reciprocal_rank": 1.0,
             "query_count": 1,
@@ -2819,9 +2819,9 @@
           ],
           "forbidden_result_violations": 0,
           "latency_ms": {
-            "max": 0.2,
-            "mean": 0.106,
-            "min": 0.076
+            "max": 0.209,
+            "mean": 0.11,
+            "min": 0.073
           },
           "mean_reciprocal_rank": 1.0,
           "query_count": 9,

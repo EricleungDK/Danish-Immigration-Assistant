@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 import tempfile
@@ -28,6 +29,8 @@ from danish_rag.provider_setup import ProviderConfiguration, save_provider_confi
 from danish_rag.retrieval import HybridRetriever
 from danish_rag.runtime_policy import load_runtime_policy
 from danish_rag.source_maintenance import build_publishable_knowledge_release
+from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.release_trust_fixture import create_test_release_trust_fixture
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -102,6 +105,10 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.config_path = self.root / "config" / "provider-config.json"
         self.data_dir = self.root / "data"
         self.release_catalog = self.root / "release-catalog"
+        self.embedding_provider = DeterministicEmbeddingProviderFixture()
+        self.release_trust = create_test_release_trust_fixture(
+            self.root / "test-only-release-trust"
+        )
         save_provider_configuration(
             self.config_path,
             ProviderConfiguration(
@@ -154,12 +161,31 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
             documents=documents,
             created_at_utc="2026-07-07T13:00:00Z",
             minimum_application_version="0.1.0",
+            signing_private_key_path=self.release_trust.signing_private_key_path,
+            trust_root_path=self.release_trust.trust_root_path,
         )
 
     def conversation_id_from(self, html: str, title: str) -> str:
         match = re.search(rf'href="/conversations/([^"]+)">{re.escape(title)}', html)
         self.assertIsNotNone(match, html)
         return match.group(1)
+
+    async def wait_for_install_terminal_status(
+        self, client: httpx.AsyncClient
+    ) -> httpx.Response:
+        for _ in range(150):
+            status = await client.get("/knowledge-updates/install-status")
+            if any(
+                message in status.text
+                for message in {
+                    "Knowledge update installed",
+                    "Knowledge update rolled back",
+                    "Knowledge update needs attention",
+                }
+            ):
+                return status
+            await asyncio.sleep(0.02)
+        self.fail("Knowledge installation did not reach a terminal state")
 
     async def test_observed_user_workflows_make_no_network_requests(self):
         self.make_newer_release()
@@ -169,6 +195,8 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
             data_dir=self.data_dir,
             answer_generator=generator,
             release_catalog_dir=self.release_catalog,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -177,10 +205,14 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.addAsyncCleanup(client.aclose)
 
         with NetworkObserver() as observer:
-            installation = install_minimal_knowledge_release(self.data_dir)
-            retrieval_results = HybridRetriever.from_data_dir(self.data_dir).retrieve(
-                "What Danish test do I need for permanent residence?"
+            installation = install_minimal_knowledge_release(
+                self.data_dir,
+                embedding_provider=self.embedding_provider,
             )
+            retrieval_results = HybridRetriever.from_data_dir(
+                self.data_dir,
+                embedding_provider=self.embedding_provider,
+            ).retrieve("What Danish test do I need for permanent residence?")
             home = await client.get("/")
             answer = await client.post(
                 "/ask",
@@ -216,6 +248,7 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
                 headers={"Origin": "http://testserver"},
                 follow_redirects=False,
             )
+            install_status = await self.wait_for_install_terminal_status(client)
             delete = await client.post(
                 f"/conversations/{conversation_id}/delete",
                 headers={"Origin": "http://testserver"},
@@ -227,7 +260,16 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(retrieval_results)
         self.assertEqual(home.status_code, 200)
         self.assertEqual(answer.status_code, 200)
-        self.assertEqual(generator.calls[0]["schema"], answer_schema())
+        self.assertEqual(
+            generator.calls[0]["schema"],
+            answer_schema(
+                [
+                    "di-rag-doc-permanent-residence-language",
+                    "di-rag-doc-equivalent-tests-language-test-2",
+                    "di-rag-doc-equivalent-tests-language-test-3",
+                ]
+            ),
+        )
         self.assertIn("Inspect evidence", reopened.text)
         self.assertEqual(one_export.status_code, 200)
         self.assertEqual(all_export.status_code, 200)
@@ -235,6 +277,7 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Knowledge update available", update_review.text)
         self.assertEqual(dismiss.status_code, 303)
         self.assertEqual(install.status_code, 303)
+        self.assertIn("Knowledge update installed", install_status.text)
         self.assertEqual(
             active_corpus_summary(self.data_dir)["knowledge_release_id"],
             "kr-2026-07-07.1",

@@ -14,6 +14,7 @@ from danish_rag.retrieval import (
     HybridRetriever,
     UnsupportedEmbeddingModelError,
 )
+from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 
 
 class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
@@ -21,7 +22,11 @@ class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         self.data_dir = Path(self.tempdir.name) / "data"
-        install_minimal_knowledge_release(self.data_dir)
+        self.embedding_provider = DeterministicEmbeddingProviderFixture()
+        install_minimal_knowledge_release(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
 
     def index_metadata(self) -> dict[str, object]:
         return json.loads(
@@ -39,9 +44,10 @@ class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
             "kr-2026-07-06.1",
         )
         self.assertEqual(self.index_metadata()["embedding_model"], embedding_model)
-        results = HybridRetriever.from_data_dir(self.data_dir).retrieve(
-            "What Danish test can count for permanent residence?"
-        )
+        results = HybridRetriever.from_data_dir(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        ).retrieve("What Danish test can count for permanent residence?")
         self.assertTrue(results)
         self.assertEqual(results[0]["knowledge_release_id"], "kr-2026-07-06.1")
 
@@ -53,6 +59,7 @@ class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
             install_minimal_knowledge_release(
                 self.data_dir,
                 embedding_model="unreviewed-local-embedder",
+                embedding_provider=self.embedding_provider,
             )
 
         self.assert_active_index_queryable("embeddinggemma")
@@ -63,10 +70,11 @@ class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
         result = install_minimal_knowledge_release(
             self.data_dir,
             embedding_model="embeddinggemma:latest",
+            embedding_provider=self.embedding_provider,
         )
 
         self.assertEqual(result["index"]["embedding_model"], "embeddinggemma:latest")
-        self.assertEqual(result["index"]["vector_dimensions"], 64)
+        self.assertEqual(result["index"]["vector_dimensions"], 768)
         self.assertEqual(result["index"]["corpus_identity"], "kr-2026-07-06.1")
         self.assertEqual(
             result["index"]["knowledge_release_id"],
@@ -89,6 +97,7 @@ class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
             install_minimal_knowledge_release(
                 self.data_dir,
                 embedding_model="embeddinggemma:latest",
+                embedding_provider=self.embedding_provider,
                 fault_injector=fault_injector,
             )
 
@@ -98,10 +107,12 @@ class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
         install_minimal_knowledge_release(
             self.data_dir,
             embedding_model="embeddinggemma:latest",
+            embedding_provider=self.embedding_provider,
         )
         app = create_app(
             data_dir=self.data_dir,
             config_path=Path(self.tempdir.name) / "provider-config.json",
+            embedding_provider=self.embedding_provider,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),

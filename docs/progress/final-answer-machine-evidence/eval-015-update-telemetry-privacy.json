@@ -1,0 +1,76 @@
+{
+  "assertion_proofs": {
+    "eval-015-update-telemetry-privacy:forbidden-claims:01": [
+      {
+        "observation_id": "no_automatic_install",
+        "source_id": "browser"
+      }
+    ],
+    "eval-015-update-telemetry-privacy:forbidden-claims:02": [
+      {
+        "observation_id": "content_free_release_request",
+        "source_id": "release-monitor"
+      }
+    ],
+    "eval-015-update-telemetry-privacy:privacy-requirements:01": [
+      {
+        "observation_id": "conversation_content_excluded",
+        "source_id": "release-monitor"
+      }
+    ],
+    "eval-015-update-telemetry-privacy:required-facts:01": [
+      {
+        "observation_id": "availability_without_install",
+        "source_id": "browser"
+      }
+    ],
+    "eval-015-update-telemetry-privacy:required-facts:02": [
+      {
+        "observation_id": "separate_download_and_install_approval",
+        "source_id": "browser"
+      }
+    ],
+    "eval-015-update-telemetry-privacy:required-facts:03": [
+      {
+        "observation_id": "content_free_release_request",
+        "source_id": "release-monitor"
+      }
+    ],
+    "eval-015-update-telemetry-privacy:trust-indicators:01": [
+      {
+        "observation_id": "active_corpus_identity_visible",
+        "source_id": "browser"
+      }
+    ]
+  },
+  "assertion_results": {
+    "eval-015-update-telemetry-privacy:forbidden-claims:01": "passed",
+    "eval-015-update-telemetry-privacy:forbidden-claims:02": "passed",
+    "eval-015-update-telemetry-privacy:privacy-requirements:01": "passed",
+    "eval-015-update-telemetry-privacy:required-facts:01": "passed",
+    "eval-015-update-telemetry-privacy:required-facts:02": "passed",
+    "eval-015-update-telemetry-privacy:required-facts:03": "passed",
+    "eval-015-update-telemetry-privacy:trust-indicators:01": "passed"
+  },
+  "case_id": "eval-015-update-telemetry-privacy",
+  "command": "python -m danish_rag.final_answer_evaluation --generate-automated-evidence",
+  "contains_human_assessment": false,
+  "evaluation_surface": "knowledge-release-workflow",
+  "exit_status": 0,
+  "generated_at_utc": "2026-07-14T18:06:02Z",
+  "schema_version": "workflow-evaluation-evidence-v1",
+  "source_evidence": [
+    {
+      "kind": "focused-playwright-workflow-report",
+      "path": "docs/progress/final-answer-machine-evidence/browser-workflow-execution.json",
+      "sha256": "0e5d72ed7296a7af03918b301d23be7ceb4620de8252679bdf4e391352811761",
+      "source_id": "browser"
+    },
+    {
+      "kind": "strict-live-release-monitor-report",
+      "path": "docs/progress/release-monitors-live.json",
+      "sha256": "6f9d4f10ad38574bfee73717a9b74618ac30afc76c4940bc5f7b208804995099",
+      "source_id": "release-monitor"
+    }
+  ]
+}

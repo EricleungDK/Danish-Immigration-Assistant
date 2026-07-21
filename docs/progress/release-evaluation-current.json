@@ -7,46 +7,28 @@
   },
   "derived_release_blockers": [
     {
-      "id": "quality-bar-human-approval-pending",
-      "reason": "Issue #7 remains candidate-ready-for-human-approval rather than approved.",
-      "source": "explicit_release_blockers",
-      "status": "pending"
-    },
-    {
-      "id": "environment-matrix-critical-journeys-not-complete",
-      "reason": "The complete critical journey matrix has not passed for every published supported environment.",
-      "source": "explicit_release_blockers",
+      "id": "final-answer-independent-human-adjudication",
+      "reason": "The live Ollama evaluator completed all 20 cases with zero execution errors and passed every machine-evaluable gate. Strict qualification remains false only because independent-human adjudications are absent for required-fact coverage, forbidden claims, privacy prose, citation correctness, and unsupported-claim rate.",
+      "source": "gate_results",
       "status": "not_run"
     },
     {
-      "id": "issue-24-human-validation-pending",
-      "reason": "Human confirmation of comprehension validation is still pending.",
-      "source": "explicit_release_blockers",
-      "status": "pending"
-    },
-    {
-      "id": "performance-thresholds-not-approved",
-      "reason": "Performance baselines are published, but human-approved performance thresholds and full environment measurements are not complete.",
-      "source": "explicit_release_blockers",
-      "status": "pending"
-    },
-    {
-      "id": "final-answer-evaluator-not-implemented",
-      "reason": "The final-answer evaluator for citation coverage, citation correctness, unsupported claims, required fact coverage, clarify/answer/refuse behavior, and trust indicators is not implemented.",
+      "id": "supported-environment-critical-journeys",
+      "reason": "The previous monitor exercised the application in process and did not restart it or observe browser/environment identity, so it cannot qualify the required real-process/browser supported-environment matrix. Replacement evidence is required.",
       "source": "gate_results",
-      "status": "not_implemented"
+      "status": "not_verified"
     },
     {
-      "id": "full-network-boundary-monitor-not-implemented",
-      "reason": "The implemented privacy fixtures pass, but a full release monitor for answer-path network egress across the supported critical-journey matrix is not implemented.",
+      "id": "production-source-registry-qualification",
+      "reason": "The production source-registry assessment is blocked: the current project-authored fixtures have no recorded curator admissions, monitoring records, archived official snapshots, named human production reviews, or durable production signing-key custody record.",
       "source": "gate_results",
-      "status": "not_implemented"
+      "status": "blocked"
     },
     {
-      "id": "rollback-fault-injection-matrix-not-implemented",
-      "reason": "The implemented rollback fixture passes, but the full release fault-injection matrix for installation and activation failures is not implemented.",
+      "id": "browser-accessibility-suite",
+      "reason": "The prior automated axe, keyboard, reflow, reduced-motion, and non-color run passed before later UI changes. A current browser/accessibility rerun and the required manual assistive-technology check have not been performed or recorded.",
       "source": "gate_results",
-      "status": "not_implemented"
+      "status": "not_verified"
     },
     {
       "id": "production-release-owner-approval-pending",
@@ -59,62 +41,74 @@
     "accessibility_browser": {
       "exists": true,
       "path": "docs/progress/issue-23-accessibility-responsive.md",
-      "sha256": "f64e74bc262416916a5ef0e6a2272c77a79aa912bd3da8c5ac891d63f5dbd47d",
-      "size_bytes": 2267
+      "sha256": "df50249cff23616477def5de9e293fe56bac45a667360db4daf16d12b0208a91",
+      "size_bytes": 4542
     },
     "dense_retrieval": {
       "exists": true,
       "path": "docs/progress/issue-28-dense-retrieval-benchmark.json",
-      "sha256": "fb5fc6d7aae5d1a1d210f5e528a810687c468bc35df2f03061cb7e6b2d931489",
-      "size_bytes": 12769
+      "sha256": "2a02023a56c09704574d553bc2c151ffb34fd25e5c7a4449735dbd168537b635",
+      "size_bytes": 12776
+    },
+    "final_answer_evaluation": {
+      "exists": true,
+      "path": "docs/progress/final-answer-evaluation-live.json",
+      "sha256": "ece6dcd361990c4de232219af9bb7a3e60d18bdb263c699daaec4fd1134b845f",
+      "size_bytes": 94272
     },
     "hybrid_retrieval": {
       "exists": true,
       "path": "docs/progress/issue-29-hybrid-retrieval-comparison.json",
-      "sha256": "f1e0f26872faa2e0ef6d9b7e4d145ec9c10f60f523f9d9e9d18eb8c2349577f4",
-      "size_bytes": 101081
+      "sha256": "2fa2d4ad2ed65ed9ddfb5c5596b01b73a71ccac5c8bfc878b2a78e6f05515424",
+      "size_bytes": 101085
     },
     "lexical_retrieval": {
       "exists": true,
       "path": "docs/progress/issue-27-retrieval-benchmark.json",
-      "sha256": "e9cd2904b85bbc22e4e6f8c55031fc685203bc7c40420cb18d2c0878661b64cc",
-      "size_bytes": 11733
+      "sha256": "f588867205709b129b6af13e58792827b63dbf9c68ff975fcdfba43484d34674",
+      "size_bytes": 11725
     },
     "quality_bar": {
       "exists": true,
       "path": "config/evaluation-quality-bar.json",
-      "sha256": "e5a8947fa53ffe0d0790c9f2af195ee6fa5a67b11e4496d1f02214dc39556d54",
-      "size_bytes": 15599
+      "sha256": "415981ae0aa134a072632c73c58d8a93d1be76264738265c8d9d61ba03ab053f",
+      "size_bytes": 15946
+    },
+    "release_monitors": {
+      "exists": true,
+      "path": "docs/progress/release-monitors-live.json",
+      "sha256": "6f9d4f10ad38574bfee73717a9b74618ac30afc76c4940bc5f7b208804995099",
+      "size_bytes": 14542
     },
     "release_progress": {
       "exists": true,
       "path": "docs/progress/issue-25-release-qualification.md",
-      "sha256": "feefb01edcbdd62e00ed4c37e6abf93c374481d068437a0bf3eda09255573d92",
-      "size_bytes": 5185
+      "sha256": "ed94b09f33dc85fcaaf533287ce7992cc8fa6a3a62093f2d92a4f7c732f5ff60",
+      "size_bytes": 7216
     },
     "release_qualification": {
       "exists": true,
       "path": "config/release-qualification.json",
-      "sha256": "94a9cba688dd08637fb3760280ade2b99f9526177222390f0877ae1beb263a93",
-      "size_bytes": 14648
+      "sha256": "d01f10773a08faa6cac12376c9d07da5f5c67b46c456cc292d6dd8b0bb7708a4",
+      "size_bytes": 16619
     },
     "runtime_policy": {
       "exists": true,
       "path": "config/runtime-policy.json",
-      "sha256": "519621afe1b8e287804adc80e9827397c80eecdd52eb55e1efe010d0f3c84aa0",
-      "size_bytes": 6158
+      "sha256": "f2cb5bba931437efc9333de3a2b699ccec9aee727c200e97fe1932eeed79b2df",
+      "size_bytes": 6636
     },
     "runtime_probe": {
       "exists": true,
       "path": "docs/progress/issue-26-runtime-probe.json",
-      "sha256": "b6d0a552706f9a7ed131692d051b37d588d783d7897d822c0638c86048cf00c7",
-      "size_bytes": 1667
+      "sha256": "322ea98b912bdf3d7f97457d7f32eb08c1b3bc909c695697eba1c2c3197f3376",
+      "size_bytes": 1736
     },
     "usability_validation": {
       "exists": true,
       "path": "docs/progress/issue-24-usability-validation.md",
-      "sha256": "46c5012b2c55a198ea8d924bbc6fb4cebcccba7585779181941fb2e835fe63f3",
-      "size_bytes": 6074
+      "sha256": "4628e716bf449b9c6202719a5e0a059c460dc5d86e1f4483a4a7590bffc7bf61",
+      "size_bytes": 6218
     }
   },
   "gate_results": [
@@ -124,8 +118,8 @@
         {
           "exists": true,
           "path": "docs/progress/issue-29-hybrid-retrieval-comparison.json",
-          "sha256": "f1e0f26872faa2e0ef6d9b7e4d145ec9c10f60f523f9d9e9d18eb8c2349577f4",
-          "size_bytes": 101081
+          "sha256": "2fa2d4ad2ed65ed9ddfb5c5596b01b73a71ccac5c8bfc878b2a78e6f05515424",
+          "size_bytes": 101085
         }
       ],
       "failures": [],
@@ -162,68 +156,196 @@
       "thresholds": {}
     },
     {
-      "evaluated_status": "not_implemented",
-      "evidence": [],
-      "failures": [],
-      "id": "final-answer-evaluator-not-implemented",
+      "evaluated_status": "failed",
+      "evidence": [
+        {
+          "exists": true,
+          "path": "docs/progress/final-answer-evaluation-live.json",
+          "sha256": "ece6dcd361990c4de232219af9bb7a3e60d18bdb263c699daaec4fd1134b845f",
+          "size_bytes": 94272
+        }
+      ],
+      "failures": [
+        "final-answer metric 'citation_correctness' did not pass strictly",
+        "final-answer metric 'forbidden_claims' did not pass strictly",
+        "final-answer metric 'privacy_requirement_compliance' did not pass strictly",
+        "final-answer metric 'required_fact_coverage' did not pass strictly",
+        "final-answer metric 'unsupported_claim_rate' did not pass strictly",
+        "final-answer evidence reports threshold failures",
+        "final-answer evidence did not pass strict mode"
+      ],
+      "id": "final-answer-independent-human-adjudication",
       "metric_id": "official-fact-citation-coverage",
-      "observed": {},
-      "release_blocking": true,
-      "source_status": "not_implemented",
-      "status": "not_implemented",
-      "summary": "The final-answer evaluator for citation coverage, citation correctness, unsupported claims, required fact coverage, clarify/answer/refuse behavior, and trust indicators is not implemented.",
-      "thresholds": {}
-    },
-    {
-      "evaluated_status": "not_implemented",
-      "evidence": [],
-      "failures": [],
-      "id": "full-network-boundary-monitor-not-implemented",
-      "metric_id": "privacy-network-boundary",
-      "observed": {},
-      "release_blocking": true,
-      "source_status": "not_implemented",
-      "status": "not_implemented",
-      "summary": "The implemented privacy fixtures pass, but a full release monitor for answer-path network egress across the supported critical-journey matrix is not implemented.",
-      "thresholds": {}
-    },
-    {
-      "evaluated_status": "not_implemented",
-      "evidence": [],
-      "failures": [],
-      "id": "rollback-fault-injection-matrix-not-implemented",
-      "metric_id": "update-rollback-success",
-      "observed": {},
-      "release_blocking": true,
-      "source_status": "not_implemented",
-      "status": "not_implemented",
-      "summary": "The implemented rollback fixture passes, but the full release fault-injection matrix for installation and activation failures is not implemented.",
-      "thresholds": {}
-    },
-    {
-      "evaluated_status": "not_run",
-      "evidence": [],
-      "failures": [],
-      "id": "environment-matrix-critical-journeys-not-complete",
-      "metric_id": "environment-matrix-critical-journeys",
-      "observed": {},
+      "observed": {
+        "case_count": 20,
+        "completed_count": 20,
+        "dataset_id": "di-rag-eval-set-v0.1-candidate",
+        "error_count": 0,
+        "metric_statuses": {
+          "case_execution_errors": "passed",
+          "citation_correctness": "not_evaluable",
+          "clarify_answer_refuse_accuracy": "passed",
+          "evaluation_surface_completion": "passed",
+          "forbidden_claims": "not_evaluable",
+          "forbidden_source_domain_violations": "passed",
+          "fresh_tomato_min_material_source_rule_pass_rate": "passed",
+          "official_fact_citation_coverage": "passed",
+          "personal_eligibility_conclusions": "passed",
+          "privacy_requirement_compliance": "not_evaluable",
+          "required_fact_coverage": "not_evaluable",
+          "required_source_domain_coverage": "passed",
+          "trust_indicator_correctness": "passed",
+          "unsupported_claim_rate": "not_evaluable"
+        },
+        "mode": "live-ollama",
+        "not_evaluable_count": 0,
+        "quality_bar_id": "mvp-evaluation-quality-bar-issue-7",
+        "strict_passed": false
+      },
       "release_blocking": true,
       "source_status": "not_run",
-      "status": "not_run",
-      "summary": "Every published supported environment has not passed setup, supported answer, refusal, evidence inspection, history persistence, deletion/export, update installation, and rollback as one release matrix.",
-      "thresholds": {}
+      "status": "failed",
+      "summary": "Live final-answer evaluation evidence did not satisfy the strict release contract.",
+      "thresholds": {
+        "citation_correctness_min": 1.0,
+        "clarify_answer_refuse_accuracy_min": 0.95,
+        "forbidden_claims_max": 0,
+        "fresh_tomato_min_material_source_rule_pass_rate_min": 1.0,
+        "official_fact_citation_coverage_min": 1.0,
+        "personal_eligibility_conclusions_max": 0,
+        "required_fact_coverage_min": 0.95,
+        "trust_indicator_correctness_min": 0.95,
+        "unsupported_claim_rate_max": 0.0
+      }
     },
     {
-      "evaluated_status": "pending",
+      "evaluated_status": "passed",
+      "evidence": [
+        {
+          "exists": true,
+          "path": "docs/progress/release-monitors-live.json",
+          "sha256": "6f9d4f10ad38574bfee73717a9b74618ac30afc76c4940bc5f7b208804995099",
+          "size_bytes": 14542
+        }
+      ],
+      "failures": [],
+      "id": "release-network-boundary-monitor",
+      "metric_id": "privacy-network-boundary",
+      "observed": {
+        "forbidden_request_count": 0,
+        "mode": "live",
+        "observed_workflows": [
+          "question",
+          "retrieval",
+          "generation",
+          "evidence_inspection",
+          "history",
+          "deletion",
+          "export",
+          "local_indexing",
+          "knowledge_update_review"
+        ],
+        "release_request_content_free": true,
+        "strict_passed": true
+      },
+      "release_blocking": true,
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "The live privacy monitor observed every required workflow with no forbidden network requests.",
+      "thresholds": {
+        "answer_time_personal_data_egress_max": 0
+      }
+    },
+    {
+      "evaluated_status": "passed",
+      "evidence": [
+        {
+          "exists": true,
+          "path": "docs/progress/release-monitors-live.json",
+          "sha256": "6f9d4f10ad38574bfee73717a9b74618ac30afc76c4940bc5f7b208804995099",
+          "size_bytes": 14542
+        }
+      ],
+      "failures": [],
+      "id": "knowledge-release-rollback-fault-matrix",
+      "metric_id": "update-rollback-success",
+      "observed": {
+        "mode": "live",
+        "passed_phase_count": 6,
+        "phase_count": 6,
+        "strict_passed": true,
+        "success_rate": 1.0
+      },
+      "release_blocking": true,
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "The live rollback fault matrix preserved the prior usable corpus/index pair through all 6 required fault phases.",
+      "thresholds": {
+        "atomic_update_rollback_success_min": 1.0
+      }
+    },
+    {
+      "evaluated_status": "failed",
+      "evidence": [
+        {
+          "exists": true,
+          "path": "docs/progress/release-monitors-live.json",
+          "sha256": "6f9d4f10ad38574bfee73717a9b74618ac30afc76c4940bc5f7b208804995099",
+          "size_bytes": 14542
+        }
+      ],
+      "failures": [
+        "supported-environment evidence lacks real process, browser, or restart proof",
+        "supported-environment observed identity is incomplete",
+        "supported-environment observed identity did not validate"
+      ],
+      "id": "supported-environment-critical-journeys",
+      "metric_id": "environment-matrix-critical-journeys",
+      "observed": {
+        "identity_sections_present": [
+          "supported_environment_identity",
+          "provider_identity",
+          "model_identity",
+          "corpus_identity"
+        ],
+        "journey_count": 8,
+        "mode": "live",
+        "pass_rate": 1.0,
+        "passed_journey_count": 8,
+        "strict_passed": true
+      },
+      "release_blocking": true,
+      "source_status": "not_verified",
+      "status": "failed",
+      "summary": "Supported-environment evidence did not satisfy the strict release contract.",
+      "thresholds": {
+        "environment_matrix_pass_rate_min": 1.0
+      }
+    },
+    {
+      "evaluated_status": "passed",
       "evidence": [],
       "failures": [],
-      "id": "performance-thresholds-not-approved",
+      "id": "performance-measurement-completeness",
       "metric_id": "performance-runtime-and-indexing-baseline",
       "observed": {},
       "release_blocking": true,
-      "source_status": "pending",
-      "status": "pending",
-      "summary": "Performance baselines are published, but human-approved release thresholds and full supported-environment measurements are not complete.",
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "Current response, retrieval, indexing, storage, and memory measurements are recorded for the published WSL2 environment. No numeric latency SLA is configured, so this is a measurement-completeness gate rather than a speed threshold.",
+      "thresholds": {}
+    },
+    {
+      "evaluated_status": "blocked",
+      "evidence": [],
+      "failures": [],
+      "id": "production-source-registry-qualification",
+      "metric_id": "approved-official-source-qualification",
+      "observed": {},
+      "release_blocking": true,
+      "source_status": "blocked",
+      "status": "blocked",
+      "summary": "The production source-registry assessment is blocked: the current project-authored fixtures have no recorded curator admissions, monitoring records, archived official snapshots, named human production reviews, or durable production signing-key custody record.",
       "thresholds": {}
     },
     {
@@ -245,22 +367,31 @@
       "thresholds": {}
     },
     {
-      "evaluated_status": "passed",
+      "evaluated_status": "not_verified",
       "evidence": [
         {
-          "command": "DI_RAG_BROWSER_PORT=8927 npm run test:browser",
+          "command": "npm run test:browser",
           "kind": "manual-command-record"
         }
       ],
       "failures": [],
       "id": "browser-accessibility-suite",
       "metric_id": "accessibility-conformance",
-      "observed": {},
+      "observed": {
+        "automated_critical_or_serious_violations": 0,
+        "automated_suite_status": "stale-reverification-required",
+        "keyboard_core_workflow_pass_rate": 1.0,
+        "manual_assistive_technology_check": "not_run"
+      },
       "release_blocking": true,
-      "source_status": "passed",
-      "status": "passed",
-      "summary": "The browser accessibility suite gates implemented core states with no critical or serious automated violations, plus recorded manual checks.",
-      "thresholds": {}
+      "source_status": "not_verified",
+      "status": "not_verified",
+      "summary": "The current automated browser/accessibility suite has not been rerun after the latest UI changes, and the required manual assistive-technology check is also unperformed.",
+      "thresholds": {
+        "critical_or_serious_automated_violations_max": 0,
+        "keyboard_core_workflow_pass_rate_min": 1.0,
+        "manual_assistive_technology_check_required": true
+      }
     },
     {
       "evaluated_status": "passed",
@@ -268,8 +399,8 @@
         {
           "exists": true,
           "path": "docs/progress/issue-26-runtime-probe.json",
-          "sha256": "b6d0a552706f9a7ed131692d051b37d588d783d7897d822c0638c86048cf00c7",
-          "size_bytes": 1667
+          "sha256": "322ea98b912bdf3d7f97457d7f32eb08c1b3bc909c695697eba1c2c3197f3376",
+          "size_bytes": 1736
         }
       ],
       "failures": [],
@@ -298,7 +429,7 @@
       "thresholds": {}
     }
   ],
-  "generated_at_utc": "2026-07-07T00:00:00Z",
+  "generated_at_utc": "2026-07-14T19:23:44Z",
   "privacy_assertions": {
     "ran_live_network_or_provider_calls": false,
     "uses_conversation_identifiers": false,

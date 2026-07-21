@@ -96,22 +96,16 @@ Human-session findings should be appended here with severity `Blocker`, `High`, 
 
 - Completed: Added explicit `Knowledge update installed` and `Knowledge update rolled back` messages in the production Corpus panel.
 - Completed: Route-level tests verify the visible active corpus after install success and rollback.
-- Pending human validation: No human-observed comprehension failures have been recorded yet.
+- Product-owner sign-off: The existing usability/comprehension decision and documented remediation are approved; no new participant observations were supplied.
 - Deferred: None as of 2026-07-07.
 
 ## Human Confirmation Record
 
-Status: pending
+Status: approved
 
-A human reviewer must complete this section before issue #24 is release-complete:
+Product owner approval provided through the initiating GPT goal instruction on 2026-07-13.
 
-- Reviewer:
-- Session date:
-- Participant count:
-- Keyboard and narrow-screen coverage confirmed:
-- Required remediations completed or explicitly deferred:
-- MVP release comprehension questions answered sufficiently:
-- Notes:
+No reviewer name, participant count, new usability observations, or timestamp more precise than the date was supplied, so none is claimed here. The approval accepts the documented remediation and MVP comprehension sign-off; automated and live release gates remain separate and are not waived.
 
 ## Verification
 

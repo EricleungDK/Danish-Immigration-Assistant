@@ -32,6 +32,61 @@ REQUIRED_BEHAVIOR_CLASSES = {
     "refusal",
     "robustness",
 }
+ASSERTION_CONTRACT_SCHEMA_VERSION = "evaluation-case-assertions-v1"
+ADJUDICATION_SCHEMA_VERSION = "final-answer-adjudications-v1"
+ASSERTION_EXPECTATION_GROUPS = (
+    "required_facts",
+    "forbidden_claims",
+    "trust_indicators",
+    "privacy_requirements",
+)
+EVALUATION_SURFACES = {
+    "answer-path",
+    "source-policy-scenario",
+    "browser-workflow",
+    "knowledge-release-workflow",
+    "provider-recovery-workflow",
+}
+APPROVAL_RECORD = (
+    "Product owner approval provided through the initiating GPT goal instruction "
+    "on 2026-07-13."
+)
+
+
+def evaluation_case_assertion_specs(case: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return stable IDs for every approved prose assertion in one case.
+
+    The prose remains the approved criterion.  The stable ID lets an independent
+    adjudication or workflow artifact address that criterion without copying the
+    criterion or generated answer into the public evaluation report.
+    """
+
+    case_id = str(case.get("id", ""))
+    expectations = case.get("final_answer_expectations")
+    if not case_id or not isinstance(expectations, dict):
+        return []
+
+    specs: list[dict[str, Any]] = []
+    for group in ASSERTION_EXPECTATION_GROUPS:
+        values = expectations.get(group)
+        if not isinstance(values, list):
+            continue
+        group_id = group.replace("_", "-")
+        for index, criterion in enumerate(values, start=1):
+            specs.append(
+                {
+                    "assertion_id": f"{case_id}:{group_id}:{index:02d}",
+                    "expectation_group": group,
+                    "expectation_index": index,
+                    "criterion": criterion,
+                    "verification": (
+                        "independent-semantic-adjudication"
+                        if group in {"required_facts", "forbidden_claims"}
+                        else "structural-check-or-evidence-bound-adjudication"
+                    ),
+                }
+            )
+    return specs
 
 
 def load_evaluation_quality_bar(path: str | Path) -> dict[str, Any]:
@@ -234,10 +289,37 @@ def validate_evaluation_cases(
         failures.append("evaluation dataset version does not match quality bar")
     if len(cases.get("cases", [])) != expected_set["case_count"]:
         failures.append("evaluation dataset case count does not match quality bar")
+    if cases.get("approval_status") != "approved":
+        failures.append("evaluation dataset approval status must be approved")
+    if cases.get("approval_record") != APPROVAL_RECORD:
+        failures.append("evaluation dataset approval record does not match the approved decision")
+
+    assertion_contract = cases.get("assertion_contract")
+    expected_assertion_contract = {
+        "schema_version": ASSERTION_CONTRACT_SCHEMA_VERSION,
+        "adjudication_schema_version": ADJUDICATION_SCHEMA_VERSION,
+        "assertion_id_template": (
+            "{case_id}:{expectation_group_with_hyphens}:{one_based_index_2_digits}"
+        ),
+        "expectation_groups": list(ASSERTION_EXPECTATION_GROUPS),
+        "evaluation_surfaces": sorted(EVALUATION_SURFACES),
+        "semantic_rule": (
+            "Required-fact coverage and forbidden-claim absence require an "
+            "independent adjudication bound to the exact answer execution; prose "
+            "alone never passes a machine check."
+        ),
+        "workflow_rule": (
+            "Non-answer workflows require an evidence artifact with a verified "
+            "SHA-256 and assertion results bound to that artifact."
+        ),
+    }
+    if assertion_contract != expected_assertion_contract:
+        failures.append("evaluation assertion contract is missing or differs from v1")
 
     behavior_classes = set()
     content_areas = set()
     case_ids = set()
+    assertion_ids: set[str] = set()
     for index, case in enumerate(cases.get("cases", []), start=1):
         case_id = case.get("id")
         if not isinstance(case_id, str) or not case_id.startswith("eval-"):
@@ -252,6 +334,10 @@ def validate_evaluation_cases(
         content_area = case.get("content_area")
         if content_area:
             content_areas.add(content_area)
+
+        evaluation_surface = case.get("evaluation_surface")
+        if evaluation_surface not in EVALUATION_SURFACES:
+            failures.append(f"case {case_id!r} has invalid evaluation surface")
 
         retrieval = case.get("retrieval_expectations")
         final_answer = case.get("final_answer_expectations")
@@ -270,6 +356,8 @@ def validate_evaluation_cases(
         _require_list_field(failures, final_answer, "forbidden_claims", case_id)
         _require_list_field(failures, final_answer, "required_citation_domains", case_id)
         _require_list_field(failures, final_answer, "forbidden_source_domains", case_id)
+        _require_list_field(failures, final_answer, "trust_indicators", case_id)
+        _require_list_field(failures, final_answer, "privacy_requirements", case_id)
         if final_answer.get("expected_behavior") not in {
             "answer",
             "clarify",
@@ -277,6 +365,13 @@ def validate_evaluation_cases(
             "answer-with-refusal",
         }:
             failures.append(f"case {case_id!r} has invalid expected behavior")
+
+        specs = evaluation_case_assertion_specs(case)
+        for spec in specs:
+            assertion_id = spec["assertion_id"]
+            if assertion_id in assertion_ids:
+                failures.append(f"assertion id {assertion_id!r} is duplicated")
+            assertion_ids.add(assertion_id)
 
     missing_behaviors = REQUIRED_BEHAVIOR_CLASSES - behavior_classes
     if missing_behaviors:
@@ -385,5 +480,11 @@ def _require_list_field(
     field: str,
     case_id: str | None,
 ) -> None:
-    if not isinstance(payload.get(field), list):
+    values = payload.get(field)
+    if not isinstance(values, list):
         failures.append(f"case {case_id!r} field {field!r} must be a list")
+        return
+    if any(not isinstance(value, str) or not value.strip() for value in values):
+        failures.append(
+            f"case {case_id!r} field {field!r} must contain non-empty text"
+        )

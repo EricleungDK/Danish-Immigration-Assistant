@@ -1,0 +1,77 @@
+{
+  "assertion_proofs": {
+    "eval-017-responsive-reduced-motion:forbidden-claims:01": [
+      {
+        "observation_id": "narrow_core_controls_visible",
+        "source_id": "browser"
+      }
+    ],
+    "eval-017-responsive-reduced-motion:forbidden-claims:02": [
+      {
+        "observation_id": "trust_and_status_use_text",
+        "source_id": "browser"
+      }
+    ],
+    "eval-017-responsive-reduced-motion:privacy-requirements:01": [
+      {
+        "observation_id": "responsive_requests_are_loopback_only",
+        "source_id": "browser"
+      }
+    ],
+    "eval-017-responsive-reduced-motion:required-facts:01": [
+      {
+        "observation_id": "narrow_core_workflow_usable",
+        "source_id": "browser"
+      }
+    ],
+    "eval-017-responsive-reduced-motion:required-facts:02": [
+      {
+        "observation_id": "two_hundred_percent_no_horizontal_overflow",
+        "source_id": "browser"
+      }
+    ],
+    "eval-017-responsive-reduced-motion:required-facts:03": [
+      {
+        "observation_id": "reduced_motion_preserves_status",
+        "source_id": "browser"
+      }
+    ],
+    "eval-017-responsive-reduced-motion:trust-indicators:01": [
+      {
+        "observation_id": "evidence_confidence_text_visible",
+        "source_id": "browser"
+      }
+    ],
+    "eval-017-responsive-reduced-motion:trust-indicators:02": [
+      {
+        "observation_id": "fresh_tomato_text_visible",
+        "source_id": "browser"
+      }
+    ]
+  },
+  "assertion_results": {
+    "eval-017-responsive-reduced-motion:forbidden-claims:01": "passed",
+    "eval-017-responsive-reduced-motion:forbidden-claims:02": "passed",
+    "eval-017-responsive-reduced-motion:privacy-requirements:01": "passed",
+    "eval-017-responsive-reduced-motion:required-facts:01": "passed",
+    "eval-017-responsive-reduced-motion:required-facts:02": "passed",
+    "eval-017-responsive-reduced-motion:required-facts:03": "passed",
+    "eval-017-responsive-reduced-motion:trust-indicators:01": "passed",
+    "eval-017-responsive-reduced-motion:trust-indicators:02": "passed"
+  },
+  "case_id": "eval-017-responsive-reduced-motion",
+  "command": "python -m danish_rag.final_answer_evaluation --generate-automated-evidence",
+  "contains_human_assessment": false,
+  "evaluation_surface": "browser-workflow",
+  "exit_status": 0,
+  "generated_at_utc": "2026-07-14T18:06:02Z",
+  "schema_version": "workflow-evaluation-evidence-v1",
+  "source_evidence": [
+    {
+      "kind": "focused-playwright-workflow-report",
+      "path": "docs/progress/final-answer-machine-evidence/browser-workflow-execution.json",
+      "sha256": "0e5d72ed7296a7af03918b301d23be7ceb4620de8252679bdf4e391352811761",
+      "source_id": "browser"
+    }
+  ]
+}

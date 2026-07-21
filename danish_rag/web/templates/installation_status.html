@@ -1,0 +1,68 @@
+{% if installation_status %}
+<section
+  id="knowledge-installation-status"
+  class="update-status update-status-{% if installation_status.state == 'failed' %}error{% elif installation_status.state == 'completed' %}success{% else %}neutral{% endif %}"
+  role="{% if installation_status.state == 'failed' %}alert{% else %}status{% endif %}"
+  aria-live="polite"
+  aria-atomic="false"
+  aria-labelledby="knowledge-installation-status-title"
+  {% if installation_status.state == "running" %}
+  hx-get="/knowledge-updates/install-status"
+  hx-trigger="every 250ms"
+  hx-swap="outerHTML"
+  aria-busy="true"
+  {% endif %}
+>
+  {% if installation_status.state == "completed" %}
+  <h3 id="knowledge-installation-status-title">Knowledge update installed</h3>
+  <p>
+    Active corpus: {{ installation_status.active_release_id }}. The backend reported
+    completion after activation; historical conversation records retain their original
+    corpus identity.
+  </p>
+  {% elif installation_status.state == "failed" and installation_status.rolled_back %}
+  <h3 id="knowledge-installation-status-title">Knowledge update rolled back</h3>
+  <p>
+    Installation failed safely; the previously active corpus/index pair remains active.
+    Active corpus: {{ installation_status.active_release_id }}.
+    Failure type: {{ installation_status.error_type }}.
+  </p>
+  {% elif installation_status.state == "failed" %}
+  <h3 id="knowledge-installation-status-title">Knowledge update needs attention</h3>
+  <p>
+    The backend did not report a trustworthy completed installation. Active corpus:
+    {{ installation_status.active_release_id }}. Failure type:
+    {{ installation_status.error_type }}.
+  </p>
+  {% else %}
+  <h3 id="knowledge-installation-status-title">Installing reviewed knowledge release</h3>
+  <p>
+    The previous corpus/index pair stays active until the backend reports activation and
+    completion.
+  </p>
+  {% endif %}
+
+  {% if installation_status.events %}
+  {% set latest = installation_status.events[-1] %}
+  <label for="knowledge-installation-progress">Latest backend progress</label>
+  <progress
+    id="knowledge-installation-progress"
+    max="100"
+    value="{{ latest.percent }}"
+  >{{ latest.percent }}%</progress>
+  <p>{{ latest.message }}</p>
+  <ol aria-label="Installation progress phases">
+    {% for event in installation_status.events %}
+    <li data-install-phase="{{ event.phase }}">
+      <strong>{{ event.phase | replace('_', ' ') | title }}</strong>:
+      {{ event.message }} ({{ event.percent }}%)
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p>Waiting for the first backend progress event.</p>
+  {% endif %}
+</section>
+{% else %}
+<div id="knowledge-installation-status"></div>
+{% endif %}

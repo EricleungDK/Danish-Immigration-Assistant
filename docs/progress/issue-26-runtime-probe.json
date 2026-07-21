@@ -1,6 +1,6 @@
 {
   "command": [
-    "/usr/bin/python3",
+    "/mnt/c/users/ericl/documents/ai-projects/danish-immigration-assistant/.venv/bin/python",
     "-m",
     "danish_rag.runtime_probe",
     "--policy",
@@ -9,7 +9,7 @@
     "docs/progress/issue-26-runtime-probe.json"
   ],
   "diagnostic": "Runtime baseline probe passed.",
-  "elapsed_ms": 29798.882,
+  "elapsed_ms": 23532.194,
   "environment": {
     "cpu_count": 16,
     "machine": "x86_64",
@@ -21,7 +21,7 @@
     "wsl": true
   },
   "exit_status": 0,
-  "finished_at_utc": "2026-07-07T16:32:49.960092+00:00",
+  "finished_at_utc": "2026-07-14T17:55:11.770707+00:00",
   "model": {
     "capabilities": [
       "completion",
@@ -57,14 +57,14 @@
     "id": "ollama",
     "version": "0.30.6"
   },
-  "started_at_utc": "2026-07-07T16:32:21.086880+00:00",
+  "started_at_utc": "2026-07-14T17:54:48.238517+00:00",
   "structured_response": {
     "runtime_baseline": "mvp-runtime-baseline-issue-26",
     "status": "ok"
   },
   "timings_ms": {
-    "model_inspection": 18.064,
-    "service_version": 17.933,
-    "structured_completion": 29758.388
+    "model_inspection": 2.587,
+    "service_version": 16.107,
+    "structured_completion": 23509.025
   }
 }

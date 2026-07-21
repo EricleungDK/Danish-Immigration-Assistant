@@ -11,7 +11,7 @@
     "queries_path": "data/retrieval_benchmark/dense-evaluation-queries.json",
     "timeout_seconds": 60.0
   },
-  "executed_at_utc": "2026-07-07T21:13:03.122064+00:00",
+  "executed_at_utc": "2026-07-14T17:58:01.239436+00:00",
   "fixture_identity": {
     "corpus_path": "data/retrieval_benchmark/corpus-fixtures.json",
     "corpus_sha256": "51f5c891fd742c1f67f076ccd13d5381bdd7ec9d46b3fb436acf6eb4ad143679",
@@ -112,39 +112,39 @@
   "operations": {
     "cold_embedding_load_observed": true,
     "dense_index_size_bytes": 151360,
-    "dense_indexing_wall_time_ms": 1364.947,
+    "dense_indexing_wall_time_ms": 1379.448,
     "embedding_call_count": 12,
     "embedding_service_durations_ms": {
       "load_duration": [
-        73.577,
-        81.052,
-        74.941,
-        82.152,
-        78.424,
-        78.948,
-        73.178,
-        81.331,
-        75.087,
-        72.76,
-        72.448,
-        75.756
+        79.562,
+        81.105,
+        86.34,
+        77.421,
+        87.653,
+        77.616,
+        83.165,
+        78.133,
+        85.311,
+        81.186,
+        82.952,
+        78.717
       ],
       "total_duration": [
-        150.512,
-        158.57,
-        156.306,
-        160.681,
-        154.07,
-        149.418,
-        145.1,
-        144.566,
-        138.148,
-        132.282,
-        128.9,
-        133.221
+        156.323,
+        157.427,
+        164.264,
+        150.725,
+        158.735,
+        145.342,
+        149.92,
+        141.614,
+        146.687,
+        136.041,
+        138.586,
+        137.073
       ]
     },
-    "process_peak_resident_memory_mb": 98.785
+    "process_peak_resident_memory_mb": 398.883
   },
   "queries": [
     {
@@ -159,11 +159,11 @@
         "di-rag-doc-terse-danish-exam",
         "di-rag-doc-permanent-residence-language"
       ],
-      "embedding_latency_ms": 133.2,
-      "embedding_load_duration_ms": 72.76,
+      "embedding_latency_ms": 136.979,
+      "embedding_load_duration_ms": 81.186,
       "forbidden_result_ids": [],
       "forbidden_result_violations": 0,
-      "latency_ms": 133.668,
+      "latency_ms": 137.436,
       "overdue_result_ids": [],
       "query_id": "di-rag-query-dense-english-paraphrase",
       "query_text": "Which Danish language test can count for permanent residence?",
@@ -187,8 +187,8 @@
       ],
       "required_rank": 2,
       "required_result_credit": 1,
-      "warm_retrieval_latency_ms": 60.908,
-      "warm_similarity_latency_ms": 0.468
+      "warm_retrieval_latency_ms": 56.25,
+      "warm_similarity_latency_ms": 0.457
     },
     {
       "blocked_result_ids": [
@@ -203,11 +203,11 @@
         "di-rag-doc-permanent-residence-language",
         "di-rag-doc-permanent-residence-fees"
       ],
-      "embedding_latency_ms": 129.717,
-      "embedding_load_duration_ms": 72.448,
+      "embedding_latency_ms": 139.38,
+      "embedding_load_duration_ms": 82.952,
       "forbidden_result_ids": [],
       "forbidden_result_violations": 0,
-      "latency_ms": 130.127,
+      "latency_ms": 139.829,
       "overdue_result_ids": [],
       "query_id": "di-rag-query-dense-realistic-typo",
       "query_text": "permanet ophold danskprove",
@@ -231,8 +231,8 @@
       ],
       "required_rank": 1,
       "required_result_credit": 1,
-      "warm_retrieval_latency_ms": 57.679,
-      "warm_similarity_latency_ms": 0.41
+      "warm_retrieval_latency_ms": 56.877,
+      "warm_similarity_latency_ms": 0.449
     },
     {
       "blocked_result_ids": [
@@ -246,11 +246,11 @@
         "di-rag-doc-terse-danish-exam",
         "di-rag-doc-permanent-residence-language"
       ],
-      "embedding_latency_ms": 133.979,
-      "embedding_load_duration_ms": 75.756,
+      "embedding_latency_ms": 138.086,
+      "embedding_load_duration_ms": 78.717,
       "forbidden_result_ids": [],
       "forbidden_result_violations": 0,
-      "latency_ms": 134.427,
+      "latency_ms": 138.543,
       "overdue_result_ids": [],
       "query_id": "di-rag-query-dense-blocked-source-exclusion",
       "query_text": "changed-unreviewed \u00e6ndret uanmeldt danskkrav",
@@ -272,8 +272,8 @@
       "required_evidence_result_ids": [],
       "required_rank": null,
       "required_result_credit": 0,
-      "warm_retrieval_latency_ms": 58.671,
-      "warm_similarity_latency_ms": 0.448
+      "warm_retrieval_latency_ms": 59.826,
+      "warm_similarity_latency_ms": 0.457
     }
   ],
   "runtime": {
@@ -345,15 +345,15 @@
       "realistic-typo"
     ],
     "embedding_load_duration_ms": {
-      "max": 75.756,
-      "mean": 73.655,
-      "min": 72.448
+      "max": 82.952,
+      "mean": 80.952,
+      "min": 78.717
     },
     "forbidden_result_violations": 0,
     "latency_ms": {
-      "max": 134.427,
-      "mean": 132.741,
-      "min": 130.127
+      "max": 139.829,
+      "mean": 138.603,
+      "min": 137.436
     },
     "mean_reciprocal_rank": 0.75,
     "query_count": 3,
@@ -361,9 +361,9 @@
     "recall_at_3": 1.0,
     "required_evidence_query_count": 2,
     "warm_retrieval_latency_ms": {
-      "max": 60.908,
-      "mean": 59.086,
-      "min": 57.679
+      "max": 59.826,
+      "mean": 57.651,
+      "min": 56.25
     }
   }
 }

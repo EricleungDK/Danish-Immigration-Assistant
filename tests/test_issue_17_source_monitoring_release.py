@@ -9,11 +9,13 @@ from danish_rag.knowledge_release import (
     KnowledgeReleaseError,
     verify_knowledge_release,
 )
+from danish_rag.release_trust import sign_manifest
 from danish_rag.source_maintenance import (
     approve_source_check,
     build_publishable_knowledge_release,
     capture_source_check,
 )
+from tests.release_trust_fixture import create_test_release_trust_fixture
 
 
 class Issue17SourceMonitoringReleaseTests(unittest.TestCase):
@@ -21,6 +23,9 @@ class Issue17SourceMonitoringReleaseTests(unittest.TestCase):
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         self.root = Path(self.tempdir.name)
+        self.release_trust = create_test_release_trust_fixture(
+            self.root / "test-only-release-trust"
+        )
         self.registry_source = {
             "source_id": "nyidanmark-fixture-source",
             "publisher": "SIRI",
@@ -192,6 +197,10 @@ class Issue17SourceMonitoringReleaseTests(unittest.TestCase):
                 documents=[document],
                 created_at_utc="2026-07-07T12:00:00Z",
                 minimum_application_version="0.1.0",
+                signing_private_key_path=(
+                    self.release_trust.signing_private_key_path
+                ),
+                trust_root_path=self.release_trust.trust_root_path,
             )
 
         approved_source = approve_source_check(
@@ -214,6 +223,8 @@ class Issue17SourceMonitoringReleaseTests(unittest.TestCase):
             documents=[approved_document],
             created_at_utc="2026-07-07T12:00:00Z",
             minimum_application_version="0.1.0",
+            signing_private_key_path=self.release_trust.signing_private_key_path,
+            trust_root_path=self.release_trust.trust_root_path,
         )
 
         manifest = release["manifest"]
@@ -226,10 +237,18 @@ class Issue17SourceMonitoringReleaseTests(unittest.TestCase):
             manifest["artifacts"][0]["sha256"],
             release["artifact"]["sha256"],
         )
-        verify_knowledge_release(self.root / "approved-release")
+        verify_knowledge_release(
+            self.root / "approved-release",
+            trust_root_path=self.release_trust.trust_root_path,
+        )
 
     def test_release_verification_accepts_fixture_and_rejects_contract_gaps(self):
-        verify_knowledge_release(BUNDLED_MINIMAL_RELEASE)
+        verified = verify_knowledge_release(BUNDLED_MINIMAL_RELEASE)
+        integrity = verified["manifest"]["integrity"]
+        self.assertEqual(integrity["signature_algorithm"], "ed25519")
+        self.assertEqual(integrity["signature"], "manifest.sig")
+        signature_path = BUNDLED_MINIMAL_RELEASE / integrity["signature"]
+        self.assertEqual(len(signature_path.read_bytes()), 64)
 
         for mutator, error in [
             (
@@ -255,13 +274,38 @@ class Issue17SourceMonitoringReleaseTests(unittest.TestCase):
                 manifest_path = release_dir / "manifest.json"
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 mutator(manifest)
+                manifest["integrity"]["trust_root_id"] = (
+                    self.release_trust.trust_root_id
+                )
                 manifest_path.write_text(
                     json.dumps(manifest, indent=2, sort_keys=True) + "\n",
                     encoding="utf-8",
                 )
+                sign_manifest(
+                    manifest_path,
+                    self.release_trust.signing_private_key_path,
+                    release_dir / "manifest.sig",
+                )
 
                 with self.assertRaisesRegex(KnowledgeReleaseError, error):
-                    verify_knowledge_release(release_dir)
+                    verify_knowledge_release(
+                        release_dir,
+                        trust_root_path=self.release_trust.trust_root_path,
+                    )
+
+    def test_release_verification_rejects_manifest_tampering_after_signing(self):
+        release_dir = self.root / "tampered-signed-release"
+        shutil.copytree(BUNDLED_MINIMAL_RELEASE, release_dir)
+        manifest_path = release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["created_at_utc"] = "2026-07-14T00:00:00Z"
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(KnowledgeReleaseError, "signature verification"):
+            verify_knowledge_release(release_dir)
 
 
 if __name__ == "__main__":

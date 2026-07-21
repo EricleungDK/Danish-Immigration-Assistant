@@ -11,9 +11,9 @@
   "created_at_utc": "2026-07-06T00:00:00Z",
   "integrity": {
     "hash_algorithm": "sha256",
-    "signature": "mvp-fixture-reviewed-release",
-    "signature_algorithm": "fixture-release-signature",
-    "trust_root_id": "project-maintainer-release-key-v1"
+    "signature": "manifest.sig",
+    "signature_algorithm": "ed25519",
+    "trust_root_id": "project-release-key-v1"
   },
   "knowledge_release_id": "kr-2026-07-06.1",
   "manifest_schema_version": "1.0",

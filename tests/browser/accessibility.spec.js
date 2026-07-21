@@ -54,6 +54,16 @@ async function expectNoSeriousOrCriticalViolations(page) {
   expect(blockingViolations).toEqual([]);
 }
 
+function cssTimeInMilliseconds(value) {
+  if (value.endsWith("ms")) {
+    return Number.parseFloat(value);
+  }
+  if (value.endsWith("s")) {
+    return Number.parseFloat(value) * 1000;
+  }
+  throw new Error(`Unsupported CSS time value: ${value}`);
+}
+
 test("core journeys have no critical or serious automated accessibility violations", async ({
   page,
 }) => {
@@ -87,7 +97,7 @@ test("core journeys have no critical or serious automated accessibility violatio
   await page.getByRole("button", { name: "Close evidence drawer" }).click();
   await page.getByRole("button", { name: "Check for knowledge updates" }).click();
   await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("heading", { name: "Knowledge update available" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Knowledge update metadata available" })).toBeVisible();
   await expectNoSeriousOrCriticalViolations(page);
 });
 
@@ -174,7 +184,16 @@ test("history, export, deletion, and update journeys complete from the keyboard"
   await localTools.getByRole("button", { name: "Check for knowledge updates" }).focus();
   await page.keyboard.press("Enter");
   await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("heading", { name: "Knowledge update available" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Knowledge update metadata available" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Download and verify signed release" }).focus();
+  await page.keyboard.press("Enter");
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByRole("heading", { name: "Signed knowledge update ready to review" })).toBeVisible();
+  await expectNoSeriousOrCriticalViolations(page);
+
+  await page.getByRole("button", { name: "Dismiss" }).click();
+  await page.waitForLoadState("networkidle");
 
   await historyItem.getByRole("button", { name: "Delete" }).focus();
   await page.keyboard.press("Enter");
@@ -196,16 +215,19 @@ test("keyboard users can skip directly to the conversation", async ({ page }) =>
 test("200 percent reflow and narrow viewports avoid two-dimensional page scrolling", async ({
   page,
 }) => {
-  for (const viewport of [
-    { width: 640, height: 900 },
-    { width: 390, height: 900 },
+  for (const scenario of [
+    { viewport: { width: 640, height: 900 }, textScalePercent: 200 },
+    { viewport: { width: 390, height: 900 }, textScalePercent: 100 },
   ]) {
-    await page.setViewportSize(viewport);
+    await page.setViewportSize(scenario.viewport);
     await page.goto("/");
     await askQuestion(page, "What Danish test do I need for permanent residence?");
     const conversationId = await currentConversationId(page);
     await page.reload();
     await page.goto(`/conversations/${conversationId}`);
+    await page.addStyleTag({
+      content: `html { font-size: ${scenario.textScalePercent}% !important; }`,
+    });
 
     await expect(page.getByRole("main")).toBeVisible();
     await expect(page.getByRole("complementary", { name: "Local tools" })).toBeVisible();
@@ -235,6 +257,32 @@ test("200 percent reflow and narrow viewports avoid two-dimensional page scrolli
     expect(drawerHasHorizontalOverflow).toBe(false);
     await page.keyboard.press("Escape");
   }
+});
+
+test("reduced motion removes nonessential transitions while preserving status feedback", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+
+  await askQuestion(page, "What Danish test do I need for permanent residence?");
+  const evidenceButton = page
+    .getByRole("button", { name: /Inspect evidence: Permanent residence language requirements/i })
+    .first();
+  await evidenceButton.click();
+
+  const motion = await page.locator(".evidence-drawer").evaluate((drawer) => {
+    const style = getComputedStyle(drawer);
+    return {
+      animationDuration: style.animationDuration,
+      transitionDuration: style.transitionDuration,
+    };
+  });
+  expect(cssTimeInMilliseconds(motion.animationDuration)).toBeLessThanOrEqual(0.01);
+  expect(cssTimeInMilliseconds(motion.transitionDuration)).toBeLessThanOrEqual(0.01);
+  await expect(page.getByRole("dialog", { name: "Permanent residence language requirements" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(evidenceButton).toBeFocused();
 });
 
 test("trust, warning, and refusal indicators are distinguishable without color", async ({

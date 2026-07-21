@@ -25,7 +25,10 @@ def provider_configuration() -> ProviderConfiguration:
 def evidence_fixture(
     citation_id: str,
     *,
-    content: str = "Official fixture content.",
+    content: str = (
+        "Official fixture content. One approved source describes a Danish-test "
+        "requirement. The stale source describes Prøve i Dansk 3."
+    ),
     source_health: str = "healthy",
     review_state: str = "approved-current",
     approval_state: str = "approved",
@@ -123,7 +126,10 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
             provider_configuration(),
         )
 
-        self.assertEqual(generator.calls[0]["schema"], answer_schema())
+        self.assertEqual(
+            generator.calls[0]["schema"],
+            answer_schema(["language-source"]),
+        )
         self.assertIn("bestået Prøve i Dansk 2", result.answer["sections"][0]["text"])
         self.assertIn("language-source", result.answer["sections"][0]["citation_ids"])
         refusal_sections = [
@@ -163,6 +169,47 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
                 "Do I qualify for permanent residence?",
                 provider_configuration(),
             )
+
+    def test_safety_sensitive_summary_is_replaced_before_validation(self):
+        evidence = [
+            evidence_fixture(
+                "equivalence-source",
+                content="One approved source describes a Danish-test requirement.",
+            )
+        ]
+        generator = FixtureGenerator(
+            {
+                "summary": "The page does not decide whether SIRI will accept it.",
+                "sections": [
+                    {
+                        "kind": "official_fact",
+                        "text": "One approved source describes a Danish-test requirement.",
+                        "citation_ids": ["equivalence-source"],
+                    },
+                    {
+                        "kind": "refusal",
+                        "text": "I cannot decide whether SIRI will accept it.",
+                        "citation_ids": [],
+                    },
+                ],
+            }
+        )
+
+        result = AnswerService(
+            retriever=FixtureRetriever(evidence),
+            generator=generator,
+        ).answer(
+            "I have an old Danish certificate. Can you tell me whether SIRI will "
+            "accept it for permanent residence?",
+            provider_configuration(),
+        )
+
+        self.assertEqual(
+            result.answer["summary"],
+            "This answer separates supported official facts from the personal or "
+            "legal decision I cannot make.",
+        )
+        self.assertNotIn("will accept", result.answer["summary"].casefold())
 
     def test_legal_advice_request_is_refused_without_generation(self):
         boundary_evidence = [

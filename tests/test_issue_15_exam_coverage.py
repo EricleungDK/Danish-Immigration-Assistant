@@ -16,6 +16,7 @@ from danish_rag.knowledge_release import (
 from danish_rag.provider_setup import ProviderConfiguration
 from danish_rag.retrieval import HybridRetriever
 from danish_rag.evaluation_quality_bar import load_evaluation_cases
+from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,8 +64,15 @@ class Issue15ExamCoverageTests(unittest.TestCase):
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         self.data_dir = Path(self.tempdir.name)
-        self.installation = install_minimal_knowledge_release(self.data_dir)
-        self.retriever = HybridRetriever.from_data_dir(self.data_dir)
+        self.embedding_provider = DeterministicEmbeddingProviderFixture()
+        self.installation = install_minimal_knowledge_release(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
+        self.retriever = HybridRetriever.from_data_dir(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
 
     def test_added_sources_include_review_and_provenance_metadata(self):
         manifest = self.installation["manifest"]
@@ -137,6 +145,44 @@ class Issue15ExamCoverageTests(unittest.TestCase):
         self.assertIn("31. august 2026", results[0]["content"])
         self.assertIn("Prøve i Dansk 3", results[0]["content"])
 
+    def test_permanent_residence_exam_comparison_keeps_personal_choice_boundary(self):
+        generator = RecordingGenerator(
+            {
+                "summary": "The official sources document examination facts.",
+                "sections": [
+                    {
+                        "kind": "official_fact",
+                        "text": (
+                            "For permanent opholdstilladelse, New to Denmark states a "
+                            "basic Danish-language requirement: the applicant must pass "
+                            "Danish language test 2 (Prøve i Dansk 2), or a Danish exam "
+                            "of an equivalent or higher level."
+                        ),
+                        "citation_ids": [
+                            "di-rag-doc-permanent-residence-language"
+                        ],
+                    }
+                ],
+            }
+        )
+
+        result = AnswerService(retriever=self.retriever, generator=generator).answer(
+            (
+                "Can you compare Prøve i Dansk 1, Prøve i Dansk 2, Prøve i Dansk 3, "
+                "and Studieprøven for permanent residence?"
+            ),
+            provider_configuration(),
+        )
+
+        refusal_sections = [
+            section
+            for section in result.answer["sections"]
+            if section["kind"] == "refusal"
+        ]
+        self.assertEqual(result.answer["response_kind"], "answer")
+        self.assertEqual(len(refusal_sections), 1)
+        self.assertIn("cannot recommend which examination", refusal_sections[0]["text"])
+
     def test_certificate_acceptance_question_answers_facts_but_refuses_decision(self):
         generator = RecordingGenerator(
             {
@@ -159,7 +205,16 @@ class Issue15ExamCoverageTests(unittest.TestCase):
             provider_configuration(),
         )
 
-        self.assertEqual(generator.calls[0]["schema"], answer_schema())
+        self.assertEqual(
+            generator.calls[0]["schema"],
+            answer_schema(
+                [
+                    "di-rag-doc-permanent-residence-language",
+                    "di-rag-doc-equivalent-tests-language-test-3",
+                    "di-rag-doc-equivalent-tests-language-test-2",
+                ]
+            ),
+        )
         self.assertIn(
             "di-rag-doc-equivalent-tests-language-test-3",
             generator.calls[0]["evidence_ids"],

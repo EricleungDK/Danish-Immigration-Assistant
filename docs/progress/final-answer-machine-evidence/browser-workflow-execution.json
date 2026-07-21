@@ -1,0 +1,70 @@
+{
+  "command": [
+    "node_modules/.bin/playwright",
+    "test",
+    "tests/browser/zz_evaluation_workflows.spec.js",
+    "--reporter=json"
+  ],
+  "exit_status": 0,
+  "raw_output_sha256": "e3bdab9adf4cd32246f83ce98915cf776ee032ca936ceda29ac74e58e7392751",
+  "schema_version": "browser-workflow-execution-v1",
+  "test_output_sensitive_content_absent": true,
+  "test_source": {
+    "path": "tests/browser/zz_evaluation_workflows.spec.js",
+    "sha256": "325998c7c85a0968da93b4568c47a345e9e09e6ce277476aaff79cf93b75fb8f"
+  },
+  "tests": [
+    {
+      "observations": [
+        "active_corpus_identity_visible",
+        "availability_without_install",
+        "no_automatic_install",
+        "separate_download_and_install_approval"
+      ],
+      "status": "passed",
+      "test_id": "eval-015-update-telemetry-privacy"
+    },
+    {
+      "observations": [
+        "assistive_provenance_and_trust_text",
+        "dialog_focus_and_return",
+        "drawer_open_has_no_request",
+        "evidence_confidence_text_visible",
+        "fresh_tomato_text_visible",
+        "keyboard_controls_reachable",
+        "no_unintended_focus_trap",
+        "trust_has_text_labels"
+      ],
+      "status": "passed",
+      "test_id": "eval-016-keyboard-evidence-drawer"
+    },
+    {
+      "observations": [
+        "evidence_confidence_text_visible",
+        "fresh_tomato_text_visible",
+        "narrow_core_controls_visible",
+        "narrow_core_workflow_usable",
+        "reduced_motion_preserves_status",
+        "responsive_requests_are_loopback_only",
+        "trust_and_status_use_text",
+        "two_hundred_percent_no_horizontal_overflow"
+      ],
+      "status": "passed",
+      "test_id": "eval-017-responsive-reduced-motion"
+    },
+    {
+      "observations": [
+        "corpus_identity_visible",
+        "historical_provenance_unchanged_after_update",
+        "identity_display_excludes_secrets",
+        "identity_urls_and_ui_exclude_secrets",
+        "model_and_source_labels_distinct",
+        "model_identity_visible",
+        "provider_identity_visible",
+        "provider_model_corpus_check_date_visible"
+      ],
+      "status": "passed",
+      "test_id": "eval-019-runtime-identity-visible"
+    }
+  ]
+}

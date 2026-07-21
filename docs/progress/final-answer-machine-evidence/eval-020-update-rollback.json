@@ -1,0 +1,77 @@
+{
+  "assertion_proofs": {
+    "eval-020-update-rollback:forbidden-claims:01": [
+      {
+        "observation_id": "no_mismatched_pair",
+        "source_id": "release-monitor"
+      }
+    ],
+    "eval-020-update-rollback:forbidden-claims:02": [
+      {
+        "observation_id": "failed_target_never_active",
+        "source_id": "release-monitor"
+      }
+    ],
+    "eval-020-update-rollback:privacy-requirements:01": [
+      {
+        "observation_id": "conversation_content_excluded",
+        "source_id": "release-monitor"
+      }
+    ],
+    "eval-020-update-rollback:required-facts:01": [
+      {
+        "observation_id": "failed_phase_recorded",
+        "source_id": "release-monitor"
+      }
+    ],
+    "eval-020-update-rollback:required-facts:02": [
+      {
+        "observation_id": "prior_pair_unchanged_and_queryable",
+        "source_id": "release-monitor"
+      }
+    ],
+    "eval-020-update-rollback:required-facts:03": [
+      {
+        "observation_id": "all_failed_phases_reject_success",
+        "source_id": "release-monitor"
+      }
+    ],
+    "eval-020-update-rollback:trust-indicators:01": [
+      {
+        "observation_id": "prior_active_corpus_identity_recorded",
+        "source_id": "release-monitor"
+      }
+    ],
+    "eval-020-update-rollback:trust-indicators:02": [
+      {
+        "observation_id": "rollback_status_recorded",
+        "source_id": "release-monitor"
+      }
+    ]
+  },
+  "assertion_results": {
+    "eval-020-update-rollback:forbidden-claims:01": "passed",
+    "eval-020-update-rollback:forbidden-claims:02": "passed",
+    "eval-020-update-rollback:privacy-requirements:01": "passed",
+    "eval-020-update-rollback:required-facts:01": "passed",
+    "eval-020-update-rollback:required-facts:02": "passed",
+    "eval-020-update-rollback:required-facts:03": "passed",
+    "eval-020-update-rollback:trust-indicators:01": "passed",
+    "eval-020-update-rollback:trust-indicators:02": "passed"
+  },
+  "case_id": "eval-020-update-rollback",
+  "command": "python -m danish_rag.final_answer_evaluation --generate-automated-evidence",
+  "contains_human_assessment": false,
+  "evaluation_surface": "knowledge-release-workflow",
+  "exit_status": 0,
+  "generated_at_utc": "2026-07-14T18:06:02Z",
+  "schema_version": "workflow-evaluation-evidence-v1",
+  "source_evidence": [
+    {
+      "kind": "strict-live-release-monitor-report",
+      "path": "docs/progress/release-monitors-live.json",
+      "sha256": "6f9d4f10ad38574bfee73717a9b74618ac30afc76c4940bc5f7b208804995099",
+      "source_id": "release-monitor"
+    }
+  ]
+}

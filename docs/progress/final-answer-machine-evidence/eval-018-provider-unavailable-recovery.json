@@ -1,0 +1,77 @@
+{
+  "assertion_proofs": {
+    "eval-018-provider-unavailable-recovery:forbidden-claims:01": [
+      {
+        "observation_id": "partial_answer_not_saved",
+        "source_id": "provider-recovery"
+      }
+    ],
+    "eval-018-provider-unavailable-recovery:forbidden-claims:02": [
+      {
+        "observation_id": "secret_markers_absent",
+        "source_id": "provider-recovery"
+      }
+    ],
+    "eval-018-provider-unavailable-recovery:privacy-requirements:01": [
+      {
+        "observation_id": "no_remote_fallback",
+        "source_id": "provider-recovery"
+      }
+    ],
+    "eval-018-provider-unavailable-recovery:required-facts:01": [
+      {
+        "observation_id": "actionable_local_recovery_guidance_visible",
+        "source_id": "provider-recovery"
+      }
+    ],
+    "eval-018-provider-unavailable-recovery:required-facts:02": [
+      {
+        "observation_id": "question_preserved_for_retry",
+        "source_id": "provider-recovery"
+      }
+    ],
+    "eval-018-provider-unavailable-recovery:required-facts:03": [
+      {
+        "observation_id": "public_runtime_identity_without_secrets",
+        "source_id": "provider-recovery"
+      }
+    ],
+    "eval-018-provider-unavailable-recovery:trust-indicators:01": [
+      {
+        "observation_id": "provider_identity_visible",
+        "source_id": "provider-recovery"
+      }
+    ],
+    "eval-018-provider-unavailable-recovery:trust-indicators:02": [
+      {
+        "observation_id": "model_identity_visible",
+        "source_id": "provider-recovery"
+      }
+    ]
+  },
+  "assertion_results": {
+    "eval-018-provider-unavailable-recovery:forbidden-claims:01": "passed",
+    "eval-018-provider-unavailable-recovery:forbidden-claims:02": "passed",
+    "eval-018-provider-unavailable-recovery:privacy-requirements:01": "passed",
+    "eval-018-provider-unavailable-recovery:required-facts:01": "passed",
+    "eval-018-provider-unavailable-recovery:required-facts:02": "passed",
+    "eval-018-provider-unavailable-recovery:required-facts:03": "passed",
+    "eval-018-provider-unavailable-recovery:trust-indicators:01": "passed",
+    "eval-018-provider-unavailable-recovery:trust-indicators:02": "passed"
+  },
+  "case_id": "eval-018-provider-unavailable-recovery",
+  "command": "python -m danish_rag.final_answer_evaluation --generate-automated-evidence",
+  "contains_human_assessment": false,
+  "evaluation_surface": "provider-recovery-workflow",
+  "exit_status": 0,
+  "generated_at_utc": "2026-07-14T18:06:02Z",
+  "schema_version": "workflow-evaluation-evidence-v1",
+  "source_evidence": [
+    {
+      "kind": "in-process-provider-recovery-report",
+      "path": "docs/progress/final-answer-machine-evidence/provider-recovery-execution.json",
+      "sha256": "5e0f77854e4b55ae2b5778c3d313e70db6e49c6c937388641c3ba76d42677f69",
+      "source_id": "provider-recovery"
+    }
+  ]
+}

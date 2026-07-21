@@ -1,49 +1,54 @@
-# Albert - Project Documentation
+# Danish Immigration RAG — Agent Documentation
 
-**Last Updated**: 2026-06-18
-**Status**: Tested MVP complete; Qwen-controlled delegation configured; Gemma and repair relaunch workflows live-verified
+**Last updated:** 2026-07-14
+**Status:** MVP implementation candidate; release remains blocked by recorded human-evidence gates.
 
-## Quick Start
+Start with [`CONTEXT.md`](../CONTEXT.md), the GitHub issue named in the task, and
+the authoritative contracts under [`docs/`](../docs/). The `.agent` directory is
+an agent-facing map and procedure layer; it does not override those contracts.
 
-1. Read [Project Architecture](System/project_architecture.md) for the current Orchestrator, TUI, and runner boundaries.
-2. Follow [Development Workflow](SOP/development_workflow.md) for local development.
-3. Check [Current Tasks](Tasks/context.md) for current model registry, completed backlog, and pending cloud live-check work.
-4. Run `python3 -m unittest discover -s tests` before claiming changes are complete.
+## System
 
-## Documentation Structure
+- [Project architecture](System/project_architecture.md) — current components,
+  boundaries, and integration points.
+- [Database schema](System/database_schema.md) — local conversation and retrieval
+  SQLite structures.
+- [API endpoints](System/api_endpoints.md) — production local-web routes and their
+  state-changing constraints.
+- [UX guidelines](System/ux_guidelines.md) — conversation, evidence, trust, and
+  accessibility rules.
+- [Authoritative architecture](../docs/architecture.md), [runtime baseline](../docs/runtime-baseline.md),
+  [source governance](../docs/source-governance.md), and
+  [release qualification](../docs/release-qualification.md).
 
-```text
-.agent/
-├── System/                        # System architecture and design
-│   ├── project_architecture.md    # Current architecture, command surface, runner boundaries
-│   ├── database_schema.md         # Placeholder; no database in this stdlib MVP
-│   └── ux_guidelines.md           # Design principles and UX rules
-│
-├── Tasks/                         # Roadmap and implementation status
-│   ├── context.md                 # Central context file
-│   └── README.md                  # Phase roadmap
-│
-├── SOP/                           # Standard operating procedures
-│   ├── development_workflow.md    # Dev setup and daily workflow
-│   └── database_migrations.md     # Placeholder; no database migrations in this MVP
-│
-├── Reports/                       # Implementation reports
-│   ├── 2026-06-15-local-coding-agent-mvp.md
-│   ├── 2026-06-16-albert-tui-ollama-completion.md
-│   ├── 2026-06-16-albert-repair-relaunch.md
-│   ├── 2026-06-16-gemma-live-verification.md
-│   ├── 2026-06-16-gemma26-repair-loop-verification.md
-│   └── 2026-06-18-qwen-controlled-delegation.md
-│
-└── README.md                      # This file
+## Tasks
+
+- [Current context](Tasks/context.md) — current implementation state, pending
+  evidence, and genuine external blockers.
+- [Task index](Tasks/README.md) — issue tracker and verification entry points.
+- GitHub Issues for `EricleungDK/Danish-Immigration-Assistant` are authoritative;
+  see [`docs/agents/issue-tracker.md`](../docs/agents/issue-tracker.md).
+
+## SOP
+
+- [Development workflow](SOP/development_workflow.md) — setup, testing, evidence,
+  and Git conventions.
+- [Database changes](SOP/database_migrations.md) — forward-compatible local SQLite
+  changes and migration tests.
+
+## Reports
+
+- [`Reports/`](Reports/) stores dated implementation/test handoffs.
+- Durable machine-readable gate evidence lives in [`docs/progress/`](../docs/progress/)
+  so release evaluation can hash and validate it.
+
+## Quick Verification
+
+```bash
+.venv/bin/python -B -m unittest discover -v
+npm run test:browser
 ```
 
-## How do I...
-
-| Question | Document |
-|----------|----------|
-| Understand the architecture? | [project_architecture.md](System/project_architecture.md) |
-| Set up dev environment? | [development_workflow.md](SOP/development_workflow.md) |
-| See current model assignments and pending work? | [context.md](Tasks/context.md) |
-| See the roadmap? | [README.md](Tasks/README.md) |
-| Review implementation evidence? | [Qwen delegation report](Reports/2026-06-18-qwen-controlled-delegation.md), [2026-06-16 TUI/Ollama report](Reports/2026-06-16-albert-tui-ollama-completion.md), [repair relaunch report](Reports/2026-06-16-albert-repair-relaunch.md), [Gemma live verification](Reports/2026-06-16-gemma-live-verification.md), and [Gemma26 repair loop](Reports/2026-06-16-gemma26-repair-loop-verification.md) |
+Live Ollama, retrieval, monitor, and strict-evaluation commands are maintained in
+[`README.md`](../README.md) and the release qualification docs. A fixture or unit
+pass never substitutes for a required live or human gate.

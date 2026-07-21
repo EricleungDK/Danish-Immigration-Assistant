@@ -1,7 +1,7 @@
 # Issue 29 Hybrid Retrieval Recommendation
 
 Machine-readable result: `docs/progress/issue-29-hybrid-retrieval-comparison.json`
-Executed at UTC: `2026-07-07T21:14:34.320717+00:00`
+Executed at UTC: `2026-07-14T17:58:10.534564+00:00`
 Selected candidate: hybrid
 
 Production thresholds remain out of scope and must be decided by the later evaluation decision ticket.
@@ -16,7 +16,7 @@ Production thresholds remain out of scope and must be decided by the later evalu
 - Mean reciprocal rank: `1.0`
 - Blocked-source violations: `0`
 - Forbidden-result violations: `0`
-- Mean latency ms: `0.106`
+- Mean latency ms: `0.11`
 
 ### dense
 
@@ -26,7 +26,7 @@ Production thresholds remain out of scope and must be decided by the later evalu
 - Mean reciprocal rank: `0.857143`
 - Blocked-source violations: `0`
 - Forbidden-result violations: `0`
-- Mean latency ms: `146.602`
+- Mean latency ms: `143.614`
 
 ### hybrid
 

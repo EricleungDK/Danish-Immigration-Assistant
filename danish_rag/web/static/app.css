@@ -1013,7 +1013,7 @@ button:hover {
   }
 
   .conversation {
-    padding-bottom: 12rem;
+    padding-bottom: 1rem;
   }
 
   .conversation-head {
@@ -1036,6 +1036,13 @@ button:hover {
 
   .composer-footer button {
     width: 100%;
+  }
+
+  .composer {
+    position: static;
+    margin-top: 1.5rem;
+    padding: 1rem 0 0;
+    background: transparent;
   }
 }
 

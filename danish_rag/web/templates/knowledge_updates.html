@@ -1,0 +1,153 @@
+<div
+  id="knowledge-updates"
+  {% if automatic_check_enabled %}
+  hx-post="/knowledge-updates/automatic-check"
+  hx-trigger="load"
+  hx-swap="outerHTML"
+  aria-busy="true"
+  {% elif automatic_check_status and automatic_check_status.state == "running" %}
+  hx-get="/knowledge-updates/automatic-check-status"
+  hx-trigger="every 250ms"
+  hx-swap="outerHTML"
+  aria-busy="true"
+  {% endif %}
+>
+  {% if automatic_check_status %}
+  <section
+    class="update-status update-status-{{ automatic_check_status.kind }}"
+    role="{{ automatic_check_status.role }}"
+    aria-live="polite"
+    aria-atomic="true"
+    aria-labelledby="automatic-update-status-title"
+  >
+    <h3 id="automatic-update-status-title">{{ automatic_check_status.title }}</h3>
+    <p>{{ automatic_check_status.message }}</p>
+  </section>
+  {% endif %}
+  {% if update_status %}
+  <section
+    class="update-status update-status-{{ update_status.kind }}"
+    role="{{ update_status.role }}"
+    aria-labelledby="update-status-title"
+  >
+    <h3 id="update-status-title">{{ update_status.title }}</h3>
+    <p>{{ update_status.message }}</p>
+  </section>
+  {% endif %}
+  {% include "installation_status.html" %}
+  <form class="update-check-form" method="post" action="/knowledge-updates/check">
+    <button type="submit">Check for knowledge updates</button>
+  </form>
+  {% if available_github_update %}
+  <section class="update-review" aria-labelledby="github-update-metadata-title">
+    <h3 id="github-update-metadata-title">Knowledge update metadata available</h3>
+    <p>
+      No release archive has been downloaded. Review the exact GitHub tag and
+      asset before authorizing a bounded local download and signature check.
+    </p>
+    <dl class="runtime-list">
+      <div>
+        <dt>Release tag</dt>
+        <dd>{{ available_github_update.release.knowledge_release_id }}</dd>
+      </div>
+      <div>
+        <dt>Archive</dt>
+        <dd>
+          {{ available_github_update.artifact.name }}
+          ({{ available_github_update.artifact.size_bytes }} bytes)
+        </dd>
+      </div>
+      <div>
+        <dt>Publication channel</dt>
+        <dd>GitHub Releases - {{ available_github_update.repository }}</dd>
+      </div>
+    </dl>
+    <div class="update-actions">
+      <form method="post" action="/knowledge-updates/download">
+        <input
+          type="hidden"
+          name="release_id"
+          value="{{ available_github_update.release.knowledge_release_id }}"
+        >
+        <input
+          type="hidden"
+          name="asset_id"
+          value="{{ available_github_update.artifact.asset_id }}"
+        >
+        <input
+          type="hidden"
+          name="asset_name"
+          value="{{ available_github_update.artifact.name }}"
+        >
+        <button type="submit">Download and verify signed release</button>
+      </form>
+      <form method="post" action="/knowledge-updates/dismiss">
+        <button type="submit" class="link-button">Dismiss</button>
+      </form>
+    </div>
+  </section>
+  {% endif %}
+  {% if pending_update %}
+  <section class="update-review" aria-labelledby="knowledge-update-title">
+    {% if pending_update.distribution and pending_update.distribution.channel == "github-releases" %}
+    <h3 id="knowledge-update-title">Signed knowledge update ready to review</h3>
+    <p>
+      Signed manifest verified with trust root
+      <strong>{{ pending_update.signed_manifest.trust_root_id }}</strong>.
+      Installation and local indexing have not started.
+    </p>
+    {% else %}
+    <h3 id="knowledge-update-title">Knowledge update available</h3>
+    {% endif %}
+    <dl class="runtime-list">
+      <div>
+        <dt>Release</dt>
+        <dd>{{ pending_update.release.knowledge_release_id }}</dd>
+      </div>
+      <div>
+        <dt>Compatibility</dt>
+        <dd>Compatible with this application</dd>
+      </div>
+      <div>
+        <dt>Reviewed source changes</dt>
+        <dd>
+          {{ pending_update.reviewed_source_changes.added }} added,
+          {{ pending_update.reviewed_source_changes.updated }} updated,
+          {{ pending_update.reviewed_source_changes.removed }} removed
+          {% set changed_sources = pending_update.reviewed_source_changes.added_sources + pending_update.reviewed_source_changes.updated_sources + pending_update.reviewed_source_changes.removed_sources %}
+          {% if changed_sources %}
+          <ul class="update-source-list">
+            {% for source in changed_sources %}
+            <li>{{ source.title }}{% if source.publisher %} - {{ source.publisher }}{% endif %}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </dd>
+      </div>
+      <div>
+        <dt>Expected local indexing work</dt>
+        <dd>
+          {{ pending_update.expected_local_indexing_work.document_count }} documents,
+          {{ pending_update.expected_local_indexing_work.artifact_bytes }} bytes
+        </dd>
+      </div>
+    </dl>
+    <div class="update-actions">
+      <form method="post" action="/knowledge-updates/install">
+        <input
+          type="hidden"
+          name="release_id"
+          value="{{ pending_update.release.knowledge_release_id }}"
+        >
+        <button
+          type="submit"
+          {% if installation_status and installation_status.state == "running" %}disabled{% endif %}
+        >{% if installation_status and installation_status.state == "running" %}Installation in progress{% else %}Install reviewed release{% endif %}</button>
+      </form>
+      <form method="post" action="/knowledge-updates/dismiss">
+        <button type="submit" class="link-button">Dismiss</button>
+      </form>
+    </div>
+  </section>
+  {% endif %}
+</div>

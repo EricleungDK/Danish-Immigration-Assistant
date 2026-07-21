@@ -1,0 +1,17 @@
+{
+  "case_id": "eval-018-provider-unavailable-recovery",
+  "command": "in-process ASGI production workflow",
+  "exit_status": 0,
+  "observations": {
+    "actionable_local_recovery_guidance_visible": true,
+    "http_status_is_503": true,
+    "model_identity_visible": true,
+    "partial_answer_not_saved": true,
+    "prior_record_unchanged": true,
+    "provider_identity_visible": true,
+    "question_preserved_for_retry": true,
+    "remote_fallback_request_count": 0,
+    "secret_markers_absent": true
+  },
+  "schema_version": "provider-recovery-execution-v1"
+}

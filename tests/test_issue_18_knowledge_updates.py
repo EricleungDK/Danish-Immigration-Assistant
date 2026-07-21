@@ -1,3 +1,4 @@
+import asyncio
 import json
 import tempfile
 import unittest
@@ -13,6 +14,8 @@ from danish_rag.knowledge_release import (
 )
 from danish_rag.local_app import create_app
 from danish_rag.source_maintenance import build_publishable_knowledge_release
+from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.release_trust_fixture import create_test_release_trust_fixture
 
 
 class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
@@ -22,7 +25,31 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
         self.root = Path(self.tempdir.name)
         self.data_dir = self.root / "data"
         self.release_catalog = self.root / "release-catalog"
-        self.current = install_minimal_knowledge_release(self.data_dir)
+        self.embedding_provider = DeterministicEmbeddingProviderFixture()
+        self.release_trust = create_test_release_trust_fixture(
+            self.root / "test-only-release-trust"
+        )
+        self.current = install_minimal_knowledge_release(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
+
+    async def wait_for_install_terminal_status(
+        self, client: httpx.AsyncClient
+    ) -> httpx.Response:
+        for _ in range(150):
+            status = await client.get("/knowledge-updates/install-status")
+            if any(
+                message in status.text
+                for message in {
+                    "Knowledge update installed",
+                    "Knowledge update rolled back",
+                    "Knowledge update needs attention",
+                }
+            ):
+                return status
+            await asyncio.sleep(0.02)
+        self.fail("Knowledge installation did not reach a terminal state")
 
     def make_newer_release(self, *, release_id: str = "kr-2026-07-07.1") -> Path:
         current_manifest = json.loads(
@@ -63,13 +90,19 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
             documents=documents,
             created_at_utc="2026-07-07T13:00:00Z",
             minimum_application_version="0.1.0",
+            signing_private_key_path=self.release_trust.signing_private_key_path,
+            trust_root_path=self.release_trust.trust_root_path,
         )
         return self.release_catalog / release_id
 
     def test_discovery_summarizes_newer_compatible_release_without_installing_artifacts(self):
         self.make_newer_release()
 
-        update = discover_knowledge_update(self.data_dir, self.release_catalog)
+        update = discover_knowledge_update(
+            self.data_dir,
+            self.release_catalog,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
 
         self.assertIsNotNone(update)
         assert update is not None
@@ -106,6 +139,8 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
             config_path=self.root / "provider-config.json",
             data_dir=self.data_dir,
             release_catalog_dir=self.release_catalog,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -157,6 +192,8 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
             follow_redirects=False,
         )
         self.assertEqual(install.status_code, 303)
+        installation_status = await self.wait_for_install_terminal_status(client)
+        self.assertIn("Knowledge update installed", installation_status.text)
         self.assertEqual(
             active_corpus_summary(self.data_dir)["knowledge_release_id"],
             "kr-2026-07-07.1",

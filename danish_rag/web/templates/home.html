@@ -81,16 +81,6 @@
         {% if corpus_error %}
         <p class="error" role="alert">{{ corpus_error }}</p>
         {% endif %}
-        {% if update_status %}
-        <section
-          class="update-status update-status-{{ update_status.kind }}"
-          role="{{ update_status.role }}"
-          aria-labelledby="update-status-title"
-        >
-          <h3 id="update-status-title">{{ update_status.title }}</h3>
-          <p>{{ update_status.message }}</p>
-        </section>
-        {% endif %}
         <dl class="runtime-list">
           <div>
             <dt>Release</dt>
@@ -109,60 +99,7 @@
             <dd>{{ corpus.index_schema_version }}</dd>
           </div>
         </dl>
-        <form class="update-check-form" method="post" action="/knowledge-updates/check">
-          <button type="submit">Check for knowledge updates</button>
-        </form>
-        {% if pending_update %}
-        <section class="update-review" aria-labelledby="knowledge-update-title">
-          <h3 id="knowledge-update-title">Knowledge update available</h3>
-          <dl class="runtime-list">
-            <div>
-              <dt>Release</dt>
-              <dd>{{ pending_update.release.knowledge_release_id }}</dd>
-            </div>
-            <div>
-              <dt>Compatibility</dt>
-              <dd>Compatible with this application</dd>
-            </div>
-            <div>
-              <dt>Reviewed source changes</dt>
-              <dd>
-                {{ pending_update.reviewed_source_changes.added }} added,
-                {{ pending_update.reviewed_source_changes.updated }} updated,
-                {{ pending_update.reviewed_source_changes.removed }} removed
-                {% set changed_sources = pending_update.reviewed_source_changes.added_sources + pending_update.reviewed_source_changes.updated_sources + pending_update.reviewed_source_changes.removed_sources %}
-                {% if changed_sources %}
-                <ul class="update-source-list">
-                  {% for source in changed_sources %}
-                  <li>{{ source.title }}{% if source.publisher %} - {{ source.publisher }}{% endif %}</li>
-                  {% endfor %}
-                </ul>
-                {% endif %}
-              </dd>
-            </div>
-            <div>
-              <dt>Expected local indexing work</dt>
-              <dd>
-                {{ pending_update.expected_local_indexing_work.document_count }} documents,
-                {{ pending_update.expected_local_indexing_work.artifact_bytes }} bytes
-              </dd>
-            </div>
-          </dl>
-          <div class="update-actions">
-            <form method="post" action="/knowledge-updates/install">
-              <input
-                type="hidden"
-                name="release_id"
-                value="{{ pending_update.release.knowledge_release_id }}"
-              >
-              <button type="submit">Install reviewed release</button>
-            </form>
-            <form method="post" action="/knowledge-updates/dismiss">
-              <button type="submit" class="link-button">Dismiss</button>
-            </form>
-          </div>
-        </section>
-        {% endif %}
+        {% include "knowledge_updates.html" %}
       </section>
       <section>
         <h2>Runtime</h2>

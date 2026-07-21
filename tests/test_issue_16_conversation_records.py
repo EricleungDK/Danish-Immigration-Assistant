@@ -9,6 +9,7 @@ import httpx
 
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
+from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 
 
 class FixtureAnswerGenerator:
@@ -49,6 +50,7 @@ class Issue16ConversationRecordControlTests(unittest.IsolatedAsyncioTestCase):
         self.root = Path(self.tempdir.name)
         self.config_path = self.root / "config" / "provider-config.json"
         self.data_dir = self.root / "data"
+        self.embedding_provider = DeterministicEmbeddingProviderFixture()
         save_provider_configuration(
             self.config_path,
             ProviderConfiguration(
@@ -67,6 +69,7 @@ class Issue16ConversationRecordControlTests(unittest.IsolatedAsyncioTestCase):
             config_path=self.config_path,
             data_dir=self.data_dir,
             answer_generator=FixtureAnswerGenerator(),
+            embedding_provider=self.embedding_provider,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),

@@ -41,12 +41,28 @@ class RuntimePolicyContractTests(unittest.TestCase):
         self.assertEqual(policy["providers"]["initial"]["id"], "ollama")
         self.assertEqual(policy["providers"]["initial"]["minimum_version"], "0.30.6")
         self.assertEqual(policy["models"]["generation"]["initial"], "gemma4:12b")
-        self.assertEqual(policy["models"]["embedding"]["provisional_candidate"], "embeddinggemma")
-        self.assertFalse(policy["models"]["embedding"]["supported_for_production"])
+        self.assertEqual(policy["models"]["embedding"]["initial_supported"], "embeddinggemma")
+        self.assertTrue(policy["models"]["embedding"]["supported_for_production"])
+        self.assertEqual(
+            policy["models"]["embedding"]["approval_status"],
+            "approved-by-issue-4",
+        )
         self.assertEqual(policy["capabilities"], ["generation", "embedding"])
         self.assertEqual(policy["application"]["process_model"], "single-local-python-process")
         self.assertEqual(policy["application"]["code_updates"], "manual")
         self.assertEqual(policy["knowledge_releases"]["updates"], "explicit-user-approved")
+        self.assertEqual(
+            policy["supported_environment"]["browser_release_baseline"][
+                "minimum_chromium_major"
+            ],
+            150,
+        )
+        self.assertEqual(
+            policy["supported_environment"]["browser_release_baseline"][
+                "maintenance"
+            ],
+            "review-before-each-release-qualification",
+        )
 
     def test_policy_rejects_non_loopback_defaults(self):
         policy = load_runtime_policy(POLICY_PATH)
@@ -110,16 +126,14 @@ class RuntimePolicyContractTests(unittest.TestCase):
                 "Generation and embedding are separate capabilities:",
                 "Generation and embedding are interchangeable capabilities:",
             ),
-            "embedding candidate approved early": text.replace(
+            "embedding approval silently reversed": text.replace(
                 (
-                    "`embeddinggemma` is only a provisional embedding candidate. "
-                    "It is not a supported embedding model until the retrieval "
-                    "benchmark and later human architecture approval accept it."
+                    "`embeddinggemma` is the initial supported embedding model. "
+                    "Issue #4 approved it after the issue #29 retrieval benchmark."
                 ),
                 (
-                    "`embeddinggemma` is a supported embedding model for "
-                    "production before retrieval benchmark or human architecture "
-                    "approval."
+                    "`embeddinggemma` is only a provisional embedding candidate "
+                    "and is not supported after issue #4 approval."
                 ),
             ),
         }

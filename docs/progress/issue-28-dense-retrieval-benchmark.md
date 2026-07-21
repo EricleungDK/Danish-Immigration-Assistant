@@ -33,7 +33,7 @@ DI_RAG_RUN_LIVE_DENSE_BENCHMARK=1 python3 -m unittest tests.test_dense_retrieval
 
 ## Generated Evidence
 
-The JSON files are generated measurements. They are not hand-authored architecture decisions and do not approve `embeddinggemma` as a supported production embedding model.
+The JSON files are generated measurements rather than approval records. The separate issue #4 approval comment dated 2026-07-05 approves `embeddinggemma` as the initial supported model after this evidence.
 
 Latest generated dense benchmark evidence currently records:
 
@@ -61,7 +61,7 @@ Latest generated dense benchmark evidence currently records:
 
 ## Recommendation
 
-Issue #28 is an embedding-behavior benchmark slice. It records dense retrieval behavior and index compatibility evidence only. It does not recommend production retrieval architecture, does not approve `embeddinggemma` as supported, and does not set production thresholds.
+Issue #28 is an embedding-behavior benchmark slice. It records dense retrieval behavior and index compatibility evidence only. It did not itself approve the architecture or model; the later issue #4 approval comment dated 2026-07-05 approved `embeddinggemma` using the completed issue #29 comparison. This benchmark still does not set production thresholds.
 
 Hybrid comparison and the human-readable retrieval recommendation are owned by issue #29.
 

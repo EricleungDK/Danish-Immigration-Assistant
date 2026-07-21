@@ -1,0 +1,84 @@
+{
+  "assertion_proofs": {
+    "eval-019-runtime-identity-visible:forbidden-claims:01": [
+      {
+        "observation_id": "model_and_source_labels_distinct",
+        "source_id": "browser"
+      }
+    ],
+    "eval-019-runtime-identity-visible:forbidden-claims:02": [
+      {
+        "observation_id": "historical_provenance_unchanged_after_update",
+        "source_id": "browser"
+      }
+    ],
+    "eval-019-runtime-identity-visible:privacy-requirements:01": [
+      {
+        "observation_id": "identity_urls_and_ui_exclude_secrets",
+        "source_id": "browser"
+      }
+    ],
+    "eval-019-runtime-identity-visible:required-facts:01": [
+      {
+        "observation_id": "provider_model_corpus_check_date_visible",
+        "source_id": "browser"
+      }
+    ],
+    "eval-019-runtime-identity-visible:required-facts:02": [
+      {
+        "observation_id": "historical_provenance_unchanged_after_update",
+        "source_id": "browser"
+      }
+    ],
+    "eval-019-runtime-identity-visible:required-facts:03": [
+      {
+        "observation_id": "identity_display_excludes_secrets",
+        "source_id": "browser"
+      }
+    ],
+    "eval-019-runtime-identity-visible:trust-indicators:01": [
+      {
+        "observation_id": "provider_identity_visible",
+        "source_id": "browser"
+      }
+    ],
+    "eval-019-runtime-identity-visible:trust-indicators:02": [
+      {
+        "observation_id": "model_identity_visible",
+        "source_id": "browser"
+      }
+    ],
+    "eval-019-runtime-identity-visible:trust-indicators:03": [
+      {
+        "observation_id": "corpus_identity_visible",
+        "source_id": "browser"
+      }
+    ]
+  },
+  "assertion_results": {
+    "eval-019-runtime-identity-visible:forbidden-claims:01": "passed",
+    "eval-019-runtime-identity-visible:forbidden-claims:02": "passed",
+    "eval-019-runtime-identity-visible:privacy-requirements:01": "passed",
+    "eval-019-runtime-identity-visible:required-facts:01": "passed",
+    "eval-019-runtime-identity-visible:required-facts:02": "passed",
+    "eval-019-runtime-identity-visible:required-facts:03": "passed",
+    "eval-019-runtime-identity-visible:trust-indicators:01": "passed",
+    "eval-019-runtime-identity-visible:trust-indicators:02": "passed",
+    "eval-019-runtime-identity-visible:trust-indicators:03": "passed"
+  },
+  "case_id": "eval-019-runtime-identity-visible",
+  "command": "python -m danish_rag.final_answer_evaluation --generate-automated-evidence",
+  "contains_human_assessment": false,
+  "evaluation_surface": "browser-workflow",
+  "exit_status": 0,
+  "generated_at_utc": "2026-07-14T18:06:02Z",
+  "schema_version": "workflow-evaluation-evidence-v1",
+  "source_evidence": [
+    {
+      "kind": "focused-playwright-workflow-report",
+      "path": "docs/progress/final-answer-machine-evidence/browser-workflow-execution.json",
+      "sha256": "0e5d72ed7296a7af03918b301d23be7ceb4620de8252679bdf4e391352811761",
+      "source_id": "browser"
+    }
+  ]
+}

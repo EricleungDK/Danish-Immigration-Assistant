@@ -12,21 +12,70 @@ import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
+from enum import IntEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, TypedDict, cast
 
-from .runtime_policy import is_loopback_url, load_runtime_policy
+from .runtime_policy import RuntimePolicy, is_loopback_url, load_runtime_policy
+
+
+class ProbeExitStatus(IntEnum):
+    """Stable process outcomes for the public runtime-probe CLI contract."""
+
+    PASSED = 0
+    INCOMPLETE = 1
+    PROVIDER_UNREACHABLE = 2
+    PROVIDER_VERSION_UNSUPPORTED = 3
+    MODEL_UNAVAILABLE = 4
+    STRUCTURED_RESPONSE_INVALID = 5
+    NON_LOOPBACK_ENDPOINT = 6
+
+
+class ProviderProbeEvidence(TypedDict, total=False):
+    id: str
+    endpoint: str
+    version: str
+
+
+class ModelIdentityEvidence(TypedDict):
+    family: str
+    architecture: str
+    quantization_level: str
+
+
+class ModelProbeEvidence(TypedDict, total=False):
+    name: str
+    capabilities: list[str]
+    details: dict[str, Any]
+    model_info: dict[str, Any]
+    identity: ModelIdentityEvidence
+
+
+class StructuredProbeResponse(TypedDict, total=False):
+    runtime_baseline: str
+    status: Literal["ok"]
+
+
+class EnvironmentEvidence(TypedDict):
+    python_version: str
+    platform_system: str
+    platform_release: str
+    machine: str
+    processor: str
+    wsl: bool
+    cpu_count: int | None
+    memory_total_mb: int | None
 
 
 @dataclass
 class ProbeResult:
-    exit_status: int
+    exit_status: ProbeExitStatus
     diagnostic: str
-    provider: dict[str, Any] = field(default_factory=dict)
-    model: dict[str, Any] = field(default_factory=dict)
-    structured_response: dict[str, Any] = field(default_factory=dict)
+    environment: EnvironmentEvidence
+    provider: ProviderProbeEvidence = field(default_factory=dict)
+    model: ModelProbeEvidence = field(default_factory=dict)
+    structured_response: StructuredProbeResponse = field(default_factory=dict)
     timings_ms: dict[str, float] = field(default_factory=dict)
-    environment: dict[str, Any] = field(default_factory=dict)
     command: list[str] = field(default_factory=list)
     started_at_utc: str = ""
     finished_at_utc: str = ""
@@ -91,7 +140,7 @@ class OllamaClient:
 
 
 def run_runtime_probe(
-    policy: dict[str, Any],
+    policy: RuntimePolicy,
     *,
     client: Any | None = None,
     command: list[str] | None = None,
@@ -106,7 +155,7 @@ def run_runtime_probe(
     model_name = policy["models"]["generation"]["initial"]
 
     result = ProbeResult(
-        exit_status=1,
+        exit_status=ProbeExitStatus.INCOMPLETE,
         diagnostic="runtime probe did not complete",
         provider={"id": provider_policy["id"], "endpoint": endpoint},
         model={"name": model_name},
@@ -119,7 +168,7 @@ def run_runtime_probe(
     if not is_loopback_url(endpoint):
         return _finish(
             result,
-            6,
+            ProbeExitStatus.NON_LOOPBACK_ENDPOINT,
             "Configured Ollama endpoint is not loopback. Use http://127.0.0.1:11434 for the issue #26 baseline.",
             started_counter,
         )
@@ -131,7 +180,7 @@ def run_runtime_probe(
     except Exception as exc:
         return _finish(
             result,
-            2,
+            ProbeExitStatus.PROVIDER_UNREACHABLE,
             f"Ollama service is unreachable at {endpoint}. Start Ollama and confirm the loopback API is listening. Detail: {exc}",
             started_counter,
         )
@@ -142,7 +191,7 @@ def run_runtime_probe(
     if _version_tuple(version) < _version_tuple(minimum_version):
         return _finish(
             result,
-            3,
+            ProbeExitStatus.PROVIDER_VERSION_UNSUPPORTED,
             f"Upgrade Ollama to {minimum_version} or newer before using this baseline. Found {version or 'unknown'}.",
             started_counter,
         )
@@ -152,14 +201,14 @@ def run_runtime_probe(
     except FileNotFoundError:
         return _finish(
             result,
-            4,
+            ProbeExitStatus.MODEL_UNAVAILABLE,
             f"{model_name} is not installed. Install it with `ollama pull {model_name}` and rerun the probe.",
             started_counter,
         )
     except Exception as exc:
         return _finish(
             result,
-            4,
+            ProbeExitStatus.MODEL_UNAVAILABLE,
             f"Could not inspect {model_name}. Confirm the model is installed and usable. Detail: {exc}",
             started_counter,
         )
@@ -180,7 +229,7 @@ def run_runtime_probe(
     except Exception as exc:
         return _finish(
             result,
-            4,
+            ProbeExitStatus.MODEL_UNAVAILABLE,
             f"The installed generation model did not match the issue #26 model identity baseline. Detail: {exc}",
             started_counter,
         )
@@ -188,7 +237,7 @@ def run_runtime_probe(
     if "completion" not in capabilities:
         return _finish(
             result,
-            4,
+            ProbeExitStatus.MODEL_UNAVAILABLE,
             f"The installed generation model is missing the completion capability required by the issue #26 baseline. "
             f"/api/show capabilities reported: {capabilities!r}.",
             started_counter,
@@ -219,16 +268,21 @@ def run_runtime_probe(
     except Exception as exc:
         return _finish(
             result,
-            5,
+            ProbeExitStatus.STRUCTURED_RESPONSE_INVALID,
             f"The structured JSON response did not match the issue #26 schema. Detail: {exc}",
             started_counter,
         )
 
     result.structured_response = structured_response
-    return _finish(result, 0, "Runtime baseline probe passed.", started_counter)
+    return _finish(
+        result,
+        ProbeExitStatus.PASSED,
+        "Runtime baseline probe passed.",
+        started_counter,
+    )
 
 
-def collect_environment() -> dict[str, Any]:
+def collect_environment() -> EnvironmentEvidence:
     return {
         "python_version": platform.python_version(),
         "platform_system": platform.system(),
@@ -286,7 +340,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def _finish(
     result: ProbeResult,
-    exit_status: int,
+    exit_status: ProbeExitStatus,
     diagnostic: str,
     started_counter: float,
 ) -> ProbeResult:
@@ -416,17 +470,21 @@ def _structured_probe_schema(baseline_id: str) -> dict[str, Any]:
     }
 
 
-def _parse_structured_response(chat_payload: dict[str, Any]) -> dict[str, Any]:
+def _parse_structured_response(
+    chat_payload: dict[str, Any],
+) -> StructuredProbeResponse:
     content = chat_payload.get("message", {}).get("content")
     if not isinstance(content, str):
         raise ValueError("chat response did not include message.content")
     parsed = json.loads(content)
     if not isinstance(parsed, dict):
         raise ValueError("chat response JSON was not an object")
-    return parsed
+    return cast(StructuredProbeResponse, parsed)
 
 
-def _validate_structured_response(response: dict[str, Any], baseline_id: str) -> None:
+def _validate_structured_response(
+    response: StructuredProbeResponse, baseline_id: str
+) -> None:
     expected_fields = {"runtime_baseline", "status"}
 
     missing = sorted(field for field in expected_fields if field not in response)

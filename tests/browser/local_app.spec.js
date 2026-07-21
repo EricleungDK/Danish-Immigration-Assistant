@@ -35,6 +35,13 @@ test("first launch shows product boundary, setup, htmx, and composer", async ({ 
   await expect(page.getByRole("radio", { name: /OpenAI-compatible local server/i })).toBeVisible();
   await expect(page.locator("form.setup-form")).toHaveAttribute("hx-target", "#setup-panel");
   await expect.poll(() => page.evaluate(() => Boolean(window.htmx))).toBe(true);
+  await expect(
+    page.getByRole("heading", { name: "Automatic release metadata check complete" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Knowledge update metadata available" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Install reviewed release" })).toHaveCount(0);
 });
 
 test("failed provider setup preserves non-secret values in the targeted setup panel", async ({ page }) => {
@@ -173,7 +180,7 @@ test("inline citation opens accessible evidence drawer with preserved trust stat
   await expect(persistedDrawer).toContainText("browser-model");
 });
 
-test("knowledge update review can be dismissed and installed from the GUI", async ({ page }) => {
+test("GitHub knowledge update requires separate download review and install actions", async ({ page }) => {
   await page.goto("/");
 
   const corpusPanel = page.getByRole("complementary", { name: "Local tools" });
@@ -182,26 +189,44 @@ test("knowledge update review can be dismissed and installed from the GUI", asyn
   });
   await expect(corpusSection.locator(".runtime-list").first()).toContainText("kr-2026-07-06.1");
 
-  await corpusPanel.getByRole("button", { name: "Check for knowledge updates" }).click();
-  await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("heading", { name: "Knowledge update available" })).toBeVisible();
-  await expect(page.getByText("kr-2026-07-07.1")).toBeVisible();
-  await expect(page.getByText("Compatible with this application")).toBeVisible();
-  await expect(page.getByText("Expected local indexing work")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Knowledge update metadata available" })).toBeVisible();
+  await expect(page.getByText("kr-2026-07-07.1", { exact: true })).toBeVisible();
+  await expect(page.getByText("No release archive has been downloaded")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Install reviewed release" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Dismiss" }).click();
   await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("heading", { name: "Knowledge update available" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Knowledge update metadata available" })).toHaveCount(0);
   await expect(corpusSection.locator(".runtime-list").first()).toContainText("kr-2026-07-06.1");
 
   await corpusPanel.getByRole("button", { name: "Check for knowledge updates" }).click();
   await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("heading", { name: "Knowledge update available" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Knowledge update metadata available" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Download and verify signed release" }).click();
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByRole("heading", { name: "Signed knowledge update ready to review" })).toBeVisible();
+  await expect(page.getByText("Signed manifest verified")).toBeVisible();
+  await expect(corpusSection.locator(".runtime-list").first()).toContainText("kr-2026-07-06.1");
 
   await page.getByRole("button", { name: "Install reviewed release" }).click();
   await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading", { name: "Knowledge update installed" })).toBeVisible();
   await expect(page.getByText("Active corpus: kr-2026-07-07.1")).toBeVisible();
+  const installStatus = page.locator("#knowledge-installation-status");
+  await expect(installStatus).toHaveAttribute("role", "status");
+  await expect(installStatus.locator("progress")).toHaveAttribute("value", "100");
+  for (const phase of [
+    "verification",
+    "extraction",
+    "indexing",
+    "embedding",
+    "compatibility",
+    "activation",
+    "complete",
+  ]) {
+    await expect(installStatus.locator(`[data-install-phase="${phase}"]`)).toBeVisible();
+  }
   await expect(corpusSection.locator(".runtime-list").first()).toContainText("kr-2026-07-07.1");
-  await expect(page.getByRole("heading", { name: "Knowledge update available" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Signed knowledge update ready to review" })).toHaveCount(0);
 });

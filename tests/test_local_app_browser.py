@@ -5,18 +5,25 @@ from pathlib import Path
 import httpx
 
 from danish_rag.local_app import create_app
+from danish_rag.provider_setup import ProviderCapabilityTester
+from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 
 
 class BrowserLevelApplicationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_default_ollama_capability_timeout_matches_live_probe_budget(self):
+        self.assertEqual(ProviderCapabilityTester().timeout_seconds, 60.0)
+
     def make_client(self, capability_tester=None):
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         config_path = Path(self.tempdir.name) / "provider-config.json"
         data_dir = Path(self.tempdir.name) / "data"
+        self.embedding_provider = DeterministicEmbeddingProviderFixture()
         app = create_app(
             config_path=config_path,
             data_dir=data_dir,
             capability_tester=capability_tester,
+            embedding_provider=self.embedding_provider,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -106,6 +113,7 @@ class BrowserLevelApplicationTests(unittest.IsolatedAsyncioTestCase):
                 app=create_app(
                     config_path=config_path,
                     data_dir=config_path.parent / "data",
+                    embedding_provider=self.embedding_provider,
                 )
             ),
             base_url="http://testserver",

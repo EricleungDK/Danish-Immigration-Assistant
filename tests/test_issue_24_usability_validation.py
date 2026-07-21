@@ -1,3 +1,4 @@
+import asyncio
 import json
 import tempfile
 import unittest
@@ -13,6 +14,8 @@ from danish_rag.knowledge_release import (
 )
 from danish_rag.local_app import create_app
 from danish_rag.source_maintenance import build_publishable_knowledge_release
+from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.release_trust_fixture import create_test_release_trust_fixture
 
 
 class Issue24UsabilityValidationTests(unittest.IsolatedAsyncioTestCase):
@@ -22,7 +25,14 @@ class Issue24UsabilityValidationTests(unittest.IsolatedAsyncioTestCase):
         self.root = Path(self.tempdir.name)
         self.data_dir = self.root / "data"
         self.release_catalog = self.root / "release-catalog"
-        install_minimal_knowledge_release(self.data_dir)
+        self.embedding_provider = DeterministicEmbeddingProviderFixture()
+        self.release_trust = create_test_release_trust_fixture(
+            self.root / "test-only-release-trust"
+        )
+        install_minimal_knowledge_release(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
 
     def make_newer_release(self, *, release_id: str = "kr-2026-07-07.1") -> None:
         current_manifest = json.loads(
@@ -63,6 +73,8 @@ class Issue24UsabilityValidationTests(unittest.IsolatedAsyncioTestCase):
             documents=documents,
             created_at_utc="2026-07-07T13:00:00Z",
             minimum_application_version="0.1.0",
+            signing_private_key_path=self.release_trust.signing_private_key_path,
+            trust_root_path=self.release_trust.trust_root_path,
         )
 
     def make_client(self) -> httpx.AsyncClient:
@@ -70,6 +82,8 @@ class Issue24UsabilityValidationTests(unittest.IsolatedAsyncioTestCase):
             config_path=self.root / "provider-config.json",
             data_dir=self.data_dir,
             release_catalog_dir=self.release_catalog,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -86,6 +100,24 @@ class Issue24UsabilityValidationTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(check.status_code, 303)
 
+    async def wait_for_install_terminal_status(
+        self,
+        client: httpx.AsyncClient,
+    ) -> httpx.Response:
+        for _attempt in range(150):
+            response = await client.get("/knowledge-updates/install-status")
+            if any(
+                title in response.text
+                for title in (
+                    "Knowledge update installed",
+                    "Knowledge update rolled back",
+                    "Knowledge update needs attention",
+                )
+            ):
+                return response
+            await asyncio.sleep(0.02)
+        self.fail("knowledge release installation did not reach a terminal status")
+
     async def test_successful_update_names_the_installed_active_corpus(self):
         self.make_newer_release()
         client = self.make_client()
@@ -95,12 +127,13 @@ class Issue24UsabilityValidationTests(unittest.IsolatedAsyncioTestCase):
             "/knowledge-updates/install",
             data={"release_id": "kr-2026-07-07.1"},
             headers={"Origin": "http://testserver"},
-            follow_redirects=True,
+            follow_redirects=False,
         )
+        status = await self.wait_for_install_terminal_status(client)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("Knowledge update installed", response.text)
-        self.assertIn("Active corpus: kr-2026-07-07.1", response.text)
+        self.assertEqual(response.status_code, 303)
+        self.assertIn("Knowledge update installed", status.text)
+        self.assertIn("Active corpus: kr-2026-07-07.1", status.text)
         self.assertEqual(
             active_corpus_summary(self.data_dir)["knowledge_release_id"],
             "kr-2026-07-07.1",
@@ -121,11 +154,12 @@ class Issue24UsabilityValidationTests(unittest.IsolatedAsyncioTestCase):
                 headers={"Origin": "http://testserver"},
                 follow_redirects=False,
             )
+            status = await self.wait_for_install_terminal_status(client)
 
-        self.assertEqual(response.status_code, 503)
-        self.assertIn("Knowledge update rolled back", response.text)
-        self.assertIn("previously active corpus/index pair remains active", response.text)
-        self.assertIn("Active corpus: kr-2026-07-06.1", response.text)
+        self.assertEqual(response.status_code, 303)
+        self.assertIn("Knowledge update rolled back", status.text)
+        self.assertIn("previously active corpus/index pair remains active", status.text)
+        self.assertIn("Active corpus: kr-2026-07-06.1", status.text)
         self.assertEqual(
             active_corpus_summary(self.data_dir)["knowledge_release_id"],
             "kr-2026-07-06.1",

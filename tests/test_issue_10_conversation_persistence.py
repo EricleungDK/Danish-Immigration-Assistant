@@ -15,6 +15,9 @@ from danish_rag.knowledge_release import (
 )
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
+from danish_rag.release_trust import sign_manifest
+from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.release_trust_fixture import create_test_release_trust_fixture
 
 
 class FixtureAnswerGenerator:
@@ -58,7 +61,15 @@ class Issue10ConversationPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.root = Path(self.tempdir.name)
         self.config_path = self.root / "config" / "provider-config.json"
         self.data_dir = self.root / "data"
+        self.embedding_provider = DeterministicEmbeddingProviderFixture()
+        self.release_trust = create_test_release_trust_fixture(
+            self.root / "release-trust"
+        )
         self.save_provider("fixture-model-v1")
+        install_minimal_knowledge_release(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
 
     def save_provider(self, model: str) -> None:
         save_provider_configuration(
@@ -79,6 +90,8 @@ class Issue10ConversationPersistenceTests(unittest.IsolatedAsyncioTestCase):
             config_path=self.config_path,
             data_dir=self.data_dir,
             answer_generator=answer_generator or FixtureAnswerGenerator(),
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -112,11 +125,22 @@ class Issue10ConversationPersistenceTests(unittest.IsolatedAsyncioTestCase):
                 encoded_documents = documents_payload.encode("utf-8")
                 artifact["sha256"] = hashlib.sha256(encoded_documents).hexdigest()
                 artifact["bytes"] = len(encoded_documents)
+        manifest["integrity"]["trust_root_id"] = self.release_trust.trust_root_id
         manifest_path.write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
-        install_minimal_knowledge_release(self.data_dir, release_dir=release_dir)
+        sign_manifest(
+            manifest_path,
+            self.release_trust.signing_private_key_path,
+            release_dir / "manifest.sig",
+        )
+        install_minimal_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
 
     async def post_question(
         self,

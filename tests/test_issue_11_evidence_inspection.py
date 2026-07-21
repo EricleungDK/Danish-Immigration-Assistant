@@ -23,7 +23,12 @@ def evidence_fixture(
         "review_state": review_state,
         "source_health": source_health,
         "agreement_state": agreement_state,
-        "content": f"Official fixture content for {citation_id}.",
+        "content": (
+            f"Official fixture content for {citation_id}. Prøve i Dansk 2 can support "
+            "the language requirement. One official fact is supported by a current "
+            "source. Another official fact is supported by an overdue source. A cited "
+            "official fact and a second cited official fact are supported."
+        ),
     }
 
 

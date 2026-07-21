@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .evidence_integrity import is_utc_seconds
+
 
 CONTRACT_START = "<!-- release-qualification-contract:start -->"
 CONTRACT_END = "<!-- release-qualification-contract:end -->"
@@ -197,6 +199,40 @@ def validate_release_qualification(qualification: dict[str, Any]) -> list[str]:
             failures.append("release with active blockers must remain do-not-release")
     elif qualification.get("qualification_status") == "blocked":
         failures.append("blocked release qualification must explain at least one blocker")
+
+    supported_environment_gate_status = next(
+        (
+            gate.get("status")
+            for gate in qualification.get("gate_results", [])
+            if isinstance(gate, dict)
+            and gate.get("metric_id") == "environment-matrix-critical-journeys"
+        ),
+        None,
+    )
+    published_environment_entries = [
+        entry
+        for entry in qualification.get("supported_environment_matrix", [])
+        if isinstance(entry, dict) and "release_gate_status" in entry
+    ]
+    if len(published_environment_entries) != 1:
+        failures.append(
+            "supported environment matrix must identify exactly one published release target"
+        )
+    else:
+        published_environment = published_environment_entries[0]
+        if (
+            published_environment.get("release_gate_status")
+            != supported_environment_gate_status
+        ):
+            failures.append(
+                "supported environment matrix release status differs from its gate result"
+            )
+        if supported_environment_gate_status != "passed" and "passed" in str(
+            published_environment.get("status", "")
+        ).casefold():
+            failures.append(
+                "unverified supported environment matrix must not claim passed journeys"
+            )
 
     quality_bar = qualification.get("quality_bar", {})
     if quality_bar.get("approval_required") and quality_bar.get("approval_status") != "approved":
@@ -416,6 +452,61 @@ def validate_release_qualification_sources(
             "release qualification omits quality-bar metric(s): "
             + ", ".join(sorted(str(metric) for metric in missing_metrics))
         )
+
+    accessibility_thresholds = quality_bar.get("thresholds", {}).get(
+        "accessibility", {}
+    )
+    if accessibility_thresholds.get("manual_assistive_technology_check_required"):
+        accessibility_gate = next(
+            (
+                gate
+                for gate in qualification.get("gate_results", [])
+                if gate.get("id") == "browser-accessibility-suite"
+            ),
+            None,
+        )
+        if accessibility_gate is None:
+            failures.append(
+                "release qualification omits the manual assistive-technology gate"
+            )
+        elif accessibility_gate.get("status") == "passed":
+            observed = accessibility_gate.get("observed")
+            evidence = accessibility_gate.get(
+                "manual_assistive_technology_evidence"
+            )
+            if (
+                not isinstance(observed, dict)
+                or observed.get("automated_suite_status") != "current"
+                or observed.get("manual_assistive_technology_check") != "passed"
+            ):
+                failures.append(
+                    "passed accessibility gate lacks current automation and a passed manual assistive-technology check"
+                )
+            required_evidence_fields = {
+                "path",
+                "sha256",
+                "reviewer_id",
+                "assistive_technology",
+                "browser",
+                "tested_at_utc",
+            }
+            evidence_values_valid = isinstance(evidence, dict) and all(
+                isinstance(evidence.get(field), str) and evidence[field].strip()
+                for field in required_evidence_fields
+            )
+            evidence_sha = evidence.get("sha256", "") if isinstance(evidence, dict) else ""
+            evidence_sha_valid = (
+                len(evidence_sha) == 64
+                and all(character in "0123456789abcdef" for character in evidence_sha)
+            )
+            if not evidence_values_valid or not evidence_sha_valid:
+                failures.append(
+                    "passed accessibility gate lacks evidence-bound manual assistive-technology details"
+                )
+            elif not is_utc_seconds(evidence.get("tested_at_utc")):
+                failures.append(
+                    "passed accessibility gate has an invalid manual assistive-technology timestamp"
+                )
 
     return failures
 

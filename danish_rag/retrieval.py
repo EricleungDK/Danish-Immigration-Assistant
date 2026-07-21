@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 import re
@@ -10,18 +9,25 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from .embedding_provider import (
+    EmbeddingProvider,
+    EmbeddingProviderError,
+    canonical_model_identity,
+    embedding_provider_id,
+    resolve_embedding_provider,
+    validate_embedding_vector,
+)
 from .knowledge_release import load_active_documents, load_active_release
+from .source_freshness import assess_source_freshness
 
 
 INDEX_SCHEMA_VERSION = "hybrid-index-v1"
 DENSE_ENGINE = "local-dense-json"
 LEXICAL_ENGINE = "sqlite-fts5"
 SUPPORTED_EMBEDDING_MODEL = "embeddinggemma"
-VECTOR_DIMENSIONS = 64
+VECTOR_DIMENSIONS = 768
 RRF_K = 60
 TOKEN_PATTERN = re.compile(r"[0-9a-zA-ZæøåÆØÅ]+")
-ELIGIBLE_REVIEW_STATES = {"approved-current", "overdue-policy-usable"}
-ELIGIBLE_SOURCE_HEALTH = {"healthy", "overdue-policy-usable"}
 
 
 class RetrievalError(ValueError):
@@ -31,15 +37,15 @@ class RetrievalError(ValueError):
 SUPPORTED_EMBEDDING_MODELS: dict[str, dict[str, Any]] = {
     "embeddinggemma": {
         "name": "embeddinggemma",
-        "implementation": "deterministic-local-vector-fixture",
+        "implementation": "ollama-loopback-embedding",
         "capabilities": ["embedding"],
-        "vector_dimensions": VECTOR_DIMENSIONS,
+        "expected_vector_dimensions": VECTOR_DIMENSIONS,
     },
     "embeddinggemma:latest": {
         "name": "embeddinggemma:latest",
-        "implementation": "deterministic-local-vector-fixture",
+        "implementation": "ollama-loopback-embedding",
         "capabilities": ["embedding"],
-        "vector_dimensions": VECTOR_DIMENSIONS,
+        "expected_vector_dimensions": VECTOR_DIMENSIONS,
     },
 }
 
@@ -52,7 +58,7 @@ def supported_embedding_models() -> list[dict[str, Any]]:
     return [
         {
             "name": profile["name"],
-            "vector_dimensions": int(profile["vector_dimensions"]),
+            "vector_dimensions": int(profile["expected_vector_dimensions"]),
             "implementation": str(profile["implementation"]),
             "capabilities": list(profile["capabilities"]),
         }
@@ -119,10 +125,25 @@ def build_hybrid_index(
     *,
     manifest: dict[str, Any],
     embedding_model: str | None = None,
+    embedding_provider: EmbeddingProvider | None = None,
+    embedding_endpoint: str | None = None,
+    embedding_model_identity: dict[str, Any] | None = None,
     progress_callback: Any | None = None,
     fault_injector: Any | None = None,
 ) -> dict[str, Any]:
     embedding_profile = embedding_model_profile(embedding_model)
+    resolved_embedding_provider = resolve_embedding_provider(
+        embedding_provider,
+        endpoint=embedding_endpoint,
+    )
+    resolved_model_identity = canonical_model_identity(
+        embedding_model_identity
+        if embedding_model_identity is not None
+        else inspect_embedding_model(
+            resolved_embedding_provider,
+            str(embedding_profile["name"]),
+        )
+    )
     release_id = str(manifest["knowledge_release_id"])
     index_dir = Path(data_dir) / "index" / release_id
     index_dir.mkdir(parents=True, exist_ok=True)
@@ -141,6 +162,8 @@ def build_hybrid_index(
     try:
         _create_lexical_schema(connection)
         for document in documents:
+            if not _is_release_eligible(document):
+                continue
             connection.execute(
                 """
                 INSERT INTO documents (
@@ -189,23 +212,50 @@ def build_hybrid_index(
         70,
     )
     _inject_install_fault(fault_injector, "embedding")
-    vectors = [
-        {
-            "document_id": document["document_id"],
-            "vector": embed_text(
-                _search_text(document),
-                dimensions=int(embedding_profile["vector_dimensions"]),
-            ),
-        }
-        for document in documents
-        if _is_release_eligible(document)
-    ]
+    vectors: list[dict[str, Any]] = []
+    vector_dimensions: int | None = None
+    for document in documents:
+        if not _is_release_eligible(document):
+            continue
+        vector = embed_with_provider(
+            resolved_embedding_provider,
+            str(embedding_profile["name"]),
+            _search_text(document),
+            context=f"document {document['document_id']}",
+        )
+        if vector_dimensions is None:
+            vector_dimensions = len(vector)
+        elif len(vector) != vector_dimensions:
+            raise RetrievalError(
+                "The local embedding provider returned inconsistent vector dimensions "
+                f"while indexing: expected {vector_dimensions}, got {len(vector)} for "
+                f"document {document['document_id']}. Reinstall the approved embedding "
+                "model and retry."
+            )
+        vectors.append({"document_id": document["document_id"], "vector": vector})
+    if vector_dimensions is None:
+        raise RetrievalError(
+            "The reviewed knowledge release contains no metadata-eligible documents to index."
+        )
+    expected_dimensions = int(embedding_profile["expected_vector_dimensions"])
+    if vector_dimensions != expected_dimensions:
+        raise RetrievalError(
+            f"The approved embedding model '{embedding_profile['name']}' returned "
+            f"{vector_dimensions} dimensions; this retrieval baseline requires "
+            f"{expected_dimensions}. Reinstall the approved model and retry indexing."
+        )
+    metadata = _index_metadata(
+        manifest,
+        embedding_profile=embedding_profile,
+        embedding_provider=resolved_embedding_provider,
+        embedding_model_identity=resolved_model_identity,
+        vector_dimensions=vector_dimensions,
+    )
     dense_index = {
-        "metadata": _index_metadata(manifest, embedding_profile=embedding_profile),
+        "metadata": metadata,
         "vectors": vectors,
     }
     _write_json(index_dir / "dense-index.json", dense_index)
-    metadata = _index_metadata(manifest, embedding_profile=embedding_profile)
     _write_json(index_dir / "index-metadata.json", metadata)
     return metadata
 
@@ -219,20 +269,51 @@ class HybridRetriever:
         documents: list[dict[str, Any]],
         dense_index: dict[str, Any],
         embedding_model: str | None = None,
+        embedding_provider: EmbeddingProvider | None = None,
+        embedding_endpoint: str | None = None,
+        embedding_model_identity: dict[str, Any] | None = None,
     ) -> None:
         self.data_dir = Path(data_dir)
         self.active_release = active_release
         self.manifest = active_release["manifest"]
-        self.documents_by_id = {document["document_id"]: document for document in documents}
+        sources_by_id = {
+            str(source["source_id"]): source
+            for source in self.manifest.get("sources", [])
+        }
+        self.documents_by_id = {
+            document["document_id"]: _attach_source_metadata(
+                document,
+                sources_by_id.get(str(document.get("source_id", ""))),
+            )
+            for document in documents
+        }
         self.dense_index = dense_index
         self.index_dir = self.data_dir / "index" / self.manifest["knowledge_release_id"]
         self.embedding_profile = embedding_model_profile(
             embedding_model or dense_index.get("metadata", {}).get("embedding_model")
         )
+        self.embedding_provider = resolve_embedding_provider(
+            embedding_provider,
+            endpoint=embedding_endpoint,
+        )
+        self.embedding_model_identity = canonical_model_identity(
+            embedding_model_identity
+            if embedding_model_identity is not None
+            else inspect_embedding_model(
+                self.embedding_provider,
+                str(self.embedding_profile["name"]),
+            )
+        )
         self._validate_index()
 
     @classmethod
-    def from_data_dir(cls, data_dir: str | Path) -> "HybridRetriever":
+    def from_data_dir(
+        cls,
+        data_dir: str | Path,
+        *,
+        embedding_provider: EmbeddingProvider | None = None,
+        embedding_endpoint: str | None = None,
+    ) -> "HybridRetriever":
         active_release = load_active_release(data_dir)
         documents = load_active_documents(data_dir)
         release_id = active_release["manifest"]["knowledge_release_id"]
@@ -246,6 +327,8 @@ class HybridRetriever:
             active_release=active_release,
             documents=documents,
             dense_index=dense_index,
+            embedding_provider=embedding_provider,
+            embedding_endpoint=embedding_endpoint,
         )
 
     def retrieve(self, question: str, *, limit: int = 3) -> list[dict[str, Any]]:
@@ -310,10 +393,19 @@ class HybridRetriever:
         normalized_question: str,
         metadata_filter: dict[str, Any],
     ) -> list[str]:
-        query_vector = embed_text(
+        query_vector = embed_with_provider(
+            self.embedding_provider,
+            str(self.embedding_profile["name"]),
             normalized_question,
-            dimensions=int(self.embedding_profile["vector_dimensions"]),
+            context="retrieval query",
         )
+        expected_dimensions = int(self.dense_index["metadata"]["vector_dimensions"])
+        if len(query_vector) != expected_dimensions:
+            raise RetrievalError(
+                "The local embedding query vector is incompatible with the active dense "
+                f"index: expected {expected_dimensions} dimensions, got "
+                f"{len(query_vector)}. Re-index with the active embedding model."
+            )
         scored: list[tuple[str, float]] = []
         for item in self.dense_index["vectors"]:
             document_id = item["document_id"]
@@ -328,7 +420,19 @@ class HybridRetriever:
 
     def _validate_index(self) -> None:
         metadata = self.dense_index.get("metadata", {})
-        expected = _index_metadata(self.manifest, embedding_profile=self.embedding_profile)
+        vector_dimensions = metadata.get("vector_dimensions")
+        if not isinstance(vector_dimensions, int) or isinstance(vector_dimensions, bool):
+            raise RetrievalError(
+                "Local dense index is incompatible; re-index required. Missing valid "
+                "vector dimensions."
+            )
+        expected = _index_metadata(
+            self.manifest,
+            embedding_profile=self.embedding_profile,
+            embedding_provider=self.embedding_provider,
+            embedding_model_identity=self.embedding_model_identity,
+            vector_dimensions=vector_dimensions,
+        )
         mismatches = [
             field for field, value in expected.items() if metadata.get(field) != value
         ]
@@ -337,22 +441,72 @@ class HybridRetriever:
                 "Local dense index is incompatible; re-index required. "
                 f"Mismatched field(s): {', '.join(mismatches)}"
             )
+        expected_dimensions = int(self.embedding_profile["expected_vector_dimensions"])
+        if vector_dimensions != expected_dimensions:
+            raise RetrievalError(
+                "Local dense index is incompatible; re-index required. "
+                f"Expected {expected_dimensions} dimensions for "
+                f"{self.embedding_profile['name']}, got {vector_dimensions}."
+            )
+        vectors = self.dense_index.get("vectors")
+        if not isinstance(vectors, list):
+            raise RetrievalError("Local dense index is malformed; re-index required.")
+        for item in vectors:
+            if not isinstance(item, dict) or not isinstance(item.get("document_id"), str):
+                raise RetrievalError("Local dense index is malformed; re-index required.")
+            vector = validate_embedding_vector(
+                item.get("vector"),
+                context=f"Indexed document {item.get('document_id', '<unknown>')}",
+            )
+            if len(vector) != vector_dimensions:
+                raise RetrievalError(
+                    "Local dense index contains incompatible vector dimensions; "
+                    "re-index required."
+                )
         lexical_path = self.index_dir / "lexical.sqlite3"
         if not lexical_path.exists():
             raise RetrievalError("Local lexical index is missing; re-index required.")
 
 
-def embed_text(text: str, *, dimensions: int = VECTOR_DIMENSIONS) -> list[float]:
-    vector = [0.0] * dimensions
-    for token in TOKEN_PATTERN.findall(text.casefold()):
-        digest = hashlib.sha256(token.encode("utf-8")).digest()
-        index = int.from_bytes(digest[:4], "big") % dimensions
-        sign = 1.0 if digest[4] % 2 == 0 else -1.0
-        vector[index] += sign
-    norm = math.sqrt(sum(value * value for value in vector))
-    if norm == 0:
-        return vector
-    return [round(value / norm, 9) for value in vector]
+def inspect_embedding_model(
+    embedding_provider: EmbeddingProvider,
+    embedding_model: str,
+) -> dict[str, Any]:
+    try:
+        identity = embedding_provider.inspect_model(embedding_model)
+    except EmbeddingProviderError:
+        raise
+    except Exception as exc:
+        raise RetrievalError(
+            f"Could not inspect local embedding model '{embedding_model}'. Start the local "
+            f"embedding provider, install {embedding_model}, and retry. Detail: {exc}"
+        ) from exc
+    try:
+        return canonical_model_identity(identity)
+    except EmbeddingProviderError as exc:
+        raise RetrievalError(str(exc)) from exc
+
+
+def embed_with_provider(
+    embedding_provider: EmbeddingProvider,
+    embedding_model: str,
+    text: str,
+    *,
+    context: str,
+) -> list[float]:
+    try:
+        value = embedding_provider.embed(embedding_model, text)
+        return validate_embedding_vector(value, context=context)
+    except EmbeddingProviderError as exc:
+        raise RetrievalError(
+            f"Local embedding failed for {context}. Start the local embedding provider, "
+            f"install {embedding_model}, and retry. Detail: {exc}"
+        ) from exc
+    except Exception as exc:
+        raise RetrievalError(
+            f"Local embedding failed for {context}. Start the local embedding provider, "
+            f"install {embedding_model}, and retry. Detail: {exc}"
+        ) from exc
 
 
 def cosine_similarity(left: list[float], right: list[float]) -> float:
@@ -431,6 +585,9 @@ def _index_metadata(
     manifest: dict[str, Any],
     *,
     embedding_profile: dict[str, Any] | None = None,
+    embedding_provider: EmbeddingProvider,
+    embedding_model_identity: dict[str, Any],
+    vector_dimensions: int,
 ) -> dict[str, Any]:
     profile = embedding_model_profile(
         str(embedding_profile["name"]) if embedding_profile else SUPPORTED_EMBEDDING_MODEL
@@ -441,12 +598,9 @@ def _index_metadata(
         "lexical_engine": LEXICAL_ENGINE,
         "dense_engine": DENSE_ENGINE,
         "embedding_model": profile["name"],
-        "embedding_model_identity": {
-            "name": profile["name"],
-            "implementation": profile["implementation"],
-            "capabilities": list(profile["capabilities"]),
-        },
-        "vector_dimensions": int(profile["vector_dimensions"]),
+        "embedding_provider": embedding_provider_id(embedding_provider),
+        "embedding_model_identity": canonical_model_identity(embedding_model_identity),
+        "vector_dimensions": vector_dimensions,
         "corpus_identity": manifest["corpus_id"],
         "knowledge_release_id": manifest["knowledge_release_id"],
         "rrf_k": RRF_K,
@@ -454,11 +608,27 @@ def _index_metadata(
 
 
 def _is_release_eligible(document: dict[str, Any]) -> bool:
-    return (
-        document.get("review_state") in ELIGIBLE_REVIEW_STATES
-        and document.get("source_health") in ELIGIBLE_SOURCE_HEALTH
-        and document.get("approval_state", "approved") == "approved"
-    )
+    return assess_source_freshness(document).answer_eligible
+
+
+def _attach_source_metadata(
+    document: dict[str, Any],
+    source: dict[str, Any] | None,
+) -> dict[str, Any]:
+    enriched = dict(document)
+    if source is None:
+        return enriched
+    for field in (
+        "fresh_tomato_inputs",
+        "source_content_sha256",
+        "normalized_document_sha256",
+        "reviewed_at_utc",
+        "reviewers",
+        "last_checked_at_utc",
+    ):
+        if field in source:
+            enriched[field] = source[field]
+    return enriched
 
 
 def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:

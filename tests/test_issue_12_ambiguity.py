@@ -12,6 +12,7 @@ from danish_rag.evaluation_quality_bar import load_evaluation_cases
 from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
+from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -103,6 +104,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         self.root = Path(self.tempdir.name)
         self.config_path = self.root / "config" / "provider-config.json"
         self.data_dir = self.root / "data"
+        self.embedding_provider = DeterministicEmbeddingProviderFixture()
         save_provider_configuration(self.config_path, provider_configuration())
 
     def test_consequential_ambiguity_requests_clarification_before_retrieval(self):
@@ -147,7 +149,10 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
             ],
         )
         self.assertEqual(retriever.calls, ["What is PD3?"])
-        self.assertEqual(generator.calls[0]["schema"], answer_schema())
+        self.assertEqual(
+            generator.calls[0]["schema"],
+            answer_schema(["di-rag-doc-permanent-residence-language"]),
+        )
 
     async def test_clarification_turn_stays_in_conversation_and_feeds_next_question(self):
         generator = FixtureAnswerGenerator()
@@ -201,11 +206,15 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue({"answer", "clarify", "refuse"}.issubset(expected_behaviors))
 
     def make_client(self, answer_generator: FixtureAnswerGenerator):
-        install_minimal_knowledge_release(self.data_dir)
+        install_minimal_knowledge_release(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
         app = create_app(
             config_path=self.config_path,
             data_dir=self.data_dir,
             answer_generator=answer_generator,
+            embedding_provider=self.embedding_provider,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
