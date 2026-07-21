@@ -979,7 +979,23 @@ button:hover {
       "rail"
       "setup";
     grid-template-columns: minmax(0, 1fr);
-    padding-bottom: 11rem;
+    padding-bottom: 0;
+  }
+
+  .conversation {
+    height: calc(100dvh - 4.25rem);
+    min-height: 0;
+    padding-bottom: clamp(1rem, 4vw, 3rem);
+  }
+
+  .turn-stack,
+  .empty-state {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .turn-stack {
+    flex: 1 1 auto;
   }
 
   .local-rail {
@@ -997,8 +1013,11 @@ button:hover {
   }
 
   .composer {
-    right: 0;
-    left: 0;
+    position: static;
+    flex: 0 0 auto;
+    margin-top: 1rem;
+    padding: 1rem 0 0;
+    background: transparent;
   }
 }
 
@@ -1013,7 +1032,13 @@ button:hover {
   }
 
   .conversation {
+    height: auto;
     padding-bottom: 1rem;
+  }
+
+  .turn-stack,
+  .empty-state {
+    overflow-y: visible;
   }
 
   .conversation-head {

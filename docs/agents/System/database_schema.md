@@ -54,6 +54,6 @@ legacy migration copies a pre-turn conversation into turn 1 only when no turn
 exists. Knowledge-release indexes are disposable derived data and are rebuilt
 when corpus, embedding model identity, vector dimensions, or index schema changes.
 
-Implementation: [`danish_rag/conversation_store.py`](../../danish_rag/conversation_store.py)
-and [`danish_rag/retrieval.py`](../../danish_rag/retrieval.py).
+Implementation: [`danish_rag/conversation_store.py`](../../../danish_rag/conversation_store.py)
+and [`danish_rag/retrieval.py`](../../../danish_rag/retrieval.py).
 Completion evidence: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).

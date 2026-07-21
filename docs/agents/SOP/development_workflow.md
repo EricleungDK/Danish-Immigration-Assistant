@@ -135,7 +135,7 @@ Update these files when relevant:
 - `docs/source-governance.md` for approved source governance changes
 - `docs/evaluation-quality-bar.md` and `config/evaluation-quality-bar.json` for quality-bar changes
 - `docs/progress/issue-<number>-*.md` or `.json` for issue evidence
-- `.agent/System/*.md` only when agent-facing system notes need to match current project reality
+- `docs/agents/System/*.md` only when agent-facing system notes need to match current project reality
 
 Do not present candidate evaluation packages, provisional benchmarks, or unapproved source-governance changes as final approval.
 

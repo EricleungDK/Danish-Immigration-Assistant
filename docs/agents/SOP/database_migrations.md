@@ -21,7 +21,7 @@ indexes bound to their exact corpus and embedding identity.
    rebuild derived data rather than coercing incompatible vectors.
 4. Perform activation only after corpus copy, embedding, indexing, and identity
    checks succeed; preserve the prior queryable pair on every failure.
-5. Update `.agent/System/database_schema.md`, architecture docs, and release
+5. Update `docs/agents/System/database_schema.md`, architecture docs, and release
    evidence in the same change.
 
 ## Validation

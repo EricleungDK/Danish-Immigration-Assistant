@@ -61,8 +61,16 @@ class CountingRetriever:
 
 
 class FixtureAnswerGenerator:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        conversation_response: str = (
+            "Why did the tomato blush? It saw the salad dressing."
+        ),
+    ) -> None:
         self.calls: list[dict[str, Any]] = []
+        self.conversation_calls: list[dict[str, Any]] = []
+        self.conversation_response = conversation_response
 
     def generate(
         self,
@@ -96,6 +104,21 @@ class FixtureAnswerGenerator:
             ],
         }
 
+    def converse(
+        self,
+        *,
+        question: str,
+        configuration: ProviderConfiguration,
+        schema: dict[str, Any],
+    ) -> dict[str, Any]:
+        self.conversation_calls.append(
+            {
+                "question": question,
+                "schema": schema,
+            }
+        )
+        return {"response": self.conversation_response}
+
 
 class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
@@ -128,6 +151,109 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("application purpose", result.answer["sections"][0]["text"])
                 self.assertEqual(retriever.calls, [])
                 self.assertEqual(generator.calls, [])
+
+    def test_greeting_bypasses_retrieval_and_generation(self):
+        retriever = CountingRetriever()
+        generator = FixtureAnswerGenerator()
+
+        result = AnswerService(retriever=retriever, generator=generator).answer(
+            "hi",
+            provider_configuration(),
+        )
+
+        self.assertEqual(result.answer["response_kind"], "conversation")
+        self.assertIs(result.answer["generation_used"], False)
+        self.assertIn("Hello", result.answer["summary"])
+        self.assertEqual(result.answer["citations"], [])
+        self.assertEqual(retriever.calls, [])
+        self.assertEqual(generator.calls, [])
+        self.assertEqual(generator.conversation_calls, [])
+
+    def test_non_factual_social_turn_uses_local_model_without_retrieval(self):
+        retriever = CountingRetriever()
+        generator = FixtureAnswerGenerator()
+
+        result = AnswerService(retriever=retriever, generator=generator).answer(
+            "Tell me a short joke.",
+            provider_configuration(),
+        )
+
+        self.assertEqual(result.answer["response_kind"], "conversation")
+        self.assertIs(result.answer["generation_used"], True)
+        self.assertEqual(
+            result.answer["summary"],
+            "Why did the tomato blush? It saw the salad dressing.",
+        )
+        self.assertEqual(result.answer["citations"], [])
+        self.assertEqual(retriever.calls, [])
+        self.assertEqual(generator.calls, [])
+        self.assertEqual(
+            generator.conversation_calls,
+            [
+                {
+                    "question": "Tell me a short joke.",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "response": {"type": "string", "minLength": 1},
+                        },
+                        "required": ["response"],
+                        "additionalProperties": False,
+                    },
+                }
+            ],
+        )
+
+    def test_unrelated_factual_turn_uses_bounded_model_mode_without_retrieval(self):
+        retriever = CountingRetriever()
+        generator = FixtureAnswerGenerator(
+            conversation_response=(
+                "I can chat briefly, but factual answers are limited to the installed "
+                "corpus of approved official sources."
+            )
+        )
+
+        result = AnswerService(retriever=retriever, generator=generator).answer(
+            "What is the capital of France?",
+            provider_configuration(),
+            conversation_turns=[
+                {
+                    "question": "What is PD2?",
+                    "answer": {"response_kind": "answer"},
+                }
+            ],
+        )
+
+        self.assertEqual(result.answer["response_kind"], "conversation")
+        self.assertIs(result.answer["generation_used"], True)
+        self.assertIn("factual answers are limited", result.answer["summary"])
+        self.assertEqual(result.answer["citations"], [])
+        self.assertEqual(retriever.calls, [])
+        self.assertEqual(generator.calls, [])
+        self.assertEqual(len(generator.conversation_calls), 1)
+
+    async def test_greeting_renders_as_conversation_without_evidence_indicators(self):
+        generator = FixtureAnswerGenerator()
+        client = self.make_client(generator)
+
+        response = await self.post_question(client, "hi")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Conversation", response.text)
+        self.assertIn("Handled locally without retrieval or model generation", response.text)
+        self.assertNotIn("Evidence Confidence", response.text)
+        self.assertEqual(generator.calls, [])
+        self.assertEqual(generator.conversation_calls, [])
+
+        conversations = ConversationStore(
+            self.data_dir / "conversations.sqlite3"
+        ).list_conversations()
+        self.assertEqual(len(conversations), 1)
+        record = ConversationStore(
+            self.data_dir / "conversations.sqlite3"
+        ).get_conversation(conversations[0]["id"])
+        self.assertEqual(record["answer"]["response_kind"], "conversation")
+        self.assertIs(record["answer"]["generation_used"], False)
 
     def test_low_risk_ambiguity_answers_with_visible_assumption(self):
         retriever = CountingRetriever()

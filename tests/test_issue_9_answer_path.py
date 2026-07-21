@@ -11,6 +11,7 @@ from danish_rag.answer_pipeline import (
     LocalProviderAnswerGenerator,
     _answer_messages,
     answer_schema,
+    conversation_schema,
 )
 from danish_rag.conversation_store import ConversationStore
 from danish_rag.knowledge_release import install_minimal_knowledge_release
@@ -91,6 +92,21 @@ class RecordingOllamaGenerator(LocalProviderAnswerGenerator):
         return {"message": {"content": self.responses.pop(0)}}
 
 
+class RecordingOpenAICompatibleGenerator(LocalProviderAnswerGenerator):
+    def __init__(self, response: dict[str, Any]) -> None:
+        super().__init__(timeout_seconds=1)
+        self.response = response
+        self.payloads: list[dict[str, Any]] = []
+
+    def _request_json(self, endpoint, method, path, payload):
+        self.payloads.append(payload)
+        return {
+            "choices": [
+                {"message": {"content": json.dumps(self.response)}}
+            ]
+        }
+
+
 class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
     async def test_ollama_schema_is_prompt_grounded_and_thinking_is_disabled(self):
         schema = answer_schema(["official-1"])
@@ -130,6 +146,60 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
             json.dumps(schema, ensure_ascii=False, sort_keys=True),
             payload["messages"][1]["content"],
         )
+
+    async def test_ollama_social_conversation_is_structured_and_fact_bounded(self):
+        schema = conversation_schema()
+        generator = RecordingOllamaGenerator(
+            [json.dumps({"response": "Here is a short, harmless joke."})]
+        )
+
+        result = generator.converse(
+            question="Tell me a short joke.",
+            configuration=ProviderConfiguration(
+                provider_id="ollama",
+                endpoint="http://127.0.0.1:11434",
+                model="fixture-model",
+                provider_version="fixture-provider",
+                model_identity={"id": "fixture-model"},
+                capabilities=["generation"],
+                validated_at_utc="2026-07-14T00:00:00Z",
+            ),
+            schema=schema,
+        )
+
+        self.assertEqual(result, {"response": "Here is a short, harmless joke."})
+        payload = generator.payloads[0]
+        self.assertIs(payload["think"], False)
+        self.assertEqual(payload["format"], schema)
+        self.assertIn("non-factual social conversation", payload["messages"][0]["content"])
+        self.assertIn("Do not provide immigration", payload["messages"][0]["content"])
+        self.assertNotIn("approved_official_evidence", payload["messages"][1]["content"])
+
+    async def test_openai_compatible_social_conversation_uses_strict_schema(self):
+        schema = conversation_schema()
+        generator = RecordingOpenAICompatibleGenerator(
+            {"response": "I can keep this social turn brief."}
+        )
+
+        result = generator.converse(
+            question="How are you?",
+            configuration=ProviderConfiguration(
+                provider_id="openai_compatible",
+                endpoint="http://127.0.0.1:1234",
+                model="fixture-model",
+                provider_version="fixture-provider",
+                model_identity={"id": "fixture-model"},
+                capabilities=["generation"],
+                validated_at_utc="2026-07-14T00:00:00Z",
+            ),
+            schema=schema,
+        )
+
+        self.assertEqual(result, {"response": "I can keep this social turn brief."})
+        response_format = generator.payloads[0]["response_format"]
+        self.assertEqual(response_format["json_schema"]["name"], "danish_rag_conversation")
+        self.assertEqual(response_format["json_schema"]["schema"], schema)
+        self.assertIs(response_format["json_schema"]["strict"], True)
 
     async def test_ollama_retries_ambiguous_structured_output_once(self):
         valid = json.dumps({"summary": "Supported.", "sections": []})

@@ -2,6 +2,11 @@
 
 Issues and PRDs for this repo live as GitHub issues in `EricleungDK/Danish-Immigration-Assistant`. Use the `gh` CLI for all operations.
 
+[GitHub issue #1](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/1)
+is the canonical product PRD. Local documents may summarize implementation
+state or evidence, but they do not replace the issue body and comments. External
+pull requests are not a triage request surface for this repository.
+
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.

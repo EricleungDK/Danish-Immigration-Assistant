@@ -111,6 +111,62 @@ test("supported question produces cited answer and persists across reload", asyn
   await expect(page.getByText("Corpus: kr-2026-07-06.1").first()).toBeVisible();
 });
 
+test("greeting stays conversational without immigration evidence", async ({ page }) => {
+  await page.goto("/");
+  await ensureBrowserProvider(page);
+
+  await page.getByRole("textbox", { name: "Question" }).fill("hi");
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "Conversation", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/Hello! I can chat briefly/i)).toBeVisible();
+  await expect(
+    page.getByText("Handled locally without retrieval or model generation"),
+  ).toBeVisible();
+  await expect(page.getByText("Official fact", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/Evidence Confidence:/)).toHaveCount(0);
+});
+
+test("composer does not overlap answer region from 681 through 1080 pixels", async ({ page }) => {
+  await page.setViewportSize({ width: 1080, height: 800 });
+  await page.goto("/");
+  await ensureBrowserProvider(page);
+
+  await page.getByRole("textbox", { name: "Question" }).fill(
+    "What Danish test do I need for permanent residence?",
+  );
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("heading", { name: "Current Conversation" })).toBeVisible();
+
+  for (const width of [681, 820, 1080]) {
+    await page.setViewportSize({ width, height: 800 });
+
+    const layout = await page.evaluate(() => {
+      const turnStack = document.querySelector(".turn-stack");
+      const composer = document.querySelector(".composer");
+      if (!(turnStack instanceof HTMLElement) || !(composer instanceof HTMLElement)) {
+        return null;
+      }
+      const answerRegion = turnStack.getBoundingClientRect();
+      const composerRegion = composer.getBoundingClientRect();
+      return {
+        answerBottom: answerRegion.bottom,
+        composerTop: composerRegion.top,
+        composerPosition: getComputedStyle(composer).position,
+      };
+    });
+
+    expect(layout, `layout regions should exist at ${width}px`).not.toBeNull();
+    expect(layout.composerPosition, `composer positioning at ${width}px`).not.toBe("fixed");
+    expect(
+      layout.answerBottom,
+      `answer region should end before composer at ${width}px`,
+    ).toBeLessThanOrEqual(layout.composerTop + 1);
+  }
+});
+
 test("new conversation resets the composer without deleting saved history", async ({ page }) => {
   await page.goto("/");
 

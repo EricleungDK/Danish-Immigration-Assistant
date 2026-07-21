@@ -1,11 +1,13 @@
 # Danish Immigration RAG — Agent Documentation
 
-**Last updated:** 2026-07-14
+**Last updated:** 2026-07-21
 **Status:** MVP implementation candidate; release remains blocked by recorded human-evidence gates.
 
-Start with [`CONTEXT.md`](../CONTEXT.md), the GitHub issue named in the task, and
-the authoritative contracts under [`docs/`](../docs/). The `.agent` directory is
-an agent-facing map and procedure layer; it does not override those contracts.
+Start with [`CONTEXT.md`](../../CONTEXT.md), the GitHub issue named in the task,
+and the authoritative contracts under [`docs/`](../). GitHub issue #1 is the
+canonical product PRD, and GitHub Issues are authoritative for work items. This
+directory is an agent-facing map, procedure layer, and historical archive; it
+does not override those sources.
 
 ## System
 
@@ -17,9 +19,9 @@ an agent-facing map and procedure layer; it does not override those contracts.
   state-changing constraints.
 - [UX guidelines](System/ux_guidelines.md) — conversation, evidence, trust, and
   accessibility rules.
-- [Authoritative architecture](../docs/architecture.md), [runtime baseline](../docs/runtime-baseline.md),
-  [source governance](../docs/source-governance.md), and
-  [release qualification](../docs/release-qualification.md).
+- [Authoritative architecture](../architecture.md), [runtime baseline](../runtime-baseline.md),
+  [source governance](../source-governance.md), and
+  [release qualification](../release-qualification.md).
 
 ## Tasks
 
@@ -27,7 +29,7 @@ an agent-facing map and procedure layer; it does not override those contracts.
   evidence, and genuine external blockers.
 - [Task index](Tasks/README.md) — issue tracker and verification entry points.
 - GitHub Issues for `EricleungDK/Danish-Immigration-Assistant` are authoritative;
-  see [`docs/agents/issue-tracker.md`](../docs/agents/issue-tracker.md).
+  see [`issue-tracker.md`](issue-tracker.md).
 
 ## SOP
 
@@ -39,7 +41,7 @@ an agent-facing map and procedure layer; it does not override those contracts.
 ## Reports
 
 - [`Reports/`](Reports/) stores dated implementation/test handoffs.
-- Durable machine-readable gate evidence lives in [`docs/progress/`](../docs/progress/)
+- Durable machine-readable gate evidence lives in [`docs/progress/`](../progress/)
   so release evaluation can hash and validate it.
 
 ## Quick Verification
@@ -50,5 +52,5 @@ npm run test:browser
 ```
 
 Live Ollama, retrieval, monitor, and strict-evaluation commands are maintained in
-[`README.md`](../README.md) and the release qualification docs. A fixture or unit
+[`README.md`](../../README.md) and the release qualification docs. A fixture or unit
 pass never substitutes for a required live or human gate.

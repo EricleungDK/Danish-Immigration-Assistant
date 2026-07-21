@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -44,6 +45,15 @@ class AnswerGenerator(Protocol):
         question: str,
         normalized_question: str,
         evidence: list[dict[str, Any]],
+        configuration: ProviderConfiguration,
+        schema: dict[str, Any],
+    ) -> dict[str, Any]:
+        ...
+
+    def converse(
+        self,
+        *,
+        question: str,
         configuration: ProviderConfiguration,
         schema: dict[str, Any],
     ) -> dict[str, Any]:
@@ -113,6 +123,17 @@ def answer_schema(citation_ids: list[str] | None = None) -> dict[str, Any]:
     }
 
 
+def conversation_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "response": {"type": "string", "minLength": 1},
+        },
+        "required": ["response"],
+        "additionalProperties": False,
+    }
+
+
 class LocalProviderAnswerGenerator:
     """Structured answer generator for configured loopback providers."""
 
@@ -146,6 +167,29 @@ class LocalProviderAnswerGenerator:
             )
         raise AnswerPipelineError("Configured generation provider is unsupported.")
 
+    def converse(
+        self,
+        *,
+        question: str,
+        configuration: ProviderConfiguration,
+        schema: dict[str, Any],
+    ) -> dict[str, Any]:
+        messages = _conversation_messages(question, schema=schema)
+        if configuration.provider_id == "ollama":
+            return self._generate_ollama_messages(
+                messages=messages,
+                configuration=configuration,
+                schema=schema,
+            )
+        if configuration.provider_id == "openai_compatible":
+            return self._generate_openai_compatible_messages(
+                messages=messages,
+                configuration=configuration,
+                schema=schema,
+                schema_name="danish_rag_conversation",
+            )
+        raise AnswerPipelineError("Configured generation provider is unsupported.")
+
     def _generate_ollama(
         self,
         *,
@@ -161,6 +205,19 @@ class LocalProviderAnswerGenerator:
             evidence,
             schema=schema,
         )
+        return self._generate_ollama_messages(
+            messages=messages,
+            configuration=configuration,
+            schema=schema,
+        )
+
+    def _generate_ollama_messages(
+        self,
+        *,
+        messages: list[dict[str, str]],
+        configuration: ProviderConfiguration,
+        schema: dict[str, Any],
+    ) -> dict[str, Any]:
         payload = {
             "model": configuration.model,
             "messages": messages,
@@ -207,19 +264,31 @@ class LocalProviderAnswerGenerator:
         configuration: ProviderConfiguration,
         schema: dict[str, Any],
     ) -> dict[str, Any]:
+        return self._generate_openai_compatible_messages(
+            messages=_answer_messages(
+                question, normalized_question, evidence, schema=schema
+            ),
+            configuration=configuration,
+            schema=schema,
+            schema_name="danish_rag_answer",
+        )
+
+    def _generate_openai_compatible_messages(
+        self,
+        *,
+        messages: list[dict[str, str]],
+        configuration: ProviderConfiguration,
+        schema: dict[str, Any],
+        schema_name: str,
+    ) -> dict[str, Any]:
         payload = {
             "model": configuration.model,
-            "messages": _answer_messages(
-                question,
-                normalized_question,
-                evidence,
-                schema=schema,
-            ),
+            "messages": messages,
             "temperature": 0,
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {
-                    "name": "danish_rag_answer",
+                    "name": schema_name,
                     "schema": schema,
                     "strict": True,
                 },
@@ -300,9 +369,42 @@ class AnswerService:
         *,
         conversation_turns: list[dict[str, Any]] | None = None,
     ) -> AnswerResult:
+        local_turns = conversation_turns or []
+        direct_normalized_question = normalize_question(question)
+        conversation_kind = classify_conversation_turn(
+            question,
+            conversation_turns=local_turns,
+        )
+        if conversation_kind == "greeting":
+            return AnswerResult(
+                question=question,
+                normalized_question=direct_normalized_question,
+                answer=_greeting_answer(),
+                model_identity=_model_identity(configuration),
+                corpus_identity=str(self.retriever.manifest["corpus_id"]),
+            )
+        if conversation_kind == "social":
+            converse = getattr(self.generator, "converse", None)
+            if not callable(converse):
+                raise AnswerPipelineError(
+                    "Configured generation provider does not support bounded social conversation."
+                )
+            generated_conversation = converse(
+                question=question,
+                configuration=configuration,
+                schema=conversation_schema(),
+            )
+            return AnswerResult(
+                question=question,
+                normalized_question=direct_normalized_question,
+                answer=_generated_conversation_answer(generated_conversation),
+                model_identity=_model_identity(configuration),
+                corpus_identity=str(self.retriever.manifest["corpus_id"]),
+            )
+
         effective_question = _question_with_local_conversation_context(
             question,
-            conversation_turns or [],
+            local_turns,
         )
         normalized_question = normalize_question(effective_question)
         ambiguity = classify_question_ambiguity(effective_question)
@@ -516,6 +618,76 @@ def classify_question_safety(question: str) -> SafetyDecision:
             ),
         )
     return SafetyDecision(response_kind="answer")
+
+
+def classify_conversation_turn(
+    question: str,
+    *,
+    conversation_turns: list[dict[str, Any]] | None = None,
+) -> str:
+    compact = " ".join(question.split()).casefold()
+    greeting_patterns = (
+        r"(?:hi|hello|hey)(?: there)?[!.?]*",
+        r"good (?:morning|afternoon|evening)[!.?]*",
+    )
+    if any(re.fullmatch(pattern, compact) for pattern in greeting_patterns):
+        return "greeting"
+
+    social_patterns = (
+        r"(?:thanks|thank you)(?: very much| a lot)?(?:,? that helps)?[!.?]*",
+        r"(?:how are you|how is it going|how's it going)[!.?]*",
+        r"(?:tell me (?:a|another) (?:short )?joke|make me laugh)[!.?]*",
+        r"(?:bye|goodbye|see you|talk to you later)[!.?]*",
+        r"(?:nice to meet you|can we chat|let's chat)[!.?]*",
+    )
+    if any(re.fullmatch(pattern, compact) for pattern in social_patterns):
+        return "social"
+    if _mentions_supported_domain(compact):
+        return "answer"
+    has_domain_context = any(
+        turn.get("answer", {}).get("response_kind") != "conversation"
+        for turn in conversation_turns or []
+    )
+    if has_domain_context and _needs_follow_up_context(question):
+        return "answer"
+    return "social"
+
+
+def _mentions_supported_domain(lookup: str) -> bool:
+    domain_terms = (
+        "danish",
+        "dansk",
+        "prøve",
+        "prove i dansk",
+        "pd1",
+        "pd2",
+        "pd3",
+        "studieprøven",
+        "studieproven",
+        "permanent residence",
+        "permanent ophold",
+        "opholdstilladelse",
+        "citizenship",
+        "statsborgerskab",
+        "siri",
+        "nyidanmark",
+        "sprogcenter",
+        "language requirement",
+        "language exam",
+        "language test",
+        "register",
+        "registration",
+        "certificate",
+        "diploma",
+        "knowledge release",
+        "corpus",
+        "evidence",
+        "official source",
+        "official page",
+    )
+    if any(term in lookup for term in domain_terms):
+        return True
+    return re.search(r"\b(?:exam|test)\b", lookup) is not None
 
 
 def classify_question_ambiguity(question: str) -> AmbiguityDecision:
@@ -769,6 +941,50 @@ def _asks_for_certificate_acceptance(lookup: str) -> bool:
     return any(term in lookup for term in certificate_terms) and any(
         term in lookup for term in acceptance_terms
     )
+
+
+def _greeting_answer() -> dict[str, Any]:
+    return _conversation_answer(
+        "Hello! I can chat briefly and help explain approved official information "
+        "about Danish permanent-residence language requirements and Danish language "
+        "examinations. What would you like to talk about?",
+        generation_used=False,
+    )
+
+
+def _generated_conversation_answer(payload: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(payload, dict) or set(payload) != {"response"}:
+        raise AnswerValidationError(
+            "Structured social response must contain exactly one response field."
+        )
+    response = payload.get("response")
+    if not isinstance(response, str) or not response.strip():
+        raise AnswerValidationError(
+            "Structured social response is missing non-empty response text."
+        )
+    return _conversation_answer(response.strip(), generation_used=True)
+
+
+def _conversation_answer(text: str, *, generation_used: bool) -> dict[str, Any]:
+    return {
+        "summary": text,
+        "response_kind": "conversation",
+        "generation_used": generation_used,
+        "assumptions": [],
+        "sections": [],
+        "citations": [],
+        "suggested_follow_ups": [],
+        "trust": {
+            "evidence_confidence": "Not applicable",
+            "evidence_confidence_reason": (
+                "This was a social conversation turn, not an official factual answer."
+            ),
+            "fresh_tomato_score": "Not applicable",
+            "fresh_tomato_reason": (
+                "No material source was needed for this social conversation turn."
+            ),
+        },
+    }
 
 
 def _clarification_answer(decision: AmbiguityDecision) -> dict[str, Any]:
@@ -1069,6 +1285,39 @@ def _answer_messages(
             "role": "user",
             "content": json.dumps(
                 user_payload,
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+        },
+    ]
+
+
+def _conversation_messages(
+    question: str,
+    *,
+    schema: dict[str, Any],
+) -> list[dict[str, str]]:
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Return only JSON matching required_output_schema. Respond naturally, "
+                "briefly, and in English to this non-factual social conversation turn. "
+                "Do not provide immigration, legal, eligibility, examination, current-event, "
+                "or other external factual claims. Do not imply that the generation model "
+                "is an approved official source. If the request requires factual information, "
+                "state that factual answers are limited to the installed corpus of approved "
+                "official sources and invite a supported Danish-language-requirement or "
+                "examination question."
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(
+                {
+                    "conversation_turn": question,
+                    "required_output_schema": schema,
+                },
                 ensure_ascii=False,
                 sort_keys=True,
             ),

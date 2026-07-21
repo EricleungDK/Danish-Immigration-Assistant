@@ -2,6 +2,17 @@
 
 Private, source-grounded local assistant for Danish permanent-residence language requirements and Danish language examinations.
 
+## Project Documentation
+
+- [GitHub issue #1](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/1)
+  is the canonical product PRD; all PRDs and work items are tracked in GitHub
+  Issues.
+- [CONTEXT.md](CONTEXT.md) defines the project vocabulary and product boundary.
+- [docs/architecture.md](docs/architecture.md) records the authoritative
+  architecture, with supporting contracts and evidence under [`docs/`](docs/).
+- [docs/agents/README.md](docs/agents/README.md) is the entry point for
+  agent-facing system maps, procedures, task context, and historical reports.
+
 ## Project Baselines
 
 - Runtime policy: [config/runtime-policy.json](config/runtime-policy.json)

@@ -30,12 +30,20 @@
       </header>
       <section class="answer" aria-labelledby="answer-title-{{ turn.turn_index }}">
         <div class="answer-meta">
+          {% if turn.answer.response_kind == "conversation" and not turn.answer.generation_used %}
+          <span>Handled locally without retrieval or model generation</span>
+          {% elif turn.answer.response_kind == "conversation" %}
+          <span>Provider: {{ turn.model_identity.provider_id }}</span>
+          <span>Model: {{ turn.model_identity.model }}</span>
+          <span>No corpus evidence used</span>
+          {% else %}
           <span>Provider: {{ turn.model_identity.provider_id }}</span>
           <span>Model: {{ turn.model_identity.model }}</span>
           <span>Corpus: {{ turn.corpus_identity }}</span>
+          {% endif %}
           <span>Answered: {{ turn.answered_at_display }}</span>
         </div>
-        <h2 id="answer-title-{{ turn.turn_index }}">{% if turn.answer.response_kind == "clarification" %}Clarification{% else %}Answer{% endif %}</h2>
+        <h2 id="answer-title-{{ turn.turn_index }}">{% if turn.answer.response_kind == "clarification" %}Clarification{% elif turn.answer.response_kind == "conversation" %}Conversation{% else %}Answer{% endif %}</h2>
         <p class="answer-summary">{{ turn.answer.summary }}</p>
 
         {% if turn.answer.assumptions %}
@@ -78,6 +86,7 @@
           {% endfor %}
         </div>
 
+        {% if turn.answer.response_kind != "conversation" %}
         <dl class="trust-list" aria-label="Answer trust indicators">
           <div>
             <dt>Evidence Confidence: {{ turn.answer.trust.evidence_confidence }}</dt>
@@ -88,6 +97,7 @@
             <dd>{{ turn.answer.trust.fresh_tomato_reason }}</dd>
           </div>
         </dl>
+        {% endif %}
 
         {% if loop.last and turn.answer.suggested_follow_ups %}
         <section class="suggested-followups" aria-labelledby="suggested-followups-title-{{ turn.turn_index }}">

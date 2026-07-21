@@ -2,7 +2,7 @@
 
 The current agent-facing architecture is maintained in
 [`project_architecture.md`](project_architecture.md). The authoritative approved
-decision record is [`docs/architecture.md`](../../docs/architecture.md), with
+decision record is [`docs/architecture.md`](../../architecture.md), with
 runtime, source-governance, evaluation, and release details in the adjacent
 `docs/` contracts.
 

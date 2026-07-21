@@ -38,6 +38,6 @@ failures and provide a local corrective action without claiming success.
 Use restrained, nonessential transitions only. Under `prefers-reduced-motion`,
 remove motion while preserving status and focus behavior.
 
-See [`docs/architecture.md`](../../docs/architecture.md) and the browser tests in
-[`tests/browser/`](../../tests/browser/) for the executable contract.
+See [`docs/architecture.md`](../../architecture.md) and the browser tests in
+[`tests/browser/`](../../../tests/browser/) for the executable contract.
 Completion evidence: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).

@@ -847,7 +847,7 @@ Expected: command exits `1` because release-blocking gates remain.
 Add this bullet to the Trace list:
 
 ```markdown
-- Current release evaluation report: [docs/progress/release-evaluation-current.json](release-evaluation-current.json)
+- Current release evaluation report: [docs/progress/release-evaluation-current.json](../../progress/release-evaluation-current.json)
 ```
 
 Replace the active blocker bullet that says the full production release evaluation runner is not implemented with:

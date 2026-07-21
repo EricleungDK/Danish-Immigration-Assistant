@@ -4,7 +4,7 @@ GitHub issue: https://github.com/EricleungDK/Danish-Immigration-Assistant/issues
 
 Parent decision issue: https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/2
 
-Implementation source PRD: [.agent/issues/prd-runtime-and-retrieval-baseline.md](../../.agent/issues/prd-runtime-and-retrieval-baseline.md)
+Canonical product PRD: [GitHub issue #1](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/1)
 
 ## Trace
 

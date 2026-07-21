@@ -45,5 +45,5 @@ Host/Origin validation, loopback provider enforcement, content-free release
 requests, bounded downloads, signature verification, and local file permissions
 the relevant controls. Non-loopback exposure is unsupported.
 
-Implementation: [`danish_rag/local_app.py`](../../danish_rag/local_app.py).
+Implementation: [`danish_rag/local_app.py`](../../../danish_rag/local_app.py).
 Completion evidence: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).

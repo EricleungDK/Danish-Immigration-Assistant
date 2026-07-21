@@ -16,9 +16,9 @@ before evidence can receive credit. Structured answers are validated so every
 official fact has eligible supporting citations; the model is never treated as
 an official source.
 
-Authoritative details: [`docs/architecture.md`](../../docs/architecture.md),
-[`docs/runtime-baseline.md`](../../docs/runtime-baseline.md), and
-[`docs/source-governance.md`](../../docs/source-governance.md).
+Authoritative details: [`docs/architecture.md`](../../architecture.md),
+[`docs/runtime-baseline.md`](../../runtime-baseline.md), and
+[`docs/source-governance.md`](../../source-governance.md).
 
 ## Tech Stack
 
@@ -77,5 +77,5 @@ source registry. Production publication remains blocked until official snapshots
 curator/monitor records, named human source review, independent final-answer
 adjudication, replacement real-process/browser environment evidence, a manual
 assistive-technology check, and release-owner approval are supplied. See
-[`docs/progress/source-registry-sr-2026-07-06.1.md`](../../docs/progress/source-registry-sr-2026-07-06.1.md).
+[`docs/progress/source-registry-sr-2026-07-06.1.md`](../../progress/source-registry-sr-2026-07-06.1.md).
 Completion evidence: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).

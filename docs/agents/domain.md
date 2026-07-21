@@ -2,17 +2,19 @@
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.
 
+This repository uses a single-context layout.
+
 ## Before exploring, read these
 
-- **`CONTEXT.md`** at the repo root, if it exists.
-- **`CONTEXT-MAP.md`** at the repo root, if it exists. It points at one `CONTEXT.md` per context. Read each one relevant to the topic.
-- **`docs/adr/`**, if it exists. Read ADRs that touch the area you're about to work in. In multi-context repos, also check `src/<context>/docs/adr/` for context-scoped decisions.
+- **`CONTEXT.md`** at the repo root.
+- **`docs/adr/`**, if it exists. Read ADRs that touch the area you're about to
+  work in.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/grill-with-docs`) creates them lazily when terms or decisions actually get resolved.
 
 ## File structure
 
-Domain docs are optional for now. If the repo later adopts a single-context layout, use:
+The current single-context layout is:
 
 ```text
 /
@@ -23,7 +25,8 @@ Domain docs are optional for now. If the repo later adopts a single-context layo
 `-- src/
 ```
 
-If the repo later adopts a multi-context layout, use:
+If the repository later becomes a monorepo with multiple independent domain
+contexts, add a root `CONTEXT-MAP.md` that points to context-specific glossaries:
 
 ```text
 /
