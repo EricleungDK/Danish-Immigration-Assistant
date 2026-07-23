@@ -339,6 +339,21 @@ class FinalAnswerEvaluationPublicSeamTests(unittest.TestCase):
             self.assertIn("evaluation_surface_completion", report["threshold_failures"])
             self.assertEqual(report["execution"]["answer_case_execution_count"], 10)
             self.assertEqual(report["execution"]["not_evaluable_count"], 6)
+            eval_009 = next(
+                result
+                for result in report["case_results"]
+                if result["case_id"] == "eval-009-citizenship-out-of-scope"
+            )
+            self.assertIsNone(eval_009["error_type"])
+            self.assertTrue(eval_009["generation_completed"])
+            self.assertEqual(
+                eval_009["checks"]["behavior"],
+                {
+                    "status": "passed",
+                    "expected": "answer-with-refusal",
+                    "observed": "answer-with-refusal",
+                },
+            )
 
             serialized = json.dumps(report, sort_keys=True).casefold()
             self.assertNotIn('"prompt":', serialized)

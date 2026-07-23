@@ -1,4 +1,6 @@
+import json
 import unittest
+from pathlib import Path
 from typing import Any
 
 from danish_rag.answer_pipeline import (
@@ -20,6 +22,18 @@ def provider_configuration() -> ProviderConfiguration:
         capabilities=["generation"],
         validated_at_utc="2026-07-06T12:00:00+00:00",
     )
+
+
+ROOT = Path(__file__).resolve().parents[1]
+EVAL_009_PROMPT = (
+    "Do the Danish language rules for citizenship mean I meet the permanent "
+    "residence language requirement?"
+)
+PERMANENT_RESIDENCE_CITATION_ID = "permanent-residence-language"
+PERMANENT_RESIDENCE_FACT = (
+    "For permanent residence, the applicant must pass Danish language test 2 "
+    "(Prøve i Dansk 2), or a Danish exam of an equivalent or higher level."
+)
 
 
 def evidence_fixture(
@@ -57,7 +71,13 @@ def evidence_fixture(
 class FixtureRetriever:
     manifest = {"corpus_id": "kr-fixture"}
 
-    def __init__(self, evidence: list[dict[str, object]]) -> None:
+    def __init__(
+        self,
+        evidence: list[dict[str, object]],
+        *,
+        manifest: dict[str, object] | None = None,
+    ) -> None:
+        self.manifest = manifest or {"corpus_id": "kr-fixture"}
         self.evidence = evidence
         self.calls: list[str] = []
 
@@ -90,7 +110,208 @@ class FixtureGenerator:
         return self.payload
 
 
+def citizenship_boundary_manifest(
+    *,
+    citizenship_review_state: str | None = None,
+) -> dict[str, object]:
+    sources = [
+        {
+            "source_id": f"source-{PERMANENT_RESIDENCE_CITATION_ID}",
+            "review_state": "approved-current",
+            "approval_state": "approved",
+            "topic": "permanent-residence language requirements",
+        }
+    ]
+    if citizenship_review_state is not None:
+        sources.append(
+            {
+                "source_id": "citizenship-language",
+                "review_state": citizenship_review_state,
+                "approval_state": "approved",
+                "topic": "citizenship language requirements",
+            }
+        )
+    return {"corpus_id": "kr-fixture", "sources": sources}
+
+
+def citizenship_boundary_evidence() -> list[dict[str, object]]:
+    return [
+        evidence_fixture(
+            PERMANENT_RESIDENCE_CITATION_ID,
+            content=PERMANENT_RESIDENCE_FACT,
+        )
+    ]
+
+
+def supported_citizenship_boundary_generator() -> FixtureGenerator:
+    return FixtureGenerator(
+        {
+            "summary": "The approved source supports a permanent-residence fact.",
+            "sections": [
+                {
+                    "kind": "official_fact",
+                    "text": PERMANENT_RESIDENCE_FACT,
+                    "citation_ids": [PERMANENT_RESIDENCE_CITATION_ID],
+                }
+            ],
+        }
+    )
+
+
 class Issue13EvidenceSafetyTests(unittest.TestCase):
+    def test_citizenship_implication_case_answers_supported_residence_fact_with_boundary_refusal(
+        self,
+    ):
+        dataset = json.loads(
+            (
+                ROOT / "data/evaluation/evaluation-set-v0.1-candidate.json"
+            ).read_text(encoding="utf-8")
+        )
+        case = next(
+            item
+            for item in dataset["cases"]
+            if item["id"] == "eval-009-citizenship-out-of-scope"
+        )
+        self.assertEqual(case["prompt"], EVAL_009_PROMPT)
+        evidence = citizenship_boundary_evidence()
+        retriever = FixtureRetriever(
+            evidence,
+            manifest=citizenship_boundary_manifest(),
+        )
+        generator = supported_citizenship_boundary_generator()
+
+        result = AnswerService(
+            retriever=retriever,
+            generator=generator,
+        ).answer(case["prompt"], provider_configuration())
+
+        self.assertEqual(retriever.calls, [case["prompt"]])
+        self.assertEqual(result.answer["response_kind"], "answer")
+        official_facts = [
+            section
+            for section in result.answer["sections"]
+            if section["kind"] == "official_fact"
+        ]
+        self.assertEqual(len(official_facts), 1)
+        self.assertEqual(
+            official_facts[0]["citation_ids"],
+            [PERMANENT_RESIDENCE_CITATION_ID],
+        )
+        refusals = [
+            section
+            for section in result.answer["sections"]
+            if section["kind"] == "refusal"
+        ]
+        self.assertEqual(len(refusals), 1)
+        refusal_text = refusals[0]["text"].casefold()
+        self.assertIn("active approved corpus", refusal_text)
+        self.assertIn("no citizenship evidence", refusal_text)
+        self.assertIn("cannot infer", refusal_text)
+        self.assertIn("permanent-residence", refusal_text)
+        answer_text = " ".join(
+            [
+                result.answer["summary"],
+                *[section["text"] for section in result.answer["sections"]],
+            ]
+        ).casefold()
+        self.assertNotIn("you meet the permanent", answer_text)
+        self.assertNotIn("you qualify", answer_text)
+        self.assertEqual(
+            result.answer["trust"]["evidence_confidence"],
+            "High",
+        )
+        self.assertEqual(
+            result.answer["trust"]["fresh_tomato_score"],
+            "High",
+        )
+
+    def test_citizenship_boundary_does_not_claim_approved_corpus_capability_is_missing(
+        self,
+    ):
+        retriever = FixtureRetriever(
+            citizenship_boundary_evidence(),
+            manifest=citizenship_boundary_manifest(
+                citizenship_review_state="changed-unreviewed"
+            ),
+        )
+
+        result = AnswerService(
+            retriever=retriever,
+            generator=supported_citizenship_boundary_generator(),
+        ).answer(
+            "Does meeting a citizenship language rule mean I satisfy the "
+            "permanent residence language requirement?",
+            provider_configuration(),
+        )
+
+        answer_text = " ".join(
+            [
+                result.answer["summary"],
+                *[section["text"] for section in result.answer["sections"]],
+            ]
+        ).casefold()
+        self.assertNotIn("no citizenship evidence", answer_text)
+        self.assertIn("cannot infer", answer_text)
+
+    def test_citizenship_boundary_rejects_personal_residence_conclusion_without_repeated_context(
+        self,
+    ):
+        generator = FixtureGenerator(
+            {
+                "summary": "The requirement is met.",
+                "sections": [
+                    {
+                        "kind": "official_fact",
+                        "text": (
+                            "You meet the permanent-residence language requirement."
+                        ),
+                        "citation_ids": [PERMANENT_RESIDENCE_CITATION_ID],
+                    }
+                ],
+            }
+        )
+
+        with self.assertRaisesRegex(AnswerValidationError, "prohibited"):
+            AnswerService(
+                retriever=FixtureRetriever(
+                    citizenship_boundary_evidence(),
+                    manifest=citizenship_boundary_manifest(),
+                ),
+                generator=generator,
+            ).answer(
+                EVAL_009_PROMPT,
+                provider_configuration(),
+            )
+
+    def test_citizenship_to_permanent_residence_conclusion_is_rejected(self):
+        generator = FixtureGenerator(
+            {
+                "summary": "The source establishes the application outcome.",
+                "sections": [
+                    {
+                        "kind": "official_fact",
+                        "text": (
+                            "Meeting the citizenship language rules means the "
+                            "permanent-residence requirement is met."
+                        ),
+                        "citation_ids": [PERMANENT_RESIDENCE_CITATION_ID],
+                    }
+                ],
+            }
+        )
+
+        with self.assertRaisesRegex(AnswerValidationError, "prohibited"):
+            AnswerService(
+                retriever=FixtureRetriever(
+                    citizenship_boundary_evidence(),
+                    manifest=citizenship_boundary_manifest(),
+                ),
+                generator=generator,
+            ).answer(
+                EVAL_009_PROMPT,
+                provider_configuration(),
+            )
+
     def test_personal_eligibility_question_keeps_supported_fact_and_scoped_refusal(self):
         evidence = [
             evidence_fixture(

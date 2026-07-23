@@ -6,7 +6,7 @@ import json
 import re
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Any, Protocol
 
@@ -35,6 +35,12 @@ CONFLICTING_AGREEMENT_STATES = {"conflict", "conflicts", "conflicting", "contrad
 LOW_RISK_EXAM_TERM_ASSUMPTION = (
     "You are asking for a general explanation of the Danish examination term, not "
     "a personal eligibility decision."
+)
+CITIZENSHIP_TOPIC_TERMS = ("citizenship", "statsborgerskab", "indfødsret")
+PERMANENT_RESIDENCE_TOPIC_TERMS = (
+    "permanent-residence",
+    "permanent residence",
+    "permanent ophold",
 )
 
 
@@ -77,11 +83,22 @@ class AmbiguityDecision:
     clarification_reason: str = ""
 
 
+class SafetyBoundary(Enum):
+    CITIZENSHIP_TO_PERMANENT_RESIDENCE = "citizenship-to-permanent-residence"
+
+
+class CorpusCapability(Enum):
+    PRESENT = "present"
+    ABSENT = "absent"
+    UNKNOWN = "unknown"
+
+
 @dataclass(frozen=True)
 class SafetyDecision:
     response_kind: str
     refusal_text: str = ""
     skip_generation: bool = False
+    boundary: SafetyBoundary | None = None
 
 
 def answer_schema(citation_ids: list[str] | None = None) -> dict[str, Any]:
@@ -420,6 +437,37 @@ class AnswerService:
         evidence = self.retriever.retrieve(effective_question)
         eligible_evidence, blocked_evidence = _partition_evidence_by_policy(evidence)
         safety = classify_question_safety(effective_question)
+        generation_question = effective_question
+        generation_normalized_question = normalized_question
+        if (
+            safety.boundary is SafetyBoundary.CITIZENSHIP_TO_PERMANENT_RESIDENCE
+            and _approved_corpus_capability_for_topic(
+                self.retriever.manifest,
+                CITIZENSHIP_TOPIC_TERMS,
+            )
+            is CorpusCapability.ABSENT
+        ):
+            safety = replace(
+                safety,
+                refusal_text=(
+                    "The active approved corpus contains no citizenship evidence for "
+                    "this comparison. I cannot infer that satisfying citizenship "
+                    "language rules or evidence means the permanent-residence language "
+                    "requirement is met. I can state only directly supported "
+                    "permanent-residence facts."
+                ),
+            )
+            generation_question = (
+                "State only the permanent-residence language facts directly supported "
+                "by the approved official evidence. Do not address citizenship, compare "
+                "citizenship with permanent residence, or decide personal eligibility."
+            )
+            generation_normalized_question = normalize_question(generation_question)
+            eligible_evidence = _evidence_for_topic(
+                eligible_evidence,
+                manifest=self.retriever.manifest,
+                topic_terms=PERMANENT_RESIDENCE_TOPIC_TERMS,
+            )
         if not eligible_evidence:
             answer = _unsupported_answer(
                 reason="No approved official evidence was retrieved for this question.",
@@ -437,8 +485,8 @@ class AnswerService:
             generated = _refusal_payload(safety, eligible_evidence)
         else:
             generated = self.generator.generate(
-                question=effective_question,
-                normalized_question=normalized_question,
+                question=generation_question,
+                normalized_question=generation_normalized_question,
                 evidence=eligible_evidence,
                 configuration=configuration,
                 schema=answer_schema(
@@ -586,6 +634,16 @@ def classify_question_safety(question: str) -> SafetyDecision:
                 "supported by approved official sources."
             ),
             skip_generation=True,
+        )
+    if _asks_to_infer_permanent_residence_from_citizenship(lookup):
+        return SafetyDecision(
+            response_kind="answer",
+            refusal_text=(
+                "I cannot infer that satisfying citizenship language rules or evidence "
+                "means the permanent-residence language requirement is met. I can state "
+                "only directly supported facts for each application context."
+            ),
+            boundary=SafetyBoundary.CITIZENSHIP_TO_PERMANENT_RESIDENCE,
         )
     if _asks_for_certificate_acceptance(lookup):
         return SafetyDecision(
@@ -884,6 +942,25 @@ def _asks_for_legal_advice(lookup: str) -> bool:
         "represent me",
     )
     return any(term in lookup for term in legal_advice_terms)
+
+
+def _asks_to_infer_permanent_residence_from_citizenship(lookup: str) -> bool:
+    implication_terms = (
+        "mean",
+        "meet",
+        "satisfy",
+        "satisfies",
+        "count",
+        "qualify",
+        "imply",
+        "prove",
+        "establish",
+    )
+    return (
+        _mentions_topic(lookup, CITIZENSHIP_TOPIC_TERMS)
+        and _mentions_topic(lookup, PERMANENT_RESIDENCE_TOPIC_TERMS)
+        and any(re.search(rf"\b{re.escape(term)}\b", lookup) for term in implication_terms)
+    )
 
 
 def _asks_for_personal_eligibility(lookup: str) -> bool:
@@ -1200,6 +1277,62 @@ def _is_evidence_eligible(evidence: dict[str, Any]) -> bool:
     return assess_source_freshness(evidence).answer_eligible
 
 
+def _approved_corpus_capability_for_topic(
+    manifest: dict[str, Any],
+    topic_terms: tuple[str, ...],
+) -> CorpusCapability:
+    sources = manifest.get("sources")
+    if not isinstance(sources, list):
+        return CorpusCapability.UNKNOWN
+    if any(
+        isinstance(source, dict)
+        and source.get("approval_state", "approved") == "approved"
+        and _metadata_matches_topic(source, topic_terms)
+        for source in sources
+    ):
+        return CorpusCapability.PRESENT
+    return CorpusCapability.ABSENT
+
+
+def _evidence_for_topic(
+    evidence: list[dict[str, Any]],
+    *,
+    manifest: dict[str, Any],
+    topic_terms: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    sources_by_id = {
+        str(source.get("source_id", "")): source
+        for source in manifest.get("sources", [])
+        if isinstance(source, dict)
+    }
+    return [
+        item
+        for item in evidence
+        if _metadata_matches_topic(item, topic_terms)
+        or _metadata_matches_topic(
+            sources_by_id.get(str(item.get("source_id", "")), {}),
+            topic_terms,
+        )
+    ]
+
+
+def _metadata_matches_topic(
+    metadata: dict[str, Any],
+    topic_terms: tuple[str, ...],
+) -> bool:
+    topic_metadata = " ".join(
+        [
+            str(metadata.get("topic", "")),
+            *[str(tag) for tag in metadata.get("topic_tags", [])],
+        ]
+    ).casefold()
+    return _mentions_topic(topic_metadata, topic_terms)
+
+
+def _mentions_topic(text: str, topic_terms: tuple[str, ...]) -> bool:
+    return any(term in text for term in topic_terms)
+
+
 def _reject_prohibited_safety_claims(
     payload: dict[str, Any],
     *,
@@ -1232,11 +1365,66 @@ def _reject_prohibited_safety_claims(
         "your legal strategy",
     ]
     matched = [phrase for phrase in prohibited_phrases if phrase in answer_text]
+    if safety.boundary is SafetyBoundary.CITIZENSHIP_TO_PERMANENT_RESIDENCE:
+        if (
+            "siri will accept" in matched
+            and not _contains_unqualified_siri_acceptance_claim(answer_text)
+        ):
+            matched.remove("siri will accept")
+        personal_residence_conclusions = (
+            "you meet the permanent",
+            "you satisfy the permanent",
+        )
+        matched.extend(
+            phrase
+            for phrase in personal_residence_conclusions
+            if phrase in answer_text
+        )
+        has_both_contexts = _mentions_topic(
+            answer_text,
+            CITIZENSHIP_TOPIC_TERMS,
+        ) and _mentions_topic(
+            answer_text,
+            PERMANENT_RESIDENCE_TOPIC_TERMS,
+        )
+        conflation_phrases = (
+            "means the permanent",
+            "implies permanent",
+            "proves permanent",
+            "establishes permanent",
+            "counts for permanent",
+            "counts toward permanent",
+            "permanent-residence requirement is met",
+            "permanent residence requirement is met",
+        )
+        if has_both_contexts:
+            matched.extend(
+                phrase for phrase in conflation_phrases if phrase in answer_text
+            )
     if matched:
         raise AnswerValidationError(
             "Answer validation failed: safety-sensitive request produced a prohibited "
-            f"personal or legal conclusion ({', '.join(sorted(matched))})."
+            f"personal or legal conclusion ({', '.join(sorted(set(matched)))})."
         )
+
+
+def _contains_unqualified_siri_acceptance_claim(answer_text: str) -> bool:
+    phrase = "siri will accept"
+    start = 0
+    safe_boundary_qualifiers = (
+        "cannot decide whether ",
+        "cannot determine whether ",
+        "does not decide whether ",
+        "does not determine whether ",
+    )
+    while (match_index := answer_text.find(phrase, start)) >= 0:
+        prefix = answer_text[max(0, match_index - 40) : match_index]
+        if not any(
+            prefix.endswith(qualifier) for qualifier in safe_boundary_qualifiers
+        ):
+            return True
+        start = match_index + len(phrase)
+    return False
 
 
 def _answer_messages(
