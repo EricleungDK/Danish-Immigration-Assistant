@@ -16,6 +16,7 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Any, Literal, TypedDict, cast
 
+from .ollama_contract import OLLAMA_DETERMINISTIC_CHAT_OPTIONS
 from .runtime_policy import RuntimePolicy, is_loopback_url, load_runtime_policy
 
 
@@ -116,7 +117,7 @@ class OllamaClient:
                 "messages": messages,
                 "stream": False,
                 "format": schema,
-                "options": {"temperature": 0},
+                "options": dict(OLLAMA_DETERMINISTIC_CHAT_OPTIONS),
             },
         )
 

@@ -2,10 +2,12 @@ import json
 import unittest
 from pathlib import Path
 from typing import get_type_hints
+from unittest.mock import MagicMock, patch
 
 from danish_rag.runtime_policy import load_runtime_policy
 from danish_rag.runtime_probe import (
     EnvironmentEvidence,
+    OllamaClient,
     ProbeExitStatus,
     ProbeResult,
     run_runtime_probe,
@@ -62,6 +64,31 @@ class FakeOllamaClient:
 
 
 class RuntimeProbeTests(unittest.TestCase):
+    def test_ollama_structured_chat_uses_deterministic_runtime_options(self):
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = json.dumps(
+            {"message": {"content": "{}"}}
+        ).encode("utf-8")
+        client = OllamaClient("http://127.0.0.1:11434")
+
+        with patch(
+            "danish_rag.runtime_probe.urllib.request.urlopen",
+            return_value=response,
+        ) as urlopen:
+            client.chat_structured(
+                model="gemma4:12b",
+                schema={"type": "object"},
+                messages=[{"role": "user", "content": "Return JSON."}],
+            )
+
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(
+            payload["options"],
+            {"temperature": 0, "seed": 0},
+        )
+
     def test_probe_result_uses_named_environment_evidence_type(self):
         self.assertIs(
             get_type_hints(ProbeResult)["environment"],

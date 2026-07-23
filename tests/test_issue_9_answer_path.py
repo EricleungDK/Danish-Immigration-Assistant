@@ -142,6 +142,10 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
         payload = generator.payloads[0]
         self.assertIs(payload["think"], False)
         self.assertEqual(payload["format"], schema)
+        self.assertEqual(
+            payload["options"],
+            {"temperature": 0, "seed": 0},
+        )
         self.assertIn(
             json.dumps(schema, ensure_ascii=False, sort_keys=True),
             payload["messages"][1]["content"],
@@ -171,6 +175,10 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
         payload = generator.payloads[0]
         self.assertIs(payload["think"], False)
         self.assertEqual(payload["format"], schema)
+        self.assertEqual(
+            payload["options"],
+            {"temperature": 0, "seed": 0},
+        )
         self.assertIn("non-factual social conversation", payload["messages"][0]["content"])
         self.assertIn("Do not provide immigration", payload["messages"][0]["content"])
         self.assertNotIn("approved_official_evidence", payload["messages"][1]["content"])

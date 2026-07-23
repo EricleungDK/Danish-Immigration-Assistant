@@ -71,6 +71,12 @@ Ollama is the first MVP provider baseline. This is an initial adapter decision, 
 
 The approved initial generation model is `gemma4:12b`. It composes evidence-bounded answers from retrieved approved official sources. It is not an approved official source and cannot supply official facts from model knowledge. The live probe validates `/api/show` identity evidence for the approved artifact: `details.family` is `gemma4`, `model_info.general.architecture` is `gemma4`, and `details.quantization_level` is `Q4_K_M`.
 
+Production Ollama structured-chat requests and the structured runtime probe use
+the same deterministic runtime options: `temperature` is `0` and `seed` is `0`.
+This provider request contract does not by itself qualify exact final-answer
+reproducibility; the current live verification finding is recorded in
+[Issue 25 Ollama Seed Determinism](progress/issue-25-ollama-seed-determinism.md).
+
 Generation and embedding are separate capabilities:
 
 - Generation accepts messages, a response schema, and runtime options, then returns structured output with provider and model identity.

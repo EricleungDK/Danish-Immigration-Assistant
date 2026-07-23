@@ -11,6 +11,7 @@ from enum import Enum
 from typing import Any, Protocol
 
 from .claim_support import assess_claim_support
+from .ollama_contract import OLLAMA_DETERMINISTIC_CHAT_OPTIONS
 from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
 from .provider_setup import ProviderConfiguration
 from .retrieval import normalize_question
@@ -241,7 +242,7 @@ class LocalProviderAnswerGenerator:
             "stream": False,
             "format": schema,
             "think": False,
-            "options": {"temperature": 0},
+            "options": dict(OLLAMA_DETERMINISTIC_CHAT_OPTIONS),
         }
         for attempt in range(2):
             response = self._request_json(
