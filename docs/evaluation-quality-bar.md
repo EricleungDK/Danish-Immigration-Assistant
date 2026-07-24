@@ -118,23 +118,23 @@ and data locations:
   --strict
 ```
 
-Then execute the full evaluation and generate the six workflow artifacts:
+Canonical packet G and its companion report were generated directly with the
+approved local runtime, model, and corpus. A restrictive umask keeps both
+outputs mode `0600`. Do not rerun this command unless deliberately replacing
+the canonical execution:
 
 ```bash
+umask 077
 .venv/bin/python -B -m danish_rag.final_answer_evaluation \
   --mode live-ollama \
-  --output docs/progress/final-answer-evaluation-live.json \
-  --generate-automated-evidence docs/progress/final-answer-machine-evidence \
-  --release-monitor-report docs/progress/release-monitors-live.json \
-  --human-review-packet /tmp/danish-rag-final-answer-human-review.json \
-  --generated-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  --strict
+  --output "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-report-g.json" \
+  --human-review-packet "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-capture-g.json" \
+  --generated-at-utc 2026-07-24T17:16:25Z
 ```
 
 No `--config-path` or `--data-dir` override is present: the command uses the
-normal per-user XDG paths. Until independent answer adjudications are supplied
-with `--adjudications`, strict mode is expected to return status 1 rather than
-turn unknown semantic results into passes.
+normal per-user XDG paths. Packet G contains blank review templates and no
+independent-human decisions.
 
 When an exact live-Ollama execution has already been captured, score that
 execution without calling the provider again:
@@ -142,17 +142,26 @@ execution without calling the provider again:
 ```bash
 .venv/bin/python -B -m danish_rag.final_answer_evaluation \
   --mode captured-live-ollama \
-  --execution-capture "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-capture-e.json" \
-  --capture-report "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-report-e.json" \
+  --execution-capture "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-capture-g.json" \
+  --execution-capture-sha256 12e567732c0e5c0c12943f54db734c43bcefe1fa1f7185ccd21fb7caf2cfee29 \
+  --capture-report "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-report-g.json" \
+  --capture-report-sha256 37c46440ef7fd5f3ed2dff9f0c19226fe0d7f87401b8e583a3443e27b91fd0d8 \
   --adjudications "$HOME/.local/share/danish-immigration-rag/private-evaluation/danish-rag-final-answer-adjudications-v1.json" \
   --generate-automated-evidence docs/progress/final-answer-machine-evidence \
   --release-monitor-report docs/progress/release-monitors-live.json \
-  --output /tmp/danish-rag-captured-replay-e.json \
+  --output /tmp/danish-rag-captured-replay-g.json \
   --generated-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --strict
 ```
 
-Captured replay validates the current dataset and quality-bar hashes, approved
+Packet G is the canonical private captured execution. The original packet E
+and its companion report were lost from `/tmp` and cannot be recovered; do not
+recreate, rename, or synthesize packet E. The public
+`docs/progress/final-answer-evaluation-live.json` report is separate historical
+machine evidence and must not be substituted for packet G's companion report.
+
+Captured replay first validates both exact whole-file hashes, then validates the
+current dataset and quality-bar hashes, approved
 provider/model/quantization/corpus identity, every answer execution and review
 payload hash, and agreement with the companion live report. Its public report
 records hashes of both capture inputs and `live_provider_calls: false`; the

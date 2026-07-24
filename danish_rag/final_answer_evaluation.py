@@ -253,13 +253,25 @@ def build_captured_live_ollama_runner(
     *,
     repo_root: str | Path,
     execution_capture_path: str | Path,
+    execution_capture_sha256: str,
     capture_report_path: str | Path,
+    capture_report_sha256: str,
 ) -> CapturedLiveOllamaCaseRunner:
     """Load and validate a private exact capture without invoking a provider."""
 
     root = Path(repo_root)
     capture_path = Path(execution_capture_path).expanduser()
     report_path = Path(capture_report_path).expanduser()
+    _verify_expected_file_sha256(
+        capture_path,
+        expected_sha256=execution_capture_sha256,
+        label="execution capture",
+    )
+    _verify_expected_file_sha256(
+        report_path,
+        expected_sha256=capture_report_sha256,
+        label="capture report",
+    )
     packet = _load_json_object(capture_path, label="execution capture")
     source_report = _load_json_object(report_path, label="capture report")
 
@@ -309,6 +321,26 @@ def build_captured_live_ollama_runner(
             "scoring_live_provider_calls": False,
         },
     )
+
+
+def _verify_expected_file_sha256(
+    path: Path,
+    *,
+    expected_sha256: str,
+    label: str,
+) -> None:
+    if re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None:
+        raise FinalAnswerEvaluationError(
+            f"{label} expected SHA-256 must be 64 lowercase hexadecimal characters"
+        )
+    try:
+        observed_sha256 = _sha256_file(path)
+    except OSError as exc:
+        raise FinalAnswerEvaluationError(f"{label} could not be hashed: {exc}") from exc
+    if observed_sha256 != expected_sha256:
+        raise FinalAnswerEvaluationError(
+            f"{label} does not match expected SHA-256 {expected_sha256}"
+        )
 
 
 def _load_json_object(path: Path, *, label: str) -> dict[str, Any]:
@@ -1866,11 +1898,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--execution-capture-sha256",
+        metavar="SHA256",
+        help=(
+            "Expected SHA-256 of every exact execution-capture byte. Required "
+            "only in captured-live-ollama mode."
+        ),
+    )
+    parser.add_argument(
         "--capture-report",
         metavar="LOCAL_PATH",
         help=(
             "Public final-answer evaluation report from the same original live "
             "execution. Required only in captured-live-ollama mode."
+        ),
+    )
+    parser.add_argument(
+        "--capture-report-sha256",
+        metavar="SHA256",
+        help=(
+            "Expected SHA-256 of every exact companion-report byte. Required "
+            "only in captured-live-ollama mode."
         ),
     )
     parser.add_argument(
@@ -1924,20 +1972,31 @@ def main(argv: Sequence[str] | None = None) -> int:
     repo_root = Path(args.repo_root)
     try:
         if args.mode == "captured-live-ollama":
-            if not args.execution_capture or not args.capture_report:
+            if (
+                not args.execution_capture
+                or not args.execution_capture_sha256
+                or not args.capture_report
+                or not args.capture_report_sha256
+            ):
                 raise FinalAnswerEvaluationError(
-                    "captured-live-ollama mode requires --execution-capture and "
-                    "--capture-report"
+                    "captured-live-ollama mode requires --execution-capture, "
+                    "--execution-capture-sha256, --capture-report, and "
+                    "--capture-report-sha256"
                 )
             if args.human_review_packet:
                 raise FinalAnswerEvaluationError(
                     "captured-live-ollama mode consumes the existing exact review "
                     "packet and does not write a replacement packet"
                 )
-        elif args.execution_capture or args.capture_report:
+        elif (
+            args.execution_capture
+            or args.execution_capture_sha256
+            or args.capture_report
+            or args.capture_report_sha256
+        ):
             raise FinalAnswerEvaluationError(
-                "--execution-capture and --capture-report are only valid in "
-                "captured-live-ollama mode"
+                "execution-capture and capture-report paths and SHA-256 values "
+                "are only valid in captured-live-ollama mode"
             )
         adjudications = None
         if args.adjudications:
@@ -1975,7 +2034,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             runner = build_captured_live_ollama_runner(
                 repo_root=repo_root,
                 execution_capture_path=args.execution_capture,
+                execution_capture_sha256=args.execution_capture_sha256,
                 capture_report_path=args.capture_report,
+                capture_report_sha256=args.capture_report_sha256,
             )
         elif args.mode == "live-ollama":
             configuration = load_provider_configuration(args.config_path)

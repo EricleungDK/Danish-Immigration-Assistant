@@ -94,6 +94,22 @@ def _write_synthetic_live_capture(directory: Path) -> tuple[Path, Path]:
     return packet_path, report_path
 
 
+def _captured_replay_cli_args(
+    packet_path: Path,
+    report_path: Path,
+) -> list[str]:
+    return [
+        "--execution-capture",
+        str(packet_path),
+        "--execution-capture-sha256",
+        hashlib.sha256(packet_path.read_bytes()).hexdigest(),
+        "--capture-report",
+        str(report_path),
+        "--capture-report-sha256",
+        hashlib.sha256(report_path.read_bytes()).hexdigest(),
+    ]
+
+
 def _completed_adjudication_bundle(packet: dict) -> dict:
     cases = []
     for item in packet["cases"]:
@@ -640,10 +656,10 @@ class FinalAnswerEvaluationPublicSeamTests(unittest.TestCase):
                         str(ROOT),
                         "--mode",
                         "captured-live-ollama",
-                        "--execution-capture",
-                        str(packet_path),
-                        "--capture-report",
-                        str(capture_report_path),
+                        *_captured_replay_cli_args(
+                            packet_path,
+                            capture_report_path,
+                        ),
                         "--output",
                         str(output_path),
                         "--generated-at-utc",
@@ -681,6 +697,80 @@ class FinalAnswerEvaluationPublicSeamTests(unittest.TestCase):
             self.assertNotIn('"answer":', serialized)
             self.assertNotIn('"evidence":', serialized)
 
+    def test_captured_live_replay_requires_exact_whole_file_hashes(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            directory = Path(tmpdir)
+            packet_path, capture_report_path = _write_synthetic_live_capture(
+                directory
+            )
+            with mock.patch("sys.stderr") as stderr:
+                status = main(
+                    [
+                        "--repo-root",
+                        str(ROOT),
+                        "--mode",
+                        "captured-live-ollama",
+                        "--execution-capture",
+                        str(packet_path),
+                        "--capture-report",
+                        str(capture_report_path),
+                        "--output",
+                        str(directory / "missing-hash-report.json"),
+                    ]
+                )
+            self.assertEqual(status, 2)
+            error_text = " ".join(
+                str(call.args[0]) for call in stderr.write.call_args_list
+            )
+            self.assertIn("--execution-capture-sha256", error_text)
+            self.assertIn("--capture-report-sha256", error_text)
+
+        scenarios = {
+            "packet": (
+                "review_instructions",
+                "execution capture does not match expected SHA-256",
+            ),
+            "report": (
+                "generated_at_utc",
+                "capture report does not match expected SHA-256",
+            ),
+        }
+        for name, (field, expected_error) in scenarios.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmpdir:
+                directory = Path(tmpdir)
+                packet_path, capture_report_path = _write_synthetic_live_capture(
+                    directory
+                )
+                pinned_args = _captured_replay_cli_args(
+                    packet_path,
+                    capture_report_path,
+                )
+                target_path = (
+                    packet_path if name == "packet" else capture_report_path
+                )
+                target = json.loads(target_path.read_text(encoding="utf-8"))
+                target[field] = "changed after canonical hash was pinned"
+                target_path.write_text(json.dumps(target), encoding="utf-8")
+
+                with mock.patch("sys.stderr") as stderr:
+                    status = main(
+                        [
+                            "--repo-root",
+                            str(ROOT),
+                            "--mode",
+                            "captured-live-ollama",
+                            *pinned_args,
+                            "--output",
+                            str(directory / "changed-file-report.json"),
+                        ]
+                    )
+
+                self.assertEqual(status, 2)
+                error_text = " ".join(
+                    str(call.args[0]) for call in stderr.write.call_args_list
+                )
+                self.assertIn(expected_error, error_text)
+
     def test_captured_live_replay_accepts_exact_independent_human_bundle(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             directory = Path(tmpdir)
@@ -701,10 +791,10 @@ class FinalAnswerEvaluationPublicSeamTests(unittest.TestCase):
                     str(ROOT),
                     "--mode",
                     "captured-live-ollama",
-                    "--execution-capture",
-                    str(packet_path),
-                    "--capture-report",
-                    str(capture_report_path),
+                    *_captured_replay_cli_args(
+                        packet_path,
+                        capture_report_path,
+                    ),
                     "--adjudications",
                     str(adjudications_path),
                     "--output",
@@ -736,10 +826,10 @@ class FinalAnswerEvaluationPublicSeamTests(unittest.TestCase):
                         str(ROOT),
                         "--mode",
                         "captured-live-ollama",
-                        "--execution-capture",
-                        str(packet_path),
-                        "--capture-report",
-                        str(capture_report_path),
+                        *_captured_replay_cli_args(
+                            packet_path,
+                            capture_report_path,
+                        ),
                         "--adjudications",
                         str(adjudications_path),
                         "--output",
@@ -873,10 +963,10 @@ class FinalAnswerEvaluationPublicSeamTests(unittest.TestCase):
                             str(ROOT),
                             "--mode",
                             "captured-live-ollama",
-                            "--execution-capture",
-                            str(packet_path),
-                            "--capture-report",
-                            str(capture_report_path),
+                            *_captured_replay_cli_args(
+                                packet_path,
+                                capture_report_path,
+                            ),
                             "--output",
                             str(directory / "replay-report.json"),
                         ]

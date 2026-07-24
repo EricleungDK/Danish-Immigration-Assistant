@@ -167,26 +167,42 @@ First run the strict live release monitors:
   --strict
 ```
 
-Then run the approved 20-surface final-answer evaluation. This command executes
-10 live Ollama answer cases and four source-policy scenarios, generates
-hash-bound evidence for six automated browser, knowledge-release, and provider
-recovery workflows, and writes a private review packet outside the repository:
+Canonical private packet G was generated directly with the approved local
+runtime, model, and corpus. Both outputs are private mode-`0600` evidence. Do
+not rerun this command unless deliberately replacing the canonical execution:
+
+```bash
+umask 077
+.venv/bin/python -B -m danish_rag.final_answer_evaluation \
+  --mode live-ollama \
+  --output "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-report-g.json" \
+  --human-review-packet "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-capture-g.json" \
+  --generated-at-utc 2026-07-24T17:16:25Z
+```
+
+Packet E and its companion report were lost from `/tmp` and cannot be
+recovered; do not recreate, rename, or synthesize packet E. Do not substitute
+`docs/progress/final-answer-evaluation-live.json` for packet G's companion
+report.
+
+Replay canonical packet G without calling Ollama by pinning both exact private
+file hashes:
 
 ```bash
 .venv/bin/python -B -m danish_rag.final_answer_evaluation \
-  --mode live-ollama \
-  --output docs/progress/final-answer-evaluation-live.json \
-  --generate-automated-evidence docs/progress/final-answer-machine-evidence \
-  --release-monitor-report docs/progress/release-monitors-live.json \
-  --human-review-packet /tmp/danish-rag-final-answer-human-review.json \
-  --generated-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  --strict
+  --mode captured-live-ollama \
+  --execution-capture "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-capture-g.json" \
+  --execution-capture-sha256 12e567732c0e5c0c12943f54db734c43bcefe1fa1f7185ccd21fb7caf2cfee29 \
+  --capture-report "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-report-g.json" \
+  --capture-report-sha256 37c46440ef7fd5f3ed2dff9f0c19226fe0d7f87401b8e583a3443e27b91fd0d8 \
+  --output /tmp/danish-rag-captured-replay-g.json \
+  --generated-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ```
 
-The human-review packet is created with mode `0600` and blank decision fields;
-it must remain outside the repository. `--strict` is expected to exit with
-status 1 until an independent reviewer completes answer-path adjudications and
-their evidence-bound bundle is supplied with `--adjudications`.
+Captured replay rejects any whole-file hash or validated internal binding
+mismatch. Its report records `live_provider_calls: false`. It remains
+non-strict until an independent reviewer supplies the exact-bound
+adjudications; none are supplied here.
 
 The live run generated at `2026-07-14T18:06:02Z` completed all 20 surfaces with
 zero execution errors.
