@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Protocol, Sequence
 from urllib.parse import urlparse
 
-from .answer_pipeline import AnswerService, LocalProviderAnswerGenerator
+from .answer_pipeline import AnswerResult, AnswerService, LocalProviderAnswerGenerator
 from .embedding_provider import EmbeddingProvider
 from .evidence_integrity import (
     canonical_json_sha256 as _sha256_json,
@@ -50,6 +50,13 @@ from .retrieval import HybridRetriever
 SCHEMA_VERSION = "final-answer-evaluation-v1"
 CASE_ADJUDICATION_SCHEMA_VERSION = "final-answer-case-adjudication-v1"
 ADJUDICATION_BUNDLE_SCHEMA_VERSION = "final-answer-adjudications-v1"
+INDEPENDENT_HUMAN_ATTESTATION_SCHEMA_VERSION = (
+    "final-answer-independent-human-attestation-v1"
+)
+INDEPENDENT_HUMAN_ATTESTATION_STATEMENT = (
+    "I attest that I am an independent human reviewer and personally reviewed "
+    "every exact answer and cited evidence in this packet."
+)
 WORKFLOW_EVIDENCE_SCHEMA_VERSION = "workflow-evaluation-evidence-v1"
 HUMAN_REVIEW_PACKET_SCHEMA_VERSION = "final-answer-human-review-packet-v1"
 WORKFLOW_SURFACES = {
@@ -59,6 +66,8 @@ WORKFLOW_SURFACES = {
 }
 SOURCE_POLICY_SURFACE = "source-policy-scenario"
 DEFAULT_QUALITY_BAR_PATH = Path("config/evaluation-quality-bar.json")
+DEFAULT_RUNTIME_POLICY_PATH = Path("config/runtime-policy.json")
+DEFAULT_RELEASE_QUALIFICATION_PATH = Path("config/release-qualification.json")
 
 
 class FinalAnswerEvaluationError(RuntimeError):
@@ -177,6 +186,36 @@ class AnswerServiceCaseRunner:
         )
 
 
+class CapturedLiveOllamaCaseRunner:
+    """Offline adapter over a validated exact live-Ollama execution capture."""
+
+    supported_evaluation_surfaces = {"answer-path"}
+
+    def __init__(
+        self,
+        *,
+        executions: dict[str, CaseExecution],
+        public_identity: dict[str, Any],
+        capture_provenance: dict[str, Any],
+    ) -> None:
+        self._executions = executions
+        self._public_identity = public_identity
+        self.capture_provenance = capture_provenance
+
+    @property
+    def public_identity(self) -> dict[str, Any]:
+        return self._public_identity
+
+    def run(self, case: dict[str, Any]) -> CaseExecution:
+        case_id = str(case["id"])
+        try:
+            return self._executions[case_id]
+        except KeyError as exc:
+            raise FinalAnswerEvaluationError(
+                f"validated execution capture has no answer-path case {case_id!r}"
+            ) from exc
+
+
 def build_live_ollama_runner(
     *,
     data_dir: str | Path,
@@ -208,6 +247,371 @@ def build_live_ollama_runner(
         ),
         configuration=configuration,
     )
+
+
+def build_captured_live_ollama_runner(
+    *,
+    repo_root: str | Path,
+    execution_capture_path: str | Path,
+    capture_report_path: str | Path,
+) -> CapturedLiveOllamaCaseRunner:
+    """Load and validate a private exact capture without invoking a provider."""
+
+    root = Path(repo_root)
+    capture_path = Path(execution_capture_path).expanduser()
+    report_path = Path(capture_report_path).expanduser()
+    packet = _load_json_object(capture_path, label="execution capture")
+    source_report = _load_json_object(report_path, label="capture report")
+
+    quality_bar_path = root / DEFAULT_QUALITY_BAR_PATH
+    quality_bar = load_evaluation_quality_bar(quality_bar_path)
+    dataset_path = root / quality_bar["evaluation_set"]["path"]
+    dataset = load_evaluation_cases(dataset_path)
+    failures = validate_evaluation_cases(quality_bar, dataset)
+    if failures:
+        raise FinalAnswerEvaluationError("; ".join(failures))
+    dataset_sha256 = _sha256_file(dataset_path)
+
+    runtime_policy = _load_json_object(
+        root / DEFAULT_RUNTIME_POLICY_PATH,
+        label="runtime policy",
+    )
+    release_qualification = _load_json_object(
+        root / DEFAULT_RELEASE_QUALIFICATION_PATH,
+        label="release qualification",
+    )
+    approved_identity = _validate_capture_report(
+        source_report,
+        dataset=dataset,
+        dataset_sha256=dataset_sha256,
+        quality_bar=quality_bar,
+        quality_bar_sha256=_sha256_file(quality_bar_path),
+        runtime_policy=runtime_policy,
+        release_qualification=release_qualification,
+    )
+    executions = _validate_execution_capture(
+        packet,
+        source_report=source_report,
+        dataset=dataset,
+        dataset_sha256=dataset_sha256,
+        approved_identity=approved_identity,
+    )
+    return CapturedLiveOllamaCaseRunner(
+        executions=executions,
+        public_identity=approved_identity,
+        capture_provenance={
+            "execution_capture_schema_version": HUMAN_REVIEW_PACKET_SCHEMA_VERSION,
+            "execution_capture_sha256": _sha256_file(capture_path),
+            "capture_report_schema_version": SCHEMA_VERSION,
+            "capture_report_sha256": _sha256_file(report_path),
+            "original_execution_mode": "live-ollama",
+            "original_live_provider_calls": True,
+            "scoring_live_provider_calls": False,
+        },
+    )
+
+
+def _load_json_object(path: Path, *, label: str) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise FinalAnswerEvaluationError(f"{label} could not be loaded: {exc}") from exc
+    if not isinstance(value, dict):
+        raise FinalAnswerEvaluationError(f"{label} must be a JSON object")
+    return value
+
+
+def _validate_capture_report(
+    report: dict[str, Any],
+    *,
+    dataset: dict[str, Any],
+    dataset_sha256: str,
+    quality_bar: dict[str, Any],
+    quality_bar_sha256: str,
+    runtime_policy: dict[str, Any],
+    release_qualification: dict[str, Any],
+) -> dict[str, Any]:
+    if report.get("schema_version") != SCHEMA_VERSION:
+        raise FinalAnswerEvaluationError("capture report has an unsupported schema")
+    expected_dataset = {
+        "dataset_id": dataset["dataset_id"],
+        "version": dataset["version"],
+        "case_count": len(dataset["cases"]),
+        "sha256": dataset_sha256,
+    }
+    report_dataset = report.get("dataset")
+    if not isinstance(report_dataset, dict) or any(
+        report_dataset.get(key) != value for key, value in expected_dataset.items()
+    ) or report_dataset.get("uses_production_user_conversation_data") is not False:
+        raise FinalAnswerEvaluationError(
+            "capture report does not match the exact approved evaluation dataset"
+        )
+    expected_quality_bar = {
+        "quality_bar_id": quality_bar["quality_bar_id"],
+        "version": quality_bar["version"],
+        "sha256": quality_bar_sha256,
+    }
+    if report.get("quality_bar") != expected_quality_bar:
+        raise FinalAnswerEvaluationError(
+            "capture report does not match the current approved quality bar"
+        )
+
+    execution = report.get("execution")
+    answer_cases = [
+        case for case in dataset["cases"] if case["evaluation_surface"] == "answer-path"
+    ]
+    if (
+        not isinstance(execution, dict)
+        or execution.get("mode") != "live-ollama"
+        or execution.get("live_provider_calls") is not True
+        or execution.get("answer_case_execution_count") != len(answer_cases)
+        or execution.get("error_count") != 0
+    ):
+        raise FinalAnswerEvaluationError(
+            "capture report is not a complete error-free live-Ollama answer execution"
+        )
+
+    provider_policy = runtime_policy["providers"]["initial"]
+    model_policy = runtime_policy["models"]["generation"]
+    active_corpus = release_qualification["active_corpus_requirements"][
+        "knowledge_release_id"
+    ]
+    identity = report.get("identity")
+    if not isinstance(identity, dict):
+        raise FinalAnswerEvaluationError("capture report has no provider identity")
+    provider_version = str(identity.get("provider_version", ""))
+    if (
+        identity.get("provider_id") != provider_policy["id"]
+        or _numeric_version(provider_version)
+        < _numeric_version(str(provider_policy["minimum_version"]))
+        or identity.get("model") != model_policy["initial"]
+        or identity.get("model_identity") != model_policy["identity"]
+        or identity.get("corpus_id") != active_corpus
+    ):
+        raise FinalAnswerEvaluationError(
+            "capture report provider, model, quantization, or corpus identity "
+            "does not match the approved runtime contracts"
+        )
+
+    case_results = report.get("case_results")
+    if not isinstance(case_results, list):
+        raise FinalAnswerEvaluationError("capture report case_results must be a list")
+    captured_answer_results = [
+        result
+        for result in case_results
+        if isinstance(result, dict)
+        and result.get("evaluation_surface") == "answer-path"
+    ]
+    expected_ids = [str(case["id"]) for case in answer_cases]
+    observed_ids = [str(result.get("case_id", "")) for result in captured_answer_results]
+    if observed_ids != expected_ids:
+        raise FinalAnswerEvaluationError(
+            "capture report answer-path cases are missing, unknown, duplicated, or reordered"
+        )
+    if any(
+        result.get("error_type")
+        or not result.get("generation_completed")
+        or not isinstance(result.get("execution_sha256"), str)
+        for result in captured_answer_results
+    ):
+        raise FinalAnswerEvaluationError(
+            "capture report contains an incomplete or failed answer execution"
+        )
+    return {
+        "provider_id": str(identity["provider_id"]),
+        "provider_version": provider_version,
+        "model": str(identity["model"]),
+        "model_identity": dict(identity["model_identity"]),
+        "corpus_id": str(identity["corpus_id"]),
+    }
+
+
+def _validate_execution_capture(
+    packet: dict[str, Any],
+    *,
+    source_report: dict[str, Any],
+    dataset: dict[str, Any],
+    dataset_sha256: str,
+    approved_identity: dict[str, Any],
+) -> dict[str, CaseExecution]:
+    if packet.get("schema_version") != HUMAN_REVIEW_PACKET_SCHEMA_VERSION:
+        raise FinalAnswerEvaluationError("execution capture has an unsupported schema")
+    if (
+        packet.get("classification") != "sensitive-local-only"
+        or packet.get("commit_policy") != "do-not-commit"
+        or packet.get("contains_human_decisions") is not False
+        or packet.get("uses_production_user_conversation_data") is not False
+    ):
+        raise FinalAnswerEvaluationError(
+            "execution capture must be the original sensitive local-only packet "
+            "without human decisions or production-user conversation data"
+        )
+    expected_binding = {
+        "dataset_id": dataset["dataset_id"],
+        "version": dataset["version"],
+        "sha256": dataset_sha256,
+    }
+    if packet.get("dataset") != expected_binding:
+        raise FinalAnswerEvaluationError(
+            "execution capture does not match the exact approved evaluation dataset"
+        )
+    records = packet.get("cases")
+    answer_cases = [
+        case for case in dataset["cases"] if case["evaluation_surface"] == "answer-path"
+    ]
+    if (
+        not isinstance(records, list)
+        or len(records) != len(answer_cases)
+        or packet.get("case_count") != len(answer_cases)
+    ):
+        raise FinalAnswerEvaluationError(
+            "execution capture has an incomplete answer-path case set"
+        )
+    expected_ids = [str(case["id"]) for case in answer_cases]
+    observed_ids = [
+        str(record.get("case_id", "")) if isinstance(record, dict) else ""
+        for record in records
+    ]
+    if observed_ids != expected_ids:
+        raise FinalAnswerEvaluationError(
+            "execution capture cases are missing, unknown, duplicated, or reordered"
+        )
+
+    report_hashes = {
+        str(result["case_id"]): str(result["execution_sha256"])
+        for result in source_report["case_results"]
+        if isinstance(result, dict)
+        and result.get("evaluation_surface") == "answer-path"
+    }
+    executions: dict[str, CaseExecution] = {}
+    for case, record in zip(answer_cases, records, strict=True):
+        case_id = str(case["id"])
+        execution_payload = record.get("execution")
+        if not isinstance(execution_payload, dict):
+            raise FinalAnswerEvaluationError(
+                f"execution capture case {case_id} has no execution object"
+            )
+        if execution_payload.get("case_id") != case_id:
+            raise FinalAnswerEvaluationError(
+                f"execution capture case {case_id} is bound to a different execution"
+            )
+        result_payload = execution_payload.get("result")
+        if not isinstance(result_payload, dict):
+            raise FinalAnswerEvaluationError(
+                f"execution capture case {case_id} has no completed answer result"
+            )
+        evidence = execution_payload.get("evidence")
+        if not isinstance(evidence, list):
+            raise FinalAnswerEvaluationError(
+                f"execution capture case {case_id} evidence must be a list"
+            )
+        if execution_payload.get("error_type") not in {"", None}:
+            raise FinalAnswerEvaluationError(
+                f"execution capture case {case_id} contains an execution error"
+            )
+        result = AnswerResult(
+            question=str(result_payload.get("question", "")),
+            normalized_question=str(result_payload.get("normalized_question", "")),
+            answer=result_payload.get("answer"),
+            model_identity=result_payload.get("model_identity"),
+            corpus_identity=str(result_payload.get("corpus_identity", "")),
+        )
+        if not isinstance(result.answer, dict) or not isinstance(
+            result.model_identity, dict
+        ):
+            raise FinalAnswerEvaluationError(
+                f"execution capture case {case_id} has an invalid answer result"
+            )
+        _validate_captured_result_identity(
+            case_id,
+            result=result,
+            evidence=evidence,
+            approved_identity=approved_identity,
+        )
+        execution = CaseExecution(
+            case_id=case_id,
+            result=result,
+            evidence=evidence,
+            error_type="",
+        )
+        execution_sha256 = fingerprint_case_execution(execution)
+        if record.get("execution_sha256") != execution_sha256:
+            raise FinalAnswerEvaluationError(
+                f"execution capture case {case_id} execution SHA-256 does not match"
+            )
+        review_payload = _answer_review_payload(case, execution)
+        captured_review_payload = {
+            key: record.get(key)
+            for key in (
+                "case_id",
+                "evaluation_surface",
+                "prompt",
+                "assertions",
+                "execution_sha256",
+                "execution",
+            )
+        }
+        if captured_review_payload != review_payload:
+            raise FinalAnswerEvaluationError(
+                f"execution capture case {case_id} does not match the current review payload"
+            )
+        review_payload_sha256 = _sha256_json(review_payload)
+        if record.get("review_payload_sha256") != review_payload_sha256:
+            raise FinalAnswerEvaluationError(
+                f"execution capture case {case_id} review-payload SHA-256 does not match"
+            )
+        expected_template = _blank_answer_adjudication_template(
+            case,
+            execution,
+            review_payload_sha256=review_payload_sha256,
+        )
+        if record.get("blank_adjudication_template") != expected_template:
+            raise FinalAnswerEvaluationError(
+                f"execution capture case {case_id} has a changed adjudication template"
+            )
+        if report_hashes.get(case_id) != execution_sha256:
+            raise FinalAnswerEvaluationError(
+                f"capture report and execution capture disagree for case {case_id}"
+            )
+        executions[case_id] = execution
+    return executions
+
+
+def _validate_captured_result_identity(
+    case_id: str,
+    *,
+    result: AnswerResult,
+    evidence: list[Any],
+    approved_identity: dict[str, Any],
+) -> None:
+    identity = result.model_identity
+    if (
+        identity.get("provider_id") != approved_identity["provider_id"]
+        or identity.get("provider_version") != approved_identity["provider_version"]
+        or identity.get("model") != approved_identity["model"]
+        or identity.get("model_identity") != approved_identity["model_identity"]
+        or result.corpus_identity != approved_identity["corpus_id"]
+    ):
+        raise FinalAnswerEvaluationError(
+            f"execution capture case {case_id} provider, model, quantization, "
+            "or corpus identity does not match the approved capture report"
+        )
+    for item in evidence:
+        if not isinstance(item, dict):
+            raise FinalAnswerEvaluationError(
+                f"execution capture case {case_id} contains invalid evidence"
+            )
+        for field in ("corpus_identity", "knowledge_release_id"):
+            value = item.get(field)
+            if value not in {None, "", approved_identity["corpus_id"]}:
+                raise FinalAnswerEvaluationError(
+                    f"execution capture case {case_id} evidence has a mismatched corpus"
+                )
+
+
+def _numeric_version(value: str) -> tuple[int, ...]:
+    numbers = re.findall(r"\d+", value)
+    return tuple(int(number) for number in numbers) if numbers else (0,)
 
 
 class _ControlledRetriever:
@@ -745,6 +1149,9 @@ def generate_final_answer_evaluation(
             "contains_conversation_identifiers": False,
         },
     }
+    capture_provenance = getattr(runner, "capture_provenance", None)
+    if capture_provenance is not None:
+        report["capture_provenance"] = dict(capture_provenance)
     if human_review_packet_path is not None:
         _write_human_review_packet(
             repo_root=root,
@@ -797,7 +1204,70 @@ def _validate_adjudication_bundle(
                 f"adjudication bundle duplicates case {case_id!r}"
             )
         by_case[case_id] = record
+    independent_records = [
+        record
+        for record in records
+        if record.get("assessment_method") == "independent-human-review"
+        and record.get("evaluation_surface") == "answer-path"
+    ]
+    _validate_independent_human_attestation(
+        adjudications.get("independent_human_attestation"),
+        dataset_binding=expected_binding,
+        independent_records=independent_records,
+    )
     return by_case
+
+
+def _validate_independent_human_attestation(
+    attestation: Any,
+    *,
+    dataset_binding: dict[str, Any],
+    independent_records: list[dict[str, Any]],
+) -> None:
+    if not independent_records:
+        if attestation is not None:
+            raise FinalAnswerEvaluationError(
+                "independent-human attestation has no independent-human cases"
+            )
+        return
+    if not isinstance(attestation, dict):
+        raise FinalAnswerEvaluationError(
+            "independent-human adjudications require an explicit "
+            "independent-human attestation"
+        )
+    attested_at = attestation.get("attested_at_utc")
+    expected_case_bindings = []
+    for record in independent_records:
+        evidence_binding = record.get("evidence_binding")
+        if not isinstance(evidence_binding, dict):
+            raise FinalAnswerEvaluationError(
+                "independent-human attestation cannot bind a case without "
+                "an evidence binding"
+            )
+        expected_case_bindings.append(
+            {
+                "case_id": record.get("case_id"),
+                "execution_sha256": evidence_binding.get("execution_sha256"),
+                "review_payload_sha256": evidence_binding.get("sha256"),
+            }
+        )
+    if (
+        attestation.get("schema_version")
+        != INDEPENDENT_HUMAN_ATTESTATION_SCHEMA_VERSION
+        or attestation.get("attested") is not True
+        or attestation.get("statement") != INDEPENDENT_HUMAN_ATTESTATION_STATEMENT
+        or not isinstance(attested_at, str)
+        or re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", attested_at)
+        is None
+        or attestation.get("packet_schema_version")
+        != HUMAN_REVIEW_PACKET_SCHEMA_VERSION
+        or attestation.get("dataset") != dataset_binding
+        or attestation.get("case_bindings") != expected_case_bindings
+    ):
+        raise FinalAnswerEvaluationError(
+            "independent-human attestation is incomplete or does not match the "
+            "exact adjudication bindings"
+        )
 
 
 def _merge_adjudication_bundles(
@@ -845,6 +1315,10 @@ def _merge_adjudication_bundles(
         ),
         "automated_workflow_evidence_included": True,
     }
+    if "independent_human_attestation" in existing:
+        merged["independent_human_attestation"] = existing[
+            "independent_human_attestation"
+        ]
     return merged
 
 
@@ -1246,6 +1720,41 @@ def _non_answer_metric_checks(status: str) -> dict[str, dict[str, Any]]:
     }
 
 
+def _blank_answer_adjudication_template(
+    case: dict[str, Any],
+    execution: CaseExecution,
+    *,
+    review_payload_sha256: str,
+) -> dict[str, Any]:
+    claim_support: dict[str, dict[str, None]] = {}
+    if execution.result is not None:
+        for section_index, section in enumerate(
+            execution.result.answer.get("sections", []),
+            start=1,
+        ):
+            if not isinstance(section, dict) or section.get("kind") != "official_fact":
+                continue
+            claim_support[f"section-{section_index}"] = {
+                str(citation_id): None for citation_id in section.get("citation_ids", [])
+            }
+    return {
+        "schema_version": CASE_ADJUDICATION_SCHEMA_VERSION,
+        "case_id": str(case["id"]),
+        "evaluation_surface": "answer-path",
+        "evidence_binding": {
+            "kind": "answer-review-payload",
+            "sha256": review_payload_sha256,
+            "execution_sha256": fingerprint_case_execution(execution),
+        },
+        "assessment_method": "independent-human-review",
+        "assertion_results": {
+            spec["assertion_id"]: None
+            for spec in evaluation_case_assertion_specs(case)
+        },
+        "claim_support": claim_support,
+    }
+
+
 def _write_human_review_packet(
     *,
     repo_root: Path,
@@ -1271,40 +1780,16 @@ def _write_human_review_packet(
     cases: list[dict[str, Any]] = []
     for case, execution in executions:
         review_payload = _answer_review_payload(case, execution)
-        execution_sha256 = str(review_payload["execution_sha256"])
-        assertion_specs = review_payload["assertions"]
         review_payload_sha256 = _sha256_json(review_payload)
-        claim_support: dict[str, dict[str, None]] = {}
-        if execution.result is not None:
-            for section_index, section in enumerate(
-                execution.result.answer.get("sections", []),
-                start=1,
-            ):
-                if not isinstance(section, dict) or section.get("kind") != "official_fact":
-                    continue
-                claim_support[f"section-{section_index}"] = {
-                    str(citation_id): None
-                    for citation_id in section.get("citation_ids", [])
-                }
         cases.append(
             {
                 **review_payload,
                 "review_payload_sha256": review_payload_sha256,
-                "blank_adjudication_template": {
-                    "schema_version": CASE_ADJUDICATION_SCHEMA_VERSION,
-                    "case_id": str(case["id"]),
-                    "evaluation_surface": "answer-path",
-                    "evidence_binding": {
-                        "kind": "answer-review-payload",
-                        "sha256": review_payload_sha256,
-                        "execution_sha256": execution_sha256,
-                    },
-                    "assessment_method": "independent-human-review",
-                    "assertion_results": {
-                        spec["assertion_id"]: None for spec in assertion_specs
-                    },
-                    "claim_support": claim_support,
-                },
+                "blank_adjudication_template": _blank_answer_adjudication_template(
+                    case,
+                    execution,
+                    review_payload_sha256=review_payload_sha256,
+                ),
             }
         )
     packet = {
@@ -1367,11 +1852,27 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", required=True)
     parser.add_argument(
         "--mode",
-        choices=("controlled", "live-ollama"),
+        choices=("controlled", "live-ollama", "captured-live-ollama"),
         default="controlled",
     )
     parser.add_argument("--data-dir", default=default_data_dir())
     parser.add_argument("--config-path", default=default_config_path())
+    parser.add_argument(
+        "--execution-capture",
+        metavar="LOCAL_PATH",
+        help=(
+            "Private final-answer-human-review-packet-v1 captured by an earlier "
+            "live-Ollama execution. Required only in captured-live-ollama mode."
+        ),
+    )
+    parser.add_argument(
+        "--capture-report",
+        metavar="LOCAL_PATH",
+        help=(
+            "Public final-answer evaluation report from the same original live "
+            "execution. Required only in captured-live-ollama mode."
+        ),
+    )
     parser.add_argument(
         "--adjudications",
         help=(
@@ -1422,6 +1923,22 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     repo_root = Path(args.repo_root)
     try:
+        if args.mode == "captured-live-ollama":
+            if not args.execution_capture or not args.capture_report:
+                raise FinalAnswerEvaluationError(
+                    "captured-live-ollama mode requires --execution-capture and "
+                    "--capture-report"
+                )
+            if args.human_review_packet:
+                raise FinalAnswerEvaluationError(
+                    "captured-live-ollama mode consumes the existing exact review "
+                    "packet and does not write a replacement packet"
+                )
+        elif args.execution_capture or args.capture_report:
+            raise FinalAnswerEvaluationError(
+                "--execution-capture and --capture-report are only valid in "
+                "captured-live-ollama mode"
+            )
         adjudications = None
         if args.adjudications:
             adjudications = json.loads(
@@ -1454,7 +1971,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 adjudications,
                 automated,
             )
-        if args.mode == "live-ollama":
+        if args.mode == "captured-live-ollama":
+            runner = build_captured_live_ollama_runner(
+                repo_root=repo_root,
+                execution_capture_path=args.execution_capture,
+                capture_report_path=args.capture_report,
+            )
+        elif args.mode == "live-ollama":
             configuration = load_provider_configuration(args.config_path)
             if configuration is None:
                 raise FinalAnswerEvaluationError(

@@ -82,3 +82,22 @@ must:
 Release remains blocked until that replay boundary exists and an independent
 human supplies an attestation and adjudication bundle bound to the final exact
 packet.
+
+## Captured Replay Follow-up, 2026-07-24
+
+The required replay boundary is now implemented as
+`--mode captured-live-ollama` with separate `--execution-capture` and
+`--capture-report` inputs. It reconstructs the exact answer-path executions,
+validates the approved dataset, quality bar, runtime identity, corpus, execution
+hashes, review-payload hashes, and companion-report agreement, and records zero
+provider calls for the offline scoring run.
+
+The standalone local review page now keeps diagnostic product-owner export
+separate from the accepted `final-answer-adjudications-v1` export. Accepted
+export requires complete assertion and claim-support decisions plus an explicit
+independent-human attestation.
+
+This resolves the replay-architecture prerequisite only. The semantic gate
+remains blocked until an independent human reviews canonical packet E and the
+production evaluator accepts the resulting exact-bound bundle. The other
+release blockers remain unchanged.

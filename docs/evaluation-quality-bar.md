@@ -136,6 +136,37 @@ normal per-user XDG paths. Until independent answer adjudications are supplied
 with `--adjudications`, strict mode is expected to return status 1 rather than
 turn unknown semantic results into passes.
 
+When an exact live-Ollama execution has already been captured, score that
+execution without calling the provider again:
+
+```bash
+.venv/bin/python -B -m danish_rag.final_answer_evaluation \
+  --mode captured-live-ollama \
+  --execution-capture "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-capture-e.json" \
+  --capture-report "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-report-e.json" \
+  --adjudications "$HOME/.local/share/danish-immigration-rag/private-evaluation/danish-rag-final-answer-adjudications-v1.json" \
+  --generate-automated-evidence docs/progress/final-answer-machine-evidence \
+  --release-monitor-report docs/progress/release-monitors-live.json \
+  --output /tmp/danish-rag-captured-replay-e.json \
+  --generated-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --strict
+```
+
+Captured replay validates the current dataset and quality-bar hashes, approved
+provider/model/quantization/corpus identity, every answer execution and review
+payload hash, and agreement with the companion live report. Its public report
+records hashes of both capture inputs and `live_provider_calls: false`; the
+original execution remains identified separately as `live-ollama`. The private
+prompt, answer, and evidence content is never copied into the replay report.
+
+Open `review/semantic-adjudication-review.html` locally and load the exact
+private capture. The accepted export remains disabled until every assertion and
+claim-support decision is complete and the reviewer affirmatively attests that
+they are an independent human reviewer. Diagnostic product-owner exports remain
+separate and are not accepted by the semantic gate. The evaluator validates the
+attestation against the exact dataset, execution hashes, and review-payload
+hashes; changing only the per-case assessment-method label is not sufficient.
+
 ## Release-Blocking Metrics
 
 The approved release-blocking metrics are:

@@ -1,9 +1,11 @@
+import copy
 import json
 import hashlib
 import stat
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from danish_rag.answer_pipeline import AnswerResult
 from danish_rag.final_answer_evaluation import (
@@ -22,6 +24,113 @@ from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixtu
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class _SyntheticApprovedLiveRunner:
+    supported_evaluation_surfaces = {"answer-path"}
+    public_identity = {
+        "provider_id": "ollama",
+        "provider_version": "0.30.6",
+        "model": "gemma4:12b",
+        "model_identity": {
+            "architecture": "gemma4",
+            "family": "gemma4",
+            "quantization_level": "Q4_K_M",
+        },
+        "corpus_id": "kr-2026-07-06.1",
+    }
+
+    def run(self, case):
+        return CaseExecution(
+            case_id=str(case["id"]),
+            result=AnswerResult(
+                question=str(case["prompt"]),
+                normalized_question=str(case["prompt"]).casefold(),
+                answer={
+                    "summary": "Project-authored synthetic replay fixture.",
+                    "response_kind": str(
+                        case["final_answer_expectations"]["expected_behavior"]
+                    ),
+                    "sections": [
+                        {
+                            "kind": "refusal",
+                            "text": "Project-authored synthetic fixture response.",
+                            "citation_ids": [],
+                        }
+                    ],
+                    "trust": {
+                        "evidence_confidence": "Low",
+                        "fresh_tomato_score": "Not applicable",
+                    },
+                },
+                model_identity={
+                    "provider_id": "ollama",
+                    "endpoint": "http://127.0.0.1:11434",
+                    "model": "gemma4:12b",
+                    "provider_version": "0.30.6",
+                    "model_identity": dict(self.public_identity["model_identity"]),
+                    "capabilities": ["generation"],
+                },
+                corpus_identity="kr-2026-07-06.1",
+            ),
+            evidence=[],
+        )
+
+
+def _write_synthetic_live_capture(directory: Path) -> tuple[Path, Path]:
+    packet_path = directory / "synthetic-live-capture.json"
+    report_path = directory / "synthetic-live-report.json"
+    report = generate_final_answer_evaluation(
+        ROOT,
+        runner=_SyntheticApprovedLiveRunner(),
+        mode="live-ollama",
+        generated_at_utc="2026-07-24T12:00:00Z",
+        human_review_packet_path=packet_path,
+    )
+    report_path.write_text(
+        json.dumps(report, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return packet_path, report_path
+
+
+def _completed_adjudication_bundle(packet: dict) -> dict:
+    cases = []
+    for item in packet["cases"]:
+        record = copy.deepcopy(item["blank_adjudication_template"])
+        record["assertion_results"] = {
+            assertion_id: "passed"
+            for assertion_id in record["assertion_results"]
+        }
+        record["claim_support"] = {
+            section_id: {citation_id: True for citation_id in citations}
+            for section_id, citations in record["claim_support"].items()
+        }
+        cases.append(record)
+    return {
+        "schema_version": "final-answer-adjudications-v1",
+        "dataset": copy.deepcopy(packet["dataset"]),
+        "independent_human_attestation": {
+            "schema_version": "final-answer-independent-human-attestation-v1",
+            "attested": True,
+            "statement": (
+                "I attest that I am an independent human reviewer and personally "
+                "reviewed every exact answer and cited evidence in this packet."
+            ),
+            "attested_at_utc": "2026-07-24T13:00:00Z",
+            "packet_schema_version": "final-answer-human-review-packet-v1",
+            "dataset": copy.deepcopy(packet["dataset"]),
+            "case_bindings": [
+                {
+                    "case_id": item["case_id"],
+                    "execution_sha256": item["execution_sha256"],
+                    "review_payload_sha256": item["review_payload_sha256"],
+                }
+                for item in packet["cases"]
+            ],
+        },
+        "cases": cases,
+    }
 
 
 class FinalAnswerEvaluationPublicSeamTests(unittest.TestCase):
@@ -512,6 +621,272 @@ class FinalAnswerEvaluationPublicSeamTests(unittest.TestCase):
             self.assertIn(
                 "which danish language test is documented", private_serialized
             )
+
+    def test_captured_live_replay_scores_exact_execution_without_live_runner(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            directory = Path(tmpdir)
+            packet_path, capture_report_path = _write_synthetic_live_capture(
+                directory
+            )
+            output_path = directory / "replay-report.json"
+
+            with mock.patch(
+                "danish_rag.final_answer_evaluation.build_live_ollama_runner",
+                side_effect=AssertionError("captured replay called the live runner"),
+            ):
+                status = main(
+                    [
+                        "--repo-root",
+                        str(ROOT),
+                        "--mode",
+                        "captured-live-ollama",
+                        "--execution-capture",
+                        str(packet_path),
+                        "--capture-report",
+                        str(capture_report_path),
+                        "--output",
+                        str(output_path),
+                        "--generated-at-utc",
+                        "2026-07-24T13:00:00Z",
+                    ]
+                )
+
+            self.assertEqual(status, 0)
+            packet = json.loads(packet_path.read_text(encoding="utf-8"))
+            report = json.loads(output_path.read_text(encoding="utf-8"))
+            self.assertEqual(report["execution"]["mode"], "captured-live-ollama")
+            self.assertFalse(report["execution"]["live_provider_calls"])
+            self.assertEqual(report["identity"], _SyntheticApprovedLiveRunner.public_identity)
+            self.assertEqual(
+                [
+                    item["execution_sha256"]
+                    for item in report["case_results"]
+                    if item["evaluation_surface"] == "answer-path"
+                ],
+                [item["execution_sha256"] for item in packet["cases"]],
+            )
+            self.assertEqual(
+                report["capture_provenance"]["original_execution_mode"],
+                "live-ollama",
+            )
+            self.assertTrue(
+                report["capture_provenance"]["original_live_provider_calls"]
+            )
+            self.assertFalse(
+                report["capture_provenance"]["scoring_live_provider_calls"]
+            )
+            serialized = json.dumps(report, sort_keys=True).casefold()
+            self.assertNotIn('"prompt":', serialized)
+            self.assertNotIn('"question":', serialized)
+            self.assertNotIn('"answer":', serialized)
+            self.assertNotIn('"evidence":', serialized)
+
+    def test_captured_live_replay_accepts_exact_independent_human_bundle(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            directory = Path(tmpdir)
+            packet_path, capture_report_path = _write_synthetic_live_capture(
+                directory
+            )
+            packet = json.loads(packet_path.read_text(encoding="utf-8"))
+            adjudications_path = directory / "independent-adjudications.json"
+            adjudications_path.write_text(
+                json.dumps(_completed_adjudication_bundle(packet)),
+                encoding="utf-8",
+            )
+            output_path = directory / "replay-report.json"
+
+            status = main(
+                [
+                    "--repo-root",
+                    str(ROOT),
+                    "--mode",
+                    "captured-live-ollama",
+                    "--execution-capture",
+                    str(packet_path),
+                    "--capture-report",
+                    str(capture_report_path),
+                    "--adjudications",
+                    str(adjudications_path),
+                    "--output",
+                    str(output_path),
+                ]
+            )
+
+            self.assertEqual(status, 0)
+            report = json.loads(output_path.read_text(encoding="utf-8"))
+            self.assertEqual(report["adjudications"]["independent_human_case_count"], 10)
+            self.assertEqual(report["adjudications"]["case_count"], 10)
+
+    def test_captured_live_replay_rejects_unattested_independent_human_bundle(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            directory = Path(tmpdir)
+            packet_path, capture_report_path = _write_synthetic_live_capture(
+                directory
+            )
+            packet = json.loads(packet_path.read_text(encoding="utf-8"))
+            bundle = _completed_adjudication_bundle(packet)
+            bundle.pop("independent_human_attestation")
+            adjudications_path = directory / "unattested-adjudications.json"
+            adjudications_path.write_text(json.dumps(bundle), encoding="utf-8")
+
+            with mock.patch("sys.stderr") as stderr:
+                status = main(
+                    [
+                        "--repo-root",
+                        str(ROOT),
+                        "--mode",
+                        "captured-live-ollama",
+                        "--execution-capture",
+                        str(packet_path),
+                        "--capture-report",
+                        str(capture_report_path),
+                        "--adjudications",
+                        str(adjudications_path),
+                        "--output",
+                        str(directory / "replay-report.json"),
+                    ]
+                )
+
+            self.assertEqual(status, 2)
+            error_text = " ".join(
+                str(call.args[0]) for call in stderr.write.call_args_list
+            )
+            self.assertIn("independent-human attestation", error_text)
+
+    def test_captured_live_replay_rejects_changed_or_incomplete_evidence(self):
+        def change_answer(packet, _report):
+            packet["cases"][0]["execution"]["result"]["answer"]["summary"] += " changed"
+
+        def change_evidence(packet, _report):
+            packet["cases"][0]["execution"]["evidence"].append(
+                {"citation_id": "fixture-tamper", "content": "Changed fixture evidence."}
+            )
+
+        def change_execution_hash(packet, _report):
+            packet["cases"][0]["execution_sha256"] = "0" * 64
+
+        def change_review_hash(packet, _report):
+            packet["cases"][0]["review_payload_sha256"] = "0" * 64
+
+        def change_dataset(packet, _report):
+            packet["dataset"]["dataset_id"] = "changed-dataset"
+
+        def change_dataset_version(packet, _report):
+            packet["dataset"]["version"] = "changed-version"
+
+        def change_dataset_hash(packet, _report):
+            packet["dataset"]["sha256"] = "0" * 64
+
+        def remove_case(packet, _report):
+            packet["cases"].pop()
+
+        def duplicate_case(packet, _report):
+            packet["cases"][-1] = copy.deepcopy(packet["cases"][0])
+
+        def unknown_case(packet, _report):
+            packet["cases"][0]["case_id"] = "eval-unknown"
+
+        def change_provider(_packet, report):
+            report["identity"]["provider_id"] = "other-provider"
+
+        def change_model(_packet, report):
+            report["identity"]["model"] = "other-model"
+
+        def change_quantization(_packet, report):
+            report["identity"]["model_identity"]["quantization_level"] = "Q8_0"
+
+        def change_corpus(_packet, report):
+            report["identity"]["corpus_id"] = "other-corpus"
+
+        def change_case_corpus(packet, _report):
+            packet["cases"][0]["execution"]["result"][
+                "corpus_identity"
+            ] = "other-corpus"
+
+        def change_report_execution_hash(_packet, report):
+            answer_result = next(
+                item
+                for item in report["case_results"]
+                if item["evaluation_surface"] == "answer-path"
+            )
+            answer_result["execution_sha256"] = "0" * 64
+
+        def change_quality_bar(_packet, report):
+            report["quality_bar"]["sha256"] = "0" * 64
+
+        scenarios = {
+            "answer tampering": (change_answer, "execution SHA-256"),
+            "evidence tampering": (change_evidence, "execution SHA-256"),
+            "execution hash tampering": (change_execution_hash, "execution SHA-256"),
+            "review hash tampering": (change_review_hash, "review-payload SHA-256"),
+            "dataset id mismatch": (change_dataset, "approved evaluation dataset"),
+            "dataset version mismatch": (
+                change_dataset_version,
+                "approved evaluation dataset",
+            ),
+            "dataset hash mismatch": (
+                change_dataset_hash,
+                "approved evaluation dataset",
+            ),
+            "missing case": (remove_case, "incomplete answer-path case set"),
+            "duplicate case": (duplicate_case, "missing, unknown, duplicated, or reordered"),
+            "unknown case": (unknown_case, "missing, unknown, duplicated, or reordered"),
+            "provider mismatch": (change_provider, "approved runtime contracts"),
+            "model mismatch": (change_model, "approved runtime contracts"),
+            "quantization mismatch": (
+                change_quantization,
+                "approved runtime contracts",
+            ),
+            "report corpus mismatch": (change_corpus, "approved runtime contracts"),
+            "capture corpus mismatch": (
+                change_case_corpus,
+                "approved capture report",
+            ),
+            "capture report disagreement": (
+                change_report_execution_hash,
+                "disagree",
+            ),
+            "quality bar mismatch": (change_quality_bar, "approved quality bar"),
+        }
+
+        for name, (mutate, expected_error) in scenarios.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmpdir:
+                directory = Path(tmpdir)
+                packet_path, capture_report_path = _write_synthetic_live_capture(
+                    directory
+                )
+                packet = json.loads(packet_path.read_text(encoding="utf-8"))
+                capture_report = json.loads(
+                    capture_report_path.read_text(encoding="utf-8")
+                )
+                mutate(packet, capture_report)
+                packet_path.write_text(json.dumps(packet), encoding="utf-8")
+                capture_report_path.write_text(
+                    json.dumps(capture_report),
+                    encoding="utf-8",
+                )
+
+                with mock.patch("sys.stderr") as stderr:
+                    status = main(
+                        [
+                            "--repo-root",
+                            str(ROOT),
+                            "--mode",
+                            "captured-live-ollama",
+                            "--execution-capture",
+                            str(packet_path),
+                            "--capture-report",
+                            str(capture_report_path),
+                            "--output",
+                            str(directory / "replay-report.json"),
+                        ]
+                    )
+
+                self.assertEqual(status, 2)
+                error_text = " ".join(
+                    str(call.args[0]) for call in stderr.write.call_args_list
+                )
+                self.assertIn(expected_error, error_text)
 
     def test_combined_evaluator_does_not_send_workflow_cases_to_answer_runner(self):
         class SurfaceAwareRunner:

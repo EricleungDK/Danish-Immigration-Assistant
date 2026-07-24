@@ -1,0 +1,2113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'"
+  >
+  <title>Danish Immigration RAG — Semantic Review</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17201d;
+      --muted: #66726e;
+      --paper: #f4f3ed;
+      --surface: #fffef9;
+      --surface-strong: #ffffff;
+      --line: #d9ddd7;
+      --line-strong: #b9c1bb;
+      --green: #075f4f;
+      --green-soft: #e3f2ed;
+      --red: #a63832;
+      --red-soft: #fae9e6;
+      --amber: #8a5a00;
+      --amber-soft: #fff2ce;
+      --blue: #345f91;
+      --blue-soft: #e9f1fb;
+      --shadow: 0 18px 50px rgba(23, 32, 29, 0.08);
+      --radius: 16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(7, 95, 79, 0.08), transparent 32rem),
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.55;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    .topbar {
+      position: sticky;
+      z-index: 20;
+      top: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 74px;
+      padding: 14px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(185, 193, 187, 0.72);
+      background: rgba(244, 243, 237, 0.92);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 12px;
+      background: var(--green);
+      color: white;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .brand-title {
+      overflow: hidden;
+      font-size: 15px;
+      font-weight: 760;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .brand-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .local-badge,
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid #b7d3ca;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--green);
+      padding: 7px 11px;
+      font-size: 12px;
+      font-weight: 720;
+      white-space: nowrap;
+    }
+
+    .local-badge::before {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+      content: "";
+    }
+
+    main {
+      width: min(1480px, 100%);
+      margin: 0 auto;
+      padding: clamp(22px, 4vw, 52px);
+    }
+
+    .loader {
+      display: grid;
+      min-height: calc(100vh - 150px);
+      place-items: center;
+    }
+
+    .loader-card {
+      width: min(720px, 100%);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .loader-intro {
+      padding: clamp(26px, 5vw, 52px);
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 15ch;
+      margin-bottom: 14px;
+      font-size: clamp(32px, 5vw, 54px);
+      line-height: 1.02;
+      letter-spacing: -0.045em;
+    }
+
+    h2 {
+      margin-bottom: 10px;
+      font-size: clamp(23px, 3vw, 32px);
+      line-height: 1.15;
+      letter-spacing: -0.025em;
+    }
+
+    h3 {
+      margin-bottom: 8px;
+      font-size: 17px;
+      letter-spacing: -0.015em;
+    }
+
+    .lede {
+      max-width: 58ch;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .dropzone {
+      display: grid;
+      min-height: 190px;
+      margin-top: 28px;
+      cursor: pointer;
+      place-items: center;
+      border: 2px dashed #aebdb6;
+      border-radius: var(--radius);
+      background: #f8faf7;
+      padding: 28px;
+      text-align: center;
+      transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+    }
+
+    .dropzone:hover,
+    .dropzone:focus-within,
+    .dropzone.is-dragging {
+      border-color: var(--green);
+      background: var(--green-soft);
+      transform: translateY(-2px);
+    }
+
+    .dropzone strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 17px;
+    }
+
+    .dropzone span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .drop-icon {
+      display: grid;
+      width: 46px;
+      height: 46px;
+      margin: 0 auto 14px;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--green);
+      color: white;
+      font-size: 23px;
+      font-weight: 800;
+    }
+
+    #packet-file {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .loader-foot {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--line);
+      background: #f7f7f2;
+    }
+
+    .security-point {
+      padding: 18px 20px;
+      border-right: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .security-point:last-child {
+      border-right: 0;
+    }
+
+    .security-point strong {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .error {
+      margin-top: 18px;
+      border: 1px solid #e1b0ab;
+      border-radius: 12px;
+      background: var(--red-soft);
+      color: var(--red);
+      padding: 12px 14px;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 310px minmax(0, 1fr);
+      gap: 26px;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 100px;
+      max-height: calc(100vh - 126px);
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: 0 12px 40px rgba(23, 32, 29, 0.06);
+    }
+
+    .progress-panel {
+      padding: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .progress-copy strong {
+      display: block;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .progress-copy span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .progress-ring {
+      --progress: 0deg;
+      display: grid;
+      width: 58px;
+      height: 58px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 50%;
+      background: conic-gradient(var(--green) var(--progress), #e1e5e1 0);
+    }
+
+    .progress-ring::after {
+      display: grid;
+      width: 44px;
+      height: 44px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--surface);
+      content: attr(data-label);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .case-nav {
+      display: grid;
+      gap: 2px;
+      padding: 10px;
+    }
+
+    .case-nav button {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: center;
+      width: 100%;
+      cursor: pointer;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      padding: 10px;
+      text-align: left;
+    }
+
+    .case-nav button:hover {
+      background: #f2f4f1;
+    }
+
+    .case-nav button[aria-current="true"] {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .case-number {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--surface-strong);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 780;
+    }
+
+    .case-nav button[aria-current="true"] .case-number {
+      border-color: var(--green);
+      background: var(--green);
+      color: white;
+    }
+
+    .case-nav-label {
+      overflow: hidden;
+      font-family: var(--mono);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .case-check {
+      width: 9px;
+      height: 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 50%;
+      background: transparent;
+    }
+
+    .case-check.is-complete {
+      border-color: var(--green);
+      background: var(--green);
+    }
+
+    .sidebar-actions {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .attestation-panel {
+      padding: 14px;
+      border-top: 1px solid var(--line);
+      background: var(--amber-soft);
+    }
+
+    .attestation-panel label {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 9px;
+      align-items: start;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .attestation-panel input {
+      width: 18px;
+      height: 18px;
+      margin: 1px 0 0;
+      accent-color: var(--green);
+    }
+
+    .attestation-panel p {
+      margin: 8px 0 0 27px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .button {
+      display: inline-flex;
+      min-height: 42px;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: var(--surface-strong);
+      padding: 9px 14px;
+      font-weight: 720;
+    }
+
+    .button:hover {
+      border-color: #87928c;
+      background: #f7f8f6;
+    }
+
+    .button.primary {
+      border-color: var(--green);
+      background: var(--green);
+      color: white;
+    }
+
+    .button.primary:hover {
+      background: #064f43;
+    }
+
+    .button:disabled,
+    .button:disabled:hover {
+      cursor: not-allowed;
+      border-color: var(--line);
+      background: #e5e8e4;
+      color: var(--muted);
+      opacity: 0.8;
+    }
+
+    .button.danger {
+      color: var(--red);
+    }
+
+    .content {
+      min-width: 0;
+    }
+
+    .review-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 22px;
+    }
+
+    .case-kicker {
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .case-heading {
+      max-width: 24ch;
+      margin: 0;
+      font-size: clamp(28px, 4vw, 45px);
+      line-height: 1.03;
+      letter-spacing: -0.045em;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .header-controls button {
+      min-width: 84px;
+    }
+
+    .notice {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 18px;
+      border: 1px solid #e3ce9a;
+      border-radius: 13px;
+      background: var(--amber-soft);
+      color: #6e4a05;
+      padding: 13px 15px;
+      font-size: 13px;
+    }
+
+    .notice strong {
+      white-space: nowrap;
+    }
+
+    .section {
+      margin-bottom: 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: 0 10px 32px rgba(23, 32, 29, 0.045);
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-size: 19px;
+    }
+
+    .section-heading span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .section-body {
+      padding: 20px;
+    }
+
+    .prompt {
+      margin: 0;
+      font-size: clamp(18px, 2.2vw, 24px);
+      font-weight: 680;
+      line-height: 1.4;
+      letter-spacing: -0.018em;
+    }
+
+    .answer-summary {
+      margin-bottom: 18px;
+      border-left: 4px solid var(--green);
+      border-radius: 0 10px 10px 0;
+      background: var(--green-soft);
+      padding: 14px 16px;
+      font-size: 16px;
+      font-weight: 650;
+    }
+
+    .answer-section {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-strong);
+      padding: 16px;
+    }
+
+    .answer-section-top,
+    .evidence-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .kind {
+      display: inline-flex;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      padding: 4px 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 780;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .section-index {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .citation-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .citation-chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f4f6f3;
+      color: var(--muted);
+      padding: 4px 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+
+    .trust-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .trust-item {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #f7f8f5;
+      padding: 12px;
+    }
+
+    .trust-item span {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: capitalize;
+    }
+
+    .trust-item strong {
+      font-size: 16px;
+    }
+
+    .group {
+      margin-bottom: 24px;
+    }
+
+    .group:last-child {
+      margin-bottom: 0;
+    }
+
+    .group-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+
+    .group-header h3 {
+      margin: 0;
+      text-transform: capitalize;
+    }
+
+    .group-help {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .privacy-warning {
+      margin-bottom: 10px;
+      border-radius: 10px;
+      background: var(--amber-soft);
+      color: #6e4a05;
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+
+    .assertion-card,
+    .relationship-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      margin-top: 9px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-strong);
+      padding: 14px;
+    }
+
+    .assertion-id,
+    .relationship-label {
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+
+    .criterion {
+      font-size: 14px;
+      font-weight: 620;
+    }
+
+    .choice-group {
+      display: inline-grid;
+      grid-auto-flow: column;
+      gap: 4px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f3f5f2;
+      padding: 4px;
+    }
+
+    .choice-group button {
+      min-height: 34px;
+      cursor: pointer;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      padding: 6px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .choice-group button:hover {
+      background: white;
+      color: var(--ink);
+    }
+
+    .choice-group button[data-value="passed"][aria-pressed="true"],
+    .choice-group button[data-value="true"][aria-pressed="true"] {
+      background: var(--green);
+      color: white;
+    }
+
+    .choice-group button[data-value="failed"][aria-pressed="true"],
+    .choice-group button[data-value="false"][aria-pressed="true"] {
+      background: var(--red);
+      color: white;
+    }
+
+    .choice-group button[data-value="not_evaluable"][aria-pressed="true"],
+    .choice-group button[data-value="unknown"][aria-pressed="true"] {
+      background: var(--amber);
+      color: white;
+    }
+
+    .relationship-context {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .context-box {
+      border-radius: 10px;
+      background: #f5f6f3;
+      padding: 11px;
+      color: #3e4945;
+      font-size: 12px;
+    }
+
+    .context-box strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .evidence-card {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-strong);
+      padding: 16px;
+    }
+
+    .evidence-id {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .evidence-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .evidence-content {
+      margin: 12px 0 0;
+      white-space: pre-wrap;
+    }
+
+    .evidence-url {
+      display: block;
+      overflow-wrap: anywhere;
+      margin-top: 12px;
+      color: var(--blue);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .notes {
+      width: 100%;
+      min-height: 110px;
+      resize: vertical;
+      border: 1px solid var(--line-strong);
+      border-radius: 11px;
+      background: white;
+      padding: 12px;
+      color: var(--ink);
+    }
+
+    .notes:focus,
+    button:focus-visible,
+    .dropzone:focus-visible {
+      outline: 3px solid rgba(52, 95, 145, 0.32);
+      outline-offset: 2px;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 50;
+      right: 22px;
+      bottom: 22px;
+      max-width: 380px;
+      border-radius: 12px;
+      background: var(--ink);
+      color: white;
+      padding: 12px 15px;
+      box-shadow: var(--shadow);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    @media (max-width: 980px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        max-height: none;
+      }
+
+      .case-nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 700px) {
+      .topbar {
+        align-items: flex-start;
+      }
+
+      .brand-subtitle,
+      .local-badge {
+        display: none;
+      }
+
+      main {
+        padding: 18px 12px 36px;
+      }
+
+      .loader-foot {
+        grid-template-columns: 1fr;
+      }
+
+      .security-point {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .security-point:last-child {
+        border-bottom: 0;
+      }
+
+      .case-nav {
+        grid-template-columns: 1fr;
+      }
+
+      .review-header,
+      .section-heading {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .assertion-card,
+      .relationship-card {
+        grid-template-columns: 1fr;
+      }
+
+      .choice-group {
+        grid-auto-flow: row;
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .relationship-context,
+      .trust-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *,
+      *::before,
+      *::after {
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">DR</div>
+      <div>
+        <div class="brand-title">Danish Immigration RAG</div>
+        <div class="brand-subtitle">Semantic adjudication workspace</div>
+      </div>
+    </div>
+    <div class="local-badge">Local-only review</div>
+  </header>
+
+  <main>
+    <section id="loader" class="loader" aria-labelledby="loader-title">
+      <div class="loader-card">
+        <div class="loader-intro">
+          <p class="eyebrow">Private evidence review</p>
+          <h1 id="loader-title">Review answers without wrestling with JSON.</h1>
+          <p class="lede">
+            Load the sensitive human-review packet from your computer. The page
+            displays each prompt, generated answer, expectation, and cited evidence,
+            then records your decisions with buttons.
+          </p>
+
+          <label id="dropzone" class="dropzone" tabindex="0">
+            <input id="packet-file" type="file" accept=".json,application/json">
+            <span>
+              <span class="drop-icon" aria-hidden="true">+</span>
+              <strong>Choose or drop the review packet</strong>
+              <span>Use the preserved <code>final-answer-capture-e.json</code> packet</span>
+            </span>
+          </label>
+          <div id="load-error" class="error hidden" role="alert"></div>
+        </div>
+
+        <div class="loader-foot" aria-label="Privacy properties">
+          <div class="security-point">
+            <strong>No network access</strong>
+            A strict page policy blocks connections.
+          </div>
+          <div class="security-point">
+            <strong>No packet copy</strong>
+            The chosen file stays in browser memory.
+          </div>
+          <div class="security-point">
+            <strong>Explicit export</strong>
+            Nothing leaves the page until you download it.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="review-app" class="app-shell hidden" aria-live="polite">
+      <aside class="sidebar" aria-label="Review navigation">
+        <div class="progress-panel">
+          <div class="progress-row">
+            <div class="progress-copy">
+              <strong id="progress-count">0 / 0</strong>
+              <span>review decisions recorded</span>
+            </div>
+            <div id="progress-ring" class="progress-ring" data-label="0%"></div>
+          </div>
+        </div>
+        <nav id="case-nav" class="case-nav" aria-label="Cases"></nav>
+        <div class="attestation-panel">
+          <label>
+            <input id="independent-attestation" type="checkbox">
+            <span>
+              I attest that I am an independent human reviewer and personally
+              reviewed every exact answer and cited evidence in this packet.
+            </span>
+          </label>
+          <p>
+            This affirmative attestation does not relabel earlier product-owner
+            progress. It applies only to this exact packet.
+          </p>
+        </div>
+        <div class="sidebar-actions">
+          <button id="export-adjudications" class="button primary" type="button" disabled>Export accepted adjudications</button>
+          <button id="export-review" class="button" type="button">Export diagnostic draft</button>
+          <button id="load-another" class="button" type="button">Load another packet</button>
+          <button id="clear-review" class="button danger" type="button">Clear saved decisions</button>
+        </div>
+      </aside>
+
+      <article class="content">
+        <header class="review-header">
+          <div>
+            <div id="case-kicker" class="case-kicker"></div>
+            <h1 id="case-heading" class="case-heading"></h1>
+          </div>
+          <div class="header-controls">
+            <button id="previous-case" class="button" type="button">Previous</button>
+            <button id="next-case" class="button" type="button">Next</button>
+          </div>
+        </header>
+
+        <div class="notice">
+          <strong>Review status</strong>
+          <span>
+            Diagnostic drafts remain product-owner evidence only. A production
+            adjudication bundle is enabled separately after all decisions are
+            complete and an independent human explicitly attests to this exact review.
+          </span>
+        </div>
+
+        <section class="section" aria-labelledby="prompt-title">
+          <div class="section-heading">
+            <h2 id="prompt-title">Synthetic prompt</h2>
+            <span>What the generation model received</span>
+          </div>
+          <div class="section-body">
+            <p id="prompt-text" class="prompt"></p>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="answer-title">
+          <div class="section-heading">
+            <h2 id="answer-title">Generated answer</h2>
+            <span id="answer-kind"></span>
+          </div>
+          <div id="answer-body" class="section-body"></div>
+        </section>
+
+        <section class="section" aria-labelledby="assertions-title">
+          <div class="section-heading">
+            <h2 id="assertions-title">Expectation review</h2>
+            <span>Pass, fail, or preserve an unknown</span>
+          </div>
+          <div id="assertions-body" class="section-body"></div>
+        </section>
+
+        <section class="section" aria-labelledby="support-title">
+          <div class="section-heading">
+            <h2 id="support-title">Claim-to-evidence support</h2>
+            <span>Judge every cited relationship separately</span>
+          </div>
+          <div id="support-body" class="section-body"></div>
+        </section>
+
+        <section class="section" aria-labelledby="evidence-title">
+          <div class="section-heading">
+            <h2 id="evidence-title">Retrieved evidence</h2>
+            <span id="evidence-count"></span>
+          </div>
+          <div id="evidence-body" class="section-body"></div>
+        </section>
+
+        <section class="section" aria-labelledby="notes-title">
+          <div class="section-heading">
+            <h2 id="notes-title">Private reviewer notes</h2>
+            <span>Optional; included in the exported local file</span>
+          </div>
+          <div class="section-body">
+            <textarea
+              id="review-notes"
+              class="notes"
+              placeholder="Record why something failed or could not be evaluated. Do not copy this into a public issue."
+            ></textarea>
+          </div>
+        </section>
+      </article>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const ASSERTION_CHOICES = [
+        ["passed", "Passed"],
+        ["failed", "Failed"],
+        ["not_evaluable", "Not evaluable"],
+      ];
+      const SUPPORT_CHOICES = [
+        ["true", "Supported"],
+        ["false", "Not supported"],
+        ["unknown", "Unknown"],
+      ];
+      const GROUP_HELP = {
+        required_facts: "Pass only when the answer accurately communicates the required fact.",
+        forbidden_claims: "Pass means the prohibited claim is absent.",
+        trust_indicators: "Compare the expectation with the answer trust values and evidence.",
+        privacy_requirements: "Use Not evaluable when the packet has no runtime or storage evidence.",
+      };
+
+      const elements = {
+        loader: document.querySelector("#loader"),
+        app: document.querySelector("#review-app"),
+        file: document.querySelector("#packet-file"),
+        dropzone: document.querySelector("#dropzone"),
+        error: document.querySelector("#load-error"),
+        caseNav: document.querySelector("#case-nav"),
+        progressCount: document.querySelector("#progress-count"),
+        progressRing: document.querySelector("#progress-ring"),
+        caseKicker: document.querySelector("#case-kicker"),
+        caseHeading: document.querySelector("#case-heading"),
+        previous: document.querySelector("#previous-case"),
+        next: document.querySelector("#next-case"),
+        prompt: document.querySelector("#prompt-text"),
+        answerKind: document.querySelector("#answer-kind"),
+        answerBody: document.querySelector("#answer-body"),
+        assertionsBody: document.querySelector("#assertions-body"),
+        supportBody: document.querySelector("#support-body"),
+        evidenceCount: document.querySelector("#evidence-count"),
+        evidenceBody: document.querySelector("#evidence-body"),
+        notes: document.querySelector("#review-notes"),
+        attestation: document.querySelector("#independent-attestation"),
+        exportAccepted: document.querySelector("#export-adjudications"),
+        exportDiagnostic: document.querySelector("#export-review"),
+        loadAnother: document.querySelector("#load-another"),
+        clear: document.querySelector("#clear-review"),
+        toast: document.querySelector("#toast"),
+      };
+
+      let packet = null;
+      let currentIndex = 0;
+      let storageKey = "";
+      let review = { cases: {} };
+      let toastTimer = null;
+      let relationshipIndex = new Map();
+      const INDEPENDENT_ATTESTATION_STATEMENT =
+        "I attest that I am an independent human reviewer and personally reviewed every exact answer and cited evidence in this packet.";
+
+      function node(tag, options = {}, children = []) {
+        const item = document.createElement(tag);
+        if (options.className) item.className = options.className;
+        if (options.text !== undefined) item.textContent = String(options.text);
+        if (options.attrs) {
+          for (const [name, value] of Object.entries(options.attrs)) {
+            item.setAttribute(name, String(value));
+          }
+        }
+        for (const child of children) {
+          item.append(child);
+        }
+        return item;
+      }
+
+      function valueText(value) {
+        if (value === undefined || value === null || value === "") return "Not supplied";
+        if (typeof value === "object") return JSON.stringify(value);
+        return String(value);
+      }
+
+      function showError(message) {
+        elements.error.textContent = message;
+        elements.error.classList.remove("hidden");
+      }
+
+      function showToast(message) {
+        window.clearTimeout(toastTimer);
+        elements.toast.textContent = message;
+        elements.toast.classList.remove("hidden");
+        toastTimer = window.setTimeout(() => elements.toast.classList.add("hidden"), 2600);
+      }
+
+      function validatePacket(candidate) {
+        if (!candidate || typeof candidate !== "object") {
+          throw new Error("The selected file is not a JSON object.");
+        }
+        if (candidate.schema_version !== "final-answer-human-review-packet-v1") {
+          throw new Error("This is not a final-answer human-review packet.");
+        }
+        if (!Array.isArray(candidate.cases) || candidate.cases.length === 0) {
+          throw new Error("The packet contains no review cases.");
+        }
+        if (candidate.case_count !== candidate.cases.length) {
+          throw new Error("The packet case count does not match its review cases.");
+        }
+        const seenCaseIds = new Set();
+        for (const item of candidate.cases) {
+          const template = item.blank_adjudication_template;
+          if (
+            !item.case_id ||
+            !item.execution ||
+            !Array.isArray(item.assertions) ||
+            !template ||
+            !/^[0-9a-f]{64}$/.test(item.execution_sha256 || "") ||
+            !/^[0-9a-f]{64}$/.test(item.review_payload_sha256 || "") ||
+            template.case_id !== item.case_id ||
+            template.evaluation_surface !== "answer-path" ||
+            template.assessment_method !== "independent-human-review" ||
+            template.evidence_binding?.kind !== "answer-review-payload" ||
+            template.evidence_binding?.execution_sha256 !== item.execution_sha256 ||
+            template.evidence_binding?.sha256 !== item.review_payload_sha256
+          ) {
+            throw new Error("The packet has an incomplete case.");
+          }
+          if (seenCaseIds.has(item.case_id)) {
+            throw new Error("The packet contains a duplicate review case.");
+          }
+          seenCaseIds.add(item.case_id);
+        }
+      }
+
+      function packetStorageKey(candidate) {
+        const datasetHash = candidate.dataset?.sha256 || "unknown-dataset";
+        const caseBindings = candidate.cases
+          .map(
+            (item) =>
+              [
+                item.case_id || "missing-case",
+                item.execution_sha256 || "missing-execution",
+                item.review_payload_sha256 || "missing-review-payload",
+              ].join(":"),
+          )
+          .join(":");
+        return `danish-rag-product-owner-review:${datasetHash}:${caseBindings}`;
+      }
+
+      function stableSerialize(value) {
+        if (Array.isArray(value)) {
+          return "[" + value.map(stableSerialize).join(",") + "]";
+        }
+        if (value && typeof value === "object") {
+          return (
+            "{" +
+            Object.keys(value)
+              .sort()
+              .map(
+                (key) =>
+                  JSON.stringify(key) + ":" + stableSerialize(value[key]),
+              )
+              .join(",") +
+            "}"
+          );
+        }
+        return JSON.stringify(value);
+      }
+
+      function relationshipSignature(caseItem, sectionId, citationId) {
+        const section = answerSection(caseItem, sectionId);
+        const evidence = evidenceById(caseItem).get(String(citationId));
+        return stableSerialize({ claim: section || null, evidence: evidence || null });
+      }
+
+      function buildRelationshipIndex(candidate) {
+        const index = new Map();
+        for (const caseItem of candidate.cases) {
+          const templateSupport =
+            caseItem.blank_adjudication_template?.claim_support || {};
+          for (const [sectionId, citations] of Object.entries(templateSupport)) {
+            for (const citationId of Object.keys(citations || {})) {
+              const signature = relationshipSignature(caseItem, sectionId, citationId);
+              if (!index.has(signature)) index.set(signature, []);
+              index.get(signature).push({
+                caseId: caseItem.case_id,
+                sectionId,
+                citationId,
+              });
+            }
+          }
+        }
+        return index;
+      }
+
+      function emptyCaseReview(caseItem) {
+        const assertions = {};
+        for (const assertion of caseItem.assertions) {
+          assertions[assertion.assertion_id] = undefined;
+        }
+
+        const support = {};
+        const templateSupport =
+          caseItem.blank_adjudication_template?.claim_support || {};
+        for (const [sectionId, citations] of Object.entries(templateSupport)) {
+          support[sectionId] = {};
+          for (const citationId of Object.keys(citations || {})) {
+            support[sectionId][citationId] = undefined;
+          }
+        }
+
+        return {
+          assertion_results: assertions,
+          claim_support: support,
+          notes: "",
+        };
+      }
+
+      function initialiseReview(candidate) {
+        const cases = {};
+        for (const item of candidate.cases) {
+          cases[item.case_id] = emptyCaseReview(item);
+        }
+
+        storageKey = packetStorageKey(candidate);
+        const saved = window.localStorage.getItem(storageKey);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            for (const item of candidate.cases) {
+              const caseId = item.case_id;
+              const restored = parsed.cases?.[caseId];
+              if (!restored) continue;
+
+              const baseline = cases[caseId];
+              for (const assertionId of Object.keys(baseline.assertion_results)) {
+                const value = restored.assertion_results?.[assertionId];
+                if (["passed", "failed", "not_evaluable"].includes(value)) {
+                  baseline.assertion_results[assertionId] = value;
+                }
+              }
+              for (const [sectionId, citations] of Object.entries(baseline.claim_support)) {
+                for (const citationId of Object.keys(citations)) {
+                  const value = restored.claim_support?.[sectionId]?.[citationId];
+                  if ([true, false, "unknown"].includes(value)) {
+                    baseline.claim_support[sectionId][citationId] = value;
+                  }
+                }
+              }
+              baseline.notes =
+                typeof restored.notes === "string" ? restored.notes : "";
+            }
+          } catch (_error) {
+            window.localStorage.removeItem(storageKey);
+          }
+        }
+        review = { cases };
+        relationshipIndex = buildRelationshipIndex(candidate);
+        propagateSavedDuplicateDecisions();
+      }
+
+      function saveReview() {
+        window.localStorage.setItem(storageKey, JSON.stringify(review));
+      }
+
+      function propagateSavedDuplicateDecisions() {
+        let changed = false;
+        for (const occurrences of relationshipIndex.values()) {
+          if (occurrences.length < 2) continue;
+          const decided = occurrences
+            .map(
+              ({ caseId, sectionId, citationId }) =>
+                review.cases[caseId].claim_support[sectionId][citationId],
+            )
+            .filter((value) => value !== undefined);
+          const unique = [...new Set(decided)];
+          if (unique.length !== 1) continue;
+          for (const { caseId, sectionId, citationId } of occurrences) {
+            const citations = review.cases[caseId].claim_support[sectionId];
+            if (citations[citationId] === undefined) {
+              citations[citationId] = unique[0];
+              changed = true;
+            }
+          }
+        }
+        if (changed) saveReview();
+      }
+
+      function applyLinkedSupportDecision(caseItem, sectionId, citationId, value) {
+        const signature = relationshipSignature(caseItem, sectionId, citationId);
+        const occurrences = relationshipIndex.get(signature) || [];
+        for (const occurrence of occurrences) {
+          review.cases[occurrence.caseId]
+            .claim_support[occurrence.sectionId][occurrence.citationId] = value;
+        }
+        saveReview();
+        return occurrences;
+      }
+
+      async function loadPacketFile(file) {
+        elements.error.classList.add("hidden");
+        try {
+          const text = await file.text();
+          const candidate = JSON.parse(text);
+          validatePacket(candidate);
+          packet = candidate;
+          currentIndex = 0;
+          initialiseReview(candidate);
+          elements.loader.classList.add("hidden");
+          elements.app.classList.remove("hidden");
+          render();
+          window.scrollTo({ top: 0, behavior: "instant" });
+        } catch (error) {
+          showError(error instanceof Error ? error.message : "The packet could not be loaded.");
+        }
+      }
+
+      function currentCase() {
+        return packet.cases[currentIndex];
+      }
+
+      function currentCaseReview() {
+        return review.cases[currentCase().case_id];
+      }
+
+      function caseDecisionCounts(caseItem) {
+        const decisions = review.cases[caseItem.case_id];
+        const assertionValues = Object.values(decisions.assertion_results);
+        const supportValues = Object.values(decisions.claim_support)
+          .flatMap((citations) => Object.values(citations));
+        return {
+          completed:
+            assertionValues.filter((value) => value !== undefined).length +
+            supportValues.filter((value) => value === true || value === false).length,
+          total: assertionValues.length + supportValues.length,
+        };
+      }
+
+      function overallDecisionCounts() {
+        return packet.cases.reduce(
+          (total, item) => {
+            const count = caseDecisionCounts(item);
+            total.completed += count.completed;
+            total.total += count.total;
+            return total;
+          },
+          { completed: 0, total: 0 },
+        );
+      }
+
+      function renderProgress() {
+        const count = overallDecisionCounts();
+        const percent = count.total ? Math.round((count.completed / count.total) * 100) : 0;
+        elements.progressCount.textContent = `${count.completed} / ${count.total}`;
+        elements.progressRing.dataset.label = `${percent}%`;
+        elements.progressRing.style.setProperty("--progress", `${percent * 3.6}deg`);
+        elements.exportAccepted.disabled =
+          count.total === 0 ||
+          count.completed !== count.total ||
+          !elements.attestation.checked;
+      }
+
+      function renderNavigation() {
+        elements.caseNav.replaceChildren();
+        packet.cases.forEach((item, index) => {
+          const count = caseDecisionCounts(item);
+          const button = node("button", {
+            attrs: {
+              type: "button",
+              "aria-current": index === currentIndex ? "true" : "false",
+              "aria-label": `Open case ${index + 1}: ${item.case_id}`,
+            },
+          });
+          button.addEventListener("click", () => {
+            currentIndex = index;
+            render();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          });
+          button.append(
+            node("span", { className: "case-number", text: String(index + 1).padStart(2, "0") }),
+            node("span", { className: "case-nav-label", text: item.case_id }),
+            node("span", {
+              className: `case-check ${count.total > 0 && count.completed === count.total ? "is-complete" : ""}`,
+              attrs: { "aria-hidden": "true" },
+            }),
+          );
+          elements.caseNav.append(button);
+        });
+      }
+
+      function renderHeader(item) {
+        const compactName = item.case_id
+          .replace(/^eval-\d+-/, "")
+          .replaceAll("-", " ");
+        elements.caseKicker.textContent =
+          `Case ${currentIndex + 1} of ${packet.cases.length} · ${item.case_id}`;
+        elements.caseHeading.textContent = compactName;
+        elements.previous.disabled = currentIndex === 0;
+        elements.next.disabled = currentIndex === packet.cases.length - 1;
+      }
+
+      function renderAnswer(item) {
+        elements.answerBody.replaceChildren();
+        const result = item.execution?.result;
+        const answer = result?.answer;
+        if (!answer || typeof answer !== "object") {
+          elements.answerKind.textContent = item.execution?.error_type || "No result";
+          elements.answerBody.append(
+            node("p", {
+              className: "empty",
+              text: "No generated answer is present for this execution.",
+            }),
+          );
+          return;
+        }
+
+        elements.answerKind.textContent =
+          answer.response_kind ? `Response kind: ${answer.response_kind}` : "";
+
+        if (answer.summary) {
+          elements.answerBody.append(
+            node("div", { className: "answer-summary", text: answer.summary }),
+          );
+        }
+
+        const sections = Array.isArray(answer.sections) ? answer.sections : [];
+        if (sections.length === 0) {
+          elements.answerBody.append(
+            node("p", { className: "empty", text: "The answer contains no sections." }),
+          );
+        }
+
+        sections.forEach((section, index) => {
+          const card = node("div", { className: "answer-section" });
+          const top = node("div", { className: "answer-section-top" }, [
+            node("span", {
+              className: "kind",
+              text: section?.kind || "section",
+            }),
+            node("span", {
+              className: "section-index",
+              text: `section-${index + 1}`,
+            }),
+          ]);
+          card.append(top);
+          card.append(
+            node("div", {
+              text:
+                section?.text ||
+                section?.message ||
+                section?.content ||
+                valueText(section),
+            }),
+          );
+          const citationIds = Array.isArray(section?.citation_ids)
+            ? section.citation_ids
+            : [];
+          if (citationIds.length) {
+            const chips = node("div", { className: "citation-list" });
+            for (const citationId of citationIds) {
+              chips.append(
+                node("span", {
+                  className: "citation-chip",
+                  text: `cites ${citationId}`,
+                }),
+              );
+            }
+            card.append(chips);
+          }
+          elements.answerBody.append(card);
+        });
+
+        if (answer.trust && typeof answer.trust === "object") {
+          const trust = node("div", { className: "trust-grid" });
+          for (const [key, value] of Object.entries(answer.trust)) {
+            const label = key.replaceAll("_", " ");
+            trust.append(
+              node("div", { className: "trust-item" }, [
+                node("span", { text: label }),
+                node("strong", { text: valueText(value) }),
+              ]),
+            );
+          }
+          elements.answerBody.append(trust);
+        }
+      }
+
+      function choiceButtons(choices, selected, onSelect, label) {
+        const group = node("div", {
+          className: "choice-group",
+          attrs: { role: "group", "aria-label": label },
+        });
+        for (const [value, text] of choices) {
+          const button = node("button", {
+            text,
+            attrs: {
+              type: "button",
+              "data-value": value,
+              "aria-pressed": String(selected === value),
+            },
+          });
+          button.addEventListener("click", () => onSelect(value));
+          group.append(button);
+        }
+        return group;
+      }
+
+      function renderAssertions(item) {
+        elements.assertionsBody.replaceChildren();
+        const decisions = currentCaseReview();
+        const groups = new Map();
+        for (const assertion of item.assertions) {
+          const group = assertion.expectation_group || "other";
+          if (!groups.has(group)) groups.set(group, []);
+          groups.get(group).push(assertion);
+        }
+
+        for (const [groupName, assertions] of groups) {
+          const wrapper = node("div", { className: "group" });
+          wrapper.append(
+            node("div", { className: "group-header" }, [
+              node("h3", { text: groupName.replaceAll("_", " ") }),
+              node("span", {
+                className: "group-help",
+                text: GROUP_HELP[groupName] || "Review the approved criterion.",
+              }),
+            ]),
+          );
+
+          if (groupName === "privacy_requirements") {
+            wrapper.append(
+              node("div", {
+                className: "privacy-warning",
+                text:
+                  "The packet does not automatically prove network, profile, storage, browsing, or persistence behavior. Preserve Not evaluable when the required execution evidence is absent.",
+              }),
+            );
+          }
+
+          for (const assertion of assertions) {
+            const selected = decisions.assertion_results[assertion.assertion_id];
+            const card = node("div", { className: "assertion-card" });
+            card.append(
+              node("div", {}, [
+                node("div", {
+                  className: "assertion-id",
+                  text: assertion.assertion_id,
+                }),
+                node("div", {
+                  className: "criterion",
+                  text: valueText(assertion.criterion),
+                }),
+              ]),
+            );
+            card.append(
+              choiceButtons(
+                ASSERTION_CHOICES,
+                selected,
+                (value) => {
+                  decisions.assertion_results[assertion.assertion_id] = value;
+                  saveReview();
+                  render();
+                },
+                `Decision for ${assertion.assertion_id}`,
+              ),
+            );
+            wrapper.append(card);
+          }
+          elements.assertionsBody.append(wrapper);
+        }
+      }
+
+      function answerSection(item, sectionId) {
+        const index = Number.parseInt(String(sectionId).replace("section-", ""), 10) - 1;
+        const sections = item.execution?.result?.answer?.sections;
+        return Array.isArray(sections) && index >= 0 ? sections[index] : undefined;
+      }
+
+      function evidenceById(item) {
+        return new Map(
+          (Array.isArray(item.execution?.evidence) ? item.execution.evidence : [])
+            .map((entry) => [String(entry.citation_id), entry]),
+        );
+      }
+
+      function renderSupport(item) {
+        elements.supportBody.replaceChildren();
+        const decisions = currentCaseReview();
+        const evidence = evidenceById(item);
+        let relationshipCount = 0;
+
+        for (const [sectionId, citations] of Object.entries(decisions.claim_support)) {
+          const section = answerSection(item, sectionId);
+          for (const citationId of Object.keys(citations)) {
+            relationshipCount += 1;
+            const evidenceItem = evidence.get(String(citationId));
+            const signature = relationshipSignature(item, sectionId, citationId);
+            const linked = relationshipIndex.get(signature) || [];
+            const selected = decisions.claim_support[sectionId][citationId];
+            const selectedKey =
+              selected === true ? "true" : selected === false ? "false" : selected;
+            const card = node("div", { className: "relationship-card" });
+            const copy = node("div");
+            copy.append(
+              node("div", {
+                className: "relationship-label",
+                text: `${sectionId} → ${citationId}`,
+              }),
+              node("div", {
+                className: "criterion",
+                text:
+                  "Does this cited evidence support the complete official-fact claim?",
+              }),
+            );
+            if (linked.length > 1) {
+              const linkedCaseCount = new Set(
+                linked.map((entry) => entry.caseId),
+              ).size;
+              copy.append(
+                node("div", {
+                  className: "privacy-warning",
+                  text:
+                    "Exact duplicate: one decision applies to " +
+                    linked.length +
+                    " relationships across " +
+                    linkedCaseCount +
+                    " cases.",
+                }),
+              );
+            }
+            copy.append(
+              node("div", { className: "relationship-context" }, [
+                node("div", { className: "context-box" }, [
+                  node("strong", { text: "Claim" }),
+                  node("span", {
+                    text:
+                      section?.text ||
+                      section?.message ||
+                      section?.content ||
+                      "Claim text not present",
+                  }),
+                ]),
+                node("div", { className: "context-box" }, [
+                  node("strong", { text: "Cited evidence" }),
+                  node("span", {
+                    text:
+                      evidenceItem?.content ||
+                      evidenceItem?.text ||
+                      "Matching evidence was not found",
+                  }),
+                ]),
+              ]),
+            );
+            card.append(copy);
+            card.append(
+              choiceButtons(
+                SUPPORT_CHOICES,
+                selectedKey,
+                (value) => {
+                  const decision =
+                    value === "true" ? true : value === "false" ? false : "unknown";
+                  const updated = applyLinkedSupportDecision(
+                    item,
+                    sectionId,
+                    citationId,
+                    decision,
+                  );
+                  render();
+                  if (updated.length > 1) {
+                    showToast(
+                      "Decision applied to " +
+                      updated.length +
+                      " identical relationships.",
+                    );
+                  }
+                },
+                `Support decision for ${sectionId} and ${citationId}`,
+              ),
+            );
+            elements.supportBody.append(card);
+          }
+        }
+
+        if (relationshipCount === 0) {
+          elements.supportBody.append(
+            node("p", {
+              className: "empty",
+              text: "This answer has no claim-to-citation relationships to review.",
+            }),
+          );
+        }
+      }
+
+      function renderEvidence(item) {
+        elements.evidenceBody.replaceChildren();
+        const evidence = Array.isArray(item.execution?.evidence)
+          ? item.execution.evidence
+          : [];
+        elements.evidenceCount.textContent =
+          `${evidence.length} retrieved ${evidence.length === 1 ? "item" : "items"}`;
+
+        if (evidence.length === 0) {
+          elements.evidenceBody.append(
+            node("p", {
+              className: "empty",
+              text: "No evidence was retrieved for this execution.",
+            }),
+          );
+          return;
+        }
+
+        for (const entry of evidence) {
+          const card = node("div", { className: "evidence-card" });
+          const metadata = [
+            entry.review_state,
+            entry.source_health,
+            entry.approval_state,
+            entry.agreement_state,
+          ].filter(Boolean);
+          const meta = node("div", { className: "evidence-meta" });
+          for (const value of metadata) {
+            meta.append(node("span", { className: "citation-chip", text: value }));
+          }
+          card.append(
+            node("div", { className: "evidence-top" }, [
+              node("span", {
+                className: "evidence-id",
+                text: valueText(entry.citation_id),
+              }),
+              meta,
+            ]),
+          );
+          if (entry.title || entry.source_title) {
+            card.append(
+              node("h3", { text: entry.title || entry.source_title }),
+            );
+          }
+          card.append(
+            node("p", {
+              className: "evidence-content",
+              text:
+                entry.content ||
+                entry.text ||
+                "This evidence item contains no displayable content.",
+            }),
+          );
+          if (entry.official_url) {
+            card.append(
+              node("span", {
+                className: "evidence-url",
+                text: entry.official_url,
+              }),
+            );
+          }
+          elements.evidenceBody.append(card);
+        }
+      }
+
+      function renderNotes() {
+        elements.notes.value = currentCaseReview().notes;
+      }
+
+      function render() {
+        const item = currentCase();
+        renderProgress();
+        renderNavigation();
+        renderHeader(item);
+        elements.prompt.textContent = item.prompt || "Prompt not present";
+        renderAnswer(item);
+        renderAssertions(item);
+        renderSupport(item);
+        renderEvidence(item);
+        renderNotes();
+      }
+
+      function exportedSupport(caseReview) {
+        const output = {};
+        for (const [sectionId, citations] of Object.entries(caseReview.claim_support)) {
+          output[sectionId] = {};
+          for (const [citationId, value] of Object.entries(citations)) {
+            output[sectionId][citationId] =
+              value === true ? true : value === false ? false : null;
+          }
+        }
+        return output;
+      }
+
+      function buildDiagnosticExport() {
+        return {
+          schema_version: "final-answer-product-owner-review-v1",
+          classification: "sensitive-local-only",
+          commit_policy: "do-not-commit",
+          review_role: "product-owner",
+          satisfies_independent_human_review_gate: false,
+          reviewed_at_utc: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+          source_packet: {
+            schema_version: packet.schema_version,
+            generated_at_utc: packet.generated_at_utc,
+            dataset: packet.dataset,
+          },
+          cases: packet.cases.map((item) => {
+            const template = item.blank_adjudication_template;
+            const caseReview = review.cases[item.case_id];
+            const assertionResults = {};
+            for (const assertionId of Object.keys(caseReview.assertion_results)) {
+              assertionResults[assertionId] =
+                caseReview.assertion_results[assertionId] ?? null;
+            }
+            return {
+              schema_version: template.schema_version,
+              case_id: item.case_id,
+              evaluation_surface: template.evaluation_surface,
+              evidence_binding: template.evidence_binding,
+              assessment_method: "product-owner-review",
+              assertion_results: assertionResults,
+              claim_support: exportedSupport(caseReview),
+              review_notes: caseReview.notes,
+            };
+          }),
+        };
+      }
+
+      function downloadJson(output, filename) {
+        const blob = new Blob(
+          [JSON.stringify(output, null, 2) + "\n"],
+          { type: "application/json" },
+        );
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(link.href), 0);
+      }
+
+      function exportDiagnosticReview() {
+        const output = buildDiagnosticExport();
+        const date = new Date().toISOString().replaceAll(/[-:.]/g, "").slice(0, 15);
+        downloadJson(output, `danish-rag-product-owner-review-${date}Z.json`);
+        const count = overallDecisionCounts();
+        showToast(
+          count.completed === count.total
+            ? "Complete diagnostic review exported. It is not release-gate evidence."
+            : `Draft exported with ${count.total - count.completed} decisions still open.`,
+        );
+      }
+
+      function buildAcceptedExport() {
+        const count = overallDecisionCounts();
+        if (
+          count.total === 0 ||
+          count.completed !== count.total ||
+          !elements.attestation.checked
+        ) {
+          throw new Error(
+            "Accepted export requires every decision and the independent-human attestation.",
+          );
+        }
+        const attestedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+        return {
+          schema_version: "final-answer-adjudications-v1",
+          dataset: packet.dataset,
+          independent_human_attestation: {
+            schema_version: "final-answer-independent-human-attestation-v1",
+            attested: true,
+            statement: INDEPENDENT_ATTESTATION_STATEMENT,
+            attested_at_utc: attestedAt,
+            packet_schema_version: packet.schema_version,
+            dataset: packet.dataset,
+            case_bindings: packet.cases.map((item) => ({
+              case_id: item.case_id,
+              execution_sha256: item.execution_sha256,
+              review_payload_sha256: item.review_payload_sha256,
+            })),
+          },
+          cases: packet.cases.map((item) => {
+            const template = item.blank_adjudication_template;
+            const caseReview = review.cases[item.case_id];
+            return {
+              ...template,
+              assessment_method: "independent-human-review",
+              assertion_results: { ...caseReview.assertion_results },
+              claim_support: exportedSupport(caseReview),
+              review_notes: caseReview.notes,
+            };
+          }),
+        };
+      }
+
+      function exportAcceptedAdjudications() {
+        try {
+          downloadJson(
+            buildAcceptedExport(),
+            "danish-rag-final-answer-adjudications-v1.json",
+          );
+          showToast(
+            "Accepted adjudications exported. Keep the bundle private and do not commit it.",
+          );
+        } catch (error) {
+          showToast(error instanceof Error ? error.message : "Accepted export failed.");
+        }
+      }
+
+      elements.file.addEventListener("change", () => {
+        const [file] = elements.file.files;
+        if (file) loadPacketFile(file);
+      });
+
+      elements.dropzone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          elements.file.click();
+        }
+      });
+
+      for (const eventName of ["dragenter", "dragover"]) {
+        elements.dropzone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          elements.dropzone.classList.add("is-dragging");
+        });
+      }
+
+      for (const eventName of ["dragleave", "drop"]) {
+        elements.dropzone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          elements.dropzone.classList.remove("is-dragging");
+        });
+      }
+
+      elements.dropzone.addEventListener("drop", (event) => {
+        const [file] = event.dataTransfer.files;
+        if (file) loadPacketFile(file);
+      });
+
+      elements.previous.addEventListener("click", () => {
+        if (currentIndex === 0) return;
+        currentIndex -= 1;
+        render();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+
+      elements.next.addEventListener("click", () => {
+        if (currentIndex >= packet.cases.length - 1) return;
+        currentIndex += 1;
+        render();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+
+      elements.notes.addEventListener("input", () => {
+        currentCaseReview().notes = elements.notes.value;
+        saveReview();
+      });
+
+      elements.attestation.addEventListener("change", renderProgress);
+      elements.exportAccepted.addEventListener("click", exportAcceptedAdjudications);
+      elements.exportDiagnostic.addEventListener("click", exportDiagnosticReview);
+
+      elements.loadAnother.addEventListener("click", () => {
+        elements.file.value = "";
+        elements.attestation.checked = false;
+        elements.app.classList.add("hidden");
+        elements.loader.classList.remove("hidden");
+        elements.error.classList.add("hidden");
+      });
+
+      elements.clear.addEventListener("click", () => {
+        if (!window.confirm("Clear every saved decision for this exact packet?")) return;
+        window.localStorage.removeItem(storageKey);
+        initialiseReview(packet);
+        render();
+        showToast("Saved decisions cleared.");
+      });
+    })();
+  </script>
+</body>
+</html>

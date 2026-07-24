@@ -10,7 +10,12 @@ Release decision: `do-not-release`.
 
 The local application has a documented release candidate package and live evidence for several release gates, but the MVP release is blocked. The blocking reasons are:
 
-- Independent-human adjudications have not been supplied for required-fact coverage, forbidden claims, privacy prose, citation correctness, and unsupported-claim rate. The live final-answer report therefore remains non-strict even though every machine-evaluable gate passes.
+- The exact captured-live-Ollama replay boundary is implemented, but
+  independent-human adjudications bound to canonical packet E have not been
+  supplied for required-fact coverage, forbidden claims, privacy prose,
+  citation correctness, and unsupported-claim rate. The live final-answer
+  report therefore remains non-strict even though every machine-evaluable gate
+  passes.
 - The source registry is not production-qualified. It records no curator admissions, monitoring records, archived official-source snapshots, named human production reviews, or durable production signing-key custody record for the current project-authored fixtures.
 - The published supported-environment evidence used an in-process ASGI transport, did not restart the application for persistence, and copied rather than observed environment identity. It cannot qualify the required real-process/browser journey matrix and must be replaced.
 - The earlier automated accessibility run passed, but UI code changed afterward and the current Playwright suite has not been rerun. The quality bar also requires an actual manual assistive-technology check; no such check has been performed or recorded.
