@@ -1,0 +1,256 @@
+{
+  "approved_source_count": 5,
+  "blocked_source_count": 0,
+  "classification": "reviewed-official-source-evidence",
+  "commit_policy": "version-control-eligible",
+  "current_fixture_release_qualified": false,
+  "follow_on_rebuild_required": true,
+  "human_decisions_sha256": "afd78dd4942e0e9ca5b8782edab66c9e57b0e38af008238e354fdce9361b656d",
+  "machine_review_manifest_sha256": "30069b0fad0bfd1900c29a359b6ae494217b878e4176e9cef28de3838a00c134",
+  "packet_g": {
+    "knowledge_release_id": "kr-2026-07-06.1",
+    "qualification_scope": "Packet G remains canonical only for kr-2026-07-06.1 and does not qualify a future replacement corpus.",
+    "status": "unchanged"
+  },
+  "qualification_status": "source-review-complete-ready-for-follow-on-rebuild",
+  "recorded_at_utc": "2026-07-26T21:20:10Z",
+  "schema_version": "completed-official-source-review-v1",
+  "single_maintainer_fallback": {
+    "post_publication_second_review": {
+      "required": true,
+      "schedule": "Set a due timestamp when a production knowledge release containing either material source is published.",
+      "status": "pending-publication"
+    },
+    "reason": "Danish Immigration RAG is a personal-use MVP maintained only by ericleungDK, so no second maintainer is currently available.",
+    "second_reviewer_ids": [],
+    "selected": true
+  },
+  "sources": [
+    {
+      "curator_admission": {
+        "admitted_at_utc": "2026-07-26T21:20:10Z",
+        "confirmed_language": "da",
+        "confirmed_topic": "permanent-residence language requirements",
+        "curator_ids": [
+          "ericleungDK"
+        ],
+        "decision": "approve",
+        "monitoring_owner_ids": [
+          "ericleungDK"
+        ],
+        "scope_rationale": "The official Danish Immigration Service page directly covers permanent-residence language requirements within the product scope."
+      },
+      "eligible_for_follow_on_rebuild": true,
+      "human_review": {
+        "assessment_method": "human-source-and-normalized-extraction-review",
+        "decision": "approve",
+        "interpretation_risks": [],
+        "materiality": "material",
+        "normalized_extraction_sha256": "02e7ab4dcf1cbc31f8ddcb8eb153fb78ab67b42237c2d25ab0c4813dfef7e2a8",
+        "notes": "Approved with no additional reviewer notes. Materiality is conservative because the official URL changed and the page reports an update after the fixture observation.",
+        "official_source_snapshot_sha256": "cedc3526858d09626cee90236b9cb63e656426afddf7e6ed7d3d89b2d08cf186",
+        "reviewed_at_utc": "2026-07-26T21:20:10Z",
+        "reviewer_ids": [
+          "ericleungDK"
+        ],
+        "staffing": "mvp-single-maintainer-fallback"
+      },
+      "normalized_extraction_sha256": "02e7ab4dcf1cbc31f8ddcb8eb153fb78ab67b42237c2d25ab0c4813dfef7e2a8",
+      "official_source_snapshot_sha256": "cedc3526858d09626cee90236b9cb63e656426afddf7e6ed7d3d89b2d08cf186",
+      "registry_url_observation": null,
+      "source_id": "nyidanmark-permanent-residence-language-requirements",
+      "source_review_gate_status": "approved-under-mvp-single-maintainer-fallback",
+      "supplemental_registry_evidence": "nyidanmark-permanent-residence-language-requirements",
+      "url_resolution": {
+        "approved_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+        "decision": "approve-replacement",
+        "notes": "The superseded registry URL returned HTTP 404. The working nested percent-encoded official URL is approved.",
+        "superseded_registry_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold"
+      }
+    },
+    {
+      "curator_admission": {
+        "admitted_at_utc": "2026-07-26T21:20:10Z",
+        "confirmed_language": "en-GB",
+        "confirmed_topic": "tests equivalent to or higher than Danish language test 2",
+        "curator_ids": [
+          "ericleungDK"
+        ],
+        "decision": "approve",
+        "monitoring_owner_ids": [
+          "ericleungDK"
+        ],
+        "scope_rationale": "The official Danish Immigration Service page directly identifies tests equivalent to or higher than Danish language test 2."
+      },
+      "eligible_for_follow_on_rebuild": true,
+      "human_review": {
+        "assessment_method": "human-source-and-normalized-extraction-review",
+        "decision": "approve",
+        "interpretation_risks": [],
+        "materiality": "non-material",
+        "normalized_extraction_sha256": "bee3bb2f18b5c50633e2b83183d29df4074d30ec4864a1dd8c32d77f60651e91",
+        "notes": "Approved with no additional reviewer notes. The reviewed content matches the fixture summary and the official page reports no post-fixture update.",
+        "official_source_snapshot_sha256": "8a7a21699e6639a7dea03f6d631706790fb9037c6858eeb900747c55a95d1e6c",
+        "reviewed_at_utc": "2026-07-26T21:20:10Z",
+        "reviewer_ids": [
+          "ericleungDK"
+        ],
+        "staffing": "single-reviewer-non-material"
+      },
+      "normalized_extraction_sha256": "bee3bb2f18b5c50633e2b83183d29df4074d30ec4864a1dd8c32d77f60651e91",
+      "official_source_snapshot_sha256": "8a7a21699e6639a7dea03f6d631706790fb9037c6858eeb900747c55a95d1e6c",
+      "registry_url_observation": null,
+      "source_id": "nyidanmark-equivalent-tests-language-test-2",
+      "source_review_gate_status": "approved",
+      "supplemental_registry_evidence": null,
+      "url_resolution": {
+        "approved_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+        "decision": "approve-current",
+        "notes": "The requested and observed final official URLs match."
+      }
+    },
+    {
+      "curator_admission": {
+        "admitted_at_utc": "2026-07-26T21:20:10Z",
+        "confirmed_language": "en-GB",
+        "confirmed_topic": "tests equivalent to or higher than Danish language test 3",
+        "curator_ids": [
+          "ericleungDK"
+        ],
+        "decision": "approve",
+        "monitoring_owner_ids": [
+          "ericleungDK"
+        ],
+        "scope_rationale": "The official Danish Immigration Service page directly identifies tests equivalent to or higher than Danish language test 3."
+      },
+      "eligible_for_follow_on_rebuild": true,
+      "human_review": {
+        "assessment_method": "human-source-and-normalized-extraction-review",
+        "decision": "approve",
+        "interpretation_risks": [],
+        "materiality": "material",
+        "normalized_extraction_sha256": "d29ca772e35ae460f8b6ea142b0cc21ef54a72666f352d225d9b93f058ade5fd",
+        "notes": "Approved with no additional reviewer notes. Materiality is conservative because the official page reports a 07-07-2026 update after the fixture's 06-07-2026 check.",
+        "official_source_snapshot_sha256": "fd4271c42a66831270a201f4b4fc7b002851692154baf12d98f5220b54f8e18d",
+        "reviewed_at_utc": "2026-07-26T21:20:10Z",
+        "reviewer_ids": [
+          "ericleungDK"
+        ],
+        "staffing": "mvp-single-maintainer-fallback"
+      },
+      "normalized_extraction_sha256": "d29ca772e35ae460f8b6ea142b0cc21ef54a72666f352d225d9b93f058ade5fd",
+      "official_source_snapshot_sha256": "fd4271c42a66831270a201f4b4fc7b002851692154baf12d98f5220b54f8e18d",
+      "registry_url_observation": null,
+      "source_id": "nyidanmark-equivalent-tests-language-test-3",
+      "source_review_gate_status": "approved-under-mvp-single-maintainer-fallback",
+      "supplemental_registry_evidence": null,
+      "url_resolution": {
+        "approved_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+        "decision": "approve-current",
+        "notes": "The requested and observed final official URLs match."
+      }
+    },
+    {
+      "curator_admission": {
+        "admitted_at_utc": "2026-07-26T21:20:10Z",
+        "confirmed_language": "da",
+        "confirmed_topic": "Danish language examinations overview",
+        "curator_ids": [
+          "ericleungDK"
+        ],
+        "decision": "approve",
+        "monitoring_owner_ids": [
+          "ericleungDK"
+        ],
+        "scope_rationale": "The official SIRI page describes the Danish language examinations covered by the product."
+      },
+      "eligible_for_follow_on_rebuild": true,
+      "human_review": {
+        "assessment_method": "human-source-and-normalized-extraction-review",
+        "decision": "approve",
+        "interpretation_risks": [],
+        "materiality": "non-material",
+        "normalized_extraction_sha256": "5c3024c8fd0825b2488a33d38d215f5f90d997f6331e2f75880fc2eca3632004",
+        "notes": "Approved with no additional reviewer notes. The reviewed content matches the fixture summary.",
+        "official_source_snapshot_sha256": "2f98bde5e598ba30bef1a60caba3b4933f42059a713a59391362ef5165ca807a",
+        "reviewed_at_utc": "2026-07-26T21:20:10Z",
+        "reviewer_ids": [
+          "ericleungDK"
+        ],
+        "staffing": "single-reviewer-non-material"
+      },
+      "normalized_extraction_sha256": "5c3024c8fd0825b2488a33d38d215f5f90d997f6331e2f75880fc2eca3632004",
+      "official_source_snapshot_sha256": "2f98bde5e598ba30bef1a60caba3b4933f42059a713a59391362ef5165ca807a",
+      "registry_url_observation": null,
+      "source_id": "danskogproever-danish-exam-overview",
+      "source_review_gate_status": "approved",
+      "supplemental_registry_evidence": null,
+      "url_resolution": {
+        "approved_url": "https://danskogproever.dk/borger/danskproever/",
+        "decision": "approve-current",
+        "notes": "The requested and observed final official URLs match."
+      }
+    },
+    {
+      "curator_admission": {
+        "admitted_at_utc": "2026-07-26T21:20:10Z",
+        "confirmed_language": "da",
+        "confirmed_topic": "registration deadlines and examination dates",
+        "curator_ids": [
+          "ericleungDK"
+        ],
+        "decision": "approve",
+        "monitoring_owner_ids": [
+          "ericleungDK"
+        ],
+        "scope_rationale": "The official SIRI page provides the examination registration deadlines and dates covered by the product."
+      },
+      "eligible_for_follow_on_rebuild": true,
+      "human_review": {
+        "assessment_method": "human-source-and-normalized-extraction-review",
+        "decision": "approve",
+        "interpretation_risks": [],
+        "materiality": "non-material",
+        "normalized_extraction_sha256": "4e17cb33c05a025f764ebb626232ec12cadfa54eb420ca93a6a6bcd8032bcbab",
+        "notes": "Approved with no additional reviewer notes. The reviewed 2026 dates and registration information match the fixture summary.",
+        "official_source_snapshot_sha256": "9bf530c74de8ec3e933074348dc45489ecfad8356c5f2d7d4ce0f50fa6710ba6",
+        "reviewed_at_utc": "2026-07-26T21:20:10Z",
+        "reviewer_ids": [
+          "ericleungDK"
+        ],
+        "staffing": "single-reviewer-non-material"
+      },
+      "normalized_extraction_sha256": "4e17cb33c05a025f764ebb626232ec12cadfa54eb420ca93a6a6bcd8032bcbab",
+      "official_source_snapshot_sha256": "9bf530c74de8ec3e933074348dc45489ecfad8356c5f2d7d4ce0f50fa6710ba6",
+      "registry_url_observation": null,
+      "source_id": "danskogproever-registration-deadlines-2026",
+      "source_review_gate_status": "approved",
+      "supplemental_registry_evidence": null,
+      "url_resolution": {
+        "approved_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+        "decision": "approve-current",
+        "notes": "The requested and observed final official URLs match."
+      }
+    }
+  ],
+  "supplemental_observations": [
+    {
+      "evidence_status": "post-review-machine-observation-not-human-review",
+      "kind": "superseded-registry-url-response",
+      "retrieval": {
+        "final_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+        "http_status": 404,
+        "redirect_chain": [],
+        "requested_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+        "response": {
+          "bytes": 13934,
+          "path": "observations/nyidanmark-permanent-residence-language-requirements-registry-url.html",
+          "sha256": "972d22107a1b673974a700b26920d9b18635650e4372ddf855cdee50f94ae68b"
+        },
+        "retrieved_at_utc": "2026-07-26T21:32:15Z"
+      },
+      "source_id": "nyidanmark-permanent-residence-language-requirements"
+    }
+  ],
+  "supplemental_observations_sha256": "d1236d98549ea1c05ecbca30b513230c151c748808c99c6455e4f028bc49258b"
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": "official-source-supplemental-observations-v1",
+  "classification": "post-review-machine-evidence-not-human-review",
+  "recorded_at_utc": "2026-07-26T21:32:15Z",
+  "observations": [
+    {
+      "source_id": "nyidanmark-permanent-residence-language-requirements",
+      "kind": "superseded-registry-url-response",
+      "evidence_status": "post-review-machine-observation-not-human-review",
+      "retrieval": {
+        "requested_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+        "redirect_chain": [],
+        "final_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+        "retrieved_at_utc": "2026-07-26T21:32:15Z",
+        "http_status": 404,
+        "response": {
+          "bytes": 13934,
+          "path": "observations/nyidanmark-permanent-residence-language-requirements-registry-url.html",
+          "sha256": "972d22107a1b673974a700b26920d9b18635650e4372ddf855cdee50f94ae68b"
+        }
+      }
+    }
+  ]
+}

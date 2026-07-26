@@ -1,0 +1,370 @@
+{
+  "classification": "unreviewed-machine-evidence",
+  "commit_policy": "do-not-commit-before-validated-human-review",
+  "contains_human_decisions": false,
+  "contains_official_source_snapshots": true,
+  "network_fetch_performed": true,
+  "production_release_eligible": false,
+  "qualification_status": "blocked-pending-human-source-review",
+  "retrieved_at_utc": "2026-07-26T20:55:12Z",
+  "schema_version": "official-source-review-bundle-v1",
+  "source_count": 5,
+  "sources": [
+    {
+      "curator_admission": {
+        "admitted_at_utc": null,
+        "curator_ids": [],
+        "decision": null,
+        "language": "da",
+        "monitoring_owner_ids": [],
+        "scope_rationale": null,
+        "topic": "permanent-residence language requirements"
+      },
+      "eligibility_status": "blocked-pending-human-review",
+      "human_review": {
+        "decision": null,
+        "interpretation_risks": [],
+        "materiality": null,
+        "notes": null,
+        "post_publication_review_due_utc": null,
+        "reviewed_at_utc": null,
+        "reviewer_ids": [],
+        "second_reviewer_ids": [],
+        "single_maintainer_fallback": null
+      },
+      "language": "da",
+      "normalized_extraction": {
+        "bytes": 45711,
+        "extraction_schema_version": "visible-main-text-v1",
+        "path": "normalized/nyidanmark-permanent-residence-language-requirements.txt",
+        "sha256": "02e7ab4dcf1cbc31f8ddcb8eb153fb78ab67b42237c2d25ab0c4813dfef7e2a8"
+      },
+      "observed_metadata": {
+        "publisher": "The Danish Immigration Service (Udlændingestyrelsen)",
+        "visible_publisher": "Udlændingestyrelsen",
+        "visible_source_date": "07-07-2026"
+      },
+      "offline_review_page": {
+        "bytes": 175721,
+        "derived_from_snapshot_sha256": "cedc3526858d09626cee90236b9cb63e656426afddf7e6ed7d3d89b2d08cf186",
+        "evidence_status": "derived-review-aid-not-source-snapshot",
+        "path": "review-pages/nyidanmark-permanent-residence-language-requirements.html",
+        "sha256": "abb689dd91315046c545c60c9e5f24dea44ac0581ccd3e58e191b4a373724e60"
+      },
+      "production_release_eligible": false,
+      "publisher": "The Danish Immigration Service (Udlændingestyrelsen)",
+      "registry_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+      "retrieval": {
+        "final_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+        "http_status": 200,
+        "redirect_chain": [],
+        "requested_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+        "retrieved_at_utc": "2026-07-26T20:55:12Z"
+      },
+      "review_flags": [
+        {
+          "classification": "unverified-machine-observation",
+          "code": "permanent-residence-url-change",
+          "counts_as_human_review": false,
+          "requires_human_materiality_decision": true,
+          "summary": "The source registry URL no longer opens the material page. Confirm whether the nested percent-encoded URL is the approved replacement and whether the source remains in scope."
+        }
+      ],
+      "snapshot": {
+        "bytes": 174887,
+        "path": "snapshots/nyidanmark-permanent-residence-language-requirements.html",
+        "sha256": "cedc3526858d09626cee90236b9cb63e656426afddf7e6ed7d3d89b2d08cf186"
+      },
+      "source_id": "nyidanmark-permanent-residence-language-requirements",
+      "topic": "permanent-residence language requirements",
+      "url_resolution": {
+        "candidate_current_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+        "human_decision": null,
+        "notes": null,
+        "observed_final_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+        "registry_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+        "status": "requires-human-resolution"
+      }
+    },
+    {
+      "curator_admission": {
+        "admitted_at_utc": null,
+        "curator_ids": [],
+        "decision": null,
+        "language": "en-GB",
+        "monitoring_owner_ids": [],
+        "scope_rationale": null,
+        "topic": "tests equivalent to or higher than Danish language test 2"
+      },
+      "eligibility_status": "blocked-pending-human-review",
+      "human_review": {
+        "decision": null,
+        "interpretation_risks": [],
+        "materiality": null,
+        "notes": null,
+        "post_publication_review_due_utc": null,
+        "reviewed_at_utc": null,
+        "reviewer_ids": [],
+        "second_reviewer_ids": [],
+        "single_maintainer_fallback": null
+      },
+      "language": "en-GB",
+      "normalized_extraction": {
+        "bytes": 680,
+        "extraction_schema_version": "visible-main-text-v1",
+        "path": "normalized/nyidanmark-equivalent-tests-language-test-2.txt",
+        "sha256": "bee3bb2f18b5c50633e2b83183d29df4074d30ec4864a1dd8c32d77f60651e91"
+      },
+      "observed_metadata": {
+        "publisher": "The Danish Immigration Service (Udlændingestyrelsen)",
+        "visible_publisher": "The Danish Immigration Service",
+        "visible_source_date": "06-07-2022"
+      },
+      "offline_review_page": {
+        "bytes": 18254,
+        "derived_from_snapshot_sha256": "8a7a21699e6639a7dea03f6d631706790fb9037c6858eeb900747c55a95d1e6c",
+        "evidence_status": "derived-review-aid-not-source-snapshot",
+        "path": "review-pages/nyidanmark-equivalent-tests-language-test-2.html",
+        "sha256": "9a6f79eb84bd0e3aca32f7f3a23f2c09a5d226617f101e555d17d014f4c1e04f"
+      },
+      "production_release_eligible": false,
+      "publisher": "The Danish Immigration Service (Udlændingestyrelsen)",
+      "registry_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+      "retrieval": {
+        "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+        "http_status": 200,
+        "redirect_chain": [],
+        "requested_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+        "retrieved_at_utc": "2026-07-26T20:55:12Z"
+      },
+      "review_flags": [],
+      "snapshot": {
+        "bytes": 17429,
+        "path": "snapshots/nyidanmark-equivalent-tests-language-test-2.html",
+        "sha256": "8a7a21699e6639a7dea03f6d631706790fb9037c6858eeb900747c55a95d1e6c"
+      },
+      "source_id": "nyidanmark-equivalent-tests-language-test-2",
+      "topic": "tests equivalent to or higher than Danish language test 2",
+      "url_resolution": {
+        "candidate_current_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+        "human_decision": null,
+        "notes": null,
+        "observed_final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+        "registry_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+        "status": "unchanged"
+      }
+    },
+    {
+      "curator_admission": {
+        "admitted_at_utc": null,
+        "curator_ids": [],
+        "decision": null,
+        "language": "en-GB",
+        "monitoring_owner_ids": [],
+        "scope_rationale": null,
+        "topic": "tests equivalent to or higher than Danish language test 3"
+      },
+      "eligibility_status": "blocked-pending-human-review",
+      "human_review": {
+        "decision": null,
+        "interpretation_risks": [],
+        "materiality": null,
+        "notes": null,
+        "post_publication_review_due_utc": null,
+        "reviewed_at_utc": null,
+        "reviewer_ids": [],
+        "second_reviewer_ids": [],
+        "single_maintainer_fallback": null
+      },
+      "language": "en-GB",
+      "normalized_extraction": {
+        "bytes": 3368,
+        "extraction_schema_version": "visible-main-text-v1",
+        "path": "normalized/nyidanmark-equivalent-tests-language-test-3.txt",
+        "sha256": "d29ca772e35ae460f8b6ea142b0cc21ef54a72666f352d225d9b93f058ade5fd"
+      },
+      "observed_metadata": {
+        "publisher": "The Danish Immigration Service (Udlændingestyrelsen)",
+        "visible_publisher": "The Danish Immigration Service",
+        "visible_source_date": "07-07-2026"
+      },
+      "offline_review_page": {
+        "bytes": 20650,
+        "derived_from_snapshot_sha256": "fd4271c42a66831270a201f4b4fc7b002851692154baf12d98f5220b54f8e18d",
+        "evidence_status": "derived-review-aid-not-source-snapshot",
+        "path": "review-pages/nyidanmark-equivalent-tests-language-test-3.html",
+        "sha256": "d6cfcf5300cc9418b636711b462b1308b3ba229618dc3e9d311c05ed043fb55c"
+      },
+      "production_release_eligible": false,
+      "publisher": "The Danish Immigration Service (Udlændingestyrelsen)",
+      "registry_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+      "retrieval": {
+        "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+        "http_status": 200,
+        "redirect_chain": [],
+        "requested_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+        "retrieved_at_utc": "2026-07-26T20:55:12Z"
+      },
+      "review_flags": [
+        {
+          "classification": "unverified-machine-observation",
+          "code": "pd3-update-after-fixture-check",
+          "counts_as_human_review": false,
+          "requires_human_materiality_decision": true,
+          "summary": "The official page reports an update on 2026-07-07, after the fixture's recorded 2026-07-06 check. Treat the comparison as potentially material."
+        }
+      ],
+      "snapshot": {
+        "bytes": 19825,
+        "path": "snapshots/nyidanmark-equivalent-tests-language-test-3.html",
+        "sha256": "fd4271c42a66831270a201f4b4fc7b002851692154baf12d98f5220b54f8e18d"
+      },
+      "source_id": "nyidanmark-equivalent-tests-language-test-3",
+      "topic": "tests equivalent to or higher than Danish language test 3",
+      "url_resolution": {
+        "candidate_current_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+        "human_decision": null,
+        "notes": null,
+        "observed_final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+        "registry_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+        "status": "unchanged"
+      }
+    },
+    {
+      "curator_admission": {
+        "admitted_at_utc": null,
+        "curator_ids": [],
+        "decision": null,
+        "language": "da",
+        "monitoring_owner_ids": [],
+        "scope_rationale": null,
+        "topic": "Danish language examinations overview"
+      },
+      "eligibility_status": "blocked-pending-human-review",
+      "human_review": {
+        "decision": null,
+        "interpretation_risks": [],
+        "materiality": null,
+        "notes": null,
+        "post_publication_review_due_utc": null,
+        "reviewed_at_utc": null,
+        "reviewer_ids": [],
+        "second_reviewer_ids": [],
+        "single_maintainer_fallback": null
+      },
+      "language": "da",
+      "normalized_extraction": {
+        "bytes": 1785,
+        "extraction_schema_version": "visible-main-text-v1",
+        "path": "normalized/danskogproever-danish-exam-overview.txt",
+        "sha256": "5c3024c8fd0825b2488a33d38d215f5f90d997f6331e2f75880fc2eca3632004"
+      },
+      "observed_metadata": {
+        "publisher": "Danish Agency for International Recruitment and Integration (SIRI)",
+        "visible_publisher": null,
+        "visible_source_date": null
+      },
+      "offline_review_page": {
+        "bytes": 53670,
+        "derived_from_snapshot_sha256": "2f98bde5e598ba30bef1a60caba3b4933f42059a713a59391362ef5165ca807a",
+        "evidence_status": "derived-review-aid-not-source-snapshot",
+        "path": "review-pages/danskogproever-danish-exam-overview.html",
+        "sha256": "8dee6f9d6604a82ef64e1298289f0337cf3d8d89fc60b2f7784afedb6362103c"
+      },
+      "production_release_eligible": false,
+      "publisher": "Danish Agency for International Recruitment and Integration (SIRI)",
+      "registry_url": "https://danskogproever.dk/borger/danskproever/",
+      "retrieval": {
+        "final_url": "https://danskogproever.dk/borger/danskproever/",
+        "http_status": 200,
+        "redirect_chain": [],
+        "requested_url": "https://danskogproever.dk/borger/danskproever/",
+        "retrieved_at_utc": "2026-07-26T20:55:12Z"
+      },
+      "review_flags": [],
+      "snapshot": {
+        "bytes": 52853,
+        "path": "snapshots/danskogproever-danish-exam-overview.html",
+        "sha256": "2f98bde5e598ba30bef1a60caba3b4933f42059a713a59391362ef5165ca807a"
+      },
+      "source_id": "danskogproever-danish-exam-overview",
+      "topic": "Danish language examinations overview",
+      "url_resolution": {
+        "candidate_current_url": "https://danskogproever.dk/borger/danskproever/",
+        "human_decision": null,
+        "notes": null,
+        "observed_final_url": "https://danskogproever.dk/borger/danskproever/",
+        "registry_url": "https://danskogproever.dk/borger/danskproever/",
+        "status": "unchanged"
+      }
+    },
+    {
+      "curator_admission": {
+        "admitted_at_utc": null,
+        "curator_ids": [],
+        "decision": null,
+        "language": "da",
+        "monitoring_owner_ids": [],
+        "scope_rationale": null,
+        "topic": "registration deadlines and examination dates"
+      },
+      "eligibility_status": "blocked-pending-human-review",
+      "human_review": {
+        "decision": null,
+        "interpretation_risks": [],
+        "materiality": null,
+        "notes": null,
+        "post_publication_review_due_utc": null,
+        "reviewed_at_utc": null,
+        "reviewer_ids": [],
+        "second_reviewer_ids": [],
+        "single_maintainer_fallback": null
+      },
+      "language": "da",
+      "normalized_extraction": {
+        "bytes": 4880,
+        "extraction_schema_version": "visible-main-text-v1",
+        "path": "normalized/danskogproever-registration-deadlines-2026.txt",
+        "sha256": "4e17cb33c05a025f764ebb626232ec12cadfa54eb420ca93a6a6bcd8032bcbab"
+      },
+      "observed_metadata": {
+        "publisher": "Danish Agency for International Recruitment and Integration (SIRI)",
+        "visible_publisher": null,
+        "visible_source_date": null
+      },
+      "offline_review_page": {
+        "bytes": 66975,
+        "derived_from_snapshot_sha256": "9bf530c74de8ec3e933074348dc45489ecfad8356c5f2d7d4ce0f50fa6710ba6",
+        "evidence_status": "derived-review-aid-not-source-snapshot",
+        "path": "review-pages/danskogproever-registration-deadlines-2026.html",
+        "sha256": "465ceb2ea521fe87a1d74923438e26dcd9da1c084eb11584d8539cc7a59559d9"
+      },
+      "production_release_eligible": false,
+      "publisher": "Danish Agency for International Recruitment and Integration (SIRI)",
+      "registry_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+      "retrieval": {
+        "final_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+        "http_status": 200,
+        "redirect_chain": [],
+        "requested_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+        "retrieved_at_utc": "2026-07-26T20:55:12Z"
+      },
+      "review_flags": [],
+      "snapshot": {
+        "bytes": 66151,
+        "path": "snapshots/danskogproever-registration-deadlines-2026.html",
+        "sha256": "9bf530c74de8ec3e933074348dc45489ecfad8356c5f2d7d4ce0f50fa6710ba6"
+      },
+      "source_id": "danskogproever-registration-deadlines-2026",
+      "topic": "registration deadlines and examination dates",
+      "url_resolution": {
+        "candidate_current_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+        "human_decision": null,
+        "notes": null,
+        "observed_final_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+        "registry_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+        "status": "unchanged"
+      }
+    }
+  ]
+}

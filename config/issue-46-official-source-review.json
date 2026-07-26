@@ -1,0 +1,77 @@
+{
+  "schema_version": "official-source-review-set-v1",
+  "sources": [
+    {
+      "source_id": "nyidanmark-permanent-residence-language-requirements",
+      "registry_url": "https://www.nyidanmark.dk/da/Du-vil-ansoege/Permanent-ophold",
+      "requested_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+      "publisher": "The Danish Immigration Service (Udlændingestyrelsen)",
+      "topic": "permanent-residence language requirements",
+      "language": "da",
+      "reason_for_inclusion": "This official Danish Immigration Service page directly states the permanent-residence language conditions, including the basic Danish language test 2 condition and the supplementary Danish language test 3 condition.",
+      "in_scope_evidence": "GitHub issue #1 places permanent-residence language requirements within the product boundary, and issue #46 explicitly requires review of this source.",
+      "initial_owner_ids": ["ericleungDK"],
+      "review_flags": [
+        {
+          "code": "permanent-residence-url-change",
+          "summary": "The source registry URL no longer opens the material page. Confirm whether the nested percent-encoded URL is the approved replacement and whether the source remains in scope.",
+          "requires_human_materiality_decision": true
+        }
+      ]
+    },
+    {
+      "source_id": "nyidanmark-equivalent-tests-language-test-2",
+      "registry_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+      "requested_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+      "publisher": "The Danish Immigration Service (Udlændingestyrelsen)",
+      "topic": "tests equivalent to or higher than Danish language test 2",
+      "language": "en-GB",
+      "reason_for_inclusion": "This official Danish Immigration Service page defines which examinations can satisfy or exceed the Danish language test 2 condition.",
+      "in_scope_evidence": "GitHub issue #1 covers permanent-residence language requirements, and issue #46 explicitly requires review of the PD2 equivalence source.",
+      "initial_owner_ids": ["ericleungDK"],
+      "review_flags": []
+    },
+    {
+      "source_id": "nyidanmark-equivalent-tests-language-test-3",
+      "registry_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+      "requested_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+      "publisher": "The Danish Immigration Service (Udlændingestyrelsen)",
+      "topic": "tests equivalent to or higher than Danish language test 3",
+      "language": "en-GB",
+      "reason_for_inclusion": "This official Danish Immigration Service page defines which examinations can satisfy or exceed the supplementary Danish language test 3 condition.",
+      "in_scope_evidence": "GitHub issue #1 covers permanent-residence language requirements, and issue #46 explicitly requires review of the PD3 equivalence source.",
+      "initial_owner_ids": ["ericleungDK"],
+      "review_flags": [
+        {
+          "code": "pd3-update-after-fixture-check",
+          "summary": "The official page reports an update on 2026-07-07, after the fixture's recorded 2026-07-06 check. Treat the comparison as potentially material.",
+          "requires_human_materiality_decision": true
+        }
+      ]
+    },
+    {
+      "source_id": "danskogproever-danish-exam-overview",
+      "registry_url": "https://danskogproever.dk/borger/danskproever/",
+      "requested_url": "https://danskogproever.dk/borger/danskproever/",
+      "publisher": "Danish Agency for International Recruitment and Integration (SIRI)",
+      "topic": "Danish language examinations overview",
+      "language": "da",
+      "reason_for_inclusion": "This official SIRI page explains the Danish language examinations referenced by the permanent-residence requirements.",
+      "in_scope_evidence": "GitHub issue #1 includes Danish language examination guidance, and issue #46 explicitly requires review of this overview.",
+      "initial_owner_ids": ["ericleungDK"],
+      "review_flags": []
+    },
+    {
+      "source_id": "danskogproever-registration-deadlines-2026",
+      "registry_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+      "requested_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+      "publisher": "Danish Agency for International Recruitment and Integration (SIRI)",
+      "topic": "registration deadlines and examination dates",
+      "language": "da",
+      "reason_for_inclusion": "This official SIRI page supplies the current registration deadlines and examination dates needed to act on the Danish language examination guidance.",
+      "in_scope_evidence": "GitHub issue #1 includes Danish language examination guidance, and issue #46 explicitly requires review of this dates-and-deadlines source.",
+      "initial_owner_ids": ["ericleungDK"],
+      "review_flags": []
+    }
+  ]
+}
