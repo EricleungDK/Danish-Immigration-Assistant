@@ -60,6 +60,7 @@ Issue #4 approves the MVP retrieval baseline. Production release thresholds and 
 - MVP storage relies on per-user operating-system file permissions rather than application-level encryption.
 - The approved MVP retrieval baseline is hybrid retrieval: SQLite FTS5 lexical retrieval, local dense retrieval using `embeddinggemma`, metadata eligibility filtering, and reciprocal-rank fusion with `k=60`.
 - Metadata eligibility is applied before retrieval credit. Changed-unreviewed, broken, extraction-failed, and unapproved sources cannot support an answer; overdue but policy-usable sources remain distinguishable when allowed by policy.
+- Topic metadata detected from a question is represented as alternative intent groups. Tags within one intent group remain conjunctive, while eligible evidence may match any group. Result selection reserves the highest-ranked eligible evidence for each detected intent before filling remaining capacity by fused rank, so one stronger intent cannot crowd another out.
 - Corpus installations contain normalized documents and metadata, not a provider-specific prebuilt vector index.
 - New and changed chunks are embedded locally into a compatibility-checked dense index. Corpus installation should show progress and preserve the previous usable corpus and index if re-indexing fails; detailed rollback mechanics remain deferred to implementation tickets.
 

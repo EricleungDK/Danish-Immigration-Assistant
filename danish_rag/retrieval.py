@@ -27,6 +27,7 @@ LEXICAL_ENGINE = "sqlite-fts5"
 SUPPORTED_EMBEDDING_MODEL = "embeddinggemma"
 VECTOR_DIMENSIONS = 768
 RRF_K = 60
+RETRIEVAL_CHANNEL_LIMIT = 20
 TOKEN_PATTERN = re.compile(r"[0-9a-zA-ZæøåÆØÅ]+")
 
 
@@ -337,21 +338,30 @@ class HybridRetriever:
         lexical_ids = self._lexical_ranked_ids(normalized_question, metadata_filter)
         dense_ids = self._dense_ranked_ids(normalized_question, metadata_filter)
         fused_ids, fusion_scores = reciprocal_rank_fusion([lexical_ids, dense_ids], k=RRF_K)
+        eligible_ids = [
+            document_id
+            for document_id in fused_ids
+            if _is_release_eligible(self.documents_by_id[document_id])
+            and _matches_metadata_filter(
+                self.documents_by_id[document_id],
+                metadata_filter,
+            )
+        ]
+        selected_ids = _select_result_ids_for_topic_groups(
+            eligible_ids,
+            documents_by_id=self.documents_by_id,
+            metadata_filter=metadata_filter,
+            limit=limit,
+        )
         results: list[dict[str, Any]] = []
-        for document_id in fused_ids:
+        for document_id in selected_ids:
             document = self.documents_by_id[document_id]
-            if not _is_release_eligible(document):
-                continue
-            if not _matches_metadata_filter(document, metadata_filter):
-                continue
             result = dict(document)
             result["citation_id"] = document["document_id"]
             result["corpus_identity"] = self.manifest["corpus_id"]
             result["knowledge_release_id"] = self.manifest["knowledge_release_id"]
             result["retrieval_score"] = fusion_scores.get(document_id, 0.0)
             results.append(result)
-            if len(results) >= limit:
-                break
         return results
 
     def _lexical_ranked_ids(
@@ -372,7 +382,6 @@ class HybridRetriever:
                 JOIN documents ON documents.document_id = documents_fts.document_id
                 WHERE documents_fts MATCH ?
                 ORDER BY rank
-                LIMIT 20
                 """,
                 (expression,),
             ).fetchall()
@@ -381,12 +390,18 @@ class HybridRetriever:
         finally:
             connection.close()
         ranked_ids = [str(row["document_id"]) for row in rows]
-        return [
+        eligible_ids = [
             document_id
             for document_id in ranked_ids
             if _is_release_eligible(self.documents_by_id[document_id])
             and _matches_metadata_filter(self.documents_by_id[document_id], metadata_filter)
         ]
+        return _select_result_ids_for_topic_groups(
+            eligible_ids,
+            documents_by_id=self.documents_by_id,
+            metadata_filter=metadata_filter,
+            limit=RETRIEVAL_CHANNEL_LIMIT,
+        )
 
     def _dense_ranked_ids(
         self,
@@ -416,7 +431,12 @@ class HybridRetriever:
                 continue
             scored.append((document_id, cosine_similarity(query_vector, item["vector"])))
         scored.sort(key=lambda item: (-item[1], item[0]))
-        return [document_id for document_id, _score in scored[:20]]
+        return _select_result_ids_for_topic_groups(
+            [document_id for document_id, _score in scored],
+            documents_by_id=self.documents_by_id,
+            metadata_filter=metadata_filter,
+            limit=RETRIEVAL_CHANNEL_LIMIT,
+        )
 
     def _validate_index(self) -> None:
         metadata = self.dense_index.get("metadata", {})
@@ -633,12 +653,13 @@ def _attach_source_metadata(
 
 def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:
     lookup = normalized_question.casefold()
-    topic_tags: list[str] = []
+    shared_topic_tags: list[str] = []
+    intent_topic_tag_groups: list[list[str]] = []
     is_exam_comparison = any(
         term in lookup for term in ("compare", "sammenlign", "exam-comparison")
     )
     if ("permanent" in lookup or "ophold" in lookup) and not is_exam_comparison:
-        topic_tags.append("permanent-residence")
+        intent_topic_tag_groups.append(["permanent-residence"])
     if (
         "language" in lookup
         or "sprog" in lookup
@@ -647,29 +668,84 @@ def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:
         or "test" in lookup
         or "exam" in lookup
     ):
-        topic_tags.append("language-requirement")
+        shared_topic_tags.append("language-requirement")
     if is_exam_comparison:
-        topic_tags.append("exam-comparison")
+        intent_topic_tag_groups.append(["exam-comparison"])
     if any(
         term in lookup
         for term in ("register", "registration", "sign up", "tilmeld", "tilmelding")
     ):
-        topic_tags.append("registration-logistics")
+        intent_topic_tag_groups.append(["registration-logistics"])
     if any(
         term in lookup
         for term in ("certificate", "diploma", "bevis", "equivalent", "equivalence")
     ):
-        topic_tags.append("certificate-equivalence")
-    return {"topic_tags": topic_tags, "language": "da"} if topic_tags else {"language": "da"}
+        intent_topic_tag_groups.append(["certificate-equivalence"])
+    if not shared_topic_tags and not intent_topic_tag_groups:
+        return {"language": "da"}
+
+    topic_tag_groups = (
+        [
+            shared_topic_tags + intent_topic_tags
+            for intent_topic_tags in intent_topic_tag_groups
+        ]
+        if intent_topic_tag_groups
+        else [shared_topic_tags]
+    )
+    return {
+        "topic_tag_groups": topic_tag_groups,
+        "language": "da",
+    }
 
 
 def _matches_metadata_filter(document: dict[str, Any], metadata_filter: dict[str, Any]) -> bool:
     language = metadata_filter.get("language")
     if language and document.get("language") != language:
         return False
-    required_tags = set(metadata_filter.get("topic_tags", []))
     document_tags = set(document.get("topic_tags", []))
+    topic_tag_groups = metadata_filter.get("topic_tag_groups")
+    if topic_tag_groups is not None:
+        return any(
+            set(required_tags).issubset(document_tags)
+            for required_tags in topic_tag_groups
+        )
+    required_tags = set(metadata_filter.get("topic_tags", []))
     return required_tags.issubset(document_tags)
+
+
+def _select_result_ids_for_topic_groups(
+    ranked_ids: list[str],
+    *,
+    documents_by_id: dict[str, dict[str, Any]],
+    metadata_filter: dict[str, Any],
+    limit: int,
+) -> list[str]:
+    topic_tag_groups = metadata_filter.get("topic_tag_groups")
+    if not topic_tag_groups:
+        return ranked_ids[:limit]
+
+    reserved_ids: list[str] = []
+    for required_tags in topic_tag_groups:
+        required_tag_set = set(required_tags)
+        for document_id in ranked_ids:
+            document_tags = set(documents_by_id[document_id].get("topic_tags", []))
+            if required_tag_set.issubset(document_tags):
+                if document_id not in reserved_ids:
+                    reserved_ids.append(document_id)
+                break
+
+    selected_ids = reserved_ids[:limit]
+    for document_id in ranked_ids:
+        if len(selected_ids) >= limit:
+            break
+        if document_id not in selected_ids:
+            selected_ids.append(document_id)
+    selected_id_set = set(selected_ids)
+    return [
+        document_id
+        for document_id in ranked_ids
+        if document_id in selected_id_set
+    ]
 
 
 def _fts_match_expression(text: str) -> str:
