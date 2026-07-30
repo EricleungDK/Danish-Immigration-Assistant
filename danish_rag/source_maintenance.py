@@ -8,8 +8,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .corpus_schema import (
+    SEMANTIC_CHUNK_CORPUS_SCHEMA,
+    corpus_schema_contract,
+)
 from .knowledge_release import KnowledgeReleaseError, verify_knowledge_release
 from .release_trust import ReleaseTrustError, sign_manifest
+from .semantic_chunks import SemanticChunkError, build_stable_semantic_chunks
 
 
 ELIGIBLE_RELEASE_STATES = {"approved-current", "overdue-policy-usable"}
@@ -157,6 +162,12 @@ def build_publishable_knowledge_release(
 ) -> dict[str, Any]:
     """Write a release directory only from reviewed release-eligible sources."""
 
+    corpus_schema = corpus_schema_contract(corpus_schema_version)
+    if corpus_schema is None:
+        raise KnowledgeReleaseError(
+            f"Unsupported corpus schema version: {corpus_schema_version}."
+        )
+
     for source in sources:
         if source.get("review_state") not in ELIGIBLE_RELEASE_STATES:
             raise KnowledgeReleaseError(
@@ -181,7 +192,25 @@ def build_publishable_knowledge_release(
         raise KnowledgeReleaseError("Release trust root ID is empty.")
 
     source_by_id = {str(source["source_id"]): source for source in sources}
-    normalized_documents = [_release_document(document, source_by_id) for document in documents]
+    release_documents = [
+        _release_document(document, source_by_id) for document in documents
+    ]
+    if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA:
+        try:
+            normalized_documents = [
+                chunk
+                for document in release_documents
+                for chunk in build_stable_semantic_chunks(
+                    source=source_by_id[str(document["source_id"])],
+                    document=document,
+                )
+            ]
+        except SemanticChunkError as exc:
+            raise KnowledgeReleaseError(
+                f"Could not build stable semantic chunks: {exc}"
+            ) from exc
+    else:
+        normalized_documents = release_documents
     documents_json = json.dumps(normalized_documents, indent=2, sort_keys=True) + "\n"
     artifact = {
         "path": "corpus/documents.json",
@@ -205,6 +234,11 @@ def build_publishable_knowledge_release(
             "trust_root_id": trust_root_id,
         },
     }
+
+    if corpus_schema.content_unit_schema_version is not None:
+        manifest["content_unit_schema_version"] = (
+            corpus_schema.content_unit_schema_version
+        )
 
     resolved_release_dir = Path(release_dir)
     corpus_dir = resolved_release_dir / "corpus"

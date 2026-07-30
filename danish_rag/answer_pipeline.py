@@ -1528,20 +1528,39 @@ def _parse_provider_content(content: Any) -> dict[str, Any]:
     return parsed
 
 
-def _citation_from_evidence(evidence: dict[str, Any]) -> dict[str, str]:
+def _citation_from_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
     checked_at = str(evidence["checked_at_utc"])
     fresh_tomato_score, fresh_tomato_reason = _fresh_tomato_indicator(evidence)
-    return {
+    knowledge_release_id = str(evidence["knowledge_release_id"])
+    citation: dict[str, Any] = {
         "citation_id": str(evidence["citation_id"]),
         "title": str(evidence["title"]),
         "publisher": str(evidence["publisher"]),
         "official_url": str(evidence["official_url"]),
         "checked_at_utc": checked_at,
         "checked_at_display": checked_at[:10],
-        "corpus_identity": str(evidence["knowledge_release_id"]),
+        "corpus_identity": str(
+            evidence.get("corpus_identity", knowledge_release_id)
+        ),
         "fresh_tomato_score": fresh_tomato_score.value,
         "fresh_tomato_reason": fresh_tomato_reason,
     }
+    if evidence.get("chunk_id") is not None:
+        citation.update(
+            {
+                "source_id": str(evidence["source_id"]),
+                "review_state": str(evidence["review_state"]),
+                "knowledge_release_id": knowledge_release_id,
+                "chunk_id": str(evidence["chunk_id"]),
+                "source_document_id": str(evidence["source_document_id"]),
+                "chunk_content_sha256": str(evidence["chunk_content_sha256"]),
+                "source_content_sha256": str(evidence["source_content_sha256"]),
+                "normalized_document_sha256": str(
+                    evidence["normalized_document_sha256"]
+                ),
+            }
+        )
+    return citation
 
 
 def _material_sources(

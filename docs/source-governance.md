@@ -151,10 +151,12 @@ Knowledge-release compatibility is evaluated before installation:
 
 - `manifest_schema_version` must be in the application's supported manifest schema range. Unknown major versions are blocked; unknown minor versions are allowed only when the manifest declares backward-compatible fields.
 - `corpus_schema_version` must be supported by the installed application. A release that changes document shape, source-state semantics, chunk metadata, citation metadata, or trust-indicator inputs must bump the corpus schema version.
+- Corpus schema `1.0` is the existing whole-document contract. Corpus schema `2.0` must declare `content_unit_schema_version: semantic-chunk-v1`; each chunk must carry a deterministic chunk ID, source-document ID, chunk index, chunk-content hash, and reviewed normalized-content hash. Authoring and signed-release verification recompute the reviewed normalized-content identity from the supplied or reconstructed ordered content. A schema `1.0` release cannot declare chunk content units, so existing releases are never silently reinterpreted.
 - `minimum_application_version` is the lowest application version that understands the manifest, corpus schema, source-state eligibility rules, and installation checks required by the release. Older applications must refuse installation with an upgrade message.
 - A knowledge release may require a higher `minimum_application_version`, but it may not lower the requirement below the version needed by its schema or source-state semantics.
 - Downgrades are allowed only to a previously verified release whose schema remains supported and whose release ID is not withdrawn.
 - Local retrieval indexes are derived artifacts. If the corpus ID, corpus schema version, embedding model identity, vector dimensions, or dense-index schema version changes, the application must rebuild the local index instead of reusing incompatible vectors.
+- Retrieved chunks and persisted citations retain the approved source ID, publisher, official URL, review state, source check time, source and normalized-content hashes, corpus identity, and knowledge-release identity. These values are validated before activation and are not reconstructed from a later release.
 
 ## Release Manifest
 

@@ -55,7 +55,7 @@ These statements are project-level product direction. Issue #26 did not implemen
   the approved generation identity/capability contract; the selected model still
   must pass the full connection/capability test before it is saved.
 - Issue #4 approves `embeddinggemma` as the initial supported embedding model for the MVP retrieval baseline. It remains tied to the issue #29 benchmark evidence and may be replaced only through a later evaluated re-indexing decision.
-- Each dense index records its embedding model, model identity, vector dimensions, corpus fixture identity, and schema version. Changing the embedding model, dimensions, corpus identity, or schema version requires re-indexing instead of mixing incompatible vectors.
+- Each dense index records its embedding model, model identity, vector dimensions, corpus identity, knowledge-release identity, and schema version. Chunked indexes additionally bind the corpus schema and semantic content-unit schema. Changing any compatibility identity requires re-indexing instead of mixing incompatible vectors.
 
 ## Local Data And Retrieval
 
@@ -67,8 +67,10 @@ Issue #4 approves the MVP retrieval baseline. Production release thresholds and 
 - The approved MVP retrieval baseline is hybrid retrieval: SQLite FTS5 lexical retrieval, local dense retrieval using `embeddinggemma`, metadata eligibility filtering, and reciprocal-rank fusion with `k=60`.
 - Metadata eligibility is applied before retrieval credit. Changed-unreviewed, broken, extraction-failed, and unapproved sources cannot support an answer; overdue but policy-usable sources remain distinguishable when allowed by policy.
 - Topic metadata detected from a question is represented as alternative intent groups. Tags within one intent group remain conjunctive, while eligible evidence may match any group. Result selection reserves the highest-ranked eligible evidence for each detected intent before filling remaining capacity by fused rank, so one stronger intent cannot crowd another out.
-- Corpus installations contain normalized documents and metadata, not a provider-specific prebuilt vector index.
-- New and changed chunks are embedded locally into a compatibility-checked dense index. Corpus installation should show progress and preserve the previous usable corpus and index if re-indexing fails; detailed rollback mechanics remain deferred to implementation tickets.
+- Corpus installations contain normalized content and metadata, not a provider-specific prebuilt vector index. Corpus schema `1.0` remains the supported whole-document format. Corpus schema `2.0` declares `semantic-chunk-v1` content units and cannot be interpreted as schema `1.0`.
+- Schema `2.0` release authoring first verifies the supplied normalized content against its reviewed hash, then divides it at deterministic semantic boundaries. Each chunk ID is derived from its approved source ID, source-document ID, chunk content hash, and duplicate occurrence. Signed-release verification reconstructs the ordered chunks and rechecks the reviewed normalized-content hash before activation.
+- Whole documents use `hybrid-index-v1`; semantic chunks use `hybrid-chunk-index-v1` with the corpus and content-unit schema recorded in index compatibility metadata. Both use the approved hybrid retrieval baseline.
+- Installation builds and validates the new corpus/index pair in staging. Embedding, indexing, compatibility, or activation failure leaves the prior usable pair active and queryable. Activation updates future answer provenance only; persisted historical citations remain unchanged.
 
 ## Source Governance And Updates
 
@@ -121,7 +123,7 @@ This section is project-level trust-indicator direction. Issue #26 did not defin
 
 - Final provider adapter contracts beyond the issue #26 Ollama baseline
 - Retrieval release thresholds beyond the issue #4 MVP baseline
-- Detailed corpus chunking, reranking, and rollback mechanics beyond the issue #4 MVP baseline
+- Reranking beyond the issue #4 MVP baseline
 - Source-governance implementation tooling and exact signing command workflow
 - Detailed browser security and local process lifecycle
 - Application-code installation and update mechanism

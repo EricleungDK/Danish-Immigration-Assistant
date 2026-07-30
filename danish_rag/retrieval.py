@@ -9,6 +9,11 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from .corpus_schema import (
+    SEMANTIC_CHUNK_CORPUS_SCHEMA,
+    WHOLE_DOCUMENT_CORPUS_SCHEMA,
+    corpus_schema_contract,
+)
 from .embedding_provider import (
     EmbeddingProvider,
     EmbeddingProviderError,
@@ -21,7 +26,7 @@ from .knowledge_release import load_active_documents, load_active_release
 from .source_freshness import assess_source_freshness
 
 
-INDEX_SCHEMA_VERSION = "hybrid-index-v1"
+INDEX_SCHEMA_VERSION = WHOLE_DOCUMENT_CORPUS_SCHEMA.index_schema_version
 DENSE_ENGINE = "local-dense-json"
 LEXICAL_ENGINE = "sqlite-fts5"
 SUPPORTED_EMBEDDING_MODEL = "embeddinggemma"
@@ -612,8 +617,18 @@ def _index_metadata(
     profile = embedding_model_profile(
         str(embedding_profile["name"]) if embedding_profile else SUPPORTED_EMBEDDING_MODEL
     )
-    return {
-        "schema_version": INDEX_SCHEMA_VERSION,
+    corpus_schema = corpus_schema_contract(
+        str(
+            manifest.get(
+                "corpus_schema_version",
+                WHOLE_DOCUMENT_CORPUS_SCHEMA.version,
+            )
+        )
+    )
+    if corpus_schema is None:
+        raise RetrievalError("Knowledge release has an unsupported corpus schema.")
+    metadata = {
+        "schema_version": corpus_schema.index_schema_version,
         "retrieval": "hybrid",
         "lexical_engine": LEXICAL_ENGINE,
         "dense_engine": DENSE_ENGINE,
@@ -625,6 +640,17 @@ def _index_metadata(
         "knowledge_release_id": manifest["knowledge_release_id"],
         "rrf_k": RRF_K,
     }
+    if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA:
+        metadata.update(
+            {
+                "corpus_schema_version": corpus_schema.version,
+                "content_unit_schema_version": (
+                    corpus_schema.content_unit_schema_version
+                ),
+                "indexed_unit": corpus_schema.indexed_unit,
+            }
+        )
+    return metadata
 
 
 def _is_release_eligible(document: dict[str, Any]) -> bool:

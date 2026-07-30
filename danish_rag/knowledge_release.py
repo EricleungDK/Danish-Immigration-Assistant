@@ -14,6 +14,11 @@ from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Protocol
 
+from .corpus_schema import (
+    SEMANTIC_CHUNK_CORPUS_SCHEMA,
+    WHOLE_DOCUMENT_CORPUS_SCHEMA,
+    corpus_schema_contract,
+)
 from .embedding_provider import EmbeddingProvider, embedding_provider_id, resolve_embedding_provider
 from .github_release_client import (
     ArtifactDownloadApproval,
@@ -23,6 +28,7 @@ from .github_release_client import (
     MAX_ARTIFACT_BYTES,
 )
 from .release_trust import ReleaseTrustError, verify_manifest_signature
+from .semantic_chunks import stable_chunk_id
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -139,7 +145,7 @@ def install_knowledge_release(
         and active.get("manifest", {}).get("knowledge_release_id") == release_id
         and _active_index_matches_embedding_contract(
             resolved_data_dir,
-            release_id,
+            manifest,
             embedding_model=str(embedding_profile["name"]),
             embedding_provider=resolved_embedding_provider,
             embedding_model_identity=resolved_model_identity,
@@ -968,6 +974,26 @@ def _validate_release(
         raise KnowledgeReleaseError(f"Release manifest missing field(s): {', '.join(missing)}")
     if manifest["manifest_schema_version"] != "1.0":
         raise KnowledgeReleaseError("Unsupported manifest schema version.")
+    corpus_schema_version = str(manifest["corpus_schema_version"])
+    corpus_schema = corpus_schema_contract(corpus_schema_version)
+    if corpus_schema is None:
+        raise KnowledgeReleaseError("Unsupported corpus schema version.")
+    content_unit_schema_version = manifest.get("content_unit_schema_version")
+    if (
+        corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA
+        and content_unit_schema_version
+        != corpus_schema.content_unit_schema_version
+    ):
+        raise KnowledgeReleaseError(
+            "Chunked corpus schema 2.0 requires the semantic chunk content-unit schema."
+        )
+    if (
+        corpus_schema is WHOLE_DOCUMENT_CORPUS_SCHEMA
+        and content_unit_schema_version is not None
+    ):
+        raise KnowledgeReleaseError(
+            "Whole-document corpus schema 1.0 cannot declare chunk content units."
+        )
     if _version_tuple(manifest["minimum_application_version"]) > _version_tuple(
         application_version
     ):
@@ -1011,6 +1037,14 @@ def _validate_release(
             )
         source_ids.add(str(source["source_id"]))
 
+    sources_by_id = {
+        str(source["source_id"]): source for source in manifest["sources"]
+    }
+    seen_document_ids: set[str] = set()
+    chunk_occurrences: dict[tuple[str, str, str], int] = {}
+    chunks_by_source_document: dict[
+        tuple[str, str], list[dict[str, Any]]
+    ] = {}
     for document in documents:
         required_document_fields = {
             "document_id",
@@ -1035,6 +1069,12 @@ def _validate_release(
             raise KnowledgeReleaseError(
                 f"Document {document['document_id']} references a source not in the manifest."
             )
+        document_id = str(document["document_id"])
+        if document_id in seen_document_ids:
+            raise KnowledgeReleaseError(
+                f"Corpus document identity is duplicated: {document_id}."
+            )
+        seen_document_ids.add(document_id)
         if document["review_state"] not in {"approved-current", "overdue-policy-usable"}:
             raise KnowledgeReleaseError(
                 f"Document {document['document_id']} is not approved for answer support."
@@ -1049,6 +1089,109 @@ def _validate_release(
                     f"Document {document['document_id']} missing provenance "
                     f"field: {provenance_field}."
                 )
+        if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA:
+            required_chunk_fields = {
+                "chunk_id",
+                "source_document_id",
+                "chunk_index",
+                "chunk_content_sha256",
+                "normalized_document_sha256",
+            }
+            missing_chunk_fields = sorted(required_chunk_fields - set(document))
+            if missing_chunk_fields:
+                raise KnowledgeReleaseError(
+                    f"Chunk {document_id} missing stable provenance field(s): "
+                    f"{', '.join(missing_chunk_fields)}."
+                )
+            content_hash = hashlib.sha256(
+                str(document["content"]).encode("utf-8")
+            ).hexdigest()
+            if document["chunk_content_sha256"] != content_hash:
+                raise KnowledgeReleaseError(
+                    f"Chunk {document_id} chunk content hash does not match its content."
+                )
+            occurrence_key = (
+                str(document["source_id"]),
+                str(document["source_document_id"]),
+                content_hash,
+            )
+            occurrence = chunk_occurrences.get(occurrence_key, 0)
+            chunk_occurrences[occurrence_key] = occurrence + 1
+            expected_chunk_id = stable_chunk_id(
+                source_id=str(document["source_id"]),
+                source_document_id=str(document["source_document_id"]),
+                chunk_content_sha256=content_hash,
+                occurrence=occurrence,
+            )
+            if document["chunk_id"] != expected_chunk_id:
+                raise KnowledgeReleaseError(
+                    f"Chunk {document_id} is not bound to its source and chunk content identity."
+                )
+            if document["chunk_id"] != document_id:
+                raise KnowledgeReleaseError(
+                    f"Chunk {document_id} does not use its stable chunk identity."
+                )
+            if (
+                not isinstance(document["chunk_index"], int)
+                or isinstance(document["chunk_index"], bool)
+                or document["chunk_index"] < 0
+            ):
+                raise KnowledgeReleaseError(
+                    f"Chunk {document_id} has an invalid chunk index."
+                )
+            source = sources_by_id[str(document["source_id"])]
+            if (
+                document["normalized_document_sha256"]
+                != source["normalized_document_sha256"]
+            ):
+                raise KnowledgeReleaseError(
+                    f"Chunk {document_id} is not bound to the reviewed normalized content."
+                )
+            source_provenance = {
+                "publisher": "publisher",
+                "official_url": "official_url",
+                "review_state": "review_state",
+                "checked_at_utc": "last_checked_at_utc",
+            }
+            mismatched_provenance = [
+                document_field
+                for document_field, source_field in source_provenance.items()
+                if document.get(document_field) != source.get(source_field)
+            ]
+            if mismatched_provenance:
+                raise KnowledgeReleaseError(
+                    f"Chunk {document_id} does not retain approved source provenance: "
+                    f"{', '.join(mismatched_provenance)}."
+                )
+            source_document_key = (
+                str(document["source_id"]),
+                str(document["source_document_id"]),
+            )
+            chunks_by_source_document.setdefault(source_document_key, []).append(
+                document
+            )
+
+    for (source_id, source_document_id), chunks in chunks_by_source_document.items():
+        ordered_chunks = sorted(chunks, key=lambda item: item["chunk_index"])
+        chunk_indexes = [item["chunk_index"] for item in ordered_chunks]
+        if chunk_indexes != list(range(len(ordered_chunks))):
+            raise KnowledgeReleaseError(
+                f"Chunk sequence for {source_document_id} is incomplete or duplicated."
+            )
+        normalized_content = " ".join(
+            str(item["content"]) for item in ordered_chunks
+        )
+        normalized_content_hash = hashlib.sha256(
+            normalized_content.encode("utf-8")
+        ).hexdigest()
+        if (
+            normalized_content_hash
+            != sources_by_id[source_id]["normalized_document_sha256"]
+        ):
+            raise KnowledgeReleaseError(
+                f"Chunk sequence for {source_document_id} does not match the reviewed "
+                "normalized content identity."
+            )
 
 
 def _documents_artifact(manifest: dict[str, Any]) -> dict[str, Any]:
@@ -1149,20 +1292,49 @@ def _load_index_metadata(data_dir: Path, release_id: str) -> dict[str, Any]:
 
 def _active_index_matches_embedding_contract(
     data_dir: Path,
-    release_id: str,
+    manifest: dict[str, Any],
     *,
     embedding_model: str,
     embedding_provider: EmbeddingProvider,
     embedding_model_identity: dict[str, Any],
 ) -> bool:
+    release_id = str(manifest.get("knowledge_release_id", ""))
+    corpus_schema = corpus_schema_contract(
+        str(manifest.get("corpus_schema_version", ""))
+    )
+    if not release_id or corpus_schema is None:
+        return False
     try:
         index = _load_index_metadata(data_dir, release_id)
-    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        dense_index = json.loads(
+            (data_dir / "index" / release_id / "dense-index.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        dense_metadata = dense_index["metadata"]
+    except (FileNotFoundError, json.JSONDecodeError, KeyError, TypeError):
         return False
-    return (
-        index.get("embedding_model") == embedding_model
-        and index.get("embedding_provider") == embedding_provider_id(embedding_provider)
-        and index.get("embedding_model_identity") == embedding_model_identity
+    expected = {
+        "schema_version": corpus_schema.index_schema_version,
+        "knowledge_release_id": release_id,
+        "corpus_identity": manifest.get("corpus_id"),
+        "embedding_model": embedding_model,
+        "embedding_provider": embedding_provider_id(embedding_provider),
+        "embedding_model_identity": embedding_model_identity,
+    }
+    if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA:
+        expected.update(
+            {
+                "corpus_schema_version": corpus_schema.version,
+                "content_unit_schema_version": (
+                    corpus_schema.content_unit_schema_version
+                ),
+                "indexed_unit": corpus_schema.indexed_unit,
+            }
+        )
+    return all(
+        index.get(field) == value and dense_metadata.get(field) == value
+        for field, value in expected.items()
     )
 
 
