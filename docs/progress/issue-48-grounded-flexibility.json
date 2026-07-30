@@ -1,0 +1,744 @@
+{
+  "case_results": [
+    {
+      "case_id": "gf-pr-language-01",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": "answer",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 1,
+          "status": "passed",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 1,
+          "value": 1.0
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 1,
+          "official_fact_count": 1,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 1,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 1,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "expected_behavior": "answer",
+      "intent_evidence": [
+        {
+          "intent_id": "permanent-residence-language",
+          "missing_document_ids": [],
+          "observed_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "required_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "status": "passed"
+        }
+      ],
+      "material_citation_ids": [
+        "di-rag-doc-permanent-residence-language"
+      ],
+      "missing_fact_ids": [],
+      "missing_unsupported_part_ids": [],
+      "observed_unsupported_part_ids": [],
+      "paraphrase_group_id": "paraphrase-permanent-residence-language",
+      "required_fact_ids": [
+        "permanent-residence-pd2-basic-requirement"
+      ],
+      "status": "passed",
+      "supported_fact_ids": [
+        "permanent-residence-pd2-basic-requirement"
+      ],
+      "unexpected_unsupported_part_ids": [],
+      "unmatched_refusal_count": 0,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-pr-language-02",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": "answer",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 1,
+          "status": "passed",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 1,
+          "value": 1.0
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 1,
+          "official_fact_count": 1,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 1,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 1,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "expected_behavior": "answer",
+      "intent_evidence": [
+        {
+          "intent_id": "permanent-residence-language",
+          "missing_document_ids": [],
+          "observed_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "required_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "status": "passed"
+        }
+      ],
+      "material_citation_ids": [
+        "di-rag-doc-permanent-residence-language"
+      ],
+      "missing_fact_ids": [],
+      "missing_unsupported_part_ids": [],
+      "observed_unsupported_part_ids": [],
+      "paraphrase_group_id": "paraphrase-permanent-residence-language",
+      "required_fact_ids": [
+        "permanent-residence-pd2-basic-requirement"
+      ],
+      "status": "passed",
+      "supported_fact_ids": [
+        "permanent-residence-pd2-basic-requirement"
+      ],
+      "unexpected_unsupported_part_ids": [],
+      "unmatched_refusal_count": 0,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-pr-language-03",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": "answer",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 2,
+          "status": "passed",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 2,
+          "value": 1.0
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 2,
+          "official_fact_count": 2,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 2,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "expected_behavior": "answer",
+      "intent_evidence": [
+        {
+          "intent_id": "permanent-residence-language",
+          "missing_document_ids": [],
+          "observed_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "required_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "status": "passed"
+        }
+      ],
+      "material_citation_ids": [
+        "di-rag-doc-permanent-residence-language"
+      ],
+      "missing_fact_ids": [],
+      "missing_unsupported_part_ids": [],
+      "observed_unsupported_part_ids": [],
+      "paraphrase_group_id": "paraphrase-permanent-residence-language",
+      "required_fact_ids": [
+        "permanent-residence-pd2-basic-requirement"
+      ],
+      "status": "passed",
+      "supported_fact_ids": [
+        "permanent-residence-pd2-basic-requirement"
+      ],
+      "unexpected_unsupported_part_ids": [],
+      "unmatched_refusal_count": 0,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-pd3-registration-01",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": "answer",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 1,
+          "status": "passed",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 1,
+          "value": 1.0
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 1,
+          "official_fact_count": 1,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 1,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 1,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "expected_behavior": "answer",
+      "intent_evidence": [
+        {
+          "intent_id": "pd3-registration-logistics",
+          "missing_document_ids": [],
+          "observed_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "required_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "status": "passed"
+        }
+      ],
+      "material_citation_ids": [
+        "di-rag-doc-registration-deadlines-2026"
+      ],
+      "missing_fact_ids": [],
+      "missing_unsupported_part_ids": [],
+      "observed_unsupported_part_ids": [],
+      "paraphrase_group_id": "paraphrase-pd3-registration-logistics",
+      "required_fact_ids": [
+        "pd3-logistics-require-current-verification",
+        "pd3-registration-at-sprogcenter"
+      ],
+      "status": "passed",
+      "supported_fact_ids": [
+        "pd3-logistics-require-current-verification",
+        "pd3-registration-at-sprogcenter"
+      ],
+      "unexpected_unsupported_part_ids": [],
+      "unmatched_refusal_count": 0,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-pd3-registration-02",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": "answer",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 1,
+          "status": "passed",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 1,
+          "value": 1.0
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 1,
+          "official_fact_count": 1,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 1,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 1,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "expected_behavior": "answer",
+      "intent_evidence": [
+        {
+          "intent_id": "pd3-registration-logistics",
+          "missing_document_ids": [],
+          "observed_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "required_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "status": "passed"
+        }
+      ],
+      "material_citation_ids": [
+        "di-rag-doc-registration-deadlines-2026"
+      ],
+      "missing_fact_ids": [],
+      "missing_unsupported_part_ids": [],
+      "observed_unsupported_part_ids": [],
+      "paraphrase_group_id": "paraphrase-pd3-registration-logistics",
+      "required_fact_ids": [
+        "pd3-logistics-require-current-verification",
+        "pd3-registration-at-sprogcenter"
+      ],
+      "status": "passed",
+      "supported_fact_ids": [
+        "pd3-logistics-require-current-verification",
+        "pd3-registration-at-sprogcenter"
+      ],
+      "unexpected_unsupported_part_ids": [],
+      "unmatched_refusal_count": 0,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-pd3-registration-03",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": "answer",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 1,
+          "status": "passed",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 1,
+          "value": 1.0
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 1,
+          "official_fact_count": 1,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 1,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 1,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "expected_behavior": "answer",
+      "intent_evidence": [
+        {
+          "intent_id": "pd3-registration-logistics",
+          "missing_document_ids": [],
+          "observed_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "required_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "status": "passed"
+        }
+      ],
+      "material_citation_ids": [
+        "di-rag-doc-registration-deadlines-2026"
+      ],
+      "missing_fact_ids": [],
+      "missing_unsupported_part_ids": [],
+      "observed_unsupported_part_ids": [],
+      "paraphrase_group_id": "paraphrase-pd3-registration-logistics",
+      "required_fact_ids": [
+        "pd3-logistics-require-current-verification",
+        "pd3-registration-at-sprogcenter"
+      ],
+      "status": "passed",
+      "supported_fact_ids": [
+        "pd3-logistics-require-current-verification",
+        "pd3-registration-at-sprogcenter"
+      ],
+      "unexpected_unsupported_part_ids": [],
+      "unmatched_refusal_count": 0,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-composite-01",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": "answer",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 2,
+          "status": "passed",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 2,
+          "value": 1.0
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 2,
+          "official_fact_count": 2,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 2,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "expected_behavior": "answer",
+      "intent_evidence": [
+        {
+          "intent_id": "permanent-residence-language",
+          "missing_document_ids": [],
+          "observed_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "required_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "status": "passed"
+        },
+        {
+          "intent_id": "pd3-registration-logistics",
+          "missing_document_ids": [],
+          "observed_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "required_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "status": "passed"
+        }
+      ],
+      "material_citation_ids": [
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-registration-deadlines-2026"
+      ],
+      "missing_fact_ids": [],
+      "missing_unsupported_part_ids": [],
+      "observed_unsupported_part_ids": [],
+      "paraphrase_group_id": "paraphrase-composite-language-registration",
+      "required_fact_ids": [
+        "pd3-logistics-require-current-verification",
+        "pd3-registration-at-sprogcenter",
+        "permanent-residence-pd2-basic-requirement"
+      ],
+      "status": "passed",
+      "supported_fact_ids": [
+        "pd3-logistics-require-current-verification",
+        "pd3-registration-at-sprogcenter",
+        "permanent-residence-pd2-basic-requirement"
+      ],
+      "unexpected_unsupported_part_ids": [],
+      "unmatched_refusal_count": 0,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-composite-02",
+      "checks": {
+        "behavior": {
+          "expected": "answer",
+          "observed": "answer",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 2,
+          "status": "passed",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 2,
+          "value": 1.0
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 2,
+          "official_fact_count": 2,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 2,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 2,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "expected_behavior": "answer",
+      "intent_evidence": [
+        {
+          "intent_id": "permanent-residence-language",
+          "missing_document_ids": [],
+          "observed_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "required_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "status": "passed"
+        },
+        {
+          "intent_id": "pd3-registration-logistics",
+          "missing_document_ids": [],
+          "observed_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "required_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "status": "passed"
+        }
+      ],
+      "material_citation_ids": [
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-registration-deadlines-2026"
+      ],
+      "missing_fact_ids": [],
+      "missing_unsupported_part_ids": [],
+      "observed_unsupported_part_ids": [],
+      "paraphrase_group_id": "paraphrase-composite-language-registration",
+      "required_fact_ids": [
+        "pd3-logistics-require-current-verification",
+        "pd3-registration-at-sprogcenter",
+        "permanent-residence-pd2-basic-requirement"
+      ],
+      "status": "passed",
+      "supported_fact_ids": [
+        "pd3-logistics-require-current-verification",
+        "pd3-registration-at-sprogcenter",
+        "permanent-residence-pd2-basic-requirement"
+      ],
+      "unexpected_unsupported_part_ids": [],
+      "unmatched_refusal_count": 0,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-supported-with-refusal-01",
+      "checks": {
+        "behavior": {
+          "expected": "answer-with-refusal",
+          "observed": "answer-with-refusal",
+          "status": "passed"
+        },
+        "citation_correctness": {
+          "incorrect_relation_count": 0,
+          "not_evaluable_relation_count": 0,
+          "relation_count": 1,
+          "status": "passed",
+          "support_method": "normalized-exact-claim-in-cited-evidence",
+          "supported_relation_count": 1,
+          "value": 1.0
+        },
+        "official_fact_citation_coverage": {
+          "cited_official_fact_count": 1,
+          "official_fact_count": 1,
+          "status": "passed",
+          "value": 1.0
+        },
+        "unsupported_claims": {
+          "audited_official_fact_count": 1,
+          "not_evaluable_count": 0,
+          "status": "passed",
+          "supported_count": 1,
+          "unsupported_count": 0,
+          "value": 0.0
+        }
+      },
+      "error_type": null,
+      "expected_behavior": "answer-with-refusal",
+      "intent_evidence": [
+        {
+          "intent_id": "permanent-residence-language",
+          "missing_document_ids": [],
+          "observed_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "required_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "status": "passed"
+        }
+      ],
+      "material_citation_ids": [
+        "di-rag-doc-permanent-residence-language"
+      ],
+      "missing_fact_ids": [],
+      "missing_unsupported_part_ids": [],
+      "observed_unsupported_part_ids": [
+        "personal-eligibility-conclusion"
+      ],
+      "paraphrase_group_id": "supported-part-with-unsupported-eligibility",
+      "required_fact_ids": [
+        "permanent-residence-pd2-basic-requirement"
+      ],
+      "status": "passed",
+      "supported_fact_ids": [
+        "permanent-residence-pd2-basic-requirement"
+      ],
+      "unexpected_unsupported_part_ids": [],
+      "unmatched_refusal_count": 0,
+      "unsupported_part_ids": [
+        "personal-eligibility-conclusion"
+      ]
+    }
+  ],
+  "dataset": {
+    "case_count": 9,
+    "dataset_id": "di-rag-grounded-flexibility-v0.1-candidate",
+    "sha256": "ea98464031f45b1c3cb4d47cd77ed8876908596d80f7369d08f6e40771a22fe6",
+    "version": "0.1.0-candidate"
+  },
+  "generated_at_utc": "2026-07-30T16:00:00Z",
+  "identity": {
+    "corpus_id": "kr-2026-07-06.1",
+    "model": "controlled-evidence-copy-v1",
+    "model_identity": {
+      "id": "controlled-evidence-copy-v1"
+    },
+    "provider_id": "controlled",
+    "provider_version": "in-process-v1"
+  },
+  "metrics": {
+    "citation_correctness": {
+      "incorrect_relation_count": 0,
+      "not_evaluable_relation_count": 0,
+      "observed": 1.0,
+      "relation_count": 12,
+      "status": "passed",
+      "supported_relation_count": 12,
+      "threshold": 1.0
+    },
+    "paraphrase_consistency": {
+      "comparison_basis": [
+        "supported_fact_ids",
+        "material_citation_ids"
+      ],
+      "group_count": 3,
+      "groups": [
+        {
+          "case_count": 2,
+          "missing_required_fact_count": 0,
+          "paraphrase_group_id": "paraphrase-composite-language-registration",
+          "status": "passed"
+        },
+        {
+          "case_count": 3,
+          "missing_required_fact_count": 0,
+          "paraphrase_group_id": "paraphrase-pd3-registration-logistics",
+          "status": "passed"
+        },
+        {
+          "case_count": 3,
+          "missing_required_fact_count": 0,
+          "paraphrase_group_id": "paraphrase-permanent-residence-language",
+          "status": "passed"
+        }
+      ],
+      "observed": 1.0,
+      "passed_group_count": 3,
+      "requires_identical_answer_prose": false,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "per_intent_evidence_coverage": {
+      "by_intent": {
+        "pd3-registration-logistics": {
+          "covered_document_count": 5,
+          "observed": 1.0,
+          "required_document_count": 5,
+          "status": "passed",
+          "threshold": 1.0
+        },
+        "permanent-residence-language": {
+          "covered_document_count": 6,
+          "observed": 1.0,
+          "required_document_count": 6,
+          "status": "passed",
+          "threshold": 1.0
+        }
+      },
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "refusal_precision": {
+      "correct_scoped_refusal_count": 1,
+      "expected_refusal_count": 1,
+      "false_positive_refusal_count": 0,
+      "missing_required_refusal_count": 0,
+      "observed": 1.0,
+      "observed_refusal_count": 1,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "required_fact_coverage": {
+      "covered_fact_count": 16,
+      "observed": 1.0,
+      "required_fact_count": 16,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "unsupported_claim_rate": {
+      "audited_claim_count": 12,
+      "not_evaluable_claim_count": 0,
+      "observed": 0.0,
+      "status": "passed",
+      "threshold": 0.0,
+      "unsupported_claim_count": 0
+    }
+  },
+  "privacy_assertions": {
+    "contains_case_prompts": false,
+    "contains_conversation_records": false,
+    "contains_generated_answer_text": false,
+    "uses_production_user_content": false
+  },
+  "schema_version": "grounded-flexibility-evaluation-v1",
+  "strict_passed": true,
+  "threshold_failures": []
+}

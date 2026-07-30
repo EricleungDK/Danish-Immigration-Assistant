@@ -1,0 +1,309 @@
+{
+  "schema_version": "grounded-flexibility-evaluation-v1",
+  "dataset_id": "di-rag-grounded-flexibility-v0.1-candidate",
+  "version": "0.1.0-candidate",
+  "review_issue": 48,
+  "source": "Project-authored synthetic cases specified for issue 48; not derived from user questions, conversations, or answers.",
+  "privacy": {
+    "uses_production_user_questions": false,
+    "uses_production_user_conversations": false,
+    "uses_production_user_answers": false
+  },
+  "lexical_overlap": {
+    "method": "pairwise Jaccard similarity over case-folded alphanumeric word sets",
+    "maximum_pairwise_jaccard": 0.35
+  },
+  "thresholds": {
+    "per_intent_evidence_coverage_min": 1.0,
+    "required_fact_coverage_min": 1.0,
+    "citation_correctness_min": 1.0,
+    "unsupported_claim_rate_max": 0.0,
+    "refusal_precision_min": 1.0,
+    "paraphrase_consistency_min": 1.0
+  },
+  "facts": [
+    {
+      "fact_id": "permanent-residence-pd2-basic-requirement",
+      "description": "The approved permanent-residence source documents Pr\u00f8ve i Dansk 2 or an equivalent or higher examination as the basic language requirement.",
+      "supported_by_document_ids": [
+        "di-rag-doc-permanent-residence-language"
+      ],
+      "claim_markers": [
+        "Danish language test 2",
+        "equivalent or higher level"
+      ]
+    },
+    {
+      "fact_id": "pd3-registration-at-sprogcenter",
+      "description": "The approved logistics source directs candidates to register at the sprogcenter where they want to take Pr\u00f8ve i Dansk 3.",
+      "supported_by_document_ids": [
+        "di-rag-doc-registration-deadlines-2026"
+      ],
+      "claim_markers": [
+        "register for a test directly at the sprogcenter",
+        "where they want to take the test"
+      ]
+    },
+    {
+      "fact_id": "pd3-logistics-require-current-verification",
+      "description": "Current Pr\u00f8ve i Dansk 3 logistics must be verified on the approved official page.",
+      "supported_by_document_ids": [
+        "di-rag-doc-registration-deadlines-2026"
+      ],
+      "claim_markers": [
+        "Current logistics must be verified",
+        "official page"
+      ]
+    }
+  ],
+  "unsupported_parts": [
+    {
+      "part_id": "personal-eligibility-conclusion",
+      "required_refusal_term_groups": [
+        [
+          "cannot",
+          "unable"
+        ],
+        [
+          "personal",
+          "individual"
+        ],
+        [
+          "eligibility",
+          "qualify",
+          "qualification"
+        ]
+      ]
+    }
+  ],
+  "selected_intents": [
+    {
+      "intent_id": "permanent-residence-language",
+      "paraphrase_group_id": "paraphrase-permanent-residence-language",
+      "required_document_ids": [
+        "di-rag-doc-permanent-residence-language"
+      ],
+      "required_fact_ids": [
+        "permanent-residence-pd2-basic-requirement"
+      ]
+    },
+    {
+      "intent_id": "pd3-registration-logistics",
+      "paraphrase_group_id": "paraphrase-pd3-registration-logistics",
+      "required_document_ids": [
+        "di-rag-doc-registration-deadlines-2026"
+      ],
+      "required_fact_ids": [
+        "pd3-registration-at-sprogcenter",
+        "pd3-logistics-require-current-verification"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "gf-pr-language-01",
+      "paraphrase_group_id": "paraphrase-permanent-residence-language",
+      "prompt": "Which Danish language test is documented for permanent residence?",
+      "expected_behavior": "answer",
+      "expected_intents": [
+        {
+          "intent_id": "permanent-residence-language",
+          "required_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "required_fact_ids": [
+            "permanent-residence-pd2-basic-requirement"
+          ]
+        }
+      ],
+      "requires_cross_document_synthesis": false,
+      "requires_claim_adjacent_citations": true,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-pr-language-02",
+      "paraphrase_group_id": "paraphrase-permanent-residence-language",
+      "prompt": "What proof of Danish ability does the long-term residence route ask for?",
+      "expected_behavior": "answer",
+      "expected_intents": [
+        {
+          "intent_id": "permanent-residence-language",
+          "required_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "required_fact_ids": [
+            "permanent-residence-pd2-basic-requirement"
+          ]
+        }
+      ],
+      "requires_cross_document_synthesis": false,
+      "requires_claim_adjacent_citations": true,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-pr-language-03",
+      "paraphrase_group_id": "paraphrase-permanent-residence-language",
+      "prompt": "For an indefinite stay application, which official exam level is required?",
+      "expected_behavior": "answer",
+      "expected_intents": [
+        {
+          "intent_id": "permanent-residence-language",
+          "required_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "required_fact_ids": [
+            "permanent-residence-pd2-basic-requirement"
+          ]
+        }
+      ],
+      "requires_cross_document_synthesis": false,
+      "requires_claim_adjacent_citations": true,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-pd3-registration-01",
+      "paraphrase_group_id": "paraphrase-pd3-registration-logistics",
+      "prompt": "Where do I register for Pr\u00f8ve i Dansk 3?",
+      "expected_behavior": "answer",
+      "expected_intents": [
+        {
+          "intent_id": "pd3-registration-logistics",
+          "required_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "required_fact_ids": [
+            "pd3-registration-at-sprogcenter",
+            "pd3-logistics-require-current-verification"
+          ]
+        }
+      ],
+      "requires_cross_document_synthesis": false,
+      "requires_claim_adjacent_citations": true,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-pd3-registration-02",
+      "paraphrase_group_id": "paraphrase-pd3-registration-logistics",
+      "prompt": "Which sprogcenter handles sign up for PD3?",
+      "expected_behavior": "answer",
+      "expected_intents": [
+        {
+          "intent_id": "pd3-registration-logistics",
+          "required_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "required_fact_ids": [
+            "pd3-registration-at-sprogcenter",
+            "pd3-logistics-require-current-verification"
+          ]
+        }
+      ],
+      "requires_cross_document_synthesis": false,
+      "requires_claim_adjacent_citations": true,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-pd3-registration-03",
+      "paraphrase_group_id": "paraphrase-pd3-registration-logistics",
+      "prompt": "How do candidates sign up for PD3, and which current details should they verify?",
+      "expected_behavior": "answer",
+      "expected_intents": [
+        {
+          "intent_id": "pd3-registration-logistics",
+          "required_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "required_fact_ids": [
+            "pd3-registration-at-sprogcenter",
+            "pd3-logistics-require-current-verification"
+          ]
+        }
+      ],
+      "requires_cross_document_synthesis": false,
+      "requires_claim_adjacent_citations": true,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-composite-01",
+      "paraphrase_group_id": "paraphrase-composite-language-registration",
+      "prompt": "What does passing PD2 establish for permanent residence, and where do I register for PD3?",
+      "expected_behavior": "answer",
+      "expected_intents": [
+        {
+          "intent_id": "permanent-residence-language",
+          "required_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "required_fact_ids": [
+            "permanent-residence-pd2-basic-requirement"
+          ]
+        },
+        {
+          "intent_id": "pd3-registration-logistics",
+          "required_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "required_fact_ids": [
+            "pd3-registration-at-sprogcenter",
+            "pd3-logistics-require-current-verification"
+          ]
+        }
+      ],
+      "requires_cross_document_synthesis": true,
+      "requires_claim_adjacent_citations": true,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-composite-02",
+      "paraphrase_group_id": "paraphrase-composite-language-registration",
+      "prompt": "Tell me the residence meaning of PD2, then point me to the place that accepts PD3 enrolment.",
+      "expected_behavior": "answer",
+      "expected_intents": [
+        {
+          "intent_id": "permanent-residence-language",
+          "required_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "required_fact_ids": [
+            "permanent-residence-pd2-basic-requirement"
+          ]
+        },
+        {
+          "intent_id": "pd3-registration-logistics",
+          "required_document_ids": [
+            "di-rag-doc-registration-deadlines-2026"
+          ],
+          "required_fact_ids": [
+            "pd3-registration-at-sprogcenter",
+            "pd3-logistics-require-current-verification"
+          ]
+        }
+      ],
+      "requires_cross_document_synthesis": true,
+      "requires_claim_adjacent_citations": true,
+      "unsupported_part_ids": []
+    },
+    {
+      "case_id": "gf-supported-with-refusal-01",
+      "paraphrase_group_id": "supported-part-with-unsupported-eligibility",
+      "prompt": "What does PD2 establish for permanent residence; do I personally qualify?",
+      "expected_behavior": "answer-with-refusal",
+      "expected_intents": [
+        {
+          "intent_id": "permanent-residence-language",
+          "required_document_ids": [
+            "di-rag-doc-permanent-residence-language"
+          ],
+          "required_fact_ids": [
+            "permanent-residence-pd2-basic-requirement"
+          ]
+        }
+      ],
+      "requires_cross_document_synthesis": false,
+      "requires_claim_adjacent_citations": true,
+      "unsupported_part_ids": [
+        "personal-eligibility-conclusion"
+      ]
+    }
+  ]
+}
