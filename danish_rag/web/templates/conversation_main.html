@@ -1,4 +1,9 @@
-<section id="conversation-main" class="conversation" aria-labelledby="conversation-title">
+<section
+  id="conversation-main"
+  class="conversation"
+  aria-labelledby="conversation-title"
+  {% if reveal_latest_turn %}data-reveal-latest-turn="true"{% endif %}
+>
   <header class="conversation-head">
     <div>
       <p class="eyebrow">Conversation First</p>
@@ -240,3 +245,6 @@
     </div>
   </form>
 </section>
+{% if history_oob %}
+{% include "local_history.html" %}
+{% endif %}

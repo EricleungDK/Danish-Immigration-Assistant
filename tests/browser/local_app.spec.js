@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ request }) => {
+  const response = await request.post("/__test__/reset-knowledge-release");
+  expect(response.ok()).toBe(true);
+});
+
 async function ensureBrowserProvider(page) {
   const runtimeStatus = page.getByLabel("Runtime status");
   if ((await runtimeStatus.textContent())?.includes("browser-model")) {
@@ -283,6 +288,7 @@ test("GitHub knowledge update requires separate download review and install acti
   ]) {
     await expect(installStatus.locator(`[data-install-phase="${phase}"]`)).toBeVisible();
   }
+  await page.reload();
   await expect(corpusSection.locator(".runtime-list").first()).toContainText("kr-2026-07-07.1");
   await expect(page.getByRole("heading", { name: "Signed knowledge update ready to review" })).toHaveCount(0);
 });

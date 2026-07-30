@@ -45,8 +45,10 @@ from .knowledge_release import (
 )
 from .provider_setup import (
     CapabilityTestResult,
+    ModelDiscoveryResult,
     ProviderCapabilityTester,
     ProviderConfiguration,
+    ProviderModelDiscoverer,
     default_config_path,
     load_provider_configuration,
     normalize_provider_form,
@@ -74,6 +76,11 @@ def create_app(
     data_dir: str | Path | None = None,
     answer_generator: Any | None = None,
     capability_tester: Callable[[ProviderConfiguration], CapabilityTestResult | dict[str, Any]]
+    | None = None,
+    model_discoverer: Callable[
+        [ProviderConfiguration],
+        ModelDiscoveryResult | dict[str, Any],
+    ]
     | None = None,
     release_catalog_dir: str | Path | None = None,
     embedding_provider: EmbeddingProvider | None = None,
@@ -111,6 +118,7 @@ def create_app(
     ):
         raise ValueError("Automatic update check interval must be greater than zero.")
     tester = capability_tester or ProviderCapabilityTester()
+    discover_models = model_discoverer or ProviderModelDiscoverer()
     generator = answer_generator or LocalProviderAnswerGenerator()
     store = ConversationStore(resolved_data_dir / "conversations.sqlite3")
     automatic_check_state: dict[str, Any] = {
@@ -118,6 +126,7 @@ def create_app(
         "running": False,
         "status": None,
     }
+    app.state.automatic_check_state = automatic_check_state
     automatic_check_lock = threading.Lock()
     update_record_lock = threading.RLock()
     installation_state: dict[str, Any] | None = None
@@ -297,11 +306,15 @@ def create_app(
         status_code: int = 200,
         setup_form: ProviderConfiguration | None = None,
         setup_error: str = "",
+        setup_error_title: str = "Connection test failed",
         setup_reason: str = "",
+        discovered_models: list[str] | None = None,
         active_question: str = "",
         composer_error: str = "",
         active_conversation: dict[str, Any] | None = None,
         update_status: dict[str, str] | None = None,
+        delete_all_error: str = "",
+        delete_all_status: str = "",
     ) -> HTMLResponse:
         template = TEMPLATES.get_template("home.html")
         return HTMLResponse(
@@ -309,11 +322,15 @@ def create_app(
                 _page_context(
                     setup_form=setup_form,
                     setup_error=setup_error,
+                    setup_error_title=setup_error_title,
                     setup_reason=setup_reason,
+                    discovered_models=discovered_models,
                     active_question=active_question,
                     composer_error=composer_error,
                     active_conversation=active_conversation,
                     update_status=update_status,
+                    delete_all_error=delete_all_error,
+                    delete_all_status=delete_all_status,
                 )
             ),
             status_code=status_code,
@@ -325,6 +342,8 @@ def create_app(
         active_question: str = "",
         composer_error: str = "",
         active_conversation: dict[str, Any] | None = None,
+        history_oob: bool = False,
+        reveal_latest_turn: bool = False,
     ) -> HTMLResponse:
         template = TEMPLATES.get_template("conversation_main.html")
         return HTMLResponse(
@@ -333,6 +352,8 @@ def create_app(
                     active_question=active_question,
                     composer_error=composer_error,
                     active_conversation=active_conversation,
+                    history_oob=history_oob,
+                    reveal_latest_turn=reveal_latest_turn,
                 )
             ),
             status_code=status_code,
@@ -345,9 +366,19 @@ def create_app(
         active_question: str = "",
         composer_error: str = "",
         active_conversation: dict[str, Any] | None = None,
+        history_oob: bool = False,
+        reveal_latest_turn: bool = False,
     ) -> HTMLResponse:
-        renderer = render_conversation_main if _is_htmx_request(request) else render_home
-        return renderer(
+        if _is_htmx_request(request):
+            return render_conversation_main(
+                status_code=status_code,
+                active_question=active_question,
+                composer_error=composer_error,
+                active_conversation=active_conversation,
+                history_oob=history_oob,
+                reveal_latest_turn=reveal_latest_turn,
+            )
+        return render_home(
             status_code=status_code,
             active_question=active_question,
             composer_error=composer_error,
@@ -359,7 +390,9 @@ def create_app(
         status_code: int = 200,
         setup_form: ProviderConfiguration | None = None,
         setup_error: str = "",
+        setup_error_title: str = "Connection test failed",
         setup_reason: str = "",
+        discovered_models: list[str] | None = None,
     ) -> HTMLResponse:
         configuration = _load_configuration_or_none(resolved_config_path)
         if setup_form is None:
@@ -371,7 +404,9 @@ def create_app(
                 providers=provider_options(),
                 form=setup_form,
                 setup_error=setup_error,
+                setup_error_title=setup_error_title,
                 setup_reason=setup_reason,
+                discovered_models=discovered_models,
             ),
             status_code=status_code,
         )
@@ -413,11 +448,17 @@ def create_app(
         *,
         setup_form: ProviderConfiguration | None = None,
         setup_error: str = "",
+        setup_error_title: str = "Connection test failed",
         setup_reason: str = "",
+        discovered_models: list[str] | None = None,
         active_question: str = "",
         composer_error: str = "",
         active_conversation: dict[str, Any] | None = None,
         update_status: dict[str, str] | None = None,
+        delete_all_error: str = "",
+        delete_all_status: str = "",
+        history_oob: bool = False,
+        reveal_latest_turn: bool = False,
     ) -> dict[str, Any]:
         corpus_error = ""
         try:
@@ -454,12 +495,18 @@ def create_app(
             "providers": provider_options(),
             "form": setup_form,
             "setup_error": setup_error,
+            "setup_error_title": setup_error_title,
             "setup_reason": setup_reason,
+            "discovered_models": discovered_models,
             "active_question": active_question,
             "composer_error": composer_error,
             "active_conversation": active_conversation,
             "conversations": conversations,
             "storage_error": storage_error,
+            "delete_all_error": delete_all_error,
+            "delete_all_status": delete_all_status,
+            "history_oob": history_oob,
+            "reveal_latest_turn": reveal_latest_turn,
             "corpus": corpus,
             "corpus_error": corpus_error,
             "pending_update": pending_update,
@@ -487,7 +534,12 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     async def home(request: Request) -> HTMLResponse:
         return render_home(
-            update_status=_update_status_from_request(request, resolved_data_dir)
+            update_status=_update_status_from_request(request, resolved_data_dir),
+            delete_all_status=(
+                "All local conversation records deleted."
+                if request.query_params.get("records_deleted") == "all"
+                else ""
+            ),
         )
 
     @app.get("/conversations/export.json")
@@ -548,14 +600,16 @@ def create_app(
         return RedirectResponse("/", status_code=303)
 
     @app.post("/conversations/delete-all")
-    async def delete_all_conversations(request: Request) -> RedirectResponse:
+    async def delete_all_conversations(request: Request) -> Response:
         _validate_state_changing_request(request)
         form_data = await _read_urlencoded_form(request)
         confirmation = form_data.get("confirmation", "").strip()
         if confirmation != "DELETE ALL LOCAL CONVERSATIONS":
-            raise HTTPException(
+            return render_home(
                 status_code=422,
-                detail='Type "DELETE ALL LOCAL CONVERSATIONS" to delete all records.',
+                delete_all_error=(
+                    'Type "DELETE ALL LOCAL CONVERSATIONS" to delete all records.'
+                ),
             )
         try:
             store.delete_all_conversations()
@@ -564,7 +618,7 @@ def create_app(
                 status_code=503,
                 detail=_storage_failure_message("deleting conversation records", exc),
             ) from exc
-        return RedirectResponse("/", status_code=303)
+        return RedirectResponse("/?records_deleted=all", status_code=303)
 
     @app.post("/knowledge-updates/check")
     async def check_knowledge_updates(request: Request) -> RedirectResponse:
@@ -887,6 +941,33 @@ def create_app(
             return HTMLResponse("", status_code=204, headers={"HX-Redirect": "/"})
         return RedirectResponse("/", status_code=303)
 
+    @app.post("/setup/models")
+    async def setup_models(request: Request) -> HTMLResponse:
+        _validate_state_changing_request(request)
+        form_data = await _read_urlencoded_form(request)
+        attempted = normalize_provider_form(form_data)
+        result = ModelDiscoveryResult.from_value(discover_models(attempted))
+        if not result.ok:
+            return render_setup_panel(
+                setup_form=attempted,
+                setup_error_title="Unable to discover local models",
+                setup_error=result.message,
+                setup_reason=result.reason,
+            )
+        selected_model = (
+            attempted.model
+            if attempted.model in result.models
+            else result.models[0]
+        )
+        return render_setup_panel(
+            setup_form=ProviderConfiguration(
+                provider_id=attempted.provider_id,
+                endpoint=attempted.endpoint,
+                model=selected_model,
+            ),
+            discovered_models=result.models,
+        )
+
     @app.post("/ask")
     async def ask(request: Request) -> HTMLResponse:
         _validate_state_changing_request(request)
@@ -1021,6 +1102,8 @@ def create_app(
             request,
             status_code=200,
             active_conversation=record,
+            history_oob=_is_htmx_request(request),
+            reveal_latest_turn=_is_htmx_request(request),
         )
 
     @app.get("/status")

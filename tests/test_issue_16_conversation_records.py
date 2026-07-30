@@ -188,6 +188,15 @@ class Issue16ConversationRecordControlTests(unittest.IsolatedAsyncioTestCase):
             headers={"Origin": "http://testserver"},
         )
         self.assertEqual(rejected.status_code, 422)
+        self.assertEqual(
+            rejected.headers["content-type"].split(";")[0],
+            "text/html",
+        )
+        self.assertIn('<main class="app-shell">', rejected.text)
+        self.assertIn('role="alert"', rejected.text)
+        self.assertIn("DELETE ALL LOCAL CONVERSATIONS", rejected.text)
+        self.assertIn(f'href="/conversations/{first_id}"', rejected.text)
+        self.assertIn(f'href="/conversations/{second_id}"', rejected.text)
 
         with patch("urllib.request.urlopen") as urlopen:
             accepted = await client.post(
@@ -199,10 +208,13 @@ class Issue16ConversationRecordControlTests(unittest.IsolatedAsyncioTestCase):
 
         urlopen.assert_not_called()
         self.assertEqual(accepted.status_code, 303)
+        self.assertEqual(accepted.headers["location"], "/?records_deleted=all")
 
         restarted = self.make_client()
-        restarted_home = await restarted.get("/")
+        restarted_home = await restarted.get("/?records_deleted=all")
         self.assertEqual(restarted_home.status_code, 200)
+        self.assertIn("All local conversation records deleted", restarted_home.text)
+        self.assertIn('role="status"', restarted_home.text)
         self.assertIn("No conversation records yet.", restarted_home.text)
         self.assertNotIn(f'href="/conversations/{first_id}"', restarted_home.text)
         self.assertNotIn(f'href="/conversations/{second_id}"', restarted_home.text)

@@ -1,0 +1,47 @@
+<section id="local-history"{% if history_oob %} hx-swap-oob="outerHTML"{% endif %}>
+  <h2>Local History</h2>
+  {% if delete_all_status %}
+  <p class="success" role="status">{{ delete_all_status }}</p>
+  {% endif %}
+  {% if storage_error %}
+  <p class="error" role="alert">{{ storage_error }}</p>
+  {% endif %}
+  {% if conversations %}
+  <nav aria-label="Saved conversations">
+    <ol class="history-list">
+      {% for conversation in conversations %}
+      <li>
+        <a href="/conversations/{{ conversation.id }}">{{ conversation.title }}</a>
+        <small>Corpus: {{ conversation.corpus_identity }}</small>
+        <div class="record-actions" aria-label="Actions for {{ conversation.title }}">
+          <a href="/conversations/{{ conversation.id }}/export.json">Export</a>
+          <form method="post" action="/conversations/{{ conversation.id }}/delete">
+            <button type="submit" class="link-button danger-button">Delete</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </nav>
+  <div class="history-bulk-actions" aria-label="All conversation record actions">
+    <a href="/conversations/export.json">Export all records</a>
+    <form method="post" action="/conversations/delete-all">
+      <label for="delete-all-confirmation">Type DELETE ALL LOCAL CONVERSATIONS</label>
+      <input
+        id="delete-all-confirmation"
+        name="confirmation"
+        type="text"
+        autocomplete="off"
+        required
+        {% if delete_all_error %}aria-invalid="true" aria-describedby="delete-all-error"{% endif %}
+      >
+      {% if delete_all_error %}
+      <p id="delete-all-error" class="error" role="alert">{{ delete_all_error }}</p>
+      {% endif %}
+      <button type="submit" class="danger-button">Delete all local records</button>
+    </form>
+  </div>
+  {% elif not storage_error %}
+  <p>No conversation records yet.</p>
+  {% endif %}
+</section>

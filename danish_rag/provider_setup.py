@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlparse
 import urllib.error
 import urllib.request
@@ -75,6 +75,28 @@ class CapabilityTestResult:
             provider_version=str(value.get("provider_version", "")),
             model_identity=dict(value.get("model_identity") or {}),
             capabilities=[str(item) for item in value.get("capabilities", [])],
+        )
+
+
+@dataclass(frozen=True)
+class ModelDiscoveryResult:
+    ok: bool
+    reason: str
+    message: str
+    models: list[str] = field(default_factory=list)
+
+    @classmethod
+    def from_value(
+        cls,
+        value: "ModelDiscoveryResult | dict[str, Any]",
+    ) -> "ModelDiscoveryResult":
+        if isinstance(value, cls):
+            return value
+        return cls(
+            ok=bool(value.get("ok")),
+            reason=str(value.get("reason", "")),
+            message=str(value.get("message", "")),
+            models=[str(item) for item in value.get("models", [])],
         )
 
 
@@ -175,6 +197,132 @@ def validated_configuration(
         capabilities=result.capabilities,
         validated_at_utc=datetime.now(UTC).isoformat(),
     )
+
+
+class ProviderModelDiscoverer:
+    def __init__(
+        self,
+        *,
+        policy_path: str | Path = DEFAULT_POLICY_PATH,
+        timeout_seconds: float = 10.0,
+        request_json: Callable[
+            [str, str, str, dict[str, Any] | None],
+            dict[str, Any],
+        ]
+        | None = None,
+    ) -> None:
+        self.policy = load_runtime_policy(policy_path)
+        self.timeout_seconds = timeout_seconds
+        self._injected_request_json = request_json
+
+    def __call__(self, configuration: ProviderConfiguration) -> ModelDiscoveryResult:
+        failures = validate_provider_configuration(
+            ProviderConfiguration(
+                provider_id=configuration.provider_id,
+                endpoint=configuration.endpoint,
+                model="discovery-placeholder",
+            )
+        )
+        if failures:
+            return ModelDiscoveryResult(
+                ok=False,
+                reason="invalid_configuration",
+                message=" ".join(failures),
+            )
+
+        try:
+            if configuration.provider_id == "ollama":
+                models = self._discover_ollama(configuration.endpoint)
+            elif configuration.provider_id == "openai_compatible":
+                models = self._discover_openai_compatible(configuration.endpoint)
+            else:
+                return ModelDiscoveryResult(
+                    ok=False,
+                    reason="unsupported_provider",
+                    message="Choose one of the supported local generation-model providers.",
+                )
+        except Exception as exc:
+            return ModelDiscoveryResult(
+                ok=False,
+                reason="service_unreachable",
+                message=(
+                    "Start the selected local provider, confirm its loopback endpoint "
+                    f"is reachable, and retry model discovery. Detail: {exc}"
+                ),
+            )
+
+        if not models:
+            return ModelDiscoveryResult(
+                ok=False,
+                reason="no_compatible_models",
+                message=(
+                    "No compatible local generation models were found. Install or load "
+                    "a local chat model that supports the provider generation contract, "
+                    "then retry."
+                ),
+            )
+        return ModelDiscoveryResult(
+            ok=True,
+            reason="passed",
+            message="Compatible local generation models found.",
+            models=models,
+        )
+
+    def _discover_ollama(self, endpoint: str) -> list[str]:
+        tags_payload = self._request_json(endpoint, "GET", "/api/tags")
+        tag_models = tags_payload.get("models")
+        if not isinstance(tag_models, list):
+            return []
+
+        identity = self.policy["models"]["generation"].get("identity", {})
+        compatible: list[str] = []
+        for item in tag_models[:100]:
+            if not isinstance(item, dict):
+                continue
+            model = item.get("name") or item.get("model")
+            if not isinstance(model, str) or not model or _is_cloud_model_id(model):
+                continue
+            try:
+                payload = self._request_json(
+                    endpoint,
+                    "POST",
+                    "/api/show",
+                    {"model": model},
+                )
+            except Exception:
+                continue
+            if _ollama_model_matches_generation_contract(payload, identity):
+                compatible.append(model)
+        return sorted(set(compatible), key=str.casefold)
+
+    def _discover_openai_compatible(self, endpoint: str) -> list[str]:
+        payload = self._request_json(endpoint, "GET", "/v1/models")
+        return sorted(
+            (
+                model
+                for model in _openai_model_ids(payload)
+                if not _is_cloud_model_id(model)
+            ),
+            key=str.casefold,
+        )
+
+    def _request_json(
+        self,
+        endpoint: str,
+        method: str,
+        path: str,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if self._injected_request_json is not None:
+            return self._injected_request_json(endpoint, method, path, payload)
+        return _request_provider_json(
+            endpoint,
+            method,
+            path,
+            payload,
+            timeout_seconds=self.timeout_seconds,
+            purpose="Provider model discovery",
+        )
 
 
 class ProviderCapabilityTester:
@@ -361,3 +509,74 @@ def _openai_model_ids(payload: dict[str, Any]) -> set[str]:
         if isinstance(item, dict) and isinstance(item.get("id"), str):
             model_ids.add(item["id"])
     return model_ids
+
+
+def _is_cloud_model_id(model: str) -> bool:
+    return model.casefold().endswith(":cloud")
+
+
+def _ollama_model_matches_generation_contract(
+    payload: dict[str, Any],
+    identity: dict[str, Any],
+) -> bool:
+    capabilities = payload.get("capabilities")
+    if not isinstance(capabilities, list) or "completion" not in capabilities:
+        return False
+    details = payload.get("details")
+    model_info = payload.get("model_info")
+    if not isinstance(details, dict) or not isinstance(model_info, dict):
+        return False
+    family = details.get("family")
+    if not family:
+        families = details.get("families")
+        if isinstance(families, list):
+            family = next(
+                (candidate for candidate in families if isinstance(candidate, str)),
+                None,
+            )
+    expected = {
+        "family": identity.get("family"),
+        "architecture": identity.get("architecture"),
+        "quantization_level": identity.get("quantization_level"),
+    }
+    actual = {
+        "family": family,
+        "architecture": model_info.get("general.architecture"),
+        "quantization_level": details.get("quantization_level"),
+    }
+    return all(
+        not expected_value or actual[key] == expected_value
+        for key, expected_value in expected.items()
+    )
+
+
+def _request_provider_json(
+    endpoint: str,
+    method: str,
+    path: str,
+    payload: dict[str, Any] | None,
+    *,
+    timeout_seconds: float,
+    purpose: str,
+) -> dict[str, Any]:
+    try:
+        require_loopback_endpoint(endpoint, purpose=purpose)
+    except PrivacyBoundaryError as exc:
+        raise RuntimeError(str(exc)) from exc
+    data = None
+    headers = {"Accept": "application/json"}
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    request = urllib.request.Request(
+        f"{endpoint.rstrip('/')}{path}",
+        data=data,
+        headers=headers,
+        method=method,
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {exc.code}: {detail}") from exc

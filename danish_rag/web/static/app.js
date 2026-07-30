@@ -2,6 +2,7 @@ const evidenceReturnTargets = new WeakMap();
 const requestStatusByFormClass = new Map([
   ["composer", "Preparing answer."],
   ["setup-form", "Testing provider."],
+  ["model-discovery-button", "Finding compatible local models."],
 ]);
 const swapStatusByTargetId = new Map([
   ["conversation-main", "Conversation updated."],
@@ -20,10 +21,20 @@ function announceStatus(message) {
   }, 0);
 }
 
-function focusConversationTitle(root = document) {
+function focusConversationTitle(root = document, { preventScroll = false } = {}) {
   const title = root.querySelector("#conversation-title");
   if (title instanceof HTMLElement) {
-    title.focus();
+    title.focus({ preventScroll });
+  }
+}
+
+function revealLatestTurn(conversation) {
+  if (conversation.dataset.revealLatestTurn !== "true") {
+    return;
+  }
+  const turnStack = conversation.querySelector(".turn-stack");
+  if (turnStack instanceof HTMLElement) {
+    turnStack.scrollTop = turnStack.scrollHeight;
   }
 }
 
@@ -82,7 +93,11 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
   }
 
   if (target.id === "conversation-main") {
-    focusConversationTitle(document);
+    const conversation = document.getElementById("conversation-main");
+    if (conversation instanceof HTMLElement) {
+      focusConversationTitle(conversation, { preventScroll: true });
+      revealLatestTurn(conversation);
+    }
   }
 
   const message = swapStatusByTargetId.get(target.id);

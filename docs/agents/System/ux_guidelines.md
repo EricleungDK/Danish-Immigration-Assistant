@@ -16,6 +16,10 @@ Tomato Score are separate named indicators with reasons.
 
 - Preserve the user's question when an operation fails.
 - Keep a persistent multiline composer and local history controls.
+- Let users request installed-model choices from the selected loopback provider;
+  preserve provider/endpoint state when discovery fails.
+- Keep long active conversations inside an intentional message scroller, reveal
+  the newest saved answer, and keep the composer visible without covering turns.
 - Inline citations open a focused evidence drawer with publisher, URL, check date,
   corpus/model identity, claim support, and trust reasons.
 - Knowledge update discovery, signed download/review, and installation are three
@@ -29,9 +33,12 @@ narrow width and 200% text zoom. Respect reduced-motion preferences.
 
 ## Empty / Loading / Error States
 
-First launch explains provider setup. Long generation/indexing work has a status
-message. Errors distinguish provider, retrieval, validation, storage, and update
-failures and provide a local corrective action without claiming success.
+First launch explains provider setup. Model discovery, provider testing, long
+generation, and indexing work have visible status messages; provider testing
+also prevents duplicate submission while it is running. Errors distinguish
+provider, retrieval, validation, storage, and update failures and provide a local
+corrective action without claiming success. Invalid destructive confirmations
+remain inside the HTML application with an inline alert.
 
 ## Animation & Transitions
 

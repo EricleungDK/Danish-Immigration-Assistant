@@ -48,6 +48,29 @@ def fixture_capability_tester(configuration: ProviderConfiguration) -> dict[str,
     }
 
 
+def fixture_model_discoverer(configuration: ProviderConfiguration) -> dict[str, Any]:
+    if configuration.endpoint.endswith(":11435"):
+        return {
+            "ok": False,
+            "reason": "service_unreachable",
+            "message": "Start Ollama and confirm the local endpoint, then retry.",
+            "models": [],
+        }
+    if configuration.provider_id == "ollama":
+        return {
+            "ok": True,
+            "reason": "passed",
+            "message": "Compatible local generation models found.",
+            "models": ["gemma4:12b", "gemma4:26b"],
+        }
+    return {
+        "ok": True,
+        "reason": "passed",
+        "message": "Local provider models found.",
+        "models": ["browser-model"],
+    }
+
+
 class FixtureAnswerGenerator:
     def generate(
         self,
@@ -237,6 +260,7 @@ app = create_app(
     data_dir=DATA_DIR,
     answer_generator=FixtureAnswerGenerator(),
     capability_tester=fixture_capability_tester,
+    model_discoverer=fixture_model_discoverer,
     embedding_provider=EMBEDDING_PROVIDER,
     trust_root_path=RELEASE_TRUST.trust_root_path,
     github_release_client=GITHUB_RELEASE_CLIENT,
@@ -253,6 +277,13 @@ async def reset_browser_test_knowledge_release() -> dict[str, str]:
         DATA_DIR,
         release_dir=BUNDLED_MINIMAL_RELEASE,
         embedding_provider=EMBEDDING_PROVIDER,
+    )
+    app.state.automatic_check_state.update(
+        {
+            "last_attempt": None,
+            "running": False,
+            "status": None,
+        }
     )
     return {
         "knowledge_release_id": str(

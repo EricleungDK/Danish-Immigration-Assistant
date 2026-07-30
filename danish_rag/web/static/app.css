@@ -171,11 +171,14 @@ textarea:focus-visible,
   display: grid;
   grid-template-areas: "rail conversation setup";
   grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr) minmax(18rem, 24rem);
+  height: calc(100dvh - 4.25rem);
   min-height: calc(100vh - 4.25rem);
 }
 
 .local-rail,
 .setup-panel {
+  min-height: 0;
+  overflow-y: auto;
   border-color: var(--line);
   background: rgba(255, 255, 255, 0.55);
 }
@@ -408,10 +411,12 @@ textarea:focus-visible,
   position: relative;
   display: flex;
   grid-area: conversation;
+  height: 100%;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
   flex-direction: column;
   padding: clamp(1rem, 4vw, 3rem);
-  padding-bottom: 10rem;
 }
 
 #conversation-title {
@@ -511,8 +516,12 @@ h1 {
 
 .turn-stack {
   display: grid;
+  min-height: 0;
   max-width: 58rem;
+  flex: 1 1 auto;
+  align-content: start;
   gap: 1rem;
+  overflow-y: auto;
 }
 
 .turn {
@@ -807,13 +816,11 @@ h1 {
 }
 
 .composer {
-  position: fixed;
-  right: min(24rem, 30vw);
-  bottom: 0;
-  left: min(17rem, 21vw);
-  z-index: 4;
-  padding: 1rem clamp(1rem, 4vw, 3rem) 1.25rem;
-  background: linear-gradient(transparent, var(--paper) 24%, var(--paper));
+  position: static;
+  flex: 0 0 auto;
+  margin-top: 1rem;
+  padding: 1rem 0 0;
+  background: transparent;
 }
 
 .composer label,
@@ -959,7 +966,8 @@ button:hover {
 }
 
 .setup-form input[type="url"],
-.setup-form input[type="text"] {
+.setup-form input[type="text"],
+.setup-form select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -972,6 +980,33 @@ button:hover {
   justify-self: start;
 }
 
+.setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.setup-actions .secondary-button {
+  border: 1px solid var(--green);
+  background: var(--surface);
+  color: var(--green);
+}
+
+.setup-actions .secondary-button:hover {
+  background: var(--surface-quiet);
+}
+
+.setup-progress {
+  display: none;
+  margin: 0;
+  color: var(--blue);
+  font-weight: 800;
+}
+
+.setup-progress.htmx-request {
+  display: block;
+}
+
 @media (max-width: 1080px) {
   .app-shell {
     grid-template-areas:
@@ -979,6 +1014,7 @@ button:hover {
       "rail"
       "setup";
     grid-template-columns: minmax(0, 1fr);
+    height: auto;
     padding-bottom: 0;
   }
 

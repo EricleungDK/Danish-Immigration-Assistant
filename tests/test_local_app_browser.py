@@ -13,7 +13,7 @@ class BrowserLevelApplicationTests(unittest.IsolatedAsyncioTestCase):
     async def test_default_ollama_capability_timeout_matches_live_probe_budget(self):
         self.assertEqual(ProviderCapabilityTester().timeout_seconds, 60.0)
 
-    def make_client(self, capability_tester=None):
+    def make_client(self, capability_tester=None, model_discoverer=None):
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         config_path = Path(self.tempdir.name) / "provider-config.json"
@@ -23,6 +23,7 @@ class BrowserLevelApplicationTests(unittest.IsolatedAsyncioTestCase):
             config_path=config_path,
             data_dir=data_dir,
             capability_tester=capability_tester,
+            model_discoverer=model_discoverer,
             embedding_provider=self.embedding_provider,
         )
         client = httpx.AsyncClient(
@@ -128,6 +129,73 @@ class BrowserLevelApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("api_key", home.text)
         self.assertNotIn("secret", home.text.casefold())
 
+    async def test_model_discovery_returns_an_html_choice_fragment_without_url_data(self):
+        observed = []
+
+        def discoverer(configuration):
+            observed.append(configuration)
+            return {
+                "ok": True,
+                "reason": "passed",
+                "message": "Compatible local generation models found.",
+                "models": ["gemma4:12b", "gemma4:26b"],
+            }
+
+        client, _ = self.make_client(model_discoverer=discoverer)
+        response = await client.post(
+            "/setup/models",
+            data={
+                "provider_id": "ollama",
+                "endpoint": "http://127.0.0.1:11434",
+                "model": "",
+            },
+            headers={
+                "Origin": "http://testserver",
+                "HX-Request": "true",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"].split(";")[0], "text/html")
+        self.assertEqual(len(observed), 1)
+        self.assertEqual(observed[0].provider_id, "ollama")
+        self.assertEqual(observed[0].endpoint, "http://127.0.0.1:11434")
+        self.assertIn('<select id="model" name="model"', response.text)
+        self.assertIn('<option value="gemma4:12b"', response.text)
+        self.assertIn('<option value="gemma4:26b"', response.text)
+        self.assertNotIn("embeddinggemma", response.text)
+
+    async def test_model_discovery_failure_preserves_provider_and_endpoint_in_html(self):
+        def failing_discoverer(configuration):
+            return {
+                "ok": False,
+                "reason": "service_unreachable",
+                "message": "Start Ollama and confirm the local endpoint, then retry.",
+                "models": [],
+            }
+
+        client, _ = self.make_client(model_discoverer=failing_discoverer)
+        response = await client.post(
+            "/setup/models",
+            data={
+                "provider_id": "ollama",
+                "endpoint": "http://127.0.0.1:11435",
+                "model": "gemma4:12b",
+            },
+            headers={
+                "Origin": "http://testserver",
+                "HX-Request": "true",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"].split(";")[0], "text/html")
+        self.assertIn("Unable to discover local models", response.text)
+        self.assertIn("Start Ollama", response.text)
+        self.assertIn("value=\"http://127.0.0.1:11435\"", response.text)
+        self.assertIn('value="ollama"', response.text)
+        self.assertIn("checked", response.text)
+
     async def test_state_changing_requests_reject_non_loopback_host_and_mismatched_origin(self):
         client, _ = self.make_client()
 
@@ -157,6 +225,13 @@ class BrowserLevelApplicationTests(unittest.IsolatedAsyncioTestCase):
             headers={"Host": "127.0.0.1:8000", "Origin": "http://127.0.0.1:9000"},
         )
         self.assertEqual(mismatched_port.status_code, 403)
+
+        discovery_bad_origin = await client.post(
+            "/setup/models",
+            data=self.ollama_setup_payload(),
+            headers={"Host": "testserver", "Origin": "http://evil.example"},
+        )
+        self.assertEqual(discovery_bad_origin.status_code, 403)
 
 
 if __name__ == "__main__":

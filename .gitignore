@@ -10,3 +10,4 @@ node_modules/
 playwright-report/
 test-results/
 review/issue-46-official-source-review/
+review/private-evaluation/

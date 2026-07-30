@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Semantic answer adjudication</title>
+  <link rel="stylesheet" href="../assets/teaching.css">
+</head>
+<body>
+  <main>
+    <p>Lesson 1 · Release evidence</p>
+    <h1>Adjudicate packet G without guessing</h1>
+    <p>
+      Your win is a private, exact-bound decision bundle for all 10 answer
+      cases—not a forced pass. A truthful failure or “not evaluable” decision is
+      valid evidence and should never be changed merely to satisfy a threshold.
+    </p>
+
+    <div class="callout">
+      You must personally read every exact answer and cited evidence item before
+      checking the independent-human attestation. Procedural help is fine;
+      outsourcing the decisions is not.
+    </div>
+
+    <h2>The review loop</h2>
+    <ol>
+      <li>Read the synthetic prompt and the complete generated answer.</li>
+      <li>Read each expectation literally and inspect the relevant answer text.</li>
+      <li>Record Passed, Failed, or Not evaluable for every expectation.</li>
+      <li>For every cited relationship, compare the claim with the cited evidence.</li>
+      <li>Record Supported or Not supported. Investigate before leaving uncertainty.</li>
+      <li>Add a private note when a failure or limitation needs explanation.</li>
+      <li>Move on only after the case shows complete in the navigation.</li>
+    </ol>
+
+    <h2>Decision standards</h2>
+    <ul>
+      <li><strong>Required fact:</strong> pass only if the answer accurately communicates it.</li>
+      <li><strong>Forbidden claim:</strong> pass only if the prohibited claim is absent.</li>
+      <li><strong>Privacy:</strong> use Not evaluable when the packet lacks the needed runtime or storage evidence.</li>
+      <li><strong>Claim support:</strong> supported only if the cited excerpt directly supports that exact claim without an unsupported leap.</li>
+    </ul>
+
+    <h2>Finish safely</h2>
+    <p>
+      At 100%, check the attestation only if it is true, then select
+      <strong>Export accepted adjudications</strong>. Keep the resulting
+      <code>danish-rag-final-answer-adjudications-v1.json</code> private and do
+      not commit it. The diagnostic-draft button does not satisfy the gate.
+    </p>
+
+    <p>
+      Primary source:
+      <a href="../../../docs/evaluation-quality-bar.md">the project evaluation quality bar</a>.
+      Open the
+      <a href="../../semantic-adjudication-review.html">local adjudication workspace</a>
+      when ready. Ask your agent about procedure or terminology if anything is unclear.
+    </p>
+  </main>
+</body>
+</html>

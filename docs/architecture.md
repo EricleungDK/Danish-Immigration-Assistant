@@ -46,8 +46,14 @@ These statements are project-level product direction. Issue #26 did not implemen
 - Issue #26 records Ollama 0.30.6+ as the first MVP provider baseline and `gemma4:12b` as the approved initial generation model. This does not make Ollama mandatory for future providers. See [docs/runtime-baseline.md](runtime-baseline.md) for the checked runtime contract.
 - Provider-specific differences are isolated behind independent adapters rather than treated as perfectly interchangeable.
 - Generation and embedding are separate capabilities and may use different providers or models.
-- Provider selection is manual in the MVP and includes a connection test; automatic provider discovery is not required.
-- Compatible local generation models remain configurable.
+- Provider selection remains manual and includes a connection test. Following the
+  2026-07-23 revised product requirement, setup can explicitly query the selected
+  loopback provider for installed model choices; this is user-initiated provider
+  inventory discovery, not automatic provider discovery.
+- Compatible local generation models remain configurable. Ollama inventory
+  discovery excludes cloud-tagged, embedding-only, and models that do not match
+  the approved generation identity/capability contract; the selected model still
+  must pass the full connection/capability test before it is saved.
 - Issue #4 approves `embeddinggemma` as the initial supported embedding model for the MVP retrieval baseline. It remains tied to the issue #29 benchmark evidence and may be replaced only through a later evaluated re-indexing decision.
 - Each dense index records its embedding model, model identity, vector dimensions, corpus fixture identity, and schema version. Changing the embedding model, dimensions, corpus identity, or schema version requires re-indexing instead of mixing incompatible vectors.
 

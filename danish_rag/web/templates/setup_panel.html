@@ -4,7 +4,7 @@
     <h2 id="setup-title">Connect a local generation model.</h2>
     {% if setup_error %}
     <div class="error" role="alert">
-      <strong>Connection test failed</strong>
+      <strong>{{ setup_error_title }}</strong>
       <p>{{ setup_error }}</p>
       {% if setup_reason %}<small>Reason: {{ setup_reason }}</small>{% endif %}
     </div>
@@ -29,6 +29,8 @@
       hx-post="/setup"
       hx-target="#setup-panel"
       hx-swap="outerHTML"
+      hx-indicator="#setup-progress"
+      hx-disabled-elt="find .setup-submit"
     >
       <fieldset>
         <legend>Provider</legend>
@@ -52,8 +54,40 @@
       <label for="endpoint">Endpoint</label>
       <input id="endpoint" name="endpoint" type="url" value="{{ form.endpoint }}" required>
       <label for="model">Generation model</label>
+      {% if discovered_models %}
+      <select id="model" name="model" required>
+        {% for model in discovered_models %}
+        <option value="{{ model }}"{% if form.model == model %} selected{% endif %}>{{ model }}</option>
+        {% endfor %}
+      </select>
+      {% else %}
       <input id="model" name="model" type="text" value="{{ form.model }}" required>
-      <button type="submit">Test and Save</button>
+      {% endif %}
+      <div class="setup-actions">
+        <button
+          type="submit"
+          class="secondary-button model-discovery-button"
+          formnovalidate
+          hx-post="/setup/models"
+          hx-target="#setup-panel"
+          hx-swap="outerHTML"
+          hx-indicator="#model-discovery-progress"
+          hx-disabled-elt="this"
+        >Find installed models</button>
+        <button type="submit" class="setup-submit">Test and Save</button>
+      </div>
+      <p
+        id="model-discovery-progress"
+        class="setup-progress htmx-indicator"
+        role="status"
+        aria-live="polite"
+      >Finding compatible local models...</p>
+      <p
+        id="setup-progress"
+        class="setup-progress htmx-indicator"
+        role="status"
+        aria-live="polite"
+      >Testing provider...</p>
     </form>
   </div>
 </aside>
