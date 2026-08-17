@@ -222,6 +222,7 @@ def build_live_ollama_runner(
     configuration: ProviderConfiguration,
     embedding_provider: EmbeddingProvider | None = None,
     embedding_endpoint: str | None = None,
+    trust_root_path: str | Path | None = None,
     generation_timeout_seconds: float = 90.0,
 ) -> AnswerServiceCaseRunner:
     """Build the live evaluator over the installed production retrieval path.
@@ -239,6 +240,7 @@ def build_live_ollama_runner(
         data_dir,
         embedding_provider=embedding_provider,
         embedding_endpoint=embedding_endpoint or configuration.endpoint,
+        trust_root_path=trust_root_path,
     )
     return AnswerServiceCaseRunner(
         retriever=retriever,
@@ -1890,6 +1892,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--data-dir", default=default_data_dir())
     parser.add_argument("--config-path", default=default_config_path())
     parser.add_argument(
+        "--trust-root-path",
+        help=(
+            "Trusted application-configured release root for a non-bundled active "
+            "release in live-ollama mode."
+        ),
+    )
+    parser.add_argument(
         "--execution-capture",
         metavar="LOCAL_PATH",
         help=(
@@ -1998,6 +2007,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "execution-capture and capture-report paths and SHA-256 values "
                 "are only valid in captured-live-ollama mode"
             )
+        if args.trust_root_path and args.mode != "live-ollama":
+            raise FinalAnswerEvaluationError(
+                "--trust-root-path is only valid in live-ollama mode"
+            )
         adjudications = None
         if args.adjudications:
             adjudications = json.loads(
@@ -2047,6 +2060,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             runner = build_live_ollama_runner(
                 data_dir=args.data_dir,
                 configuration=configuration,
+                trust_root_path=args.trust_root_path,
             )
         else:
             verified_release = verify_knowledge_release(BUNDLED_MINIMAL_RELEASE)

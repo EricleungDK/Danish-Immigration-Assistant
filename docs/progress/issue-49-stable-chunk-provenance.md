@@ -59,7 +59,7 @@ retrieval provenance, answer validation, and conversation persistence.
 Full Python verification:
 
 ```text
-327 tests passed; 2 opt-in live-provider tests skipped
+329 tests passed; 2 opt-in live-provider tests skipped
 ```
 
 The final full Playwright run passed all 30 non-live tests and skipped the
@@ -124,7 +124,9 @@ while production roots remain application-owned. Chunk
 indexes require activation digests, interrupted same-ID swaps recover from a
 transaction marker, and each retriever owns an in-memory lexical snapshot for
 its full lifetime. Pre-upgrade whole-document records must match the bundled
-signed release before their directly validated index can be used.
+signed release before their directly validated index can be used. The live
+final-answer evaluator accepts the same trusted custom-root configuration as
+the production retriever.
 
 The standards review also noted that production maintainer-role evidence is not
 part of the existing manifest contract. That gap predates issue #49, and the
