@@ -559,6 +559,7 @@ async def _execute_network_observed_workflows(
         results = HybridRetriever.from_data_dir(
             data_dir,
             embedding_provider=embedding_provider,
+            trust_root_path=trust_root_path,
         ).retrieve("What Danish test do I need for permanent residence?")
     workflow_results.append(
         {"id": "retrieval", "status": "passed" if results else "failed"}
@@ -905,7 +906,10 @@ def run_rollback_fault_matrix(
                 embedding_provider=embedding_provider,
                 trust_root_path=trust_root_path,
             )
-            before = active_corpus_summary(data_dir)
+            before = active_corpus_summary(
+                data_dir,
+                trust_root_path=trust_root_path,
+            )
             prior_identity = prior_identity or before
             _build_fixture_release(
                 release_dir,
@@ -964,7 +968,10 @@ def run_rollback_fault_matrix(
                 failure_type = type(exc).__name__
 
             try:
-                after = active_corpus_summary(data_dir)
+                after = active_corpus_summary(
+                    data_dir,
+                    trust_root_path=trust_root_path,
+                )
                 prior_pair_unchanged = after == before
                 target_release_active = (
                     after["knowledge_release_id"] == release_dir.name
@@ -978,6 +985,7 @@ def run_rollback_fault_matrix(
                 retrieved = HybridRetriever.from_data_dir(
                     data_dir,
                     embedding_provider=embedding_provider,
+                    trust_root_path=trust_root_path,
                 ).retrieve("What Danish test is required for permanent residence?")
                 prior_pair_queryable = bool(retrieved) and all(
                     result.get("knowledge_release_id") == before["knowledge_release_id"]

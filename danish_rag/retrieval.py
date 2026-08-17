@@ -327,9 +327,13 @@ class HybridRetriever:
         *,
         embedding_provider: EmbeddingProvider | None = None,
         embedding_endpoint: str | None = None,
+        trust_root_path: str | Path | None = None,
     ) -> "HybridRetriever":
         with active_release_snapshot():
-            active_release = load_active_release(data_dir)
+            active_release = load_active_release(
+                data_dir,
+                trust_root_path=trust_root_path,
+            )
             documents = load_active_documents(
                 data_dir,
                 active_release=active_release,

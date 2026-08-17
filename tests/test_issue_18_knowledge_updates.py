@@ -195,7 +195,10 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
         installation_status = await self.wait_for_install_terminal_status(client)
         self.assertIn("Knowledge update installed", installation_status.text)
         self.assertEqual(
-            active_corpus_summary(self.data_dir)["knowledge_release_id"],
+            active_corpus_summary(
+                self.data_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )["knowledge_release_id"],
             "kr-2026-07-07.1",
         )
         self.assertTrue((self.data_dir / "index" / "kr-2026-07-07.1").exists())

@@ -135,7 +135,10 @@ class Issue24UsabilityValidationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Knowledge update installed", status.text)
         self.assertIn("Active corpus: kr-2026-07-07.1", status.text)
         self.assertEqual(
-            active_corpus_summary(self.data_dir)["knowledge_release_id"],
+            active_corpus_summary(
+                self.data_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )["knowledge_release_id"],
             "kr-2026-07-07.1",
         )
 

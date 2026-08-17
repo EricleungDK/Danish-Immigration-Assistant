@@ -279,7 +279,10 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(install.status_code, 303)
         self.assertIn("Knowledge update installed", install_status.text)
         self.assertEqual(
-            active_corpus_summary(self.data_dir)["knowledge_release_id"],
+            active_corpus_summary(
+                self.data_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )["knowledge_release_id"],
             "kr-2026-07-07.1",
         )
         self.assertEqual(delete.status_code, 303)

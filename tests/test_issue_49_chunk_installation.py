@@ -88,6 +88,7 @@ class ChunkInstallationTests(unittest.TestCase):
             for item in HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
+                trust_root_path=self.release_trust.trust_root_path,
             ).retrieve("Which equivalent or higher Danish test is described?", limit=2)
             if "equivalent or higher" in item["content"]
         )
@@ -305,6 +306,7 @@ class ChunkInstallationTests(unittest.TestCase):
             HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
+                trust_root_path=self.release_trust.trust_root_path,
             )
 
     def test_signed_manifest_rejects_tampered_corpus_and_active_hash_evidence(self):
@@ -342,6 +344,7 @@ class ChunkInstallationTests(unittest.TestCase):
             HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
+                trust_root_path=self.release_trust.trust_root_path,
             )
 
     def test_active_record_cannot_redirect_the_installed_trust_anchor(self):
@@ -363,8 +366,34 @@ class ChunkInstallationTests(unittest.TestCase):
         retriever = HybridRetriever.from_data_dir(
             self.data_dir,
             embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
         )
 
+        self.assertEqual(
+            retriever.manifest["knowledge_release_id"],
+            "kr-2026-07-30.1",
+        )
+
+    def test_custom_trust_anchor_must_be_supplied_by_trusted_configuration(self):
+        release_dir = self.build_chunked_release()
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+
+        with self.assertRaisesRegex(KnowledgeReleaseError, "explicit trust anchor"):
+            HybridRetriever.from_data_dir(
+                self.data_dir,
+                embedding_provider=self.embedding_provider,
+            )
+
+        retriever = HybridRetriever.from_data_dir(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
         self.assertEqual(
             retriever.manifest["knowledge_release_id"],
             "kr-2026-07-30.1",
@@ -390,6 +419,7 @@ class ChunkInstallationTests(unittest.TestCase):
             HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
+                trust_root_path=self.release_trust.trust_root_path,
             )
 
     def test_same_id_pointer_write_failure_restores_previous_active_pair(self):
@@ -440,6 +470,62 @@ class ChunkInstallationTests(unittest.TestCase):
         retriever = HybridRetriever.from_data_dir(
             self.data_dir,
             embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        self.assertNotIn(
+            changed_content,
+            " ".join(
+                document["content"]
+                for document in retriever.documents_by_id.values()
+            ),
+        )
+
+    def test_same_id_index_backup_failure_preserves_previous_active_pair(self):
+        release_dir = self.build_chunked_release()
+        original = install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        changed_content = "Replacement content must not survive a failed backup move."
+        changed_source, changed_document = bundled_reviewed_source_and_document(
+            changed_content
+        )
+        replacement_dir = self.root / "backup-move-failure"
+        build_chunked_release_fixture(
+            release_dir=replacement_dir,
+            release_id="kr-2026-07-30.1",
+            source=changed_source,
+            document=changed_document,
+            release_trust=self.release_trust,
+            created_at_utc="2026-07-30T11:00:00Z",
+        )
+        original_index_path = Path(original["active"]["index_path"])
+        backup_index_path = original_index_path.with_name(
+            f".{original_index_path.name}.backup"
+        )
+        original_replace = Path.replace
+
+        def fail_index_backup(path: Path, target: Path) -> Path:
+            if path == original_index_path and Path(target) == backup_index_path:
+                raise OSError("simulated index backup move failure")
+            return original_replace(path, target)
+
+        with patch.object(Path, "replace", fail_index_backup):
+            with self.assertRaisesRegex(OSError, "index backup move failure"):
+                install_knowledge_release(
+                    self.data_dir,
+                    release_dir=replacement_dir,
+                    embedding_provider=self.embedding_provider,
+                    trust_root_path=self.release_trust.trust_root_path,
+                )
+
+        self.assertTrue(original_index_path.is_dir())
+        retriever = HybridRetriever.from_data_dir(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
         )
         self.assertNotIn(
             changed_content,
@@ -484,8 +570,14 @@ class ChunkInstallationTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        def switch_after_first_read(data_dir: str | Path):
-            snapshot = load_active_release(data_dir)
+        def switch_after_first_read(
+            data_dir: str | Path,
+            **_kwargs,
+        ):
+            snapshot = load_active_release(
+                data_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
             active_path.write_text(
                 json.dumps(second_install["active"], indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
@@ -499,6 +591,7 @@ class ChunkInstallationTests(unittest.TestCase):
             retriever = HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
+                trust_root_path=self.release_trust.trust_root_path,
             )
 
         self.assertEqual(
@@ -524,6 +617,7 @@ class ChunkInstallationTests(unittest.TestCase):
         original_retriever = HybridRetriever.from_data_dir(
             self.data_dir,
             embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
         )
         changed_content = "Replacement rows must not enter an existing retriever."
         changed_source, changed_document = bundled_reviewed_source_and_document(
@@ -595,6 +689,7 @@ class ChunkInstallationTests(unittest.TestCase):
             "index_artifacts",
         ):
             active.pop(field, None)
+        active["manifest"].pop("corpus_schema_version", None)
         documents_path = Path(active["documents_path"])
         documents = json.loads(documents_path.read_text(encoding="utf-8"))
         documents[0]["content"] = "LEGACY POISON"
@@ -672,7 +767,10 @@ class ChunkInstallationTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        recovered = load_active_release(self.data_dir)
+        recovered = load_active_release(
+            self.data_dir,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
 
         self.assertEqual(recovered["manifest"], original["manifest"])
         self.assertFalse(backup_corpus.exists())
@@ -729,7 +827,10 @@ class ChunkInstallationTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        recovered = load_active_release(self.data_dir)
+        recovered = load_active_release(
+            self.data_dir,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
 
         self.assertEqual(recovered, original["active"])
         self.assertTrue(final_index.is_dir())

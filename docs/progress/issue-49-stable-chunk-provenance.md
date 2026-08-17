@@ -49,7 +49,7 @@ and reopens the saved conversation record with its original provenance.
 Focused issue and regression checks:
 
 ```text
-49 issue #49 tests passed
+51 issue #49 tests passed
 ```
 
 The focused set covers deterministic authoring, signed verification,
@@ -59,7 +59,7 @@ retrieval provenance, answer validation, and conversation persistence.
 Full Python verification:
 
 ```text
-325 tests passed; 2 opt-in live-provider tests skipped
+327 tests passed; 2 opt-in live-provider tests skipped
 ```
 
 The final full Playwright run passed all 30 non-live tests and skipped the
@@ -119,7 +119,8 @@ the same direct validation.
 
 The seventh review removed the last mutable and lifetime-bound seams. Active
 records no longer choose their trust root; custom roots are anchored outside
-the active pointer, while production roots remain application-owned. Chunk
+the active pointer and mutable corpus data by trusted application configuration,
+while production roots remain application-owned. Chunk
 indexes require activation digests, interrupted same-ID swaps recover from a
 transaction marker, and each retriever owns an in-memory lexical snapshot for
 its full lifetime. Pre-upgrade whole-document records must match the bundled
