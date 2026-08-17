@@ -7,7 +7,6 @@ import json
 import os
 import re
 import shutil
-import sqlite3
 import stat
 import uuid
 import zipfile
@@ -21,7 +20,7 @@ from .corpus_schema import (
     WHOLE_DOCUMENT_CORPUS_SCHEMA,
     corpus_schema_contract,
 )
-from .embedding_provider import EmbeddingProvider, embedding_provider_id, resolve_embedding_provider
+from .embedding_provider import EmbeddingProvider, resolve_embedding_provider
 from .evidence_integrity import is_utc_seconds
 from .github_release_client import (
     ArtifactDownloadApproval,
@@ -112,7 +111,11 @@ def install_knowledge_release(
 ) -> dict[str, Any]:
     """Install a verified reviewed knowledge release and build its local hybrid index."""
 
-    from .retrieval import embedding_model_profile, inspect_embedding_model
+    from .retrieval import (
+        active_index_matches_release,
+        embedding_model_profile,
+        inspect_embedding_model,
+    )
 
     embedding_profile = embedding_model_profile(embedding_model)
     resolved_embedding_provider = resolve_embedding_provider(
@@ -152,7 +155,7 @@ def install_knowledge_release(
             manifest,
             documents,
         )
-        and _active_index_matches_embedding_contract(
+        and active_index_matches_release(
             resolved_data_dir,
             manifest,
             documents=documents,
@@ -226,6 +229,9 @@ def install_knowledge_release(
         embedding_provider=resolved_embedding_provider,
         embedding_model_identity=resolved_model_identity,
     )
+    index_artifacts = _index_artifact_integrity(
+        staging_dir / "index" / release_id
+    )
 
     progress.report("activation", "Activating verified corpus and local index.", 95)
     _inject_install_fault(fault_injector, "activation")
@@ -240,6 +246,7 @@ def install_knowledge_release(
         "manifest": manifest,
         "documents_path": str(final_documents_path),
         "index_path": str(final_index_path),
+        "index_artifacts": index_artifacts,
         "installed_at_utc": datetime.now(UTC).isoformat(),
     }
     _write_json_atomic(active_release, resolved_data_dir / ACTIVE_RELEASE_FILE)
@@ -1330,6 +1337,20 @@ def _validate_active_release_pair(data_dir: Path, active_release: dict[str, Any]
         raise KnowledgeReleaseError(
             "Installed active corpus/index pair is invalid: corpus documents must be a JSON array."
         )
+    try:
+        documents_artifact = _documents_artifact(manifest)
+        documents_match = (
+            documents_path.stat().st_size == int(documents_artifact["bytes"])
+            and _sha256_file(documents_path) == documents_artifact["sha256"]
+        )
+    except (OSError, TypeError, ValueError, KeyError) as exc:
+        raise KnowledgeReleaseError(
+            "Installed active corpus artifact integrity evidence is invalid."
+        ) from exc
+    if not documents_match:
+        raise KnowledgeReleaseError(
+            "Installed active corpus artifact integrity does not match its manifest."
+        )
 
     metadata_path = index_path / "index-metadata.json"
     dense_index_path = index_path / "dense-index.json"
@@ -1343,6 +1364,40 @@ def _validate_active_release_pair(data_dir: Path, active_release: dict[str, Any]
             raise KnowledgeReleaseError(
                 f"Installed active corpus/index pair is incomplete: {label} is missing."
             )
+
+    index_artifacts = active_release.get("index_artifacts")
+    if (
+        corpus_schema_contract(str(manifest.get("corpus_schema_version", "")))
+        is SEMANTIC_CHUNK_CORPUS_SCHEMA
+        and not isinstance(index_artifacts, dict)
+    ):
+        raise KnowledgeReleaseError(
+            "Installed active chunk index lacks artifact integrity evidence."
+        )
+    if index_artifacts is not None:
+        if not isinstance(index_artifacts, dict):
+            raise KnowledgeReleaseError(
+                "Installed active index artifact integrity evidence is invalid."
+            )
+        for path in (metadata_path, dense_index_path, lexical_index_path):
+            evidence = index_artifacts.get(path.name)
+            if not isinstance(evidence, dict):
+                raise KnowledgeReleaseError(
+                    "Installed active index artifact integrity evidence is incomplete."
+                )
+            try:
+                matches = (
+                    path.stat().st_size == int(evidence["bytes"])
+                    and _sha256_file(path) == evidence["sha256"]
+                )
+            except (OSError, TypeError, ValueError, KeyError) as exc:
+                raise KnowledgeReleaseError(
+                    "Installed active index artifact integrity evidence is invalid."
+                ) from exc
+            if not matches:
+                raise KnowledgeReleaseError(
+                    f"Installed active index artifact integrity failed for {path.name}."
+                )
 
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     dense_index = json.loads(dense_index_path.read_text(encoding="utf-8"))
@@ -1382,6 +1437,8 @@ def _active_release_matches_verified_artifact(
     try:
         if active_release.get("manifest") != manifest:
             return False
+        if not isinstance(active_release.get("index_artifacts"), dict):
+            return False
         _validate_active_release_pair(data_dir, active_release)
         release_id = str(manifest["knowledge_release_id"])
         documents_path = data_dir / "corpus" / release_id / "documents.json"
@@ -1397,124 +1454,18 @@ def _active_release_matches_verified_artifact(
         return False
 
 
-def _active_index_matches_embedding_contract(
-    data_dir: Path,
-    manifest: dict[str, Any],
-    *,
-    documents: list[dict[str, Any]],
-    embedding_model: str,
-    embedding_provider: EmbeddingProvider,
-    embedding_model_identity: dict[str, Any],
-) -> bool:
-    release_id = str(manifest.get("knowledge_release_id", ""))
-    corpus_schema = corpus_schema_contract(
-        str(manifest.get("corpus_schema_version", ""))
-    )
-    if not release_id or corpus_schema is None:
-        return False
-    try:
-        index = _load_index_metadata(data_dir, release_id)
-        dense_index = json.loads(
-            (data_dir / "index" / release_id / "dense-index.json").read_text(
-                encoding="utf-8"
-            )
+def _index_artifact_integrity(index_dir: Path) -> dict[str, dict[str, int | str]]:
+    return {
+        filename: {
+            "sha256": _sha256_file(index_dir / filename),
+            "bytes": (index_dir / filename).stat().st_size,
+        }
+        for filename in (
+            "index-metadata.json",
+            "dense-index.json",
+            "lexical.sqlite3",
         )
-        dense_metadata = dense_index["metadata"]
-    except (FileNotFoundError, json.JSONDecodeError, KeyError, TypeError):
-        return False
-    if (
-        not isinstance(index, dict)
-        or not isinstance(dense_index, dict)
-        or not isinstance(dense_metadata, dict)
-        or not isinstance(dense_index.get("vectors"), list)
-    ):
-        return False
-    expected = {
-        "schema_version": corpus_schema.index_schema_version,
-        "knowledge_release_id": release_id,
-        "corpus_identity": manifest.get("corpus_id"),
-        "embedding_model": embedding_model,
-        "embedding_provider": embedding_provider_id(embedding_provider),
-        "embedding_model_identity": embedding_model_identity,
     }
-    if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA:
-        expected.update(
-            {
-                "corpus_schema_version": corpus_schema.version,
-                "content_unit_schema_version": (
-                    corpus_schema.content_unit_schema_version
-                ),
-                "indexed_unit": corpus_schema.indexed_unit,
-            }
-        )
-    metadata_matches = all(
-        index.get(field) == value and dense_metadata.get(field) == value
-        for field, value in expected.items()
-    )
-    if not metadata_matches:
-        return False
-    try:
-        from .retrieval import HybridRetriever, _is_release_eligible, _search_text
-
-        eligible_documents = [
-            document for document in documents if _is_release_eligible(document)
-        ]
-        expected_by_id = {
-            str(document["document_id"]): document for document in eligible_documents
-        }
-        vector_ids = [
-            item.get("document_id")
-            for item in dense_index["vectors"]
-            if isinstance(item, dict)
-        ]
-        if (
-            len(vector_ids) != len(dense_index["vectors"])
-            or len(vector_ids) != len(set(vector_ids))
-            or set(vector_ids) != set(expected_by_id)
-        ):
-            return False
-        HybridRetriever(
-            data_dir=data_dir,
-            active_release={"manifest": manifest},
-            documents=documents,
-            dense_index=dense_index,
-            embedding_model=embedding_model,
-            embedding_provider=embedding_provider,
-            embedding_model_identity=embedding_model_identity,
-        )
-        lexical_path = data_dir / "index" / release_id / "lexical.sqlite3"
-        connection = sqlite3.connect(f"file:{lexical_path}?mode=ro", uri=True)
-        try:
-            if connection.execute("PRAGMA quick_check").fetchone() != ("ok",):
-                return False
-            document_rows = connection.execute(
-                "SELECT document_id, document_json FROM documents"
-            ).fetchall()
-            lexical_documents = {
-                str(document_id): json.loads(document_json)
-                for document_id, document_json in document_rows
-            }
-            fts_rows = connection.execute(
-                "SELECT document_id, content FROM documents_fts"
-            ).fetchall()
-            fts_content = {
-                str(document_id): str(content) for document_id, content in fts_rows
-            }
-        finally:
-            connection.close()
-        return lexical_documents == expected_by_id and fts_content == {
-            document_id: _search_text(document)
-            for document_id, document in expected_by_id.items()
-        }
-    except (
-        OSError,
-        ValueError,
-        TypeError,
-        KeyError,
-        json.JSONDecodeError,
-        sqlite3.Error,
-    ):
-        return False
 
 
 class _InstallProgress:

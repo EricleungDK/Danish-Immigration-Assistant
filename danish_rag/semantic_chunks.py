@@ -26,7 +26,7 @@ def is_valid_stable_identity(value: object) -> bool:
         and bool(value)
         and value == value.strip()
         and not any(
-            unicodedata.category(character) in {"Cc", "Cf"}
+            unicodedata.category(character) in {"Cc", "Cf", "Cs"}
             for character in value
         )
     )

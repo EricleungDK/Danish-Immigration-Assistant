@@ -89,7 +89,11 @@ class StableSemanticChunkTests(unittest.TestCase):
             )
 
     def test_stable_source_identities_reject_controls_and_surrounding_whitespace(self):
-        for source_id in ("official\0source", " official-source "):
+        for source_id in (
+            "official\0source",
+            " official-source ",
+            "official-\ud800source",
+        ):
             with self.subTest(source_id=source_id):
                 with self.assertRaisesRegex(
                     SemanticChunkError,
@@ -101,7 +105,11 @@ class StableSemanticChunkTests(unittest.TestCase):
                     )
 
     def test_stable_source_document_identity_rejects_controls_and_whitespace(self):
-        for document_id in ("reviewed\0document", " reviewed-document "):
+        for document_id in (
+            "reviewed\0document",
+            " reviewed-document ",
+            "reviewed-\ud800document",
+        ):
             with self.subTest(document_id=document_id):
                 with self.assertRaisesRegex(
                     SemanticChunkError,

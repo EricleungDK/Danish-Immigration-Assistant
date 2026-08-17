@@ -85,14 +85,16 @@ class ChunkReleaseValidationTests(unittest.TestCase):
         documents: list[dict[str, Any]],
         *,
         manifest: dict[str, Any] | None = None,
+        release_dir: Path | None = None,
     ) -> None:
-        documents_path = self.release_dir / "corpus" / "documents.json"
+        resolved_release_dir = release_dir or self.release_dir
+        documents_path = resolved_release_dir / "corpus" / "documents.json"
         documents_bytes = (
             json.dumps(documents, indent=2, sort_keys=True) + "\n"
         ).encode("utf-8")
         documents_path.write_bytes(documents_bytes)
 
-        manifest_path = self.release_dir / "manifest.json"
+        manifest_path = resolved_release_dir / "manifest.json"
         if manifest is None:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest["artifacts"][0]["sha256"] = hashlib.sha256(
@@ -106,7 +108,7 @@ class ChunkReleaseValidationTests(unittest.TestCase):
         sign_manifest(
             manifest_path,
             self.release_trust.signing_private_key_path,
-            self.release_dir / "manifest.sig",
+            resolved_release_dir / "manifest.sig",
         )
 
     def test_chunked_release_without_explicit_content_unit_schema_is_rejected(self):
@@ -280,7 +282,11 @@ class ChunkReleaseValidationTests(unittest.TestCase):
             )
 
     def test_chunked_release_rejects_unsafe_source_identities(self):
-        for source_id in ("official\0source", " official-source "):
+        for source_id in (
+            "official\0source",
+            " official-source ",
+            "official-\ud800source",
+        ):
             with self.subTest(source_id=source_id):
                 manifest_path = self.release_dir / "manifest.json"
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -300,7 +306,11 @@ class ChunkReleaseValidationTests(unittest.TestCase):
                     )
 
     def test_chunked_release_rejects_unsafe_source_document_identities(self):
-        for source_document_id in ("reviewed\0document", " reviewed-document "):
+        for source_document_id in (
+            "reviewed\0document",
+            " reviewed-document ",
+            "reviewed-\ud800document",
+        ):
             with self.subTest(source_document_id=source_document_id):
                 self.rewrite_first_chunk_and_resign(
                     source_document_id=source_document_id,
@@ -365,24 +375,9 @@ class ChunkReleaseValidationTests(unittest.TestCase):
             )
             chunk["chunk_id"] = chunk_id
             chunk["document_id"] = chunk_id
-        documents_bytes = (
-            json.dumps(reordered, indent=2, sort_keys=True) + "\n"
-        ).encode("utf-8")
-        documents_path.write_bytes(documents_bytes)
-        manifest_path = release_dir / "manifest.json"
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        manifest["artifacts"][0]["sha256"] = hashlib.sha256(
-            documents_bytes
-        ).hexdigest()
-        manifest["artifacts"][0]["bytes"] = len(documents_bytes)
-        manifest_path.write_text(
-            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-        sign_manifest(
-            manifest_path,
-            self.release_trust.signing_private_key_path,
-            release_dir / "manifest.sig",
+        self.write_documents_and_resign(
+            reordered,
+            release_dir=release_dir,
         )
 
         with self.assertRaisesRegex(

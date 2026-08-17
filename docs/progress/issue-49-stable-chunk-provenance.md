@@ -49,7 +49,7 @@ and reopens the saved conversation record with its original provenance.
 Focused issue and regression checks:
 
 ```text
-37 issue #49 tests passed
+39 issue #49 tests passed
 ```
 
 The focused set covers deterministic authoring, signed verification,
@@ -59,7 +59,7 @@ retrieval provenance, answer validation, and conversation persistence.
 Full Python verification:
 
 ```text
-313 tests passed; 2 opt-in live-provider tests skipped
+315 tests passed; 2 opt-in live-provider tests skipped
 ```
 
 Full Playwright runs on the final candidate passed 29 non-live tests, skipped
@@ -102,6 +102,13 @@ canonical chunk order; reject control characters and surrounding whitespace in
 source and source-document identities; reject empty chunk releases; and force
 rebuilds for tampered corpus bytes, malformed dense vectors, changed signed
 content under a reused release ID, or divergent lexical-index content.
+
+The fifth review closed the remaining active-load and module-boundary gaps.
+Normal retrieval now checks the signed corpus artifact identity before serving
+content, new installations bind every derived index file to an activation-time
+digest, and retrieval owns the complete vector/lexical compatibility check.
+Canonical identities also reject lone Unicode surrogates with domain-specific
+validation errors instead of leaking encoding exceptions.
 
 The standards review also noted that production maintainer-role evidence is not
 part of the existing manifest contract. That gap predates issue #49, and the

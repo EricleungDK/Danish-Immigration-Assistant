@@ -493,6 +493,122 @@ class HybridRetriever:
             raise RetrievalError("Local lexical index is missing; re-index required.")
 
 
+def active_index_matches_release(
+    data_dir: str | Path,
+    manifest: dict[str, Any],
+    *,
+    documents: list[dict[str, Any]],
+    embedding_model: str,
+    embedding_provider: EmbeddingProvider,
+    embedding_model_identity: dict[str, Any],
+) -> bool:
+    """Validate the complete derived index against its release and documents."""
+
+    release_id = str(manifest.get("knowledge_release_id", ""))
+    corpus_schema = corpus_schema_contract(
+        str(manifest.get("corpus_schema_version", ""))
+    )
+    if not release_id or corpus_schema is None:
+        return False
+    index_dir = Path(data_dir) / "index" / release_id
+    try:
+        index = json.loads(
+            (index_dir / "index-metadata.json").read_text(encoding="utf-8")
+        )
+        dense_index = json.loads(
+            (index_dir / "dense-index.json").read_text(encoding="utf-8")
+        )
+        dense_metadata = dense_index["metadata"]
+        if (
+            not isinstance(index, dict)
+            or not isinstance(dense_index, dict)
+            or not isinstance(dense_metadata, dict)
+            or not isinstance(dense_index.get("vectors"), list)
+        ):
+            return False
+        expected = {
+            "schema_version": corpus_schema.index_schema_version,
+            "knowledge_release_id": release_id,
+            "corpus_identity": manifest.get("corpus_id"),
+            "embedding_model": embedding_model,
+            "embedding_provider": embedding_provider_id(embedding_provider),
+            "embedding_model_identity": embedding_model_identity,
+        }
+        if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA:
+            expected.update(
+                {
+                    "corpus_schema_version": corpus_schema.version,
+                    "content_unit_schema_version": (
+                        corpus_schema.content_unit_schema_version
+                    ),
+                    "indexed_unit": corpus_schema.indexed_unit,
+                }
+            )
+        if not all(
+            index.get(field) == value and dense_metadata.get(field) == value
+            for field, value in expected.items()
+        ):
+            return False
+        eligible_documents = [
+            document for document in documents if _is_release_eligible(document)
+        ]
+        expected_by_id = {
+            str(document["document_id"]): document for document in eligible_documents
+        }
+        vector_ids = [
+            item.get("document_id")
+            for item in dense_index["vectors"]
+            if isinstance(item, dict)
+        ]
+        if (
+            len(vector_ids) != len(dense_index["vectors"])
+            or len(vector_ids) != len(set(vector_ids))
+            or set(vector_ids) != set(expected_by_id)
+        ):
+            return False
+        HybridRetriever(
+            data_dir=data_dir,
+            active_release={"manifest": manifest},
+            documents=documents,
+            dense_index=dense_index,
+            embedding_model=embedding_model,
+            embedding_provider=embedding_provider,
+            embedding_model_identity=embedding_model_identity,
+        )
+        lexical_path = index_dir / "lexical.sqlite3"
+        connection = sqlite3.connect(f"file:{lexical_path}?mode=ro", uri=True)
+        try:
+            if connection.execute("PRAGMA quick_check").fetchone() != ("ok",):
+                return False
+            document_rows = connection.execute(
+                "SELECT document_id, document_json FROM documents"
+            ).fetchall()
+            lexical_documents = {
+                str(document_id): json.loads(document_json)
+                for document_id, document_json in document_rows
+            }
+            fts_rows = connection.execute(
+                "SELECT document_id, content FROM documents_fts"
+            ).fetchall()
+            fts_content = {
+                str(document_id): str(content) for document_id, content in fts_rows
+            }
+        finally:
+            connection.close()
+        return lexical_documents == expected_by_id and fts_content == {
+            document_id: _search_text(document)
+            for document_id, document in expected_by_id.items()
+        }
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        sqlite3.Error,
+    ):
+        return False
+
+
 def inspect_embedding_model(
     embedding_provider: EmbeddingProvider,
     embedding_model: str,

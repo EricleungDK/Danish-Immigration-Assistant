@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from danish_rag.knowledge_release import (
+    KnowledgeReleaseError,
     active_corpus_summary,
     install_knowledge_release,
     install_minimal_knowledge_release,
@@ -235,6 +236,67 @@ class ChunkInstallationTests(unittest.TestCase):
 
         self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
         self.assertEqual(repeated["index"]["schema_version"], "hybrid-chunk-index-v1")
+
+    def test_already_active_chunked_release_rebuilds_valid_tampered_dense_vectors(self):
+        release_dir = self.build_chunked_release()
+        installation = install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        dense_index_path = (
+            self.data_dir
+            / "index"
+            / "kr-2026-07-30.1"
+            / "dense-index.json"
+        )
+        dense_index = json.loads(dense_index_path.read_text(encoding="utf-8"))
+        vector_dimensions = installation["index"]["vector_dimensions"]
+        dense_index["vectors"][0]["vector"] = [0.123456] * vector_dimensions
+        dense_index_path.write_text(
+            json.dumps(dense_index, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        repeated = install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+
+        self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
+
+    def test_normal_retrieval_rejects_tampered_active_corpus(self):
+        release_dir = self.build_chunked_release()
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        documents_path = (
+            self.data_dir
+            / "corpus"
+            / "kr-2026-07-30.1"
+            / "documents.json"
+        )
+        documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        documents[0]["content"] = "UNSIGNED POISON"
+        documents_path.write_text(
+            json.dumps(documents, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "artifact integrity",
+        ):
+            HybridRetriever.from_data_dir(
+                self.data_dir,
+                embedding_provider=self.embedding_provider,
+            )
 
     def test_already_active_chunked_release_rebuilds_tampered_corpus(self):
         release_dir = self.build_chunked_release()
