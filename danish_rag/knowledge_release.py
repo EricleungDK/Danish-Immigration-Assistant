@@ -918,9 +918,10 @@ def _update_summary(
     }
 
 
-def _source_change_fingerprint(source: dict[str, Any]) -> tuple[str, str, str]:
+def _source_change_fingerprint(source: dict[str, Any]) -> tuple[str, str, str, str]:
     return (
         str(source.get("source_content_sha256", "")),
+        str(source.get("normalized_extraction_sha256", "")),
         str(source.get("normalized_document_sha256", "")),
         str(source.get("reviewed_at_utc", "")),
     )
@@ -1115,6 +1116,8 @@ def _validate_release(
         )
     if manifest["manifest_schema_version"] != "1.0":
         raise KnowledgeReleaseError("Unsupported manifest schema version.")
+    if not is_utc_seconds(manifest["created_at_utc"]):
+        raise KnowledgeReleaseError("Release manifest has an invalid creation timestamp.")
     corpus_schema_version = str(manifest["corpus_schema_version"])
     corpus_schema = corpus_schema_contract(corpus_schema_version)
     if corpus_schema is None:
@@ -1190,6 +1193,25 @@ def _validate_release(
                         f"Source {source.get('source_id', '<unknown>')} lacks a valid "
                         f"{identity_label} SHA-256 identity."
                     )
+            extraction_schema_version = source.get("extraction_schema_version")
+            if (
+                not isinstance(extraction_schema_version, str)
+                or not extraction_schema_version.strip()
+            ):
+                raise KnowledgeReleaseError(
+                    f"Source {source_identity} lacks a valid extraction schema version."
+                )
+            normalized_extraction_sha256 = source.get(
+                "normalized_extraction_sha256"
+            )
+            if normalized_extraction_sha256 is not None and (
+                not isinstance(normalized_extraction_sha256, str)
+                or _SHA256_PATTERN.fullmatch(normalized_extraction_sha256) is None
+            ):
+                raise KnowledgeReleaseError(
+                    f"Source {source_identity} lacks a valid normalized extraction "
+                    "SHA-256 identity."
+                )
         state = source.get("review_state")
         if state not in {"approved-current", "overdue-policy-usable"}:
             raise KnowledgeReleaseError(

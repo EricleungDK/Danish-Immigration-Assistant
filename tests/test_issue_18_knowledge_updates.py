@@ -133,6 +133,44 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
         }:
             self.assertNotIn(private_marker, update_json)
 
+    def test_discovery_reports_reviewed_extraction_identity_changes(self):
+        current_manifest = json.loads(
+            (BUNDLED_MINIMAL_RELEASE / "manifest.json").read_text(encoding="utf-8")
+        )
+        current_documents = json.loads(
+            (BUNDLED_MINIMAL_RELEASE / "corpus" / "documents.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        sources = [dict(source) for source in current_manifest["sources"]]
+        sources[0]["normalized_extraction_sha256"] = "a" * 64
+        release_id = "kr-2026-07-07.1"
+        build_publishable_knowledge_release(
+            release_dir=self.release_catalog / release_id,
+            release_id=release_id,
+            source_registry_version="sr-2026-07-07.1",
+            sources=sources,
+            documents=current_documents,
+            created_at_utc="2026-07-07T13:00:00Z",
+            minimum_application_version="0.1.0",
+            signing_private_key_path=self.release_trust.signing_private_key_path,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+
+        update = discover_knowledge_update(
+            self.data_dir,
+            self.release_catalog,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+
+        self.assertIsNotNone(update)
+        assert update is not None
+        self.assertEqual(update["reviewed_source_changes"]["updated"], 1)
+        self.assertEqual(
+            update["reviewed_source_changes"]["updated_sources"][0]["source_id"],
+            sources[0]["source_id"],
+        )
+
     async def test_app_review_dismiss_and_install_controls_preserve_explicit_user_approval(self):
         self.make_newer_release()
         app = create_app(

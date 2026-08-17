@@ -116,6 +116,11 @@ Blocked transitions:
 
 Publication assembles only eligible sources into a knowledge release. The release operator verifies manifest completeness, schema compatibility, source eligibility, artifact hashes, and signature status before publishing.
 
+The production source registry records the named release operator, release
+approver, and recovery owner alongside the source-level curator, reviewer, and
+monitoring owner. A single maintainer may occupy multiple roles for the MVP,
+but the identities and audit timestamp remain explicit.
+
 Allowed transitions:
 
 - Eligible `approved-current` and policy-allowed `overdue-policy-usable` sources -> included in a release manifest.
@@ -184,6 +189,7 @@ Each knowledge release should include a manifest with these fields:
       "reviewers": ["reviewer-id"],
       "last_checked_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
       "source_content_sha256": "<hex>",
+      "normalized_extraction_sha256": "<hex>",
       "normalized_document_sha256": "<hex>",
       "extraction_schema_version": "1.0",
       "fresh_tomato_inputs": {
@@ -208,7 +214,14 @@ Each knowledge release should include a manifest with these fields:
 }
 ```
 
-The manifest is the installation contract. Retrieval indexes are local derived data and should record compatibility with this manifest rather than become the authoritative source of provenance.
+The manifest is the installation contract. `normalized_extraction_sha256`
+identifies the exact archived text file that received human review;
+`normalized_document_sha256` identifies the deterministic whitespace-normalized
+content reconstructed from the ordered semantic chunks. Both identities are
+retained because an extraction-format change can leave normalized content
+unchanged. Retrieval indexes are local derived data and should record
+compatibility with this manifest rather than become the authoritative source of
+provenance.
 
 ## Current MVP Fixture Registry Evidence
 

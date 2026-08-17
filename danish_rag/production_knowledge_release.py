@@ -5,23 +5,29 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import shutil
+import tempfile
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .evidence_integrity import is_utc_seconds
 from .knowledge_release import (
     KnowledgeReleaseError,
     install_knowledge_release,
     load_active_release,
 )
 from .retrieval import HybridRetriever
+from .source_freshness import assess_source_freshness
 from .source_maintenance import build_publishable_knowledge_release
 from .source_registry import (
+    SourceRegistryError,
     assess_source_registry_qualification,
     load_source_registry,
     validate_source_registry_against_release,
 )
-
 
 SOURCE_DOCUMENT_METADATA: dict[str, dict[str, Any]] = {
     "nyidanmark-permanent-residence-language-requirements": {
@@ -71,31 +77,31 @@ DEFAULT_CANDIDATE_RETRIEVAL_QUERIES: tuple[dict[str, Any], ...] = (
         "id": "permanent-residence-language-requirement",
         "query_text": "What Danish language test is required for permanent residence?",
         "required_source_ids": ["nyidanmark-permanent-residence-language-requirements"],
-        "forbidden_source_ids": ["citizenship-language-requirements"],
+        "forbidden_document_ids": ["di-rag-doc-citizenship-language"],
     },
     {
         "id": "language-test-2-equivalence",
         "query_text": "Is FVU reading exam level 2 or 3 equivalent to Danish language test 2?",
         "required_source_ids": ["nyidanmark-equivalent-tests-language-test-2"],
-        "forbidden_source_ids": ["citizenship-language-requirements"],
+        "forbidden_document_ids": ["di-rag-doc-citizenship-language"],
     },
     {
         "id": "language-test-3-equivalence",
         "query_text": "Does an International Baccalaureate with Danish A or B qualify for language test 3 equivalence?",
         "required_source_ids": ["nyidanmark-equivalent-tests-language-test-3"],
-        "forbidden_source_ids": ["citizenship-language-requirements"],
+        "forbidden_document_ids": ["di-rag-doc-citizenship-language"],
     },
     {
         "id": "danish-exam-overview",
         "query_text": "What are the Danish language examinations PD1 PD2 PD3 and Studieprøven?",
         "required_source_ids": ["danskogproever-danish-exam-overview"],
-        "forbidden_source_ids": ["citizenship-language-requirements"],
+        "forbidden_document_ids": ["di-rag-doc-citizenship-language"],
     },
     {
         "id": "registration-deadlines",
         "query_text": "When is the registration deadline for Danish language examinations?",
         "required_source_ids": ["danskogproever-registration-deadlines-2026"],
-        "forbidden_source_ids": ["citizenship-language-requirements"],
+        "forbidden_document_ids": ["di-rag-doc-citizenship-language"],
     },
 )
 
@@ -117,6 +123,9 @@ def build_reviewed_candidate_release(
     release_id: str,
     created_at_utc: str,
     next_review_due_utc: str,
+    release_operator_ids: tuple[str, ...],
+    release_approver_ids: tuple[str, ...],
+    recovery_owner_ids: tuple[str, ...],
     signing_private_key_path: str | Path,
     trust_root_path: str | Path,
 ) -> CandidateReleaseBuild:
@@ -125,19 +134,21 @@ def build_reviewed_candidate_release(
     resolved_review_dir = Path(review_dir)
     resolved_registry_path = Path(registry_path)
     resolved_release_dir = Path(release_dir)
-    if resolved_registry_path.exists():
+    created_at = _require_utc_timestamp(created_at_utc, "created_at_utc")
+    next_review_due = _require_utc_timestamp(
+        next_review_due_utc,
+        "next_review_due_utc",
+    )
+    if next_review_due <= created_at:
         raise KnowledgeReleaseError(
-            f"Candidate source registry already exists: {resolved_registry_path}"
-        )
-    if resolved_release_dir.exists():
-        raise KnowledgeReleaseError(
-            f"Candidate release directory already exists: {resolved_release_dir}"
+            "next_review_due_utc must be later than created_at_utc."
         )
     completed_path = resolved_review_dir / "completed-review.json"
     bundle_path = resolved_review_dir / "review-bundle.json"
     decisions_path = resolved_review_dir / "human-decisions.json"
     completed = _load_json_object(completed_path, "completed source review")
     bundle = _load_json_object(bundle_path, "source review bundle")
+    decisions = _load_json_object(decisions_path, "human decisions")
 
     _require_digest(
         bundle_path,
@@ -155,10 +166,12 @@ def build_reviewed_candidate_release(
         raise KnowledgeReleaseError(
             "Completed source review is not eligible for rebuild."
         )
-    if completed.get("packet_g", {}).get("status") != "unchanged":
-        raise KnowledgeReleaseError(
-            "Completed source review does not preserve packet G."
-        )
+
+    _validate_human_decision_binding(
+        completed=completed,
+        bundle_path=bundle_path,
+        decisions=decisions,
+    )
 
     completed_by_id = _unique_sources(completed.get("sources"), "completed review")
     bundle_by_id = _unique_sources(bundle.get("sources"), "review bundle")
@@ -169,18 +182,18 @@ def build_reviewed_candidate_release(
             "Completed review must contain exactly the five configured official sources."
         )
 
-    fallback = completed.get("single_maintainer_fallback")
+    single_maintainer_fallback = completed.get("single_maintainer_fallback")
     registry_sources: list[dict[str, Any]] = []
     release_sources: list[dict[str, Any]] = []
     documents: list[dict[str, Any]] = []
     for source_id in SOURCE_DOCUMENT_METADATA:
-        reviewed = completed_by_id[source_id]
-        machine = bundle_by_id[source_id]
+        completed_review = completed_by_id[source_id]
+        machine_review_bundle = bundle_by_id[source_id]
         registry_source, release_source, document = _build_source_records(
             review_dir=resolved_review_dir,
-            reviewed=reviewed,
-            machine=machine,
-            fallback=fallback,
+            completed_review=completed_review,
+            machine_review_bundle=machine_review_bundle,
+            single_maintainer_fallback=single_maintainer_fallback,
             next_review_due_utc=next_review_due_utc,
         )
         registry_sources.append(registry_source)
@@ -192,7 +205,13 @@ def build_reviewed_candidate_release(
         "source_registry_version": source_registry_version,
         "knowledge_release_id": release_id,
         "artifact_scope": "production-source-registry",
-        "single_maintainer_fallback": fallback,
+        "single_maintainer_fallback": single_maintainer_fallback,
+        "release_governance": {
+            "release_operator_ids": list(release_operator_ids),
+            "release_approver_ids": list(release_approver_ids),
+            "recovery_owner_ids": list(recovery_owner_ids),
+            "recorded_at_utc": created_at_utc,
+        },
         "review_bundle_binding": {
             "completed_review_path": "completed-review.json",
             "machine_review_manifest_path": "review-bundle.json",
@@ -207,31 +226,43 @@ def build_reviewed_candidate_release(
         },
         "sources": registry_sources,
     }
-    resolved_registry_path.parent.mkdir(parents=True, exist_ok=True)
-    resolved_registry_path.write_text(
-        json.dumps(registry, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    loaded_registry = load_source_registry(resolved_registry_path)
-    qualification = assess_source_registry_qualification(loaded_registry)
+    try:
+        qualification = assess_source_registry_qualification(registry)
+    except SourceRegistryError as exc:
+        raise KnowledgeReleaseError(
+            f"Generated source registry is invalid: {exc}"
+        ) from exc
     if not qualification["production_release_eligible"]:
         raise KnowledgeReleaseError(
             "Generated source registry is not production-qualified."
         )
-
-    release = build_publishable_knowledge_release(
-        release_dir=resolved_release_dir,
-        release_id=release_id,
-        source_registry_version=source_registry_version,
-        sources=release_sources,
-        documents=documents,
-        created_at_utc=created_at_utc,
-        minimum_application_version="0.1.0",
-        corpus_schema_version="2.0",
-        signing_private_key_path=signing_private_key_path,
-        trust_root_path=trust_root_path,
-    )
-    validate_source_registry_against_release(loaded_registry, resolved_release_dir)
+    _claim_candidate_outputs(resolved_registry_path, resolved_release_dir)
+    try:
+        resolved_registry_path.write_text(
+            json.dumps(registry, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        loaded_registry = load_source_registry(resolved_registry_path)
+        release = build_publishable_knowledge_release(
+            release_dir=resolved_release_dir,
+            release_id=release_id,
+            source_registry_version=source_registry_version,
+            sources=release_sources,
+            documents=documents,
+            created_at_utc=created_at_utc,
+            minimum_application_version="0.1.0",
+            corpus_schema_version="2.0",
+            signing_private_key_path=signing_private_key_path,
+            trust_root_path=trust_root_path,
+        )
+        validate_source_registry_against_release(
+            loaded_registry,
+            resolved_release_dir,
+        )
+    except Exception:
+        resolved_registry_path.unlink(missing_ok=True)
+        shutil.rmtree(resolved_release_dir, ignore_errors=True)
+        raise
     return CandidateReleaseBuild(
         registry_path=resolved_registry_path,
         release_dir=resolved_release_dir,
@@ -244,21 +275,80 @@ def install_and_verify_candidate(
     *,
     data_dir: str | Path,
     release_dir: str | Path,
-    embedding_provider: Any,
+    embedding_provider: Any = None,
+    embedding_model: str | None = None,
+    embedding_endpoint: str | None = None,
     trust_root_path: str | Path,
     queries: tuple[dict[str, Any], ...] = DEFAULT_CANDIDATE_RETRIEVAL_QUERIES,
 ) -> dict[str, Any]:
-    """Install, index, and verify candidate retrieval through the public API."""
+    """Qualify retrieval in isolation, then install and index the candidate."""
 
+    if not queries:
+        raise KnowledgeReleaseError(
+            "Candidate retrieval qualification must contain queries."
+        )
+    resolved_data_dir = Path(data_dir)
+    resolved_data_dir.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix=".candidate-retrieval-qualification-",
+        dir=resolved_data_dir.parent,
+    ) as qualification_dir:
+        qualification_installation = install_knowledge_release(
+            qualification_dir,
+            release_dir=release_dir,
+            embedding_model=embedding_model,
+            embedding_provider=embedding_provider,
+            embedding_endpoint=embedding_endpoint,
+            trust_root_path=trust_root_path,
+        )
+        report = _candidate_retrieval_report(
+            data_dir=qualification_dir,
+            installation=qualification_installation,
+            embedding_provider=embedding_provider,
+            embedding_endpoint=embedding_endpoint,
+            trust_root_path=trust_root_path,
+            queries=queries,
+        )
+    summary = report["summary"]
+    if any(
+        summary[field]
+        for field in (
+            "blocked_source_violations",
+            "forbidden_result_violations",
+            "required_source_misses",
+        )
+    ):
+        raise KnowledgeReleaseError(
+            "Candidate retrieval qualification failed: "
+            f"{summary['blocked_source_violations']} blocked-source violation(s), "
+            f"{summary['forbidden_result_violations']} forbidden-result violation(s), "
+            f"and {summary['required_source_misses']} required-source miss(es)."
+        )
     installation = install_knowledge_release(
-        data_dir,
+        resolved_data_dir,
         release_dir=release_dir,
+        embedding_model=embedding_model,
         embedding_provider=embedding_provider,
+        embedding_endpoint=embedding_endpoint,
         trust_root_path=trust_root_path,
     )
+    report["knowledge_release_id"] = installation["manifest"]["knowledge_release_id"]
+    return report
+
+
+def _candidate_retrieval_report(
+    *,
+    data_dir: str | Path,
+    installation: dict[str, Any],
+    embedding_provider: Any,
+    embedding_endpoint: str | None,
+    trust_root_path: str | Path,
+    queries: tuple[dict[str, Any], ...],
+) -> dict[str, Any]:
     retriever = HybridRetriever.from_data_dir(
         data_dir,
         embedding_provider=embedding_provider,
+        embedding_endpoint=embedding_endpoint,
         trust_root_path=trust_root_path,
     )
     query_reports: list[dict[str, Any]] = []
@@ -269,24 +359,17 @@ def install_and_verify_candidate(
         results = retriever.retrieve(str(query["query_text"]), limit=3)
         result_source_ids = {str(result["source_id"]) for result in results}
         required_source_ids = set(query.get("required_source_ids", []))
-        forbidden_source_ids = set(query.get("forbidden_source_ids", []))
+        forbidden_document_ids = set(query.get("forbidden_document_ids", []))
         blocked_results = [
             result
             for result in results
-            if result.get("review_state")
-            not in {"approved-current", "overdue-policy-usable"}
-            or result.get("source_health")
-            in {
-                "changed-unreviewed",
-                "broken",
-                "extraction-failed",
-                "overdue-blocked",
-                "withdrawn",
-                "superseded",
-            }
-            or result.get("approval_state") != "approved"
+            if not assess_source_freshness(result).answer_eligible
         ]
-        forbidden_results = sorted(result_source_ids & forbidden_source_ids)
+        result_document_ids = {
+            str(result.get("source_document_id", result["document_id"]))
+            for result in results
+        }
+        forbidden_results = sorted(result_document_ids & forbidden_document_ids)
         missing_required = sorted(required_source_ids - result_source_ids)
         blocked_source_violations += len(blocked_results)
         forbidden_result_violations += len(forbidden_results)
@@ -296,9 +379,9 @@ def install_and_verify_candidate(
                 "id": query["id"],
                 "query_text": query["query_text"],
                 "required_source_ids": sorted(required_source_ids),
-                "forbidden_source_ids": sorted(forbidden_source_ids),
+                "forbidden_document_ids": sorted(forbidden_document_ids),
                 "missing_required_source_ids": missing_required,
-                "forbidden_result_source_ids": forbidden_results,
+                "forbidden_result_document_ids": forbidden_results,
                 "blocked_result_ids": sorted(
                     str(result["document_id"]) for result in blocked_results
                 ),
@@ -398,20 +481,20 @@ def verify_candidate_rollback_matrix(
 def _build_source_records(
     *,
     review_dir: Path,
-    reviewed: dict[str, Any],
-    machine: dict[str, Any],
-    fallback: Any,
+    completed_review: dict[str, Any],
+    machine_review_bundle: dict[str, Any],
+    single_maintainer_fallback: Any,
     next_review_due_utc: str,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-    source_id = str(reviewed.get("source_id", ""))
-    human_review = reviewed.get("human_review", {})
-    admission = reviewed.get("curator_admission", {})
-    url_resolution = reviewed.get("url_resolution", {})
-    retrieval = machine.get("retrieval", {})
-    snapshot = machine.get("snapshot", {})
-    extraction = machine.get("normalized_extraction", {})
+    source_id = str(completed_review.get("source_id", ""))
+    human_review = completed_review.get("human_review", {})
+    admission = completed_review.get("curator_admission", {})
+    url_resolution = completed_review.get("url_resolution", {})
+    retrieval = machine_review_bundle.get("retrieval", {})
+    snapshot = machine_review_bundle.get("snapshot", {})
+    extraction = machine_review_bundle.get("normalized_extraction", {})
     if (
-        reviewed.get("eligible_for_follow_on_rebuild") is not True
+        completed_review.get("eligible_for_follow_on_rebuild") is not True
         or human_review.get("decision") != "approve"
         or admission.get("decision") != "approve"
         or url_resolution.get("decision")
@@ -420,13 +503,22 @@ def _build_source_records(
         raise KnowledgeReleaseError(
             f"Source {source_id} lacks completed approval evidence."
         )
-    if machine.get("topic") != admission.get("confirmed_topic") or machine.get(
-        "language"
-    ) != admission.get("confirmed_language"):
+    if machine_review_bundle.get("topic") != admission.get(
+        "confirmed_topic"
+    ) or machine_review_bundle.get("language") != admission.get("confirmed_language"):
         raise KnowledgeReleaseError(
             f"Source {source_id} admission differs from the reviewed bundle metadata."
         )
     approved_url = url_resolution.get("approved_url")
+    http_status = retrieval.get("http_status")
+    if (
+        isinstance(http_status, bool)
+        or not isinstance(http_status, int)
+        or not 200 <= http_status < 300
+    ):
+        raise KnowledgeReleaseError(
+            f"Source {source_id} lacks a successful reviewed retrieval."
+        )
     if approved_url != retrieval.get("final_url"):
         raise KnowledgeReleaseError(
             f"Source {source_id} approved URL differs from reviewed retrieval evidence."
@@ -441,14 +533,14 @@ def _build_source_records(
     snapshot_sha256 = _require_matching_hashes(
         snapshot_path,
         snapshot.get("sha256"),
-        reviewed.get("official_source_snapshot_sha256"),
+        completed_review.get("official_source_snapshot_sha256"),
         human_review.get("official_source_snapshot_sha256"),
         label=f"source {source_id} snapshot",
     )
     extraction_sha256 = _require_matching_hashes(
         extraction_path,
         extraction.get("sha256"),
-        reviewed.get("normalized_extraction_sha256"),
+        completed_review.get("normalized_extraction_sha256"),
         human_review.get("normalized_extraction_sha256"),
         label=f"source {source_id} normalized extraction",
     )
@@ -459,7 +551,19 @@ def _build_source_records(
     ).hexdigest()
     metadata = SOURCE_DOCUMENT_METADATA[source_id]
     staffing = human_review.get("staffing")
-    source_fallback = fallback if staffing == "mvp-single-maintainer-fallback" else None
+    source_fallback = (
+        single_maintainer_fallback
+        if staffing == "mvp-single-maintainer-fallback"
+        else None
+    )
+    extraction_schema_version = extraction.get("extraction_schema_version")
+    if (
+        not isinstance(extraction_schema_version, str)
+        or not extraction_schema_version.strip()
+    ):
+        raise KnowledgeReleaseError(
+            f"Source {source_id} lacks a valid extraction schema version."
+        )
     review_evidence = {
         "status": "completed",
         "assessment_method": human_review.get("assessment_method"),
@@ -473,17 +577,13 @@ def _build_source_records(
         "materiality": human_review.get("materiality"),
         "notes": human_review.get("notes"),
         "interpretation_risks": human_review.get("interpretation_risks"),
-        "second_reviewer_ids": (
-            fallback.get("second_reviewer_ids", [])
-            if isinstance(fallback, dict)
-            else []
-        ),
+        "second_reviewer_ids": human_review.get("second_reviewer_ids", []),
         "staffing": staffing,
         "single_maintainer_fallback": source_fallback,
     }
     registry_source = {
         "source_id": source_id,
-        "publisher": machine.get("publisher"),
+        "publisher": machine_review_bundle.get("publisher"),
         "official_url": approved_url,
         "topic": admission.get("confirmed_topic"),
         "language": admission.get("confirmed_language"),
@@ -508,7 +608,7 @@ def _build_source_records(
     }
     release_source = {
         "source_id": source_id,
-        "publisher": machine.get("publisher"),
+        "publisher": machine_review_bundle.get("publisher"),
         "title": metadata["title"],
         "official_url": approved_url,
         "final_url": retrieval.get("final_url"),
@@ -521,7 +621,7 @@ def _build_source_records(
         "source_content_sha256": snapshot_sha256,
         "normalized_extraction_sha256": extraction_sha256,
         "normalized_document_sha256": normalized_document_sha256,
-        "extraction_schema_version": extraction.get("extraction_schema_version"),
+        "extraction_schema_version": extraction_schema_version,
         "fresh_tomato_inputs": {
             "next_review_due_utc": next_review_due_utc,
             "source_health": "current",
@@ -531,7 +631,7 @@ def _build_source_records(
         "document_id": metadata["document_id"],
         "source_id": source_id,
         "title": metadata["title"],
-        "publisher": machine.get("publisher"),
+        "publisher": machine_review_bundle.get("publisher"),
         "official_url": approved_url,
         "final_url": retrieval.get("final_url"),
         "language": admission.get("confirmed_language"),
@@ -545,6 +645,88 @@ def _build_source_records(
         "content": normalized_content,
     }
     return registry_source, release_source, document
+
+
+def _validate_human_decision_binding(
+    *,
+    completed: dict[str, Any],
+    bundle_path: Path,
+    decisions: dict[str, Any],
+) -> None:
+    review_bundle_binding = decisions.get("review_bundle")
+    if (
+        not isinstance(review_bundle_binding, dict)
+        or review_bundle_binding.get("path") != bundle_path.name
+        or review_bundle_binding.get("sha256") != _sha256_file(bundle_path)
+    ):
+        raise KnowledgeReleaseError(
+            "Human decisions do not bind the reviewed machine bundle."
+        )
+    completed_by_id = _unique_sources(completed.get("sources"), "completed review")
+    decisions_by_id = _unique_sources(
+        decisions.get("source_decisions"),
+        "human decisions",
+    )
+    if set(completed_by_id) != set(decisions_by_id):
+        raise KnowledgeReleaseError(
+            "Completed review source identities differ from bound human decisions."
+        )
+    decision_fields = (
+        "curator_admission",
+        "url_resolution",
+        "human_review",
+        "source_review_gate_status",
+        "eligible_for_follow_on_rebuild",
+    )
+    for source_id, human_decision in decisions_by_id.items():
+        completed_review = completed_by_id[source_id]
+        if any(
+            completed_review.get(field) != human_decision.get(field)
+            for field in decision_fields
+        ):
+            raise KnowledgeReleaseError(
+                f"Source {source_id} completed review differs from bound human decisions."
+            )
+    if completed.get("single_maintainer_fallback") != decisions.get(
+        "single_maintainer_fallback"
+    ):
+        raise KnowledgeReleaseError(
+            "Completed review fallback differs from bound human decisions."
+        )
+
+
+def _require_utc_timestamp(value: Any, label: str) -> datetime:
+    if not is_utc_seconds(value):
+        raise KnowledgeReleaseError(
+            f"{label} must be a UTC timestamp at whole seconds."
+        )
+    return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+
+def _claim_candidate_outputs(registry_path: Path, release_dir: Path) -> None:
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    release_dir.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        descriptor = os.open(
+            registry_path,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+        )
+    except FileExistsError as exc:
+        raise KnowledgeReleaseError(
+            f"Candidate source registry already exists: {registry_path}"
+        ) from exc
+    os.close(descriptor)
+    try:
+        release_dir.mkdir(exist_ok=False)
+    except FileExistsError as exc:
+        registry_path.unlink(missing_ok=True)
+        raise KnowledgeReleaseError(
+            f"Candidate release directory already exists: {release_dir}"
+        ) from exc
+    except Exception:
+        registry_path.unlink(missing_ok=True)
+        raise
 
 
 def _load_json_object(path: Path, label: str) -> dict[str, Any]:
@@ -632,8 +814,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--release-id", required=True)
     parser.add_argument("--created-at-utc", required=True)
     parser.add_argument("--next-review-due-utc", required=True)
+    parser.add_argument("--release-operator", action="append", required=True)
+    parser.add_argument("--release-approver", action="append", required=True)
+    parser.add_argument("--recovery-owner", action="append", required=True)
     parser.add_argument("--signing-private-key", required=True)
     parser.add_argument("--trust-root", required=True)
+    parser.add_argument("--install-data-dir", required=True)
+    parser.add_argument("--embedding-model")
+    parser.add_argument("--embedding-endpoint")
     args = parser.parse_args(argv)
     try:
         candidate = build_reviewed_candidate_release(
@@ -644,7 +832,17 @@ def main(argv: list[str] | None = None) -> int:
             release_id=args.release_id,
             created_at_utc=args.created_at_utc,
             next_review_due_utc=args.next_review_due_utc,
+            release_operator_ids=tuple(args.release_operator),
+            release_approver_ids=tuple(args.release_approver),
+            recovery_owner_ids=tuple(args.recovery_owner),
             signing_private_key_path=args.signing_private_key,
+            trust_root_path=args.trust_root,
+        )
+        installation_report = install_and_verify_candidate(
+            data_dir=args.install_data_dir,
+            release_dir=candidate.release_dir,
+            embedding_model=args.embedding_model,
+            embedding_endpoint=args.embedding_endpoint,
             trust_root_path=args.trust_root,
         )
     except KnowledgeReleaseError as exc:
@@ -662,6 +860,7 @@ def main(argv: list[str] | None = None) -> int:
                 "chunk_count": len(candidate.release["documents"]),
                 "registry_path": str(candidate.registry_path),
                 "release_dir": str(candidate.release_dir),
+                "installation": installation_report,
             },
             sort_keys=True,
         )

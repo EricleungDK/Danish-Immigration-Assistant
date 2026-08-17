@@ -229,6 +229,8 @@ def _validate_registry(registry: dict[str, Any]) -> None:
         "production-source-registry",
     }:
         raise SourceRegistryError("Invalid source-registry artifact scope")
+    if registry["artifact_scope"] == "production-source-registry":
+        _validate_release_governance(registry.get("release_governance"))
     sources = registry["sources"]
     if not isinstance(sources, list) or not sources:
         raise SourceRegistryError("Source registry must contain at least one source")
@@ -426,6 +428,11 @@ def _validate_source(
             raise SourceRegistryError(
                 f"Source {source_id} production eligibility requires monitoring evidence"
             )
+        http_status = source["monitoring_evidence"]["http_status"]
+        if not 200 <= http_status < 300:
+            raise SourceRegistryError(
+                f"Source {source_id} production eligibility requires a successful fetch"
+            )
         if status != "completed":
             raise SourceRegistryError(
                 f"Source {source_id} production eligibility requires completed human review"
@@ -570,8 +577,44 @@ def _validate_monitoring_evidence(source_id: str, evidence: Any) -> None:
         "https://"
     ):
         raise SourceRegistryError(f"Source {source_id} monitored final URL must use HTTPS")
-    if not isinstance(evidence["http_status"], int) or not 100 <= evidence["http_status"] <= 599:
+    if (
+        isinstance(evidence["http_status"], bool)
+        or not isinstance(evidence["http_status"], int)
+        or not 100 <= evidence["http_status"] <= 599
+    ):
         raise SourceRegistryError(f"Source {source_id} monitoring HTTP status is invalid")
+
+
+def _validate_release_governance(evidence: Any) -> None:
+    if not isinstance(evidence, dict):
+        raise SourceRegistryError(
+            "Production source registry requires release governance evidence"
+        )
+    required = {
+        "release_operator_ids",
+        "release_approver_ids",
+        "recovery_owner_ids",
+        "recorded_at_utc",
+    }
+    missing = sorted(required - set(evidence))
+    if missing:
+        raise SourceRegistryError(
+            "Release governance evidence missing field(s): " + ", ".join(missing)
+        )
+    for field, label in (
+        ("release_operator_ids", "release operator"),
+        ("release_approver_ids", "release approver"),
+        ("recovery_owner_ids", "recovery owner"),
+    ):
+        identities = evidence[field]
+        if not isinstance(identities, list):
+            raise SourceRegistryError(f"Release governance {label} IDs must be a list")
+        _validate_non_placeholder_identities(
+            identities,
+            source_id="production registry",
+            label=label,
+        )
+    _parse_utc(evidence["recorded_at_utc"], "Release governance recorded_at_utc")
 
 
 def _validate_single_maintainer_fallback(

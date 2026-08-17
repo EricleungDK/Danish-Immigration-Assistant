@@ -11,31 +11,37 @@ completed issue-46 review bundle. The builder:
 
 - verifies the exact machine-review and human-decision file hashes recorded by
   `completed-review.json`;
+- cross-checks every flattened completed-review decision against the bound
+  `human-decisions.json` record;
 - verifies every archived snapshot and normalized extraction against all three
   copies of its reviewed SHA-256 identity;
 - requires the five configured source identities, completed curator admission,
   completed human review, and the human-approved current or replacement URL;
 - writes a production source registry naming the curator, reviewer, monitoring
-  owner, materiality, and the approved MVP single-maintainer fallback;
+  owner, release operator, release approver, recovery owner, materiality, and
+  the approved MVP single-maintainer fallback;
 - derives the corpus only from the reviewed official-source extraction, records
   both the exact extraction hash and the derived normalized-document hash, and
   creates deterministic schema-2 semantic chunks;
-- signs and immediately verifies the release with a caller-supplied Ed25519
-  private key and application trust root; and
+- exclusively claims candidate output paths, removes partial outputs after a
+  failed build, signs and immediately verifies the release with a caller-supplied
+  Ed25519 private key and application trust root; and
 - cross-checks the registry, signed manifest, and every released chunk before
   returning a candidate.
 
-The installed-candidate verifier builds the local lexical and dense chunk
-indexes and runs five production-source retrieval cases. Its report fails
-visibly on a missing required source, a blocked source, or a forbidden result.
+The installed-candidate verifier first builds isolated local lexical and dense
+chunk indexes and runs five production-source retrieval cases. It refuses an
+empty suite and fails on a missing required source, a blocked source, or a
+forbidden source-document result before activating the candidate in the target
+data directory.
 The rollback verifier injects failures during verification, extraction,
 embedding, indexing, and activation and proves that the prior reviewed release
 remains active and queryable.
 
 Production chunks now retain the exact reviewed-extraction digest in retrieval
-results and persisted citations. Retrieval accepts the two reviewed source
-languages (`da` and `en-GB`) and prefers source diversity for chunked results so
-one long official page cannot consume every result position.
+results and persisted citations. Update discovery also treats a change to that
+digest as a reviewed-source change. Retrieval accepts the two reviewed source
+languages (`da` and `en-GB`).
 
 ## Acceptance-criterion evidence
 
@@ -44,15 +50,16 @@ one long official page cannot consume every result position.
 | Review and approved-URL binding | Exact review/bundle/decision/snapshot/extraction checks plus registry-to-release cross-check | Machine-tested |
 | Five deterministic sources with provenance | Two independent builds produce identical chunk IDs; all five sources appear | Machine-tested |
 | Named registry roles, materiality, and fallback | Qualified generated registry assertions for all five sources and both material sources | Machine-tested |
-| Versioned, signed, compatible, installed, indexed; no packet G reuse | Test candidate is versioned, test-signed, verified, installed, and indexed; builder never reads packet G | Production signing pending |
+| Versioned, signed, compatible, installed, indexed; no packet G reuse | Test candidate is versioned, test-signed, verified, qualified before activation, installed, and indexed; packet G is not used as qualification evidence | Production signing pending |
 | Zero blocked/forbidden retrieval violations | Five installed-candidate cases report zero blocked, forbidden, or required-source misses | Test candidate passed; production run pending |
 | Prior release retained on failure | Five-stage candidate rollback matrix | Machine-tested |
 
 ## Validation
 
-- Focused issue #50 seam: `4 passed`.
-- Focused registry, multi-intent, and chunk-install regressions: `38 passed`.
-- Full Python suite: `333 passed`, `2` opt-in live-provider tests skipped. The
+- Focused issue #50 and review-regression seam: `13 passed`; the extraction-only
+  update-discovery regression also passed.
+- Focused registry, update, and chunk-install regressions: `66 passed`.
+- Full Python suite: `343 passed`, `2` opt-in live-provider tests skipped. The
   two loopback-server tests require an unsandboxed run and passed there.
 - Ruff lint on all changed Python files: passed.
 - Import/type smoke check on all changed production modules: passed. The
@@ -84,8 +91,14 @@ without placing the key in the repository:
   --release-id kr-2026-08-17.1 \
   --created-at-utc 2026-08-17T12:00:00Z \
   --next-review-due-utc 2026-10-26T20:55:12Z \
+  --release-operator ericleungDK \
+  --release-approver ericleungDK \
+  --recovery-owner ericleungDK \
   --signing-private-key /secure/off-repository/project-release-key-v1.pem \
-  --trust-root config/trust_roots/project-release-key-v1.json
+  --trust-root config/trust_roots/project-release-key-v1.json \
+  --install-data-dir /secure/local-production-qualification-data \
+  --embedding-model embeddinggemma \
+  --embedding-endpoint http://127.0.0.1:11434
 ```
 
 The production artifact, local production-key verification/install report, and

@@ -41,8 +41,8 @@ been run.
 - Live final-answer and release monitor harnesses with fail-closed evidence binding.
 - Keyboard, reduced-motion, narrow-screen, 200% zoom, and live-Ollama browser gates.
 - Completed-review-to-production-registry/release authoring with semantic chunks,
-  multilingual source retrieval, source-diverse result selection, exact
-  extraction provenance, and candidate rollback verification.
+  multilingual source retrieval, exact extraction provenance, isolated
+  pre-activation retrieval qualification, and candidate rollback verification.
 
 ## Known Issues
 

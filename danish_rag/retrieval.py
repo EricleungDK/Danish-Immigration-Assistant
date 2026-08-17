@@ -944,18 +944,6 @@ def _select_result_ids_for_topic_groups(
                 break
 
     selected_ids = reserved_ids[:limit]
-    selected_source_ids = {
-        str(documents_by_id[document_id].get("source_id", ""))
-        for document_id in selected_ids
-    }
-    if any("chunk_id" in documents_by_id[document_id] for document_id in ranked_ids):
-        for document_id in ranked_ids:
-            if len(selected_ids) >= limit:
-                break
-            source_id = str(documents_by_id[document_id].get("source_id", ""))
-            if document_id not in selected_ids and source_id not in selected_source_ids:
-                selected_ids.append(document_id)
-                selected_source_ids.add(source_id)
     for document_id in ranked_ids:
         if len(selected_ids) >= limit:
             break
