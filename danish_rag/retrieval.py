@@ -6,6 +6,7 @@ import json
 import math
 import re
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -316,6 +317,8 @@ class HybridRetriever:
             )
         )
         self._validate_index()
+        self._lexical_connection = self._snapshot_lexical_index()
+        self._lexical_lock = threading.Lock()
 
     @classmethod
     def from_data_dir(
@@ -337,14 +340,14 @@ class HybridRetriever:
                     encoding="utf-8"
                 )
             )
-        return cls(
-            data_dir=data_dir,
-            active_release=active_release,
-            documents=documents,
-            dense_index=dense_index,
-            embedding_provider=embedding_provider,
-            embedding_endpoint=embedding_endpoint,
-        )
+            return cls(
+                data_dir=data_dir,
+                active_release=active_release,
+                documents=documents,
+                dense_index=dense_index,
+                embedding_provider=embedding_provider,
+                embedding_endpoint=embedding_endpoint,
+            )
 
     def retrieve(self, question: str, *, limit: int = 3) -> list[dict[str, Any]]:
         normalized_question = normalize_question(question)
@@ -386,10 +389,8 @@ class HybridRetriever:
         expression = _fts_match_expression(normalized_question)
         if not expression:
             return []
-        connection = sqlite3.connect(self.index_dir / "lexical.sqlite3")
-        connection.row_factory = sqlite3.Row
-        try:
-            rows = connection.execute(
+        with self._lexical_lock:
+            rows = self._lexical_connection.execute(
                 """
                 SELECT documents.document_id, bm25(documents_fts) AS rank
                 FROM documents_fts
@@ -399,10 +400,6 @@ class HybridRetriever:
                 """,
                 (expression,),
             ).fetchall()
-        except sqlite3.DatabaseError as exc:
-            raise RetrievalError("Local lexical index is unavailable; re-index required.") from exc
-        finally:
-            connection.close()
         ranked_ids = [str(row["document_id"]) for row in rows]
         eligible_ids = [
             document_id
@@ -576,6 +573,22 @@ class HybridRetriever:
                 "Local lexical index content does not match the active release; "
                 "re-index required."
             )
+
+    def _snapshot_lexical_index(self) -> sqlite3.Connection:
+        lexical_path = self.index_dir / "lexical.sqlite3"
+        try:
+            source = sqlite3.connect(f"file:{lexical_path}?mode=ro", uri=True)
+            snapshot = sqlite3.connect(":memory:", check_same_thread=False)
+            try:
+                source.backup(snapshot)
+            finally:
+                source.close()
+            snapshot.row_factory = sqlite3.Row
+            return snapshot
+        except sqlite3.Error as exc:
+            raise RetrievalError(
+                "Could not snapshot the active lexical index; re-index required."
+            ) from exc
 
 
 def active_index_matches_release(

@@ -49,7 +49,7 @@ and reopens the saved conversation record with its original provenance.
 Focused issue and regression checks:
 
 ```text
-43 issue #49 tests passed
+49 issue #49 tests passed
 ```
 
 The focused set covers deterministic authoring, signed verification,
@@ -59,7 +59,7 @@ retrieval provenance, answer validation, and conversation persistence.
 Full Python verification:
 
 ```text
-319 tests passed; 2 opt-in live-provider tests skipped
+325 tests passed; 2 opt-in live-provider tests skipped
 ```
 
 The final full Playwright run passed all 30 non-live tests and skipped the
@@ -116,6 +116,14 @@ activation rolls back directories and the active pointer together; and
 retrieval reads one locked active snapshot. Legacy whole-document indexes
 without digest metadata remain usable only after their derived content passes
 the same direct validation.
+
+The seventh review removed the last mutable and lifetime-bound seams. Active
+records no longer choose their trust root; custom roots are anchored outside
+the active pointer, while production roots remain application-owned. Chunk
+indexes require activation digests, interrupted same-ID swaps recover from a
+transaction marker, and each retriever owns an in-memory lexical snapshot for
+its full lifetime. Pre-upgrade whole-document records must match the bundled
+signed release before their directly validated index can be used.
 
 The standards review also noted that production maintainer-role evidence is not
 part of the existing manifest contract. That gap predates issue #49, and the

@@ -1,11 +1,13 @@
 import hashlib
 import json
+import shutil
 import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import danish_rag.knowledge_release as knowledge_release_module
 from danish_rag.knowledge_release import (
     KnowledgeReleaseError,
     active_corpus_summary,
@@ -342,6 +344,54 @@ class ChunkInstallationTests(unittest.TestCase):
                 embedding_provider=self.embedding_provider,
             )
 
+    def test_active_record_cannot_redirect_the_installed_trust_anchor(self):
+        release_dir = self.build_chunked_release()
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        active_path = self.data_dir / "active-release.json"
+        active = json.loads(active_path.read_text(encoding="utf-8"))
+        active["trust_root_path"] = str(self.root / "attacker-controlled-root.json")
+        active_path.write_text(
+            json.dumps(active, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        retriever = HybridRetriever.from_data_dir(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
+
+        self.assertEqual(
+            retriever.manifest["knowledge_release_id"],
+            "kr-2026-07-30.1",
+        )
+
+    def test_chunk_active_record_requires_derived_index_integrity_evidence(self):
+        release_dir = self.build_chunked_release()
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        active_path = self.data_dir / "active-release.json"
+        active = json.loads(active_path.read_text(encoding="utf-8"))
+        active.pop("index_artifacts")
+        active_path.write_text(
+            json.dumps(active, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(KnowledgeReleaseError, "index artifact integrity"):
+            HybridRetriever.from_data_dir(
+                self.data_dir,
+                embedding_provider=self.embedding_provider,
+            )
+
     def test_same_id_pointer_write_failure_restores_previous_active_pair(self):
         release_dir = self.build_chunked_release()
         original = install_knowledge_release(
@@ -364,9 +414,16 @@ class ChunkInstallationTests(unittest.TestCase):
             created_at_utc="2026-07-30T11:00:00Z",
         )
 
+        original_write_json_atomic = knowledge_release_module._write_json_atomic
+
+        def conditional_write(value: dict, path: Path) -> None:
+            if path.name == "active-release.json":
+                raise OSError("simulated active pointer failure")
+            original_write_json_atomic(value, path)
+
         with patch(
             "danish_rag.knowledge_release._write_json_atomic",
-            side_effect=OSError("simulated active pointer failure"),
+            side_effect=conditional_write,
         ):
             with self.assertRaisesRegex(OSError, "active pointer failure"):
                 install_knowledge_release(
@@ -456,6 +513,46 @@ class ChunkInstallationTests(unittest.TestCase):
             ),
         )
 
+    def test_existing_retriever_keeps_immutable_snapshot_after_same_id_activation(self):
+        release_dir = self.build_chunked_release()
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        original_retriever = HybridRetriever.from_data_dir(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
+        changed_content = "Replacement rows must not enter an existing retriever."
+        changed_source, changed_document = bundled_reviewed_source_and_document(
+            changed_content
+        )
+        replacement_dir = self.root / "immutable-snapshot-replacement"
+        build_chunked_release_fixture(
+            release_dir=replacement_dir,
+            release_id="kr-2026-07-30.1",
+            source=changed_source,
+            document=changed_document,
+            release_trust=self.release_trust,
+            created_at_utc="2026-07-30T11:00:00Z",
+        )
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=replacement_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+
+        results = original_retriever.retrieve(
+            "Which equivalent or higher Danish test is described?",
+            limit=2,
+        )
+
+        self.assertTrue(results)
+        self.assertNotIn(changed_content, " ".join(item["content"] for item in results))
+
     def test_legacy_index_without_digests_rejects_valid_vector_tampering(self):
         installation = install_minimal_knowledge_release(
             self.data_dir,
@@ -483,6 +580,162 @@ class ChunkInstallationTests(unittest.TestCase):
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
             )
+
+    def test_legacy_active_manifest_is_anchored_to_bundled_signed_release(self):
+        installation = install_minimal_knowledge_release(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
+        active_path = self.data_dir / "active-release.json"
+        active = json.loads(active_path.read_text(encoding="utf-8"))
+        for field in (
+            "manifest_path",
+            "signature_path",
+            "trust_root_path",
+            "index_artifacts",
+        ):
+            active.pop(field, None)
+        documents_path = Path(active["documents_path"])
+        documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        documents[0]["content"] = "LEGACY POISON"
+        encoded_documents = (
+            json.dumps(documents, indent=2, sort_keys=True) + "\n"
+        ).encode("utf-8")
+        documents_path.write_bytes(encoded_documents)
+        active["manifest"]["artifacts"][0]["sha256"] = hashlib.sha256(
+            encoded_documents
+        ).hexdigest()
+        active["manifest"]["artifacts"][0]["bytes"] = len(encoded_documents)
+        active_path.write_text(
+            json.dumps(active, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        build_hybrid_index(
+            self.data_dir,
+            documents,
+            manifest=active["manifest"],
+            embedding_provider=self.embedding_provider,
+        )
+
+        with self.assertRaisesRegex(KnowledgeReleaseError, "trusted signed release"):
+            HybridRetriever.from_data_dir(
+                self.data_dir,
+                embedding_provider=self.embedding_provider,
+            )
+
+    def test_interrupted_same_id_activation_recovers_stranded_backup(self):
+        original = install_knowledge_release(
+            self.data_dir,
+            release_dir=self.build_chunked_release(),
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        replacement_content = "Interrupted replacement content."
+        replacement_source, replacement_document = bundled_reviewed_source_and_document(
+            replacement_content
+        )
+        replacement_release = self.root / "crash-replacement-release"
+        build_chunked_release_fixture(
+            release_dir=replacement_release,
+            release_id="kr-2026-07-30.1",
+            source=replacement_source,
+            document=replacement_document,
+            release_trust=self.release_trust,
+            created_at_utc="2026-07-30T11:00:00Z",
+        )
+        replacement_data = self.root / "replacement-data"
+        replacement = install_knowledge_release(
+            replacement_data,
+            release_dir=replacement_release,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        release_id = "kr-2026-07-30.1"
+        final_corpus = self.data_dir / "corpus" / release_id
+        final_index = self.data_dir / "index" / release_id
+        backup_corpus = self.data_dir / "corpus" / f".{release_id}.backup"
+        backup_index = self.data_dir / "index" / f".{release_id}.backup"
+        final_corpus.replace(backup_corpus)
+        final_index.replace(backup_index)
+        shutil.copytree(Path(replacement["active"]["documents_path"]).parent, final_corpus)
+        shutil.copytree(Path(replacement["active"]["index_path"]), final_index)
+        active_path = self.data_dir / "active-release.json"
+        shutil.copy2(active_path, self.data_dir / ".active-release.json.backup")
+        (self.data_dir / ".active-release-transaction.json").write_text(
+            json.dumps(
+                {
+                    "knowledge_release_id": release_id,
+                    "active_release": replacement["active"],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        recovered = load_active_release(self.data_dir)
+
+        self.assertEqual(recovered["manifest"], original["manifest"])
+        self.assertFalse(backup_corpus.exists())
+        self.assertFalse(backup_index.exists())
+        recovered_documents = json.loads(
+            Path(recovered["documents_path"]).read_text(encoding="utf-8")
+        )
+        self.assertEqual(recovered_documents, original["documents"])
+
+    def test_interrupted_identical_release_reinstall_restores_previous_pair(self):
+        release_dir = self.build_chunked_release()
+        original = install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        replacement_data = self.root / "identical-replacement-data"
+        replacement = install_knowledge_release(
+            replacement_data,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        release_id = "kr-2026-07-30.1"
+        final_corpus = self.data_dir / "corpus" / release_id
+        final_index = self.data_dir / "index" / release_id
+        backup_corpus = self.data_dir / "corpus" / f".{release_id}.backup"
+        backup_index = self.data_dir / "index" / f".{release_id}.backup"
+        pending_index = self.data_dir / "index" / f".{release_id}.pending"
+        final_corpus.replace(backup_corpus)
+        final_index.replace(backup_index)
+        shutil.copytree(Path(replacement["active"]["documents_path"]).parent, final_corpus)
+        shutil.copytree(Path(replacement["active"]["index_path"]), pending_index)
+        active_path = self.data_dir / "active-release.json"
+        shutil.copy2(active_path, self.data_dir / ".active-release.json.backup")
+        target_active = dict(replacement["active"])
+        target_active.update(
+            {
+                "documents_path": str(final_corpus / "documents.json"),
+                "index_path": str(final_index),
+                "manifest_path": str(final_corpus / "manifest.json"),
+                "signature_path": str(final_corpus / "manifest.sig"),
+            }
+        )
+        (self.data_dir / ".active-release-transaction.json").write_text(
+            json.dumps(
+                {
+                    "knowledge_release_id": release_id,
+                    "active_release": target_active,
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        recovered = load_active_release(self.data_dir)
+
+        self.assertEqual(recovered, original["active"])
+        self.assertTrue(final_index.is_dir())
+        self.assertFalse(backup_corpus.exists())
+        self.assertFalse(backup_index.exists())
+        self.assertFalse(pending_index.exists())
 
     def test_already_active_chunked_release_rebuilds_tampered_corpus(self):
         release_dir = self.build_chunked_release()

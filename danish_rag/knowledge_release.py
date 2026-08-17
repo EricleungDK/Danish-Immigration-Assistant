@@ -40,6 +40,8 @@ BUNDLED_MINIMAL_RELEASE = ROOT / "data" / "knowledge_releases" / "kr-2026-07-06.
 DEFAULT_RELEASE_CATALOG_DIR = ROOT / "data" / "knowledge_releases"
 DEFAULT_TRUST_ROOTS_DIR = ROOT / "config" / "trust_roots"
 ACTIVE_RELEASE_FILE = "active-release.json"
+ACTIVE_RELEASE_TRANSACTION_FILE = ".active-release-transaction.json"
+TRUSTED_RELEASE_ROOTS_DIR = "trusted-release-roots"
 PENDING_UPDATE_FILE = "pending-knowledge-update.json"
 AVAILABLE_GITHUB_UPDATE_FILE = "available-github-knowledge-update.json"
 GITHUB_UPDATE_STAGING_DIR = "knowledge-update-staging"
@@ -143,6 +145,11 @@ def install_knowledge_release(
     resolved_trust_root_path = _resolved_release_trust_root_path(
         manifest,
         trust_root_path,
+    )
+    _install_trusted_release_root(
+        resolved_data_dir,
+        manifest,
+        resolved_trust_root_path,
     )
     release_id = str(manifest["knowledge_release_id"])
     if expected_release_id is not None and release_id != expected_release_id:
@@ -259,7 +266,6 @@ def install_knowledge_release(
         "index_path": str(final_index_path),
         "manifest_path": str(final_corpus_dir / "manifest.json"),
         "signature_path": str(final_corpus_dir / "manifest.sig"),
-        "trust_root_path": str(resolved_trust_root_path),
         "index_artifacts": index_artifacts,
         "installed_at_utc": datetime.now(UTC).isoformat(),
     }
@@ -293,16 +299,20 @@ def ensure_minimal_knowledge_release(
     trust_root_path: str | Path | None = None,
 ) -> dict[str, Any]:
     try:
-        active = load_active_release(data_dir)
-        return {
-            "manifest": active["manifest"],
-            "documents": load_active_documents(data_dir, active_release=active),
-            "index": _load_index_metadata(
-                Path(data_dir),
-                active["manifest"]["knowledge_release_id"],
-            ),
-            "active": active,
-        }
+        with active_release_snapshot():
+            active = load_active_release(data_dir)
+            return {
+                "manifest": active["manifest"],
+                "documents": load_active_documents(
+                    data_dir,
+                    active_release=active,
+                ),
+                "index": _load_index_metadata(
+                    Path(data_dir),
+                    active["manifest"]["knowledge_release_id"],
+                ),
+                "active": active,
+            }
     except FileNotFoundError:
         return install_minimal_knowledge_release(
             data_dir,
@@ -314,14 +324,16 @@ def ensure_minimal_knowledge_release(
 
 def load_active_release(data_dir: str | Path) -> dict[str, Any]:
     resolved_data_dir = Path(data_dir)
-    active_path = resolved_data_dir / ACTIVE_RELEASE_FILE
-    if not active_path.exists():
-        raise FileNotFoundError(active_path)
-    active_release = json.loads(active_path.read_text(encoding="utf-8"))
-    if not isinstance(active_release, dict):
-        raise KnowledgeReleaseError("Active release record must be a JSON object.")
-    _validate_active_release_pair(resolved_data_dir, active_release)
-    return active_release
+    with active_release_snapshot():
+        _recover_interrupted_activation(resolved_data_dir)
+        active_path = resolved_data_dir / ACTIVE_RELEASE_FILE
+        if not active_path.exists():
+            raise FileNotFoundError(active_path)
+        active_release = json.loads(active_path.read_text(encoding="utf-8"))
+        if not isinstance(active_release, dict):
+            raise KnowledgeReleaseError("Active release record must be a JSON object.")
+        _validate_active_release_pair(resolved_data_dir, active_release)
+        return active_release
 
 
 def load_active_documents(
@@ -957,6 +969,57 @@ def _resolved_release_trust_root_path(
     return (DEFAULT_TRUST_ROOTS_DIR / f"{trust_root_id}.json").resolve()
 
 
+def _install_trusted_release_root(
+    data_dir: Path,
+    manifest: dict[str, Any],
+    source_path: Path,
+) -> Path:
+    trust_root_id = str(manifest["integrity"]["trust_root_id"])
+    default_path = (
+        DEFAULT_TRUST_ROOTS_DIR / f"{trust_root_id}.json"
+    ).resolve()
+    resolved_source = source_path.resolve()
+    if default_path.exists():
+        if _sha256_file(default_path) != _sha256_file(resolved_source):
+            raise KnowledgeReleaseError(
+                "Release trust root does not match the application-owned trust anchor."
+            )
+        return default_path
+    destination = data_dir / TRUSTED_RELEASE_ROOTS_DIR / f"{trust_root_id}.json"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        if _sha256_file(destination) != _sha256_file(resolved_source):
+            raise KnowledgeReleaseError(
+                "Release trust root ID is already anchored to a different key."
+            )
+        return destination
+    temporary_path = destination.with_name(
+        f".{destination.name}.{uuid.uuid4().hex}.tmp"
+    )
+    try:
+        shutil.copyfile(resolved_source, temporary_path)
+        temporary_path.replace(destination)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+    return destination
+
+
+def _trusted_release_root_path(
+    data_dir: Path,
+    manifest: dict[str, Any],
+) -> Path:
+    trust_root_id = str(manifest["integrity"]["trust_root_id"])
+    default_path = DEFAULT_TRUST_ROOTS_DIR / f"{trust_root_id}.json"
+    if default_path.is_file():
+        return default_path
+    installed_path = data_dir / TRUSTED_RELEASE_ROOTS_DIR / f"{trust_root_id}.json"
+    if not installed_path.is_file():
+        raise KnowledgeReleaseError(
+            "Installed release trust anchor is unavailable."
+        )
+    return installed_path
+
+
 def _validate_integrity_contract(manifest: dict[str, Any]) -> None:
     integrity = manifest.get("integrity")
     if not isinstance(integrity, dict):
@@ -1342,10 +1405,12 @@ def _documents_artifact(manifest: dict[str, Any]) -> dict[str, Any]:
 
 
 def _load_active_release_file(data_dir: Path) -> dict[str, Any] | None:
-    active_path = data_dir / ACTIVE_RELEASE_FILE
-    if not active_path.exists():
-        return None
-    return json.loads(active_path.read_text(encoding="utf-8"))
+    with active_release_snapshot():
+        _recover_interrupted_activation(data_dir)
+        active_path = data_dir / ACTIVE_RELEASE_FILE
+        if not active_path.exists():
+            return None
+        return json.loads(active_path.read_text(encoding="utf-8"))
 
 
 def _validate_active_release_pair(data_dir: Path, active_release: dict[str, Any]) -> None:
@@ -1392,11 +1457,7 @@ def _validate_active_release_pair(data_dir: Path, active_release: dict[str, Any]
     corpus_schema = corpus_schema_contract(
         str(manifest.get("corpus_schema_version", ""))
     )
-    signed_evidence_fields = {
-        "manifest_path",
-        "signature_path",
-        "trust_root_path",
-    }
+    signed_evidence_fields = {"manifest_path", "signature_path"}
     has_signed_evidence = signed_evidence_fields.issubset(active_release)
     if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA and not has_signed_evidence:
         raise KnowledgeReleaseError(
@@ -1421,7 +1482,7 @@ def _validate_active_release_pair(data_dir: Path, active_release: dict[str, Any]
             verify_manifest_signature(
                 manifest_path,
                 signature_path,
-                Path(str(active_release["trust_root_path"])),
+                _trusted_release_root_path(data_dir, signed_manifest),
                 str(signed_manifest["integrity"]["trust_root_id"]),
             )
         except (ReleaseTrustError, OSError, KeyError, TypeError) as exc:
@@ -1431,6 +1492,18 @@ def _validate_active_release_pair(data_dir: Path, active_release: dict[str, Any]
         if signed_manifest != manifest:
             raise KnowledgeReleaseError(
                 "Installed active record does not match its signed manifest."
+            )
+    elif corpus_schema is WHOLE_DOCUMENT_CORPUS_SCHEMA:
+        legacy_release_dir = DEFAULT_RELEASE_CATALOG_DIR / release_id
+        try:
+            trusted_legacy = verify_knowledge_release(legacy_release_dir)
+        except (KnowledgeReleaseError, OSError) as exc:
+            raise KnowledgeReleaseError(
+                "Legacy active corpus cannot be anchored to a trusted signed release."
+            ) from exc
+        if trusted_legacy["manifest"] != manifest:
+            raise KnowledgeReleaseError(
+                "Legacy active corpus does not match its trusted signed release."
             )
     try:
         documents_artifact = _documents_artifact(manifest)
@@ -1461,6 +1534,13 @@ def _validate_active_release_pair(data_dir: Path, active_release: dict[str, Any]
             )
 
     index_artifacts = active_release.get("index_artifacts")
+    if (
+        corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA
+        and not isinstance(index_artifacts, dict)
+    ):
+        raise KnowledgeReleaseError(
+            "Installed active chunk index lacks index artifact integrity evidence."
+        )
     if index_artifacts is not None:
         if not isinstance(index_artifacts, dict):
             raise KnowledgeReleaseError(
@@ -1607,6 +1687,7 @@ def _activate_staged_release(
     backup_index_dir = data_dir / "index" / f".{release_id}.backup"
     active_path = data_dir / ACTIVE_RELEASE_FILE
     active_backup_path = data_dir / f".{ACTIVE_RELEASE_FILE}.backup"
+    transaction_path = data_dir / ACTIVE_RELEASE_TRANSACTION_FILE
 
     for temporary_dir in (
         pending_corpus_dir,
@@ -1624,6 +1705,13 @@ def _activate_staged_release(
     active_backup_path.unlink(missing_ok=True)
     if active_path.exists():
         shutil.copy2(active_path, active_backup_path)
+    _write_json_atomic(
+        {
+            "knowledge_release_id": release_id,
+            "active_release": active_release,
+        },
+        transaction_path,
+    )
     _inject_install_fault(fault_injector, "activation")
 
     try:
@@ -1656,6 +1744,76 @@ def _activate_staged_release(
             if temporary_dir.exists():
                 shutil.rmtree(temporary_dir)
         active_backup_path.unlink(missing_ok=True)
+        transaction_path.unlink(missing_ok=True)
+
+
+def _recover_interrupted_activation(data_dir: Path) -> None:
+    transaction_path = data_dir / ACTIVE_RELEASE_TRANSACTION_FILE
+    if not transaction_path.exists():
+        return
+    try:
+        transaction = json.loads(transaction_path.read_text(encoding="utf-8"))
+        release_id = transaction["knowledge_release_id"]
+        target_active_release = transaction["active_release"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise KnowledgeReleaseError(
+            "Interrupted activation recovery metadata is invalid."
+        ) from exc
+    if (
+        not is_valid_stable_identity(release_id)
+        or release_id in {".", ".."}
+        or "/" in release_id
+        or "\\" in release_id
+    ):
+        raise KnowledgeReleaseError(
+            "Interrupted activation recovery identity is invalid."
+        )
+    if (
+        not isinstance(target_active_release, dict)
+        or not isinstance(target_active_release.get("manifest"), dict)
+        or target_active_release["manifest"].get("knowledge_release_id")
+        != release_id
+    ):
+        raise KnowledgeReleaseError(
+            "Interrupted activation recovery target is invalid."
+        )
+    final_corpus_dir = data_dir / "corpus" / release_id
+    final_index_dir = data_dir / "index" / release_id
+    backup_corpus_dir = data_dir / "corpus" / f".{release_id}.backup"
+    backup_index_dir = data_dir / "index" / f".{release_id}.backup"
+    pending_corpus_dir = data_dir / "corpus" / f".{release_id}.pending"
+    pending_index_dir = data_dir / "index" / f".{release_id}.pending"
+    active_path = data_dir / ACTIVE_RELEASE_FILE
+    active_backup_path = data_dir / f".{ACTIVE_RELEASE_FILE}.backup"
+    committed = False
+    try:
+        active = json.loads(active_path.read_text(encoding="utf-8"))
+        committed = (
+            isinstance(active, dict)
+            and active == target_active_release
+            and final_corpus_dir.is_dir()
+            and final_index_dir.is_dir()
+        )
+    except (OSError, json.JSONDecodeError, TypeError):
+        committed = False
+    if committed:
+        for backup_dir in (backup_corpus_dir, backup_index_dir):
+            if backup_dir.exists():
+                shutil.rmtree(backup_dir)
+    else:
+        if backup_corpus_dir.exists():
+            _restore_directory_backup(final_corpus_dir, backup_corpus_dir)
+        if backup_index_dir.exists():
+            _restore_directory_backup(final_index_dir, backup_index_dir)
+        if active_backup_path.exists():
+            active_backup_path.replace(active_path)
+        else:
+            active_path.unlink(missing_ok=True)
+    for temporary_dir in (pending_corpus_dir, pending_index_dir):
+        if temporary_dir.exists():
+            shutil.rmtree(temporary_dir)
+    active_backup_path.unlink(missing_ok=True)
+    transaction_path.unlink(missing_ok=True)
 
 
 def _restore_directory_backup(final_dir: Path, backup_dir: Path) -> None:
