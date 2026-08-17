@@ -356,6 +356,43 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
         ):
             self.build_candidate("invalid-human-contract", review_dir=review_dir)
 
+    def test_builder_rejects_publisher_drift_from_configured_official_source(self):
+        review_dir = self.copy_review_dir("publisher-drift-review")
+        bundle_path = review_dir / "review-bundle.json"
+        bundle = self.load_json(bundle_path)
+        bundle["sources"][0]["publisher"] = "Unreviewed publisher"
+        self.write_json(bundle_path, bundle)
+        self.rebind_review_files(review_dir, bundle_changed=True)
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "publisher differs from the configured official source",
+        ):
+            self.build_candidate("publisher-drift", review_dir=review_dir)
+
+    def test_builder_rejects_supplemental_evidence_that_predates_review(self):
+        review_dir = self.copy_review_dir("backdated-supplement-review")
+        supplemental_path = review_dir / "supplemental-observations.json"
+        completed_path = review_dir / "completed-review.json"
+        supplemental = self.load_json(supplemental_path)
+        supplemental["recorded_at_utc"] = "2026-07-26T20:05:00Z"
+        supplemental["observations"][0]["retrieval"]["retrieved_at_utc"] = (
+            "2026-07-26T20:00:00Z"
+        )
+        self.write_json(supplemental_path, supplemental)
+        completed = self.load_json(completed_path)
+        completed["supplemental_observations"] = supplemental["observations"]
+        completed["supplemental_observations_sha256"] = hashlib.sha256(
+            supplemental_path.read_bytes()
+        ).hexdigest()
+        self.write_json(completed_path, completed)
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "supplemental registry evidence must postdate human review",
+        ):
+            self.build_candidate("backdated-supplement", review_dir=review_dir)
+
     def test_builder_rejects_failed_http_monitoring_evidence(self):
         review_dir = self.copy_review_dir("failed-fetch-review")
         bundle_path = review_dir / "review-bundle.json"

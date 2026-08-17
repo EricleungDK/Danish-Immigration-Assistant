@@ -116,6 +116,12 @@ class CompletedSourceReviewValidation:
     sources: dict[str, ValidatedSourceReviewEvidence]
 
 
+@dataclass(frozen=True)
+class ValidatedSupplementalObservation:
+    payload: dict[str, Any]
+    retrieval: dict[str, Any]
+
+
 class _VisibleMainTextParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -673,7 +679,17 @@ def _validated_completed_review(
             registry_url_evidence is None
             and supplemental_registry_observation is not None
         ):
-            registry_url_evidence = supplemental_registry_observation["retrieval"]
+            if (
+                supplemental_registry_observation.retrieval["retrieved_at"]
+                <= reviewed_at
+            ):
+                raise SourceReviewError(
+                    f"source {source_id} supplemental registry evidence must postdate "
+                    "human review"
+                )
+            registry_url_evidence = supplemental_registry_observation.payload[
+                "retrieval"
+            ]
 
         url_resolution = record.get("url_resolution")
         if not isinstance(url_resolution, dict):
@@ -855,16 +871,16 @@ def _validated_supplemental_observations(
     payload: dict[str, Any] | None,
     *,
     allowed_source_ids: set[str],
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, ValidatedSupplementalObservation]:
     if payload is None:
         return {}
     if payload.get("schema_version") != SUPPLEMENTAL_OBSERVATIONS_SCHEMA_VERSION:
         raise SourceReviewError("supplemental observations have an invalid schema")
-    _parse_utc(payload.get("recorded_at_utc"))
+    recorded_at = _parse_utc(payload.get("recorded_at_utc"))
     observations = payload.get("observations")
     if not isinstance(observations, list):
         raise SourceReviewError("supplemental observations must be an array")
-    by_source_id: dict[str, dict[str, Any]] = {}
+    by_source_id: dict[str, ValidatedSupplementalObservation] = {}
     for observation in observations:
         if not isinstance(observation, dict):
             raise SourceReviewError("supplemental observation entries must be objects")
@@ -886,7 +902,7 @@ def _validated_supplemental_observations(
                 f"source {source_id} supplemental observation is not classified safely"
             )
         retrieval = observation.get("retrieval")
-        _validated_retrieval(
+        validated_retrieval = _validated_retrieval(
             retrieval,
             label=f"source {source_id} supplemental registry retrieval",
         )
@@ -899,7 +915,14 @@ def _validated_supplemental_observations(
             retrieval.get("response"),
             label=f"source {source_id} supplemental registry response",
         )
-        by_source_id[source_id] = observation
+        if validated_retrieval["retrieved_at"] > recorded_at:
+            raise SourceReviewError(
+                f"source {source_id} supplemental retrieval postdates its record"
+            )
+        by_source_id[source_id] = ValidatedSupplementalObservation(
+            payload=observation,
+            retrieval=validated_retrieval,
+        )
     return by_source_id
 
 

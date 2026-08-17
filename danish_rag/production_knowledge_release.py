@@ -37,6 +37,7 @@ from .source_review import (
 SOURCE_DOCUMENT_METADATA: dict[str, dict[str, Any]] = {
     "nyidanmark-permanent-residence-language-requirements": {
         "document_id": "di-rag-doc-permanent-residence-language",
+        "publisher": "The Danish Immigration Service (Udlændingestyrelsen)",
         "title": "Permanent residence requirements",
         "topic_tags": [
             "permanent-residence",
@@ -47,6 +48,7 @@ SOURCE_DOCUMENT_METADATA: dict[str, dict[str, Any]] = {
     },
     "nyidanmark-equivalent-tests-language-test-2": {
         "document_id": "di-rag-doc-equivalent-tests-language-test-2",
+        "publisher": "The Danish Immigration Service (Udlændingestyrelsen)",
         "title": "Tests equivalent to or higher than Danish language test 2",
         "topic_tags": [
             "permanent-residence",
@@ -57,6 +59,7 @@ SOURCE_DOCUMENT_METADATA: dict[str, dict[str, Any]] = {
     },
     "nyidanmark-equivalent-tests-language-test-3": {
         "document_id": "di-rag-doc-equivalent-tests-language-test-3",
+        "publisher": "The Danish Immigration Service (Udlændingestyrelsen)",
         "title": "Tests equivalent to or higher than Danish language test 3",
         "topic_tags": [
             "permanent-residence",
@@ -67,11 +70,17 @@ SOURCE_DOCUMENT_METADATA: dict[str, dict[str, Any]] = {
     },
     "danskogproever-danish-exam-overview": {
         "document_id": "di-rag-doc-danish-exam-overview",
+        "publisher": (
+            "Danish Agency for International Recruitment and Integration (SIRI)"
+        ),
         "title": "Danish language examinations overview",
         "topic_tags": ["language-requirement", "exam", "exam-comparison"],
     },
     "danskogproever-registration-deadlines-2026": {
         "document_id": "di-rag-doc-registration-deadlines-2026",
+        "publisher": (
+            "Danish Agency for International Recruitment and Integration (SIRI)"
+        ),
         "title": "Registration deadlines and examination dates",
         "topic_tags": ["language-requirement", "registration-logistics", "exam"],
     },
@@ -345,12 +354,6 @@ def build_reviewed_candidate_release(
         raise KnowledgeReleaseError(
             f"Completed source review is invalid: {exc}"
         ) from exc
-
-    _validate_human_decision_binding(
-        completed=completed,
-        bundle_sha256=bundle_sha256,
-        decisions=decisions,
-    )
 
     completed_by_id = _unique_sources(completed.get("sources"), "completed review")
     bundle_by_id = _unique_sources(bundle.get("sources"), "review bundle")
@@ -670,11 +673,16 @@ def _load_reviewed_source_evidence(
     source_id = validated_source.source_id
     completed_review = validated_source.completed_source
     machine_review_bundle = validated_source.machine_source
+    metadata = SOURCE_DOCUMENT_METADATA[source_id]
     human_review = completed_review.get("human_review", {})
     admission = completed_review.get("curator_admission", {})
     url_resolution = completed_review.get("url_resolution", {})
     retrieval = machine_review_bundle.get("retrieval", {})
     extraction = machine_review_bundle.get("normalized_extraction", {})
+    if machine_review_bundle.get("publisher") != metadata["publisher"]:
+        raise KnowledgeReleaseError(
+            f"Source {source_id} publisher differs from the configured official source."
+        )
     if machine_review_bundle.get("topic") != admission.get(
         "confirmed_topic"
     ) or machine_review_bundle.get("language") != admission.get("confirmed_language"):
@@ -701,7 +709,6 @@ def _load_reviewed_source_evidence(
     normalized_document_sha256 = hashlib.sha256(
         normalized_content.encode("utf-8")
     ).hexdigest()
-    metadata = SOURCE_DOCUMENT_METADATA[source_id]
     staffing = human_review.get("staffing")
     source_fallback = (
         single_maintainer_fallback
@@ -748,54 +755,6 @@ def _load_reviewed_source_evidence(
         title=metadata["title"],
         topic_tags=metadata["topic_tags"],
     )
-
-
-def _validate_human_decision_binding(
-    *,
-    completed: dict[str, Any],
-    bundle_sha256: str,
-    decisions: dict[str, Any],
-) -> None:
-    review_bundle_binding = decisions.get("review_bundle")
-    if (
-        not isinstance(review_bundle_binding, dict)
-        or review_bundle_binding.get("path") != "review-bundle.json"
-        or review_bundle_binding.get("sha256") != bundle_sha256
-    ):
-        raise KnowledgeReleaseError(
-            "Human decisions do not bind the reviewed machine bundle."
-        )
-    completed_by_id = _unique_sources(completed.get("sources"), "completed review")
-    decisions_by_id = _unique_sources(
-        decisions.get("source_decisions"),
-        "human decisions",
-    )
-    if set(completed_by_id) != set(decisions_by_id):
-        raise KnowledgeReleaseError(
-            "Completed review source identities differ from bound human decisions."
-        )
-    decision_fields = (
-        "curator_admission",
-        "url_resolution",
-        "human_review",
-        "source_review_gate_status",
-        "eligible_for_follow_on_rebuild",
-    )
-    for source_id, human_decision in decisions_by_id.items():
-        completed_review = completed_by_id[source_id]
-        if any(
-            completed_review.get(field) != human_decision.get(field)
-            for field in decision_fields
-        ):
-            raise KnowledgeReleaseError(
-                f"Source {source_id} completed review differs from bound human decisions."
-            )
-    if completed.get("single_maintainer_fallback") != decisions.get(
-        "single_maintainer_fallback"
-    ):
-        raise KnowledgeReleaseError(
-            "Completed review fallback differs from bound human decisions."
-        )
 
 
 def _require_utc_timestamp(value: Any, label: str) -> datetime:

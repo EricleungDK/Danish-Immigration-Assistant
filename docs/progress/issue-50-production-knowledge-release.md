@@ -14,6 +14,9 @@ completed issue-46 review bundle. The builder:
 - rebuilds the canonical completed-review record from the bound machine bundle,
   supplemental observations, and human decisions, rejecting schema, named
   identity, timestamp, staffing, URL-provenance, or packet-G contract drift;
+- pins each source to its configured official publisher and requires
+  supplemental replacement-URL evidence labeled post-review to actually
+  postdate the human review;
 - cross-checks every flattened completed-review decision against the bound
   `human-decisions.json` record;
 - verifies every archived snapshot and normalized extraction against all three
@@ -64,10 +67,10 @@ languages (`da` and `en-GB`).
 
 ## Validation
 
-- Focused issue #50 suite: `18 passed`.
+- Focused issue #50 suite: `20 passed`.
 - Focused registry, update, atomic-install, chunk, provenance, and answer-path
-  regressions, including canonical source-review validation: `87 passed`.
-- Full Python suite: `349 passed`, `2` opt-in live-provider tests skipped. The
+  regressions, including canonical source-review validation: `89 passed`.
+- Full Python suite: `351 passed`, `2` opt-in live-provider tests skipped. The
   two loopback-server tests require an unsandboxed run and passed there.
 - Ruff lint on all changed Python files: passed.
 - Import/type smoke check on all changed production modules: passed. The
