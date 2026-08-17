@@ -338,9 +338,23 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
 
         with self.assertRaisesRegex(
             KnowledgeReleaseError,
-            "differs from bound human decisions",
+            "differs from the canonical validated review evidence",
         ):
             self.build_candidate("flattened-drift", review_dir=review_dir)
+
+    def test_builder_revalidates_the_complete_human_review_contract(self):
+        review_dir = self.copy_review_dir("invalid-human-contract-review")
+        decisions_path = review_dir / "human-decisions.json"
+        decisions = self.load_json(decisions_path)
+        decisions["human_identity"]["reviewer_ids"] = ["mvp-fixture-reviewer"]
+        self.write_json(decisions_path, decisions)
+        self.rebind_review_files(review_dir, decisions_changed=True)
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "fixture reviewer identities",
+        ):
+            self.build_candidate("invalid-human-contract", review_dir=review_dir)
 
     def test_builder_rejects_failed_http_monitoring_evidence(self):
         review_dir = self.copy_review_dir("failed-fetch-review")

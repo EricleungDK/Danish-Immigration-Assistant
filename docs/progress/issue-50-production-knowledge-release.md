@@ -11,6 +11,9 @@ completed issue-46 review bundle. The builder:
 
 - verifies the exact machine-review and human-decision file hashes recorded by
   `completed-review.json`;
+- rebuilds the canonical completed-review record from the bound machine bundle,
+  supplemental observations, and human decisions, rejecting schema, named
+  identity, timestamp, staffing, URL-provenance, or packet-G contract drift;
 - cross-checks every flattened completed-review decision against the bound
   `human-decisions.json` record;
 - verifies every archived snapshot and normalized extraction against all three
@@ -61,10 +64,10 @@ languages (`da` and `en-GB`).
 
 ## Validation
 
-- Focused issue #50 suite: `17 passed`.
+- Focused issue #50 suite: `18 passed`.
 - Focused registry, update, atomic-install, chunk, provenance, and answer-path
-  regressions: `83 passed`.
-- Full Python suite: `348 passed`, `2` opt-in live-provider tests skipped. The
+  regressions, including canonical source-review validation: `87 passed`.
+- Full Python suite: `349 passed`, `2` opt-in live-provider tests skipped. The
   two loopback-server tests require an unsandboxed run and passed there.
 - Ruff lint on all changed Python files: passed.
 - Import/type smoke check on all changed production modules: passed. The

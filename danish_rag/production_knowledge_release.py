@@ -28,6 +28,10 @@ from .source_registry import (
     load_source_registry,
     validate_source_registry_against_release,
 )
+from .source_review import (
+    SourceReviewError,
+    validate_completed_source_review_evidence,
+)
 
 SOURCE_DOCUMENT_METADATA: dict[str, dict[str, Any]] = {
     "nyidanmark-permanent-residence-language-requirements": {
@@ -216,12 +220,14 @@ class ReviewedSourceEvidence:
         }
 
 
+FORBIDDEN_CANDIDATE_DOCUMENT_IDS = ("di-rag-doc-citizenship-language",)
+
 DEFAULT_CANDIDATE_RETRIEVAL_QUERIES = (
     CandidateRetrievalQuery(
         id="permanent-residence-language-requirement",
         query_text="What Danish language test is required for permanent residence?",
         required_source_ids=("nyidanmark-permanent-residence-language-requirements",),
-        forbidden_document_ids=("di-rag-doc-citizenship-language",),
+        forbidden_document_ids=FORBIDDEN_CANDIDATE_DOCUMENT_IDS,
     ),
     CandidateRetrievalQuery(
         id="language-test-2-equivalence",
@@ -229,7 +235,7 @@ DEFAULT_CANDIDATE_RETRIEVAL_QUERIES = (
             "Is FVU reading exam level 2 or 3 equivalent to Danish language test 2?"
         ),
         required_source_ids=("nyidanmark-equivalent-tests-language-test-2",),
-        forbidden_document_ids=("di-rag-doc-citizenship-language",),
+        forbidden_document_ids=FORBIDDEN_CANDIDATE_DOCUMENT_IDS,
     ),
     CandidateRetrievalQuery(
         id="language-test-3-equivalence",
@@ -238,7 +244,7 @@ DEFAULT_CANDIDATE_RETRIEVAL_QUERIES = (
             "language test 3 equivalence?"
         ),
         required_source_ids=("nyidanmark-equivalent-tests-language-test-3",),
-        forbidden_document_ids=("di-rag-doc-citizenship-language",),
+        forbidden_document_ids=FORBIDDEN_CANDIDATE_DOCUMENT_IDS,
     ),
     CandidateRetrievalQuery(
         id="danish-exam-overview",
@@ -246,13 +252,13 @@ DEFAULT_CANDIDATE_RETRIEVAL_QUERIES = (
             "What are the Danish language examinations PD1 PD2 PD3 and Studieprøven?"
         ),
         required_source_ids=("danskogproever-danish-exam-overview",),
-        forbidden_document_ids=("di-rag-doc-citizenship-language",),
+        forbidden_document_ids=FORBIDDEN_CANDIDATE_DOCUMENT_IDS,
     ),
     CandidateRetrievalQuery(
         id="registration-deadlines",
         query_text="When is the registration deadline for Danish language examinations?",
         required_source_ids=("danskogproever-registration-deadlines-2026",),
-        forbidden_document_ids=("di-rag-doc-citizenship-language",),
+        forbidden_document_ids=FORBIDDEN_CANDIDATE_DOCUMENT_IDS,
     ),
 )
 
@@ -310,12 +316,34 @@ def build_reviewed_candidate_release(
         completed.get("human_decisions_sha256"),
         "human decisions",
     )
+    supplemental_observations, supplemental_observations_sha256 = (
+        _load_supplemental_observations(
+            resolved_review_dir,
+            completed.get("supplemental_observations_sha256"),
+        )
+    )
     if completed.get("qualification_status") != (
         "source-review-complete-ready-for-follow-on-rebuild"
     ):
         raise KnowledgeReleaseError(
             "Completed source review is not eligible for rebuild."
         )
+
+    try:
+        validate_completed_source_review_evidence(
+            review_dir=resolved_review_dir,
+            completed_review=completed,
+            machine_manifest=bundle,
+            machine_manifest_sha256=bundle_sha256,
+            decisions=decisions,
+            decisions_sha256=decisions_sha256,
+            supplemental_observations=supplemental_observations,
+            supplemental_observations_sha256=supplemental_observations_sha256,
+        )
+    except SourceReviewError as exc:
+        raise KnowledgeReleaseError(
+            f"Completed source review is invalid: {exc}"
+        ) from exc
 
     _validate_human_decision_binding(
         completed=completed,
@@ -450,13 +478,16 @@ def install_and_verify_candidate(
         pinned_release_dir = qualification_root / "candidate-release"
         shutil.copytree(release_dir, pinned_release_dir)
         qualification_dir = qualification_root / "local-data"
+        install_options = {
+            "embedding_model": embedding_model,
+            "embedding_provider": embedding_provider,
+            "embedding_endpoint": embedding_endpoint,
+            "trust_root_path": trust_root_path,
+        }
         qualification_installation = install_knowledge_release(
             qualification_dir,
             release_dir=pinned_release_dir,
-            embedding_model=embedding_model,
-            embedding_provider=embedding_provider,
-            embedding_endpoint=embedding_endpoint,
-            trust_root_path=trust_root_path,
+            **install_options,
         )
         report = _candidate_retrieval_report(
             data_dir=qualification_dir,
@@ -485,11 +516,8 @@ def install_and_verify_candidate(
         installation = install_knowledge_release(
             resolved_data_dir,
             release_dir=pinned_release_dir,
-            embedding_model=embedding_model,
-            embedding_provider=embedding_provider,
-            embedding_endpoint=embedding_endpoint,
-            trust_root_path=trust_root_path,
             expected_release_id=qualified_release_id,
+            **install_options,
         )
     report["knowledge_release_id"] = installation["manifest"]["knowledge_release_id"]
     return report
@@ -688,14 +716,14 @@ def _load_reviewed_source_evidence(
         extraction.get("path"),
         source_id,
     )
-    _snapshot_bytes, snapshot_sha256 = _read_matching_artifact(
+    _snapshot_bytes, snapshot_sha256 = _read_bound_bytes(
         snapshot_path,
         snapshot.get("sha256"),
         completed_review.get("official_source_snapshot_sha256"),
         human_review.get("official_source_snapshot_sha256"),
         label=f"source {source_id} snapshot",
     )
-    extraction_bytes, extraction_sha256 = _read_matching_artifact(
+    extraction_bytes, extraction_sha256 = _read_bound_bytes(
         extraction_path,
         extraction.get("sha256"),
         completed_review.get("normalized_extraction_sha256"),
@@ -886,14 +914,29 @@ def _load_bound_json_object(
     expected_sha256: Any,
     label: str,
 ) -> tuple[dict[str, Any], str]:
-    encoded = _read_file_bytes(path, label)
-    actual_sha256 = hashlib.sha256(encoded).hexdigest()
-    if actual_sha256 != expected_sha256:
-        raise KnowledgeReleaseError(f"Completed review does not bind the {label}.")
+    encoded, actual_sha256 = _read_bound_bytes(
+        path,
+        expected_sha256,
+        label=label,
+    )
     return (
         _decode_json_object(encoded, path=path, label=label),
         actual_sha256,
     )
+
+
+def _load_supplemental_observations(
+    review_dir: Path,
+    expected_sha256: Any,
+) -> tuple[dict[str, Any] | None, str | None]:
+    if expected_sha256 is None:
+        return None, None
+    supplemental, actual_sha256 = _load_bound_json_object(
+        review_dir / "supplemental-observations.json",
+        expected_sha256,
+        "supplemental observations",
+    )
+    return supplemental, actual_sha256
 
 
 def _read_file_bytes(path: Path, label: str) -> bytes:
@@ -950,7 +993,7 @@ def _review_artifact_path(review_dir: Path, reference: Any, source_id: str) -> P
     return candidate
 
 
-def _read_matching_artifact(
+def _read_bound_bytes(
     path: Path,
     *expected: Any,
     label: str,
