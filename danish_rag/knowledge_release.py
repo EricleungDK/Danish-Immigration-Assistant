@@ -16,6 +16,7 @@ from typing import Any, Callable, Protocol
 
 from .corpus_schema import (
     SEMANTIC_CHUNK_CORPUS_SCHEMA,
+    SEMANTIC_CHUNK_DOCUMENT_FIELDS,
     WHOLE_DOCUMENT_CORPUS_SCHEMA,
     corpus_schema_contract,
 )
@@ -47,6 +48,7 @@ ARCHIVE_COPY_CHUNK_BYTES = 1024 * 1024
 GITHUB_KNOWLEDGE_RELEASE_PATTERN = re.compile(
     r"kr-(\d{4})-(\d{2})-(\d{2})\.(\d+)\Z"
 )
+_SHA256_PATTERN = re.compile(r"[0-9a-f]{64}\Z")
 
 
 class KnowledgeReleaseError(ValueError):
@@ -1022,6 +1024,20 @@ def _validate_release(
                 f"Source {source.get('source_id', '<unknown>')} missing provenance "
                 f"field(s): {', '.join(missing_provenance)}"
             )
+        if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA:
+            for hash_field, identity_label in {
+                "source_content_sha256": "source content",
+                "normalized_document_sha256": "normalized document content",
+            }.items():
+                hash_value = source.get(hash_field)
+                if (
+                    not isinstance(hash_value, str)
+                    or _SHA256_PATTERN.fullmatch(hash_value) is None
+                ):
+                    raise KnowledgeReleaseError(
+                        f"Source {source.get('source_id', '<unknown>')} lacks a valid "
+                        f"{identity_label} SHA-256 identity."
+                    )
         state = source.get("review_state")
         if state not in {"approved-current", "overdue-policy-usable"}:
             raise KnowledgeReleaseError(
@@ -1089,6 +1105,13 @@ def _validate_release(
                     f"Document {document['document_id']} missing provenance "
                     f"field: {provenance_field}."
                 )
+        if (
+            corpus_schema is WHOLE_DOCUMENT_CORPUS_SCHEMA
+            and SEMANTIC_CHUNK_DOCUMENT_FIELDS.intersection(document)
+        ):
+            raise KnowledgeReleaseError(
+                "A whole-document corpus cannot contain semantic chunk provenance."
+            )
         if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA:
             required_chunk_fields = {
                 "chunk_id",
@@ -1103,6 +1126,14 @@ def _validate_release(
                     f"Chunk {document_id} missing stable provenance field(s): "
                     f"{', '.join(missing_chunk_fields)}."
                 )
+            source_document_id = document["source_document_id"]
+            if (
+                not isinstance(source_document_id, str)
+                or not source_document_id.strip()
+            ):
+                raise KnowledgeReleaseError(
+                    f"Chunk {document_id} has an invalid source document identity."
+                )
             content_hash = hashlib.sha256(
                 str(document["content"]).encode("utf-8")
             ).hexdigest()
@@ -1112,14 +1143,14 @@ def _validate_release(
                 )
             occurrence_key = (
                 str(document["source_id"]),
-                str(document["source_document_id"]),
+                source_document_id,
                 content_hash,
             )
             occurrence = chunk_occurrences.get(occurrence_key, 0)
             chunk_occurrences[occurrence_key] = occurrence + 1
             expected_chunk_id = stable_chunk_id(
                 source_id=str(document["source_id"]),
-                source_document_id=str(document["source_document_id"]),
+                source_document_id=source_document_id,
                 chunk_content_sha256=content_hash,
                 occurrence=occurrence,
             )
@@ -1165,7 +1196,7 @@ def _validate_release(
                 )
             source_document_key = (
                 str(document["source_id"]),
-                str(document["source_document_id"]),
+                source_document_id,
             )
             chunks_by_source_document.setdefault(source_document_key, []).append(
                 document

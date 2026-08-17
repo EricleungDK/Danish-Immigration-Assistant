@@ -74,9 +74,13 @@ def build_stable_semantic_chunks(
     if not semantic_units:
         raise SemanticChunkError("Reviewed normalized source content is empty.")
 
-    source_document_id = str(document.get("document_id", "")).strip()
-    if not source_document_id:
+    source_document_identity = document.get("document_id")
+    if (
+        not isinstance(source_document_identity, str)
+        or not source_document_identity.strip()
+    ):
         raise SemanticChunkError("Reviewed normalized document is missing its identity.")
+    source_document_id = source_document_identity.strip()
 
     occurrences: defaultdict[str, int] = defaultdict(int)
     chunks: list[dict[str, Any]] = []

@@ -44,6 +44,7 @@ class ChunkReleaseValidationTests(unittest.TestCase):
                 "source_health": "current",
             },
         }
+        self.source = source
         document = {
             "document_id": "reviewed-source-document",
             "source_id": "official-source",
@@ -120,6 +121,53 @@ class ChunkReleaseValidationTests(unittest.TestCase):
                 trust_root_path=self.release_trust.trust_root_path,
             )
 
+    def test_chunked_release_requires_valid_source_content_identity(self):
+        manifest_path = self.release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["sources"][0]["source_content_sha256"] = ""
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        sign_manifest(
+            manifest_path,
+            self.release_trust.signing_private_key_path,
+            self.release_dir / "manifest.sig",
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "valid source content SHA-256 identity",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_whole_document_schema_rejects_chunk_shaped_documents(self):
+        chunk_documents = json.loads(
+            (self.release_dir / "corpus" / "documents.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "whole-document corpus cannot contain semantic chunk provenance",
+        ):
+            build_publishable_knowledge_release(
+                release_dir=self.root / "mislabelled-whole-document-release",
+                release_id="kr-2026-07-30-mislabelled",
+                source_registry_version="sr-2026-07-30.1",
+                sources=[dict(self.source)],
+                documents=chunk_documents,
+                created_at_utc="2026-07-30T12:30:00Z",
+                minimum_application_version="0.1.0",
+                corpus_schema_version="1.0",
+                signing_private_key_path=self.release_trust.signing_private_key_path,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
     def test_chunked_release_with_content_not_matching_chunk_identity_is_rejected(self):
         self.rewrite_first_chunk_and_resign(
             content="Content changed after stable chunk identity was assigned."
@@ -140,6 +188,51 @@ class ChunkReleaseValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(
             KnowledgeReleaseError,
             "source and chunk content identity",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_chunked_release_rejects_null_source_document_identity(self):
+        documents_path = self.release_dir / "corpus" / "documents.json"
+        documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        for document in documents:
+            chunk_id = stable_chunk_id(
+                source_id="official-source",
+                source_document_id="None",
+                chunk_content_sha256=document["chunk_content_sha256"],
+                occurrence=0,
+            )
+            document.update(
+                source_document_id=None,
+                chunk_id=chunk_id,
+                document_id=chunk_id,
+            )
+        documents_bytes = (
+            json.dumps(documents, indent=2, sort_keys=True) + "\n"
+        ).encode("utf-8")
+        documents_path.write_bytes(documents_bytes)
+
+        manifest_path = self.release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["artifacts"][0]["sha256"] = hashlib.sha256(
+            documents_bytes
+        ).hexdigest()
+        manifest["artifacts"][0]["bytes"] = len(documents_bytes)
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        sign_manifest(
+            manifest_path,
+            self.release_trust.signing_private_key_path,
+            self.release_dir / "manifest.sig",
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "source document identity",
         ):
             verify_knowledge_release(
                 self.release_dir,
