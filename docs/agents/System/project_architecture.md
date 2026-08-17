@@ -49,13 +49,17 @@ tests/                         unit, integration, live opt-in, and browser gates
 - `provider_setup.py`, `runtime_probe.py`, and `embedding_provider.py` keep
   provider capability and model identity contracts explicit.
 - `retrieval.py` verifies corpus/index compatibility, filters ineligible sources,
-  and fuses FTS5/dense rankings.
+  fuses FTS5/dense rankings, searches the reviewed Danish and English source
+  languages, and prevents one chunk-heavy source from crowding out all others.
 - `answer_pipeline.py` separates ambiguity, safety, generation, claim support,
   citations, Evidence Confidence, and Fresh Tomato Score.
 - `conversation_store.py` persists immutable turn provenance locally.
 - `release_trust.py`, `github_release_client.py`, and `knowledge_release.py`
   separate discovery, explicit download approval, signed review, install, and
   atomic rollback.
+- `production_knowledge_release.py` binds completed source-review evidence into
+  a production-qualified registry and caller-signed schema-2 release, then
+  verifies installation, retrieval safety, and the five-stage rollback matrix.
 - `final_answer_evaluation.py`, `release_monitors.py`, and
   `release_evaluation.py` fail closed when required live, workflow, or human
   evidence is absent or stale.
@@ -71,11 +75,13 @@ tests/                         unit, integration, live opt-in, and browser gates
 
 ## Current Release Boundary
 
-The software path is implemented and machine-tested, but the bundled corpus is
-truthfully classified as project-authored fixture content in the production
-source registry. Production publication remains blocked until official snapshots,
-curator/monitor records, named human source review, independent final-answer
-adjudication, replacement real-process/browser environment evidence, a manual
-assistive-technology check, and release-owner approval are supplied. See
+The reviewed-source build path is implemented and machine-tested from the five
+completed issue-46 reviews. The bundled active corpus remains the prior
+project-authored fixture because the matching production private signing key is
+not present in the repository and no production candidate has been signed or
+activated. Broader release publication also remains blocked by independent
+final-answer adjudication, replacement real-process/browser environment
+evidence, a manual assistive-technology check, and release-owner approval. See
+[`docs/progress/issue-50-production-knowledge-release.md`](../../progress/issue-50-production-knowledge-release.md) and
 [`docs/progress/source-registry-sr-2026-07-06.1.md`](../../progress/source-registry-sr-2026-07-06.1.md).
 Completion evidence: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).

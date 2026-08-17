@@ -845,6 +845,7 @@ def _attach_source_metadata(
     for field in (
         "fresh_tomato_inputs",
         "source_content_sha256",
+        "normalized_extraction_sha256",
         "normalized_document_sha256",
         "reviewed_at_utc",
         "reviewers",
@@ -886,7 +887,7 @@ def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:
     ):
         intent_topic_tag_groups.append(["certificate-equivalence"])
     if not shared_topic_tags and not intent_topic_tag_groups:
-        return {"language": "da"}
+        return {"language": ["da", "en-GB"]}
 
     topic_tag_groups = (
         [
@@ -898,14 +899,18 @@ def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:
     )
     return {
         "topic_tag_groups": topic_tag_groups,
-        "language": "da",
+        "language": ["da", "en-GB"],
     }
 
 
 def _matches_metadata_filter(document: dict[str, Any], metadata_filter: dict[str, Any]) -> bool:
     language = metadata_filter.get("language")
-    if language and document.get("language") != language:
-        return False
+    if language:
+        allowed_languages = (
+            set(language) if isinstance(language, list) else {str(language)}
+        )
+        if document.get("language") not in allowed_languages:
+            return False
     document_tags = set(document.get("topic_tags", []))
     topic_tag_groups = metadata_filter.get("topic_tag_groups")
     if topic_tag_groups is not None:
@@ -939,6 +944,18 @@ def _select_result_ids_for_topic_groups(
                 break
 
     selected_ids = reserved_ids[:limit]
+    selected_source_ids = {
+        str(documents_by_id[document_id].get("source_id", ""))
+        for document_id in selected_ids
+    }
+    if any("chunk_id" in documents_by_id[document_id] for document_id in ranked_ids):
+        for document_id in ranked_ids:
+            if len(selected_ids) >= limit:
+                break
+            source_id = str(documents_by_id[document_id].get("source_id", ""))
+            if document_id not in selected_ids and source_id not in selected_source_ids:
+                selected_ids.append(document_id)
+                selected_source_ids.add(source_id)
     for document_id in ranked_ids:
         if len(selected_ids) >= limit:
             break

@@ -1560,6 +1560,10 @@ def _citation_from_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
                 ),
             }
         )
+        if evidence.get("normalized_extraction_sha256") is not None:
+            citation["normalized_extraction_sha256"] = str(
+                evidence["normalized_extraction_sha256"]
+            )
     return citation
 
 
