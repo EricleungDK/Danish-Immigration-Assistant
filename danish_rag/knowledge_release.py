@@ -21,6 +21,7 @@ from .corpus_schema import (
     corpus_schema_contract,
 )
 from .embedding_provider import EmbeddingProvider, embedding_provider_id, resolve_embedding_provider
+from .evidence_integrity import is_utc_seconds
 from .github_release_client import (
     ArtifactDownloadApproval,
     DownloadedReleaseArtifact,
@@ -974,6 +975,17 @@ def _validate_release(
     missing = sorted(required_manifest_fields - set(manifest))
     if missing:
         raise KnowledgeReleaseError(f"Release manifest missing field(s): {', '.join(missing)}")
+    for identity_field in ("knowledge_release_id", "corpus_id"):
+        identity = manifest[identity_field]
+        if not isinstance(identity, str) or not identity.strip():
+            raise KnowledgeReleaseError(
+                f"Release manifest lacks a valid {identity_field.replace('_', ' ')}."
+            )
+    release_id = manifest["knowledge_release_id"]
+    if release_id in {".", ".."} or "/" in release_id or "\\" in release_id:
+        raise KnowledgeReleaseError(
+            "Release manifest lacks a valid knowledge release id."
+        )
     if manifest["manifest_schema_version"] != "1.0":
         raise KnowledgeReleaseError("Unsupported manifest schema version.")
     corpus_schema_version = str(manifest["corpus_schema_version"])
@@ -1006,6 +1018,14 @@ def _validate_release(
     _validate_integrity_contract(manifest)
     source_ids = set()
     for source in manifest["sources"]:
+        source_identity = source.get("source_id")
+        if (
+            not isinstance(source_identity, str)
+            or not source_identity.strip()
+        ):
+            raise KnowledgeReleaseError(
+                "Release source lacks a valid approved source identity."
+            )
         provenance_fields = {
             "source_id",
             "publisher",
@@ -1025,6 +1045,10 @@ def _validate_release(
                 f"field(s): {', '.join(missing_provenance)}"
             )
         if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA:
+            if not is_utc_seconds(source.get("last_checked_at_utc")):
+                raise KnowledgeReleaseError(
+                    f"Source {source_identity} lacks a valid source check time."
+                )
             for hash_field, identity_label in {
                 "source_content_sha256": "source content",
                 "normalized_document_sha256": "normalized document content",
@@ -1051,7 +1075,7 @@ def _validate_release(
             raise KnowledgeReleaseError(
                 f"Source {source.get('source_id', '<unknown>')} lacks human reviewer evidence."
             )
-        source_ids.add(str(source["source_id"]))
+        source_ids.add(source_identity)
 
     sources_by_id = {
         str(source["source_id"]): source for source in manifest["sources"]
@@ -1134,8 +1158,13 @@ def _validate_release(
                 raise KnowledgeReleaseError(
                     f"Chunk {document_id} has an invalid source document identity."
                 )
+            chunk_content = document["content"]
+            if not isinstance(chunk_content, str) or not chunk_content.strip():
+                raise KnowledgeReleaseError(
+                    f"Chunk {document_id} must have non-empty string content."
+                )
             content_hash = hashlib.sha256(
-                str(document["content"]).encode("utf-8")
+                chunk_content.encode("utf-8")
             ).hexdigest()
             if document["chunk_content_sha256"] != content_hash:
                 raise KnowledgeReleaseError(
@@ -1209,9 +1238,7 @@ def _validate_release(
             raise KnowledgeReleaseError(
                 f"Chunk sequence for {source_document_id} is incomplete or duplicated."
             )
-        normalized_content = " ".join(
-            str(item["content"]) for item in ordered_chunks
-        )
+        normalized_content = " ".join(item["content"] for item in ordered_chunks)
         normalized_content_hash = hashlib.sha256(
             normalized_content.encode("utf-8")
         ).hexdigest()

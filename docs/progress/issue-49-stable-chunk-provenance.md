@@ -22,6 +22,9 @@
   silently indexing them under `hybrid-index-v1`. Chunked schema `2.0` requires
   valid source and normalized-content SHA-256 identities plus a non-empty
   string source-document identity at both authoring and signed verification.
+- Signed schema `2.0` verification also rejects blank or unsafe release/corpus
+  identities, blank approved-source identities, invalid source-check times,
+  and non-string or empty chunk content before staging or activation.
 - Retrieved chunks retain the approved source identity, publisher, official
   URL, review state, source check time, source and normalized-content hashes,
   corpus identity, and knowledge-release identity.
@@ -46,7 +49,7 @@ and reopens the saved conversation record with its original provenance.
 Focused issue and regression checks:
 
 ```text
-16 issue #49 tests passed
+21 issue #49 tests passed
 ```
 
 The focused set covers deterministic authoring, signed verification,
@@ -56,7 +59,7 @@ retrieval provenance, answer validation, and conversation persistence.
 Full Python verification:
 
 ```text
-292 tests passed; 2 opt-in live-provider tests skipped
+297 tests passed; 2 opt-in live-provider tests skipped
 ```
 
 The final full Playwright run passed 29 tests, skipped the opt-in live Ollama
@@ -78,6 +81,13 @@ correctness risks. Regression tests now prove that schema `1.0` rejects
 chunk-shaped documents, schema `2.0` rejects invalid source-content hashes, and
 null source-document identities cannot pass either authoring or signed-release
 verification.
+
+The second review confirmed those fixes and found five more malformed signed
+artifact cases. Regression tests now prove that blank release/corpus identities
+cannot reach activation, blank source identities cannot produce source-less
+citations, invalid check timestamps cannot become trust indicators, and
+non-string chunk content cannot pass verification and fail later inside the
+SQLite index build.
 
 The standards review also noted that production maintainer-role evidence is not
 part of the existing manifest contract. That gap predates issue #49, and the

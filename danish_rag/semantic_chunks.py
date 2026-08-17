@@ -31,12 +31,18 @@ def build_stable_semantic_chunks(
     chunk's identity.
     """
 
-    source_id = str(source.get("source_id", "")).strip()
-    document_source_id = str(document.get("source_id", "")).strip()
-    if not source_id or document_source_id != source_id:
+    source_identity = source.get("source_id")
+    document_source_identity = document.get("source_id")
+    if (
+        not isinstance(source_identity, str)
+        or not source_identity.strip()
+        or not isinstance(document_source_identity, str)
+        or document_source_identity.strip() != source_identity.strip()
+    ):
         raise SemanticChunkError(
-            "A chunked document must reference the reviewed source being chunked."
+            "A chunked document must reference a valid reviewed source identity."
         )
+    source_id = source_identity.strip()
     if source.get("review_state") not in {
         "approved-current",
         "overdue-policy-usable",

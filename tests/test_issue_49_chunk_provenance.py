@@ -62,6 +62,16 @@ class StableSemanticChunkTests(unittest.TestCase):
                 document={**normalized_document(), "document_id": None},
             )
 
+    def test_approved_source_identity_must_be_a_non_empty_string(self):
+        with self.assertRaisesRegex(
+            SemanticChunkError,
+            "reviewed source identity",
+        ):
+            build_stable_semantic_chunks(
+                source={**reviewed_source(), "source_id": None},
+                document={**normalized_document(), "source_id": None},
+            )
+
     def test_reviewed_source_is_deterministically_divided_into_source_bound_chunks(self):
         source = reviewed_source()
         document = normalized_document()
