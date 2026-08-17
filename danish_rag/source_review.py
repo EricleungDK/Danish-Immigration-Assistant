@@ -10,6 +10,7 @@ import re
 import shutil
 import sys
 import tempfile
+from dataclasses import dataclass
 from datetime import datetime
 from html import escape
 from html.parser import HTMLParser
@@ -91,6 +92,28 @@ _VISIBLE_PUBLISHER_PATTERN = re.compile(
 
 class SourceReviewError(ValueError):
     """Raised when an official-source review bundle cannot be produced safely."""
+
+
+@dataclass(frozen=True)
+class ValidatedReviewArtifact:
+    relative_path: str
+    sha256: str
+    content: bytes
+
+
+@dataclass(frozen=True)
+class ValidatedSourceReviewEvidence:
+    source_id: str
+    completed_source: dict[str, Any]
+    machine_source: dict[str, Any]
+    snapshot: ValidatedReviewArtifact
+    normalized_extraction: ValidatedReviewArtifact
+
+
+@dataclass(frozen=True)
+class CompletedSourceReviewValidation:
+    completed_review: dict[str, Any]
+    sources: dict[str, ValidatedSourceReviewEvidence]
 
 
 class _VisibleMainTextParser(HTMLParser):
@@ -400,7 +423,7 @@ def write_completed_source_review_bundle(
     )
     decision_bytes = _read_bytes(decision_source_path, label="human decisions")
     decisions = _load_json_bytes(decision_bytes, label="human decisions")
-    completed = _validated_completed_review(
+    validation = _validated_completed_review(
         machine_root=machine_root,
         machine_manifest=machine_manifest,
         machine_manifest_sha256=hashlib.sha256(machine_manifest_bytes).hexdigest(),
@@ -414,6 +437,7 @@ def write_completed_source_review_bundle(
         decisions_sha256=hashlib.sha256(decision_bytes).hexdigest(),
     )
 
+    completed = validation.completed_review
     destination.parent.mkdir(parents=True, exist_ok=True)
     staging_path = Path(
         tempfile.mkdtemp(
@@ -447,10 +471,10 @@ def validate_completed_source_review_evidence(
     decisions_sha256: str,
     supplemental_observations: dict[str, Any] | None = None,
     supplemental_observations_sha256: str | None = None,
-) -> None:
+) -> CompletedSourceReviewValidation:
     """Rebuild and compare the canonical completed-review contract."""
 
-    canonical = _validated_completed_review(
+    validation = _validated_completed_review(
         machine_root=Path(review_dir).resolve(),
         machine_manifest=machine_manifest,
         machine_manifest_sha256=machine_manifest_sha256,
@@ -459,10 +483,11 @@ def validate_completed_source_review_evidence(
         decisions=decisions,
         decisions_sha256=decisions_sha256,
     )
-    if canonical != completed_review:
+    if validation.completed_review != completed_review:
         raise SourceReviewError(
             "completed review differs from the canonical validated review evidence"
         )
+    return validation
 
 
 def _validated_completed_review(
@@ -474,7 +499,7 @@ def _validated_completed_review(
     supplemental_observations_sha256: str | None,
     decisions: dict[str, Any],
     decisions_sha256: str,
-) -> dict[str, Any]:
+) -> CompletedSourceReviewValidation:
     if machine_manifest.get("schema_version") != REVIEW_BUNDLE_SCHEMA_VERSION:
         raise SourceReviewError("machine review manifest has an invalid schema version")
     if decisions.get("schema_version") != "official-source-human-decisions-v1":
@@ -539,6 +564,7 @@ def _validated_completed_review(
             )
 
     completed_sources = []
+    validated_sources: dict[str, ValidatedSourceReviewEvidence] = {}
     approved_source_count = 0
     for source_id, machine_source in machine_by_id.items():
         record = decisions_by_id[source_id]
@@ -595,21 +621,21 @@ def _validated_completed_review(
 
         snapshot = machine_source.get("snapshot")
         extraction = machine_source.get("normalized_extraction")
-        snapshot_sha256 = _validated_artifact(
+        validated_snapshot = _validated_artifact(
             machine_root,
             snapshot,
             label=f"source {source_id} snapshot",
         )
-        extraction_sha256 = _validated_artifact(
+        validated_extraction = _validated_artifact(
             machine_root,
             extraction,
             label=f"source {source_id} normalized extraction",
         )
-        if review.get("official_source_snapshot_sha256") != snapshot_sha256:
+        if review.get("official_source_snapshot_sha256") != validated_snapshot.sha256:
             raise SourceReviewError(
                 f"source {source_id} review does not bind its official snapshot"
             )
-        if review.get("normalized_extraction_sha256") != extraction_sha256:
+        if review.get("normalized_extraction_sha256") != validated_extraction.sha256:
             raise SourceReviewError(
                 f"source {source_id} review does not bind its normalized extraction"
             )
@@ -718,21 +744,27 @@ def _validated_completed_review(
                 f"source {source_id} claims eligibility without all required approvals"
             )
         approved_source_count += int(approved)
-        completed_sources.append(
-            {
-                "source_id": source_id,
-                "curator_admission": curation,
-                "url_resolution": url_resolution,
-                "human_review": review,
-                "official_source_snapshot_sha256": snapshot_sha256,
-                "normalized_extraction_sha256": extraction_sha256,
-                "registry_url_observation": bound_registry_url_observation,
-                "supplemental_registry_evidence": (
-                    source_id if supplemental_registry_observation is not None else None
-                ),
-                "source_review_gate_status": record.get("source_review_gate_status"),
-                "eligible_for_follow_on_rebuild": approved,
-            }
+        completed_source = {
+            "source_id": source_id,
+            "curator_admission": curation,
+            "url_resolution": url_resolution,
+            "human_review": review,
+            "official_source_snapshot_sha256": validated_snapshot.sha256,
+            "normalized_extraction_sha256": validated_extraction.sha256,
+            "registry_url_observation": bound_registry_url_observation,
+            "supplemental_registry_evidence": (
+                source_id if supplemental_registry_observation is not None else None
+            ),
+            "source_review_gate_status": record.get("source_review_gate_status"),
+            "eligible_for_follow_on_rebuild": approved,
+        }
+        completed_sources.append(completed_source)
+        validated_sources[source_id] = ValidatedSourceReviewEvidence(
+            source_id=source_id,
+            completed_source=completed_source,
+            machine_source=machine_source,
+            snapshot=validated_snapshot,
+            normalized_extraction=validated_extraction,
         )
 
     packet_g = decisions.get("packet_g")
@@ -747,7 +779,7 @@ def _validated_completed_review(
         )
 
     blocked_source_count = len(completed_sources) - approved_source_count
-    return {
+    completed_review = {
         "schema_version": "completed-official-source-review-v1",
         "classification": "reviewed-official-source-evidence",
         "commit_policy": "version-control-eligible",
@@ -773,6 +805,10 @@ def _validated_completed_review(
         "follow_on_rebuild_required": True,
         "current_fixture_release_qualified": False,
     }
+    return CompletedSourceReviewValidation(
+        completed_review=completed_review,
+        sources=validated_sources,
+    )
 
 
 def _unique_sources(sources: list[Any], *, label: str) -> dict[str, dict[str, Any]]:
@@ -894,7 +930,7 @@ def _validated_artifact(
     artifact: Any,
     *,
     label: str,
-) -> str:
+) -> ValidatedReviewArtifact:
     if not isinstance(artifact, dict):
         raise SourceReviewError(f"{label} metadata is missing")
     relative_path = artifact.get("path")
@@ -906,12 +942,15 @@ def _validated_artifact(
         artifact_path.relative_to(machine_root)
     except ValueError as exc:
         raise SourceReviewError(f"{label} path leaves the machine bundle") from exc
-    observed_sha256 = hashlib.sha256(
-        _read_bytes(artifact_path, label=label)
-    ).hexdigest()
+    content = _read_bytes(artifact_path, label=label)
+    observed_sha256 = hashlib.sha256(content).hexdigest()
     if observed_sha256 != expected_sha256:
         raise SourceReviewError(f"{label} SHA-256 does not match")
-    return observed_sha256
+    return ValidatedReviewArtifact(
+        relative_path=relative_path,
+        sha256=observed_sha256,
+        content=content,
+    )
 
 
 def _read_bytes(path: Path, *, label: str) -> bytes:

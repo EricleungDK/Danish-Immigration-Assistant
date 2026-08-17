@@ -30,6 +30,7 @@ from .source_registry import (
 )
 from .source_review import (
     SourceReviewError,
+    ValidatedSourceReviewEvidence,
     validate_completed_source_review_evidence,
 )
 
@@ -330,7 +331,7 @@ def build_reviewed_candidate_release(
         )
 
     try:
-        validate_completed_source_review_evidence(
+        validated_review = validate_completed_source_review_evidence(
             review_dir=resolved_review_dir,
             completed_review=completed,
             machine_manifest=bundle,
@@ -370,12 +371,8 @@ def build_reviewed_candidate_release(
     release_sources: list[dict[str, Any]] = []
     documents: list[dict[str, Any]] = []
     for source_id in SOURCE_DOCUMENT_METADATA:
-        completed_review = completed_by_id[source_id]
-        machine_review_bundle = bundle_by_id[source_id]
         evidence = _load_reviewed_source_evidence(
-            review_dir=resolved_review_dir,
-            completed_review=completed_review,
-            machine_review_bundle=machine_review_bundle,
+            validated_source=validated_review.sources[source_id],
             single_maintainer_fallback=single_maintainer_fallback,
         )
         registry_sources.append(evidence.registry_record())
@@ -667,28 +664,17 @@ def verify_candidate_rollback_matrix(
 
 def _load_reviewed_source_evidence(
     *,
-    review_dir: Path,
-    completed_review: dict[str, Any],
-    machine_review_bundle: dict[str, Any],
+    validated_source: ValidatedSourceReviewEvidence,
     single_maintainer_fallback: Any,
 ) -> ReviewedSourceEvidence:
-    source_id = str(completed_review.get("source_id", ""))
+    source_id = validated_source.source_id
+    completed_review = validated_source.completed_source
+    machine_review_bundle = validated_source.machine_source
     human_review = completed_review.get("human_review", {})
     admission = completed_review.get("curator_admission", {})
     url_resolution = completed_review.get("url_resolution", {})
     retrieval = machine_review_bundle.get("retrieval", {})
-    snapshot = machine_review_bundle.get("snapshot", {})
     extraction = machine_review_bundle.get("normalized_extraction", {})
-    if (
-        completed_review.get("eligible_for_follow_on_rebuild") is not True
-        or human_review.get("decision") != "approve"
-        or admission.get("decision") != "approve"
-        or url_resolution.get("decision")
-        not in {"approve-current", "approve-replacement"}
-    ):
-        raise KnowledgeReleaseError(
-            f"Source {source_id} lacks completed approval evidence."
-        )
     if machine_review_bundle.get("topic") != admission.get(
         "confirmed_topic"
     ) or machine_review_bundle.get("language") != admission.get("confirmed_language"):
@@ -705,33 +691,8 @@ def _load_reviewed_source_evidence(
         raise KnowledgeReleaseError(
             f"Source {source_id} lacks a successful reviewed retrieval."
         )
-    if approved_url != retrieval.get("final_url"):
-        raise KnowledgeReleaseError(
-            f"Source {source_id} approved URL differs from reviewed retrieval evidence."
-        )
-
-    snapshot_path = _review_artifact_path(review_dir, snapshot.get("path"), source_id)
-    extraction_path = _review_artifact_path(
-        review_dir,
-        extraction.get("path"),
-        source_id,
-    )
-    _snapshot_bytes, snapshot_sha256 = _read_bound_bytes(
-        snapshot_path,
-        snapshot.get("sha256"),
-        completed_review.get("official_source_snapshot_sha256"),
-        human_review.get("official_source_snapshot_sha256"),
-        label=f"source {source_id} snapshot",
-    )
-    extraction_bytes, extraction_sha256 = _read_bound_bytes(
-        extraction_path,
-        extraction.get("sha256"),
-        completed_review.get("normalized_extraction_sha256"),
-        human_review.get("normalized_extraction_sha256"),
-        label=f"source {source_id} normalized extraction",
-    )
     try:
-        raw_content = extraction_bytes.decode("utf-8")
+        raw_content = validated_source.normalized_extraction.content.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise KnowledgeReleaseError(
             f"Source {source_id} normalized extraction is not UTF-8."
@@ -763,10 +724,10 @@ def _load_reviewed_source_evidence(
         language=admission.get("confirmed_language"),
         retrieved_at_utc=retrieval.get("retrieved_at_utc"),
         http_status=http_status,
-        snapshot_path=str(snapshot.get("path")),
-        snapshot_sha256=snapshot_sha256,
-        extraction_path=str(extraction.get("path")),
-        extraction_sha256=extraction_sha256,
+        snapshot_path=validated_source.snapshot.relative_path,
+        snapshot_sha256=validated_source.snapshot.sha256,
+        extraction_path=validated_source.normalized_extraction.relative_path,
+        extraction_sha256=validated_source.normalized_extraction.sha256,
         extraction_schema_version=extraction_schema_version,
         normalized_content=normalized_content,
         normalized_document_sha256=normalized_document_sha256,
@@ -976,21 +937,6 @@ def _unique_sources(value: Any, label: str) -> dict[str, dict[str, Any]]:
             raise KnowledgeReleaseError(f"{label.capitalize()} has duplicate sources.")
         result[source_id] = source
     return result
-
-
-def _review_artifact_path(review_dir: Path, reference: Any, source_id: str) -> Path:
-    if not isinstance(reference, str) or not reference:
-        raise KnowledgeReleaseError(
-            f"Source {source_id} has no reviewed artifact path."
-        )
-    candidate = review_dir / reference
-    try:
-        candidate.resolve().relative_to(review_dir.resolve())
-    except (OSError, ValueError) as exc:
-        raise KnowledgeReleaseError(
-            f"Source {source_id} reviewed artifact path leaves the review bundle."
-        ) from exc
-    return candidate
 
 
 def _read_bound_bytes(
