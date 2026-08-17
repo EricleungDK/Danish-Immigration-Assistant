@@ -231,6 +231,11 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
                     )
 
                 self.assert_previous_release_still_queryable()
+                installing_dir = self.data_dir / ".installing"
+                self.assertFalse(
+                    installing_dir.exists() and any(installing_dir.iterdir()),
+                    f"{phase} failure left staged installation artifacts",
+                )
 
     def test_late_activation_fault_restores_promoted_directories_before_pointer_update(self):
         release_dir = self.make_newer_release()

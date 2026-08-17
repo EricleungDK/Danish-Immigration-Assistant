@@ -14,7 +14,8 @@ completed issue-46 review bundle. The builder:
 - cross-checks every flattened completed-review decision against the bound
   `human-decisions.json` record;
 - verifies every archived snapshot and normalized extraction against all three
-  copies of its reviewed SHA-256 identity;
+  copies of its reviewed SHA-256 identity, parsing the same bytes that were
+  hashed so a concurrent file change cannot escape the binding;
 - requires the five configured source identities, completed curator admission,
   completed human review, and the human-approved current or replacement URL;
 - writes a production source registry naming the curator, reviewer, monitoring
@@ -23,20 +24,24 @@ completed issue-46 review bundle. The builder:
 - derives the corpus only from the reviewed official-source extraction, records
   both the exact extraction hash and the derived normalized-document hash, and
   creates deterministic schema-2 semantic chunks;
+- rejects a candidate timestamp earlier than any bound curation, review, or
+  retrieval evidence timestamp;
 - exclusively claims candidate output paths, removes partial outputs after a
   failed build, signs and immediately verifies the release with a caller-supplied
   Ed25519 private key and application trust root; and
 - cross-checks the registry, signed manifest, and every released chunk before
   returning a candidate.
 
-The installed-candidate verifier first builds isolated local lexical and dense
-chunk indexes and runs five production-source retrieval cases. It refuses an
-empty suite and fails on a missing required source, a blocked source, or a
-forbidden source-document result before activating the candidate in the target
-data directory.
+The installed-candidate verifier copies the candidate once, builds isolated
+local lexical and dense chunk indexes from that pinned copy, and runs the fixed
+five production-source retrieval cases. It rejects substituted or weakened
+query suites and fails on a missing required source, a blocked source, or a
+forbidden source-document result before installing that exact qualified copy in
+the target data directory.
 The rollback verifier injects failures during verification, extraction,
 embedding, indexing, and activation and proves that the prior reviewed release
-remains active and queryable.
+remains active and queryable. Failed installs also remove their private staging
+directory.
 
 Production chunks now retain the exact reviewed-extraction digest in retrieval
 results and persisted citations. Update discovery also treats a change to that
@@ -56,10 +61,10 @@ languages (`da` and `en-GB`).
 
 ## Validation
 
-- Focused issue #50 and review-regression seam: `13 passed`; the extraction-only
-  update-discovery regression also passed.
-- Focused registry, update, and chunk-install regressions: `66 passed`.
-- Full Python suite: `343 passed`, `2` opt-in live-provider tests skipped. The
+- Focused issue #50 suite: `17 passed`.
+- Focused registry, update, atomic-install, chunk, provenance, and answer-path
+  regressions: `83 passed`.
+- Full Python suite: `348 passed`, `2` opt-in live-provider tests skipped. The
   two loopback-server tests require an unsandboxed run and passed there.
 - Ruff lint on all changed Python files: passed.
 - Import/type smoke check on all changed production modules: passed. The

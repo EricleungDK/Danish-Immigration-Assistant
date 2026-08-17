@@ -51,7 +51,12 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(0.02)
         self.fail("Knowledge installation did not reach a terminal state")
 
-    def make_newer_release(self, *, release_id: str = "kr-2026-07-07.1") -> Path:
+    def make_newer_release(
+        self,
+        *,
+        release_id: str = "kr-2026-07-07.1",
+        extraction_identity_only: bool = False,
+    ) -> Path:
         current_manifest = json.loads(
             (BUNDLED_MINIMAL_RELEASE / "manifest.json").read_text(encoding="utf-8")
         )
@@ -64,20 +69,29 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
         for source in current_manifest["sources"]:
             updated = dict(source)
             if updated["source_id"] == "nyidanmark-permanent-residence-language-requirements":
-                updated["last_checked_at_utc"] = "2026-07-07T12:00:00Z"
-                updated["reviewed_at_utc"] = "2026-07-07T12:30:00Z"
-                updated["source_content_sha256"] = (
-                    "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
-                )
-                updated["normalized_document_sha256"] = (
-                    "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100"
-                )
+                if extraction_identity_only:
+                    updated["normalized_extraction_sha256"] = "a" * 64
+                else:
+                    updated["last_checked_at_utc"] = "2026-07-07T12:00:00Z"
+                    updated["reviewed_at_utc"] = "2026-07-07T12:30:00Z"
+                    updated["source_content_sha256"] = (
+                        "00112233445566778899aabbccddeeff"
+                        "00112233445566778899aabbccddeeff"
+                    )
+                    updated["normalized_document_sha256"] = (
+                        "ffeeddccbbaa99887766554433221100"
+                        "ffeeddccbbaa99887766554433221100"
+                    )
             sources.append(updated)
 
         documents = []
         for document in current_documents:
             updated = dict(document)
-            if updated["source_id"] == "nyidanmark-permanent-residence-language-requirements":
+            if (
+                not extraction_identity_only
+                and updated["source_id"]
+                == "nyidanmark-permanent-residence-language-requirements"
+            ):
                 updated["checked_at_utc"] = "2026-07-07T12:00:00Z"
                 updated["content"] = updated["content"] + "\nReviewed July update."
             documents.append(updated)
@@ -134,28 +148,7 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn(private_marker, update_json)
 
     def test_discovery_reports_reviewed_extraction_identity_changes(self):
-        current_manifest = json.loads(
-            (BUNDLED_MINIMAL_RELEASE / "manifest.json").read_text(encoding="utf-8")
-        )
-        current_documents = json.loads(
-            (BUNDLED_MINIMAL_RELEASE / "corpus" / "documents.json").read_text(
-                encoding="utf-8"
-            )
-        )
-        sources = [dict(source) for source in current_manifest["sources"]]
-        sources[0]["normalized_extraction_sha256"] = "a" * 64
-        release_id = "kr-2026-07-07.1"
-        build_publishable_knowledge_release(
-            release_dir=self.release_catalog / release_id,
-            release_id=release_id,
-            source_registry_version="sr-2026-07-07.1",
-            sources=sources,
-            documents=current_documents,
-            created_at_utc="2026-07-07T13:00:00Z",
-            minimum_application_version="0.1.0",
-            signing_private_key_path=self.release_trust.signing_private_key_path,
-            trust_root_path=self.release_trust.trust_root_path,
-        )
+        self.make_newer_release(extraction_identity_only=True)
 
         update = discover_knowledge_update(
             self.data_dir,
@@ -168,7 +161,7 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(update["reviewed_source_changes"]["updated"], 1)
         self.assertEqual(
             update["reviewed_source_changes"]["updated_sources"][0]["source_id"],
-            sources[0]["source_id"],
+            "nyidanmark-permanent-residence-language-requirements",
         )
 
     async def test_app_review_dismiss_and_install_controls_preserve_explicit_user_approval(self):

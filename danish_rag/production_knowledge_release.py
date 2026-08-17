@@ -72,37 +72,188 @@ SOURCE_DOCUMENT_METADATA: dict[str, dict[str, Any]] = {
     },
 }
 
-DEFAULT_CANDIDATE_RETRIEVAL_QUERIES: tuple[dict[str, Any], ...] = (
-    {
-        "id": "permanent-residence-language-requirement",
-        "query_text": "What Danish language test is required for permanent residence?",
-        "required_source_ids": ["nyidanmark-permanent-residence-language-requirements"],
-        "forbidden_document_ids": ["di-rag-doc-citizenship-language"],
-    },
-    {
-        "id": "language-test-2-equivalence",
-        "query_text": "Is FVU reading exam level 2 or 3 equivalent to Danish language test 2?",
-        "required_source_ids": ["nyidanmark-equivalent-tests-language-test-2"],
-        "forbidden_document_ids": ["di-rag-doc-citizenship-language"],
-    },
-    {
-        "id": "language-test-3-equivalence",
-        "query_text": "Does an International Baccalaureate with Danish A or B qualify for language test 3 equivalence?",
-        "required_source_ids": ["nyidanmark-equivalent-tests-language-test-3"],
-        "forbidden_document_ids": ["di-rag-doc-citizenship-language"],
-    },
-    {
-        "id": "danish-exam-overview",
-        "query_text": "What are the Danish language examinations PD1 PD2 PD3 and Studieprøven?",
-        "required_source_ids": ["danskogproever-danish-exam-overview"],
-        "forbidden_document_ids": ["di-rag-doc-citizenship-language"],
-    },
-    {
-        "id": "registration-deadlines",
-        "query_text": "When is the registration deadline for Danish language examinations?",
-        "required_source_ids": ["danskogproever-registration-deadlines-2026"],
-        "forbidden_document_ids": ["di-rag-doc-citizenship-language"],
-    },
+
+@dataclass(frozen=True)
+class ReleaseGovernance:
+    release_operator_ids: tuple[str, ...]
+    release_approver_ids: tuple[str, ...]
+    recovery_owner_ids: tuple[str, ...]
+    recorded_at_utc: str
+
+    def as_registry_evidence(self) -> dict[str, Any]:
+        return {
+            "release_operator_ids": list(self.release_operator_ids),
+            "release_approver_ids": list(self.release_approver_ids),
+            "recovery_owner_ids": list(self.recovery_owner_ids),
+            "recorded_at_utc": self.recorded_at_utc,
+        }
+
+
+@dataclass(frozen=True)
+class CandidateRetrievalQuery:
+    id: str
+    query_text: str
+    required_source_ids: tuple[str, ...]
+    forbidden_document_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ReviewedSourceEvidence:
+    source_id: str
+    publisher: Any
+    approved_url: Any
+    topic: Any
+    language: Any
+    retrieved_at_utc: Any
+    http_status: int
+    snapshot_path: str
+    snapshot_sha256: str
+    extraction_path: str
+    extraction_sha256: str
+    extraction_schema_version: str
+    normalized_content: str
+    normalized_document_sha256: str
+    curator_ids: Any
+    admitted_at_utc: Any
+    scope_rationale: Any
+    monitoring_owner_ids: Any
+    assessment_method: Any
+    reviewed_at_utc: Any
+    reviewer_ids: Any
+    materiality: Any
+    notes: Any
+    interpretation_risks: Any
+    second_reviewer_ids: Any
+    staffing: Any
+    single_maintainer_fallback: Any
+    document_id: str
+    title: str
+    topic_tags: list[str]
+
+    def registry_record(self) -> dict[str, Any]:
+        return {
+            "source_id": self.source_id,
+            "publisher": self.publisher,
+            "official_url": self.approved_url,
+            "topic": self.topic,
+            "language": self.language,
+            "registry_state": "approved-current",
+            "content_origin": "official-source-normalized-extract",
+            "production_release_eligible": True,
+            "normalized_document_sha256": self.normalized_document_sha256,
+            "curation_evidence": {
+                "status": "completed",
+                "curator_ids": self.curator_ids,
+                "admitted_at_utc": self.admitted_at_utc,
+                "scope_rationale": self.scope_rationale,
+            },
+            "monitoring_evidence": {
+                "status": "recorded",
+                "owner_ids": self.monitoring_owner_ids,
+                "last_fetched_at_utc": self.retrieved_at_utc,
+                "final_url": self.approved_url,
+                "http_status": self.http_status,
+            },
+            "review_evidence": {
+                "status": "completed",
+                "assessment_method": self.assessment_method,
+                "reviewed_at_utc": self.reviewed_at_utc,
+                "reviewer_ids": self.reviewer_ids,
+                "official_source_snapshot_path": self.snapshot_path,
+                "official_source_snapshot_sha256": self.snapshot_sha256,
+                "normalized_extraction_path": self.extraction_path,
+                "normalized_extraction_sha256": self.extraction_sha256,
+                "decision": "approved-current",
+                "materiality": self.materiality,
+                "notes": self.notes,
+                "interpretation_risks": self.interpretation_risks,
+                "second_reviewer_ids": self.second_reviewer_ids,
+                "staffing": self.staffing,
+                "single_maintainer_fallback": self.single_maintainer_fallback,
+            },
+        }
+
+    def release_record(self, *, next_review_due_utc: str) -> dict[str, Any]:
+        return {
+            "source_id": self.source_id,
+            "publisher": self.publisher,
+            "title": self.title,
+            "official_url": self.approved_url,
+            "final_url": self.approved_url,
+            "topic": self.topic,
+            "language": self.language,
+            "review_state": "approved-current",
+            "reviewed_at_utc": self.reviewed_at_utc,
+            "reviewers": self.reviewer_ids,
+            "last_checked_at_utc": self.retrieved_at_utc,
+            "source_content_sha256": self.snapshot_sha256,
+            "normalized_extraction_sha256": self.extraction_sha256,
+            "normalized_document_sha256": self.normalized_document_sha256,
+            "extraction_schema_version": self.extraction_schema_version,
+            "fresh_tomato_inputs": {
+                "next_review_due_utc": next_review_due_utc,
+                "source_health": "current",
+            },
+        }
+
+    def document_record(self) -> dict[str, Any]:
+        return {
+            "document_id": self.document_id,
+            "source_id": self.source_id,
+            "title": self.title,
+            "publisher": self.publisher,
+            "official_url": self.approved_url,
+            "final_url": self.approved_url,
+            "language": self.language,
+            "topic_tags": self.topic_tags,
+            "review_state": "approved-current",
+            "source_health": "healthy",
+            "approval_state": "approved",
+            "checked_at_utc": self.retrieved_at_utc,
+            "content_origin": "official-source-normalized-extract",
+            "normalized_extraction_sha256": self.extraction_sha256,
+            "content": self.normalized_content,
+        }
+
+
+DEFAULT_CANDIDATE_RETRIEVAL_QUERIES = (
+    CandidateRetrievalQuery(
+        id="permanent-residence-language-requirement",
+        query_text="What Danish language test is required for permanent residence?",
+        required_source_ids=("nyidanmark-permanent-residence-language-requirements",),
+        forbidden_document_ids=("di-rag-doc-citizenship-language",),
+    ),
+    CandidateRetrievalQuery(
+        id="language-test-2-equivalence",
+        query_text=(
+            "Is FVU reading exam level 2 or 3 equivalent to Danish language test 2?"
+        ),
+        required_source_ids=("nyidanmark-equivalent-tests-language-test-2",),
+        forbidden_document_ids=("di-rag-doc-citizenship-language",),
+    ),
+    CandidateRetrievalQuery(
+        id="language-test-3-equivalence",
+        query_text=(
+            "Does an International Baccalaureate with Danish A or B qualify for "
+            "language test 3 equivalence?"
+        ),
+        required_source_ids=("nyidanmark-equivalent-tests-language-test-3",),
+        forbidden_document_ids=("di-rag-doc-citizenship-language",),
+    ),
+    CandidateRetrievalQuery(
+        id="danish-exam-overview",
+        query_text=(
+            "What are the Danish language examinations PD1 PD2 PD3 and Studieprøven?"
+        ),
+        required_source_ids=("danskogproever-danish-exam-overview",),
+        forbidden_document_ids=("di-rag-doc-citizenship-language",),
+    ),
+    CandidateRetrievalQuery(
+        id="registration-deadlines",
+        query_text="When is the registration deadline for Danish language examinations?",
+        required_source_ids=("danskogproever-registration-deadlines-2026",),
+        forbidden_document_ids=("di-rag-doc-citizenship-language",),
+    ),
 )
 
 
@@ -123,9 +274,7 @@ def build_reviewed_candidate_release(
     release_id: str,
     created_at_utc: str,
     next_review_due_utc: str,
-    release_operator_ids: tuple[str, ...],
-    release_approver_ids: tuple[str, ...],
-    recovery_owner_ids: tuple[str, ...],
+    release_governance: ReleaseGovernance,
     signing_private_key_path: str | Path,
     trust_root_path: str | Path,
 ) -> CandidateReleaseBuild:
@@ -143,19 +292,20 @@ def build_reviewed_candidate_release(
         raise KnowledgeReleaseError(
             "next_review_due_utc must be later than created_at_utc."
         )
+    if release_governance.recorded_at_utc != created_at_utc:
+        raise KnowledgeReleaseError(
+            "Release governance must be recorded at candidate creation time."
+        )
     completed_path = resolved_review_dir / "completed-review.json"
     bundle_path = resolved_review_dir / "review-bundle.json"
     decisions_path = resolved_review_dir / "human-decisions.json"
     completed = _load_json_object(completed_path, "completed source review")
-    bundle = _load_json_object(bundle_path, "source review bundle")
-    decisions = _load_json_object(decisions_path, "human decisions")
-
-    _require_digest(
+    bundle, bundle_sha256 = _load_bound_json_object(
         bundle_path,
         completed.get("machine_review_manifest_sha256"),
         "machine review bundle",
     )
-    _require_digest(
+    decisions, decisions_sha256 = _load_bound_json_object(
         decisions_path,
         completed.get("human_decisions_sha256"),
         "human decisions",
@@ -169,7 +319,7 @@ def build_reviewed_candidate_release(
 
     _validate_human_decision_binding(
         completed=completed,
-        bundle_path=bundle_path,
+        bundle_sha256=bundle_sha256,
         decisions=decisions,
     )
 
@@ -181,6 +331,11 @@ def build_reviewed_candidate_release(
         raise KnowledgeReleaseError(
             "Completed review must contain exactly the five configured official sources."
         )
+    _require_release_not_before_review_evidence(
+        created_at=created_at,
+        completed_by_id=completed_by_id,
+        bundle_by_id=bundle_by_id,
+    )
 
     single_maintainer_fallback = completed.get("single_maintainer_fallback")
     registry_sources: list[dict[str, Any]] = []
@@ -189,16 +344,17 @@ def build_reviewed_candidate_release(
     for source_id in SOURCE_DOCUMENT_METADATA:
         completed_review = completed_by_id[source_id]
         machine_review_bundle = bundle_by_id[source_id]
-        registry_source, release_source, document = _build_source_records(
+        evidence = _load_reviewed_source_evidence(
             review_dir=resolved_review_dir,
             completed_review=completed_review,
             machine_review_bundle=machine_review_bundle,
             single_maintainer_fallback=single_maintainer_fallback,
-            next_review_due_utc=next_review_due_utc,
         )
-        registry_sources.append(registry_source)
-        release_sources.append(release_source)
-        documents.append(document)
+        registry_sources.append(evidence.registry_record())
+        release_sources.append(
+            evidence.release_record(next_review_due_utc=next_review_due_utc)
+        )
+        documents.append(evidence.document_record())
 
     registry = {
         "schema_version": "1.0",
@@ -206,18 +362,13 @@ def build_reviewed_candidate_release(
         "knowledge_release_id": release_id,
         "artifact_scope": "production-source-registry",
         "single_maintainer_fallback": single_maintainer_fallback,
-        "release_governance": {
-            "release_operator_ids": list(release_operator_ids),
-            "release_approver_ids": list(release_approver_ids),
-            "recovery_owner_ids": list(recovery_owner_ids),
-            "recorded_at_utc": created_at_utc,
-        },
+        "release_governance": release_governance.as_registry_evidence(),
         "review_bundle_binding": {
             "completed_review_path": "completed-review.json",
             "machine_review_manifest_path": "review-bundle.json",
-            "machine_review_manifest_sha256": _sha256_file(bundle_path),
+            "machine_review_manifest_sha256": bundle_sha256,
             "human_decisions_path": "human-decisions.json",
-            "human_decisions_sha256": _sha256_file(decisions_path),
+            "human_decisions_sha256": decisions_sha256,
         },
         "production_qualification": {
             "status": "qualified",
@@ -279,23 +430,29 @@ def install_and_verify_candidate(
     embedding_model: str | None = None,
     embedding_endpoint: str | None = None,
     trust_root_path: str | Path,
-    queries: tuple[dict[str, Any], ...] = DEFAULT_CANDIDATE_RETRIEVAL_QUERIES,
+    queries: tuple[CandidateRetrievalQuery, ...] = (
+        DEFAULT_CANDIDATE_RETRIEVAL_QUERIES
+    ),
 ) -> dict[str, Any]:
     """Qualify retrieval in isolation, then install and index the candidate."""
 
-    if not queries:
+    if queries != DEFAULT_CANDIDATE_RETRIEVAL_QUERIES:
         raise KnowledgeReleaseError(
-            "Candidate retrieval qualification must contain queries."
+            "Candidate retrieval qualification requires the fixed five-case suite."
         )
     resolved_data_dir = Path(data_dir)
     resolved_data_dir.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
-        prefix=".candidate-retrieval-qualification-",
+        prefix=".candidate-release-qualification-",
         dir=resolved_data_dir.parent,
-    ) as qualification_dir:
+    ) as qualification_workspace:
+        qualification_root = Path(qualification_workspace)
+        pinned_release_dir = qualification_root / "candidate-release"
+        shutil.copytree(release_dir, pinned_release_dir)
+        qualification_dir = qualification_root / "local-data"
         qualification_installation = install_knowledge_release(
             qualification_dir,
-            release_dir=release_dir,
+            release_dir=pinned_release_dir,
             embedding_model=embedding_model,
             embedding_provider=embedding_provider,
             embedding_endpoint=embedding_endpoint,
@@ -309,29 +466,31 @@ def install_and_verify_candidate(
             trust_root_path=trust_root_path,
             queries=queries,
         )
-    summary = report["summary"]
-    if any(
-        summary[field]
-        for field in (
-            "blocked_source_violations",
-            "forbidden_result_violations",
-            "required_source_misses",
+        summary = report["summary"]
+        if any(
+            summary[field]
+            for field in (
+                "blocked_source_violations",
+                "forbidden_result_violations",
+                "required_source_misses",
+            )
+        ):
+            raise KnowledgeReleaseError(
+                "Candidate retrieval qualification failed: "
+                f"{summary['blocked_source_violations']} blocked-source violation(s), "
+                f"{summary['forbidden_result_violations']} forbidden-result violation(s), "
+                f"and {summary['required_source_misses']} required-source miss(es)."
+            )
+        qualified_release_id = str(report["knowledge_release_id"])
+        installation = install_knowledge_release(
+            resolved_data_dir,
+            release_dir=pinned_release_dir,
+            embedding_model=embedding_model,
+            embedding_provider=embedding_provider,
+            embedding_endpoint=embedding_endpoint,
+            trust_root_path=trust_root_path,
+            expected_release_id=qualified_release_id,
         )
-    ):
-        raise KnowledgeReleaseError(
-            "Candidate retrieval qualification failed: "
-            f"{summary['blocked_source_violations']} blocked-source violation(s), "
-            f"{summary['forbidden_result_violations']} forbidden-result violation(s), "
-            f"and {summary['required_source_misses']} required-source miss(es)."
-        )
-    installation = install_knowledge_release(
-        resolved_data_dir,
-        release_dir=release_dir,
-        embedding_model=embedding_model,
-        embedding_provider=embedding_provider,
-        embedding_endpoint=embedding_endpoint,
-        trust_root_path=trust_root_path,
-    )
     report["knowledge_release_id"] = installation["manifest"]["knowledge_release_id"]
     return report
 
@@ -343,7 +502,7 @@ def _candidate_retrieval_report(
     embedding_provider: Any,
     embedding_endpoint: str | None,
     trust_root_path: str | Path,
-    queries: tuple[dict[str, Any], ...],
+    queries: tuple[CandidateRetrievalQuery, ...],
 ) -> dict[str, Any]:
     retriever = HybridRetriever.from_data_dir(
         data_dir,
@@ -356,10 +515,10 @@ def _candidate_retrieval_report(
     forbidden_result_violations = 0
     required_source_misses = 0
     for query in queries:
-        results = retriever.retrieve(str(query["query_text"]), limit=3)
+        results = retriever.retrieve(query.query_text, limit=3)
         result_source_ids = {str(result["source_id"]) for result in results}
-        required_source_ids = set(query.get("required_source_ids", []))
-        forbidden_document_ids = set(query.get("forbidden_document_ids", []))
+        required_source_ids = set(query.required_source_ids)
+        forbidden_document_ids = set(query.forbidden_document_ids)
         blocked_results = [
             result
             for result in results
@@ -376,8 +535,8 @@ def _candidate_retrieval_report(
         required_source_misses += len(missing_required)
         query_reports.append(
             {
-                "id": query["id"],
-                "query_text": query["query_text"],
+                "id": query.id,
+                "query_text": query.query_text,
                 "required_source_ids": sorted(required_source_ids),
                 "forbidden_document_ids": sorted(forbidden_document_ids),
                 "missing_required_source_ids": missing_required,
@@ -478,14 +637,13 @@ def verify_candidate_rollback_matrix(
     }
 
 
-def _build_source_records(
+def _load_reviewed_source_evidence(
     *,
     review_dir: Path,
     completed_review: dict[str, Any],
     machine_review_bundle: dict[str, Any],
     single_maintainer_fallback: Any,
-    next_review_due_utc: str,
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+) -> ReviewedSourceEvidence:
     source_id = str(completed_review.get("source_id", ""))
     human_review = completed_review.get("human_review", {})
     admission = completed_review.get("curator_admission", {})
@@ -530,21 +688,26 @@ def _build_source_records(
         extraction.get("path"),
         source_id,
     )
-    snapshot_sha256 = _require_matching_hashes(
+    _snapshot_bytes, snapshot_sha256 = _read_matching_artifact(
         snapshot_path,
         snapshot.get("sha256"),
         completed_review.get("official_source_snapshot_sha256"),
         human_review.get("official_source_snapshot_sha256"),
         label=f"source {source_id} snapshot",
     )
-    extraction_sha256 = _require_matching_hashes(
+    extraction_bytes, extraction_sha256 = _read_matching_artifact(
         extraction_path,
         extraction.get("sha256"),
         completed_review.get("normalized_extraction_sha256"),
         human_review.get("normalized_extraction_sha256"),
         label=f"source {source_id} normalized extraction",
     )
-    raw_content = extraction_path.read_text(encoding="utf-8")
+    try:
+        raw_content = extraction_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise KnowledgeReleaseError(
+            f"Source {source_id} normalized extraction is not UTF-8."
+        ) from exc
     normalized_content = " ".join(raw_content.split())
     normalized_document_sha256 = hashlib.sha256(
         normalized_content.encode("utf-8")
@@ -564,100 +727,51 @@ def _build_source_records(
         raise KnowledgeReleaseError(
             f"Source {source_id} lacks a valid extraction schema version."
         )
-    review_evidence = {
-        "status": "completed",
-        "assessment_method": human_review.get("assessment_method"),
-        "reviewed_at_utc": human_review.get("reviewed_at_utc"),
-        "reviewer_ids": human_review.get("reviewer_ids"),
-        "official_source_snapshot_path": str(snapshot.get("path")),
-        "official_source_snapshot_sha256": snapshot_sha256,
-        "normalized_extraction_path": str(extraction.get("path")),
-        "normalized_extraction_sha256": extraction_sha256,
-        "decision": "approved-current",
-        "materiality": human_review.get("materiality"),
-        "notes": human_review.get("notes"),
-        "interpretation_risks": human_review.get("interpretation_risks"),
-        "second_reviewer_ids": human_review.get("second_reviewer_ids", []),
-        "staffing": staffing,
-        "single_maintainer_fallback": source_fallback,
-    }
-    registry_source = {
-        "source_id": source_id,
-        "publisher": machine_review_bundle.get("publisher"),
-        "official_url": approved_url,
-        "topic": admission.get("confirmed_topic"),
-        "language": admission.get("confirmed_language"),
-        "registry_state": "approved-current",
-        "content_origin": "official-source-normalized-extract",
-        "production_release_eligible": True,
-        "normalized_document_sha256": normalized_document_sha256,
-        "curation_evidence": {
-            "status": "completed",
-            "curator_ids": admission.get("curator_ids"),
-            "admitted_at_utc": admission.get("admitted_at_utc"),
-            "scope_rationale": admission.get("scope_rationale"),
-        },
-        "monitoring_evidence": {
-            "status": "recorded",
-            "owner_ids": admission.get("monitoring_owner_ids"),
-            "last_fetched_at_utc": retrieval.get("retrieved_at_utc"),
-            "final_url": retrieval.get("final_url"),
-            "http_status": retrieval.get("http_status"),
-        },
-        "review_evidence": review_evidence,
-    }
-    release_source = {
-        "source_id": source_id,
-        "publisher": machine_review_bundle.get("publisher"),
-        "title": metadata["title"],
-        "official_url": approved_url,
-        "final_url": retrieval.get("final_url"),
-        "topic": admission.get("confirmed_topic"),
-        "language": admission.get("confirmed_language"),
-        "review_state": "approved-current",
-        "reviewed_at_utc": human_review.get("reviewed_at_utc"),
-        "reviewers": human_review.get("reviewer_ids"),
-        "last_checked_at_utc": retrieval.get("retrieved_at_utc"),
-        "source_content_sha256": snapshot_sha256,
-        "normalized_extraction_sha256": extraction_sha256,
-        "normalized_document_sha256": normalized_document_sha256,
-        "extraction_schema_version": extraction_schema_version,
-        "fresh_tomato_inputs": {
-            "next_review_due_utc": next_review_due_utc,
-            "source_health": "current",
-        },
-    }
-    document = {
-        "document_id": metadata["document_id"],
-        "source_id": source_id,
-        "title": metadata["title"],
-        "publisher": machine_review_bundle.get("publisher"),
-        "official_url": approved_url,
-        "final_url": retrieval.get("final_url"),
-        "language": admission.get("confirmed_language"),
-        "topic_tags": metadata["topic_tags"],
-        "review_state": "approved-current",
-        "source_health": "healthy",
-        "approval_state": "approved",
-        "checked_at_utc": retrieval.get("retrieved_at_utc"),
-        "content_origin": "official-source-normalized-extract",
-        "normalized_extraction_sha256": extraction_sha256,
-        "content": normalized_content,
-    }
-    return registry_source, release_source, document
+    return ReviewedSourceEvidence(
+        source_id=source_id,
+        publisher=machine_review_bundle.get("publisher"),
+        approved_url=approved_url,
+        topic=admission.get("confirmed_topic"),
+        language=admission.get("confirmed_language"),
+        retrieved_at_utc=retrieval.get("retrieved_at_utc"),
+        http_status=http_status,
+        snapshot_path=str(snapshot.get("path")),
+        snapshot_sha256=snapshot_sha256,
+        extraction_path=str(extraction.get("path")),
+        extraction_sha256=extraction_sha256,
+        extraction_schema_version=extraction_schema_version,
+        normalized_content=normalized_content,
+        normalized_document_sha256=normalized_document_sha256,
+        curator_ids=admission.get("curator_ids"),
+        admitted_at_utc=admission.get("admitted_at_utc"),
+        scope_rationale=admission.get("scope_rationale"),
+        monitoring_owner_ids=admission.get("monitoring_owner_ids"),
+        assessment_method=human_review.get("assessment_method"),
+        reviewed_at_utc=human_review.get("reviewed_at_utc"),
+        reviewer_ids=human_review.get("reviewer_ids"),
+        materiality=human_review.get("materiality"),
+        notes=human_review.get("notes"),
+        interpretation_risks=human_review.get("interpretation_risks"),
+        second_reviewer_ids=human_review.get("second_reviewer_ids", []),
+        staffing=staffing,
+        single_maintainer_fallback=source_fallback,
+        document_id=metadata["document_id"],
+        title=metadata["title"],
+        topic_tags=metadata["topic_tags"],
+    )
 
 
 def _validate_human_decision_binding(
     *,
     completed: dict[str, Any],
-    bundle_path: Path,
+    bundle_sha256: str,
     decisions: dict[str, Any],
 ) -> None:
     review_bundle_binding = decisions.get("review_bundle")
     if (
         not isinstance(review_bundle_binding, dict)
-        or review_bundle_binding.get("path") != bundle_path.name
-        or review_bundle_binding.get("sha256") != _sha256_file(bundle_path)
+        or review_bundle_binding.get("path") != "review-bundle.json"
+        or review_bundle_binding.get("sha256") != bundle_sha256
     ):
         raise KnowledgeReleaseError(
             "Human decisions do not bind the reviewed machine bundle."
@@ -703,6 +817,39 @@ def _require_utc_timestamp(value: Any, label: str) -> datetime:
     return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
 
 
+def _require_release_not_before_review_evidence(
+    *,
+    created_at: datetime,
+    completed_by_id: dict[str, dict[str, Any]],
+    bundle_by_id: dict[str, dict[str, Any]],
+) -> None:
+    for source_id, completed_review in completed_by_id.items():
+        machine_review_bundle = bundle_by_id[source_id]
+        timestamps = (
+            (
+                completed_review.get("curator_admission", {}).get("admitted_at_utc"),
+                "curator admission",
+            ),
+            (
+                completed_review.get("human_review", {}).get("reviewed_at_utc"),
+                "human review",
+            ),
+            (
+                machine_review_bundle.get("retrieval", {}).get("retrieved_at_utc"),
+                "reviewed retrieval",
+            ),
+        )
+        for value, event in timestamps:
+            event_time = _require_utc_timestamp(
+                value,
+                f"Source {source_id} {event}",
+            )
+            if event_time > created_at:
+                raise KnowledgeReleaseError(
+                    "Candidate creation time cannot predate reviewed evidence."
+                )
+
+
 def _claim_candidate_outputs(registry_path: Path, release_dir: Path) -> None:
     registry_path.parent.mkdir(parents=True, exist_ok=True)
     release_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -730,12 +877,44 @@ def _claim_candidate_outputs(registry_path: Path, release_dir: Path) -> None:
 
 
 def _load_json_object(path: Path, label: str) -> dict[str, Any]:
+    encoded = _read_file_bytes(path, label)
+    return _decode_json_object(encoded, path=path, label=label)
+
+
+def _load_bound_json_object(
+    path: Path,
+    expected_sha256: Any,
+    label: str,
+) -> tuple[dict[str, Any], str]:
+    encoded = _read_file_bytes(path, label)
+    actual_sha256 = hashlib.sha256(encoded).hexdigest()
+    if actual_sha256 != expected_sha256:
+        raise KnowledgeReleaseError(f"Completed review does not bind the {label}.")
+    return (
+        _decode_json_object(encoded, path=path, label=label),
+        actual_sha256,
+    )
+
+
+def _read_file_bytes(path: Path, label: str) -> bytes:
+    try:
+        return path.read_bytes()
+    except OSError as exc:
+        raise KnowledgeReleaseError(f"Could not read {label}: {path}") from exc
+
+
+def _decode_json_object(
+    encoded: bytes,
+    *,
+    path: Path,
+    label: str,
+) -> dict[str, Any]:
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            encoded,
             object_pairs_hook=_reject_duplicate_object,
         )
-    except (OSError, json.JSONDecodeError) as exc:
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
         raise KnowledgeReleaseError(f"Could not read {label}: {path}") from exc
     if not isinstance(value, dict):
         raise KnowledgeReleaseError(f"{label.capitalize()} must be a JSON object.")
@@ -771,29 +950,16 @@ def _review_artifact_path(review_dir: Path, reference: Any, source_id: str) -> P
     return candidate
 
 
-def _require_digest(path: Path, expected: Any, label: str) -> None:
-    if _sha256_file(path) != expected:
-        raise KnowledgeReleaseError(f"Completed review does not bind the {label}.")
-
-
-def _require_matching_hashes(
+def _read_matching_artifact(
     path: Path,
     *expected: Any,
     label: str,
-) -> str:
-    actual = _sha256_file(path)
+) -> tuple[bytes, str]:
+    encoded = _read_file_bytes(path, label)
+    actual = hashlib.sha256(encoded).hexdigest()
     if not expected or any(value != actual for value in expected):
         raise KnowledgeReleaseError(f"Completed review does not bind the {label}.")
-    return actual
-
-
-def _sha256_file(path: Path) -> str:
-    try:
-        return hashlib.sha256(path.read_bytes()).hexdigest()
-    except OSError as exc:
-        raise KnowledgeReleaseError(
-            f"Could not read reviewed artifact: {path}"
-        ) from exc
+    return encoded, actual
 
 
 def _reject_duplicate_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -832,9 +998,12 @@ def main(argv: list[str] | None = None) -> int:
             release_id=args.release_id,
             created_at_utc=args.created_at_utc,
             next_review_due_utc=args.next_review_due_utc,
-            release_operator_ids=tuple(args.release_operator),
-            release_approver_ids=tuple(args.release_approver),
-            recovery_owner_ids=tuple(args.recovery_owner),
+            release_governance=ReleaseGovernance(
+                release_operator_ids=tuple(args.release_operator),
+                release_approver_ids=tuple(args.release_approver),
+                recovery_owner_ids=tuple(args.recovery_owner),
+                recorded_at_utc=args.created_at_utc,
+            ),
             signing_private_key_path=args.signing_private_key,
             trust_root_path=args.trust_root,
         )

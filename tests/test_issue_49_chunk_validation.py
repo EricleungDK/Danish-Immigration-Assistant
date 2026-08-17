@@ -36,6 +36,9 @@ class ChunkReleaseValidationTests(unittest.TestCase):
             "reviewers": ["fixture-reviewer"],
             "last_checked_at_utc": "2026-07-30T08:00:00Z",
             "source_content_sha256": "b" * 64,
+            "normalized_extraction_sha256": hashlib.sha256(
+                normalized_content.encode("utf-8")
+            ).hexdigest(),
             "normalized_document_sha256": normalized_content_sha256(
                 normalized_content
             ),
@@ -151,6 +154,29 @@ class ChunkReleaseValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(
             KnowledgeReleaseError,
             "valid source content SHA-256 identity",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_chunked_release_requires_reviewed_extraction_identity(self):
+        manifest_path = self.release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["sources"][0].pop("normalized_extraction_sha256")
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        sign_manifest(
+            manifest_path,
+            self.release_trust.signing_private_key_path,
+            self.release_dir / "manifest.sig",
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "normalized_extraction_sha256",
         ):
             verify_knowledge_release(
                 self.release_dir,

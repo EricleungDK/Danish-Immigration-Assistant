@@ -39,6 +39,7 @@ VECTOR_DIMENSIONS = 768
 RRF_K = 60
 RETRIEVAL_CHANNEL_LIMIT = 20
 TOKEN_PATTERN = re.compile(r"[0-9a-zA-ZæøåÆØÅ]+")
+REVIEWED_SOURCE_LANGUAGES = ("da", "en-GB")
 
 
 class RetrievalError(ValueError):
@@ -887,7 +888,7 @@ def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:
     ):
         intent_topic_tag_groups.append(["certificate-equivalence"])
     if not shared_topic_tags and not intent_topic_tag_groups:
-        return {"language": ["da", "en-GB"]}
+        return {"language": list(REVIEWED_SOURCE_LANGUAGES)}
 
     topic_tag_groups = (
         [
@@ -899,7 +900,7 @@ def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:
     )
     return {
         "topic_tag_groups": topic_tag_groups,
-        "language": ["da", "en-GB"],
+        "language": list(REVIEWED_SOURCE_LANGUAGES),
     }
 
 

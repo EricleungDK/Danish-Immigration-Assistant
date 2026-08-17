@@ -192,98 +192,23 @@ def install_knowledge_release(
     if staging_dir.exists():
         shutil.rmtree(staging_dir)
     staging_dir.mkdir(parents=True, exist_ok=True)
-    progress.report("extraction", "Preparing reviewed corpus artifact locally.", 30)
-    _inject_install_fault(fault_injector, "extraction")
-    source_documents_path = resolved_release_dir / "corpus" / "documents.json"
-    staging_corpus_dir = staging_dir / "corpus" / release_id
-    staging_corpus_dir.mkdir(parents=True, exist_ok=True)
-    installed_documents_path = staging_corpus_dir / "documents.json"
-    temporary_documents_path = installed_documents_path.with_suffix(".json.tmp")
-    shutil.copyfile(source_documents_path, temporary_documents_path)
-    temporary_documents_path.replace(installed_documents_path)
-    shutil.copyfile(
-        resolved_release_dir / "manifest.json",
-        staging_corpus_dir / "manifest.json",
-    )
-    shutil.copyfile(
-        resolved_release_dir / "manifest.sig",
-        staging_corpus_dir / "manifest.sig",
-    )
-
-    from .retrieval import build_hybrid_index
-    from .retrieval import HybridRetriever
-
-    index = build_hybrid_index(
-        staging_dir,
-        documents,
-        manifest=manifest,
-        embedding_model=str(embedding_profile["name"]),
-        embedding_provider=resolved_embedding_provider,
-        embedding_model_identity=resolved_model_identity,
-        progress_callback=progress.report_from_event,
-        fault_injector=fault_injector,
-    )
-    progress.report(
-        "compatibility",
-        "Checking staged corpus and index compatibility.",
-        85,
-    )
-    _inject_install_fault(fault_injector, "compatibility")
-    staged_active_release = {
-        "manifest": manifest,
-        "documents_path": str(installed_documents_path),
-        "index_path": str(staging_dir / "index" / release_id),
-        "installed_at_utc": datetime.now(UTC).isoformat(),
-    }
-    dense_index = json.loads(
-        (staging_dir / "index" / release_id / "dense-index.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    HybridRetriever(
-        data_dir=staging_dir,
-        active_release=staged_active_release,
-        documents=documents,
-        dense_index=dense_index,
-        embedding_model=str(embedding_profile["name"]),
-        embedding_provider=resolved_embedding_provider,
-        embedding_model_identity=resolved_model_identity,
-    )
-    index_artifacts = _index_artifact_integrity(
-        staging_dir / "index" / release_id
-    )
-
-    final_corpus_dir = resolved_data_dir / "corpus" / release_id
-    final_index_path = resolved_data_dir / "index" / release_id
-    active_release = {
-        "manifest": manifest,
-        "documents_path": str(final_corpus_dir / "documents.json"),
-        "index_path": str(final_index_path),
-        "manifest_path": str(final_corpus_dir / "manifest.json"),
-        "signature_path": str(final_corpus_dir / "manifest.sig"),
-        "index_artifacts": index_artifacts,
-        "installed_at_utc": datetime.now(UTC).isoformat(),
-    }
-    progress.report("activation", "Activating verified corpus and local index.", 95)
-    _inject_install_fault(fault_injector, "activation")
-    with active_release_snapshot():
-        _activate_staged_release(
-            resolved_data_dir,
-            staging_dir,
-            release_id,
-            active_release=active_release,
+    try:
+        return _install_verified_release_from_staging(
+            data_dir=resolved_data_dir,
+            release_dir=resolved_release_dir,
+            staging_dir=staging_dir,
+            release_id=release_id,
+            manifest=manifest,
+            documents=documents,
+            embedding_model=str(embedding_profile["name"]),
+            embedding_provider=resolved_embedding_provider,
+            embedding_model_identity=resolved_model_identity,
+            progress=progress,
             fault_injector=fault_injector,
         )
-    progress.report("complete", "Knowledge release installation is active.", 100)
-    if staging_dir.exists():
-        shutil.rmtree(staging_dir)
-    return {
-        "manifest": manifest,
-        "documents": documents,
-        "index": index,
-        "active": active_release,
-        "progress": progress.entries,
-    }
+    finally:
+        if staging_dir.exists():
+            shutil.rmtree(staging_dir, ignore_errors=True)
 
 
 def ensure_minimal_knowledge_release(
@@ -1169,6 +1094,8 @@ def _validate_release(
             "normalized_document_sha256",
             "extraction_schema_version",
         }
+        if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA:
+            provenance_fields.add("normalized_extraction_sha256")
         missing_provenance = sorted(provenance_fields - set(source))
         if missing_provenance:
             raise KnowledgeReleaseError(
@@ -1182,6 +1109,7 @@ def _validate_release(
                 )
             for hash_field, identity_label in {
                 "source_content_sha256": "source content",
+                "normalized_extraction_sha256": "normalized extraction",
                 "normalized_document_sha256": "normalized document content",
             }.items():
                 hash_value = source.get(hash_field)
@@ -1200,17 +1128,6 @@ def _validate_release(
             ):
                 raise KnowledgeReleaseError(
                     f"Source {source_identity} lacks a valid extraction schema version."
-                )
-            normalized_extraction_sha256 = source.get(
-                "normalized_extraction_sha256"
-            )
-            if normalized_extraction_sha256 is not None and (
-                not isinstance(normalized_extraction_sha256, str)
-                or _SHA256_PATTERN.fullmatch(normalized_extraction_sha256) is None
-            ):
-                raise KnowledgeReleaseError(
-                    f"Source {source_identity} lacks a valid normalized extraction "
-                    "SHA-256 identity."
                 )
         state = source.get("review_state")
         if state not in {"approved-current", "overdue-policy-usable"}:
@@ -1701,6 +1618,111 @@ def _inject_install_fault(
 
 def _staging_dir(data_dir: Path, release_id: str) -> Path:
     return data_dir / ".installing" / f"{release_id}-{uuid.uuid4().hex}"
+
+
+def _install_verified_release_from_staging(
+    *,
+    data_dir: Path,
+    release_dir: Path,
+    staging_dir: Path,
+    release_id: str,
+    manifest: dict[str, Any],
+    documents: list[dict[str, Any]],
+    embedding_model: str,
+    embedding_provider: EmbeddingProvider,
+    embedding_model_identity: dict[str, Any],
+    progress: _InstallProgress,
+    fault_injector: Callable[[str], None] | None,
+) -> dict[str, Any]:
+    from .retrieval import HybridRetriever, build_hybrid_index
+
+    progress.report("extraction", "Preparing reviewed corpus artifact locally.", 30)
+    _inject_install_fault(fault_injector, "extraction")
+    source_documents_path = release_dir / "corpus" / "documents.json"
+    staging_corpus_dir = staging_dir / "corpus" / release_id
+    staging_corpus_dir.mkdir(parents=True, exist_ok=True)
+    installed_documents_path = staging_corpus_dir / "documents.json"
+    temporary_documents_path = installed_documents_path.with_suffix(".json.tmp")
+    shutil.copyfile(source_documents_path, temporary_documents_path)
+    temporary_documents_path.replace(installed_documents_path)
+    shutil.copyfile(
+        release_dir / "manifest.json",
+        staging_corpus_dir / "manifest.json",
+    )
+    shutil.copyfile(
+        release_dir / "manifest.sig",
+        staging_corpus_dir / "manifest.sig",
+    )
+
+    index = build_hybrid_index(
+        staging_dir,
+        documents,
+        manifest=manifest,
+        embedding_model=embedding_model,
+        embedding_provider=embedding_provider,
+        embedding_model_identity=embedding_model_identity,
+        progress_callback=progress.report_from_event,
+        fault_injector=fault_injector,
+    )
+    progress.report(
+        "compatibility",
+        "Checking staged corpus and index compatibility.",
+        85,
+    )
+    _inject_install_fault(fault_injector, "compatibility")
+    staged_active_release = {
+        "manifest": manifest,
+        "documents_path": str(installed_documents_path),
+        "index_path": str(staging_dir / "index" / release_id),
+        "installed_at_utc": datetime.now(UTC).isoformat(),
+    }
+    dense_index = json.loads(
+        (staging_dir / "index" / release_id / "dense-index.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    HybridRetriever(
+        data_dir=staging_dir,
+        active_release=staged_active_release,
+        documents=documents,
+        dense_index=dense_index,
+        embedding_model=embedding_model,
+        embedding_provider=embedding_provider,
+        embedding_model_identity=embedding_model_identity,
+    )
+    index_artifacts = _index_artifact_integrity(
+        staging_dir / "index" / release_id
+    )
+
+    final_corpus_dir = data_dir / "corpus" / release_id
+    final_index_path = data_dir / "index" / release_id
+    active_release = {
+        "manifest": manifest,
+        "documents_path": str(final_corpus_dir / "documents.json"),
+        "index_path": str(final_index_path),
+        "manifest_path": str(final_corpus_dir / "manifest.json"),
+        "signature_path": str(final_corpus_dir / "manifest.sig"),
+        "index_artifacts": index_artifacts,
+        "installed_at_utc": datetime.now(UTC).isoformat(),
+    }
+    progress.report("activation", "Activating verified corpus and local index.", 95)
+    _inject_install_fault(fault_injector, "activation")
+    with active_release_snapshot():
+        _activate_staged_release(
+            data_dir,
+            staging_dir,
+            release_id,
+            active_release=active_release,
+            fault_injector=fault_injector,
+        )
+    progress.report("complete", "Knowledge release installation is active.", 100)
+    return {
+        "manifest": manifest,
+        "documents": documents,
+        "index": index,
+        "active": active_release,
+        "progress": progress.entries,
+    }
 
 
 def _activate_staged_release(

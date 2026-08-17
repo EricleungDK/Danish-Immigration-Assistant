@@ -7,6 +7,7 @@ import threading
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 from danish_rag.answer_pipeline import AnswerService
 from danish_rag.knowledge_release import (
@@ -15,6 +16,7 @@ from danish_rag.knowledge_release import (
     load_active_release,
 )
 from danish_rag.production_knowledge_release import (
+    ReleaseGovernance,
     build_reviewed_candidate_release,
     install_and_verify_candidate,
     verify_candidate_rollback_matrix,
@@ -84,13 +86,20 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
             release_id=release_id,
             created_at_utc=created_at_utc,
             next_review_due_utc=next_review_due_utc,
-            release_operator_ids=("ericleungDK",),
-            release_approver_ids=("ericleungDK",),
-            recovery_owner_ids=("ericleungDK",),
+            release_governance=self.release_governance(created_at_utc),
             signing_private_key_path=(
                 signing_private_key_path or self.release_trust.signing_private_key_path
             ),
             trust_root_path=self.release_trust.trust_root_path,
+        )
+
+    @staticmethod
+    def release_governance(recorded_at_utc: str) -> ReleaseGovernance:
+        return ReleaseGovernance(
+            release_operator_ids=("ericleungDK",),
+            release_approver_ids=("ericleungDK",),
+            recovery_owner_ids=("ericleungDK",),
+            recorded_at_utc=recorded_at_utc,
         )
 
     def copy_review_dir(self, name: str) -> Path:
@@ -385,9 +394,7 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
                 release_id="kr-2026-08-17.1",
                 created_at_utc="2026-08-17T12:00:00Z",
                 next_review_due_utc="2026-10-26T20:55:12Z",
-                release_operator_ids=("ericleungDK",),
-                release_approver_ids=("ericleungDK",),
-                recovery_owner_ids=("ericleungDK",),
+                release_governance=self.release_governance("2026-08-17T12:00:00Z"),
                 signing_private_key_path=self.root / "missing-private-key.pem",
                 trust_root_path=self.release_trust.trust_root_path,
             )
@@ -444,23 +451,20 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
             trust_root_path=self.release_trust.trust_root_path,
         )
 
-        with self.assertRaisesRegex(
-            KnowledgeReleaseError,
-            "retrieval qualification failed",
+        with (
+            patch.object(HybridRetriever, "retrieve", return_value=[]),
+            (
+                self.assertRaisesRegex(
+                    KnowledgeReleaseError,
+                    "retrieval qualification failed",
+                )
+            ),
         ):
             install_and_verify_candidate(
                 data_dir=data_dir,
                 release_dir=candidate.release_dir,
                 embedding_provider=provider,
                 trust_root_path=self.release_trust.trust_root_path,
-                queries=(
-                    {
-                        "id": "impossible-source",
-                        "query_text": "What Danish language test is required?",
-                        "required_source_ids": ["not-in-candidate"],
-                        "forbidden_document_ids": [],
-                    },
-                ),
             )
 
         active = load_active_release(
@@ -476,7 +480,7 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
         candidate = self.build_candidate("empty-qualification")
         data_dir = self.root / "empty-qualification-data"
 
-        with self.assertRaisesRegex(KnowledgeReleaseError, "must contain queries"):
+        with self.assertRaisesRegex(KnowledgeReleaseError, "fixed five-case suite"):
             install_and_verify_candidate(
                 data_dir=data_dir,
                 release_dir=candidate.release_dir,
@@ -486,6 +490,108 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
             )
 
         self.assertFalse(data_dir.exists())
+
+    def test_retrieval_qualification_requires_the_fixed_five_case_suite(self):
+        candidate = self.build_candidate("weak-qualification")
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "fixed five-case suite",
+        ):
+            install_and_verify_candidate(
+                data_dir=self.root / "weak-qualification-data",
+                release_dir=candidate.release_dir,
+                embedding_provider=DeterministicEmbeddingProviderFixture(),
+                trust_root_path=self.release_trust.trust_root_path,
+                queries=(
+                    {
+                        "id": "unconstrained",
+                        "query_text": "hello",
+                        "required_source_ids": [],
+                        "forbidden_document_ids": [],
+                    },
+                ),
+            )
+
+    def test_activation_uses_the_exact_release_copy_that_was_qualified(self):
+        candidate = self.build_candidate("pinned-candidate")
+        replacement = self.build_candidate(
+            "pinned-replacement",
+            source_registry_version="sr-2026-08-18.2",
+            release_id="kr-2026-08-18.2",
+        )
+        real_install = install_knowledge_release
+        install_calls = 0
+
+        def install_with_source_swap(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            nonlocal install_calls
+            result = real_install(*args, **kwargs)
+            install_calls += 1
+            if install_calls == 1:
+                shutil.rmtree(candidate.release_dir)
+                shutil.copytree(replacement.release_dir, candidate.release_dir)
+            return result
+
+        with patch(
+            "danish_rag.production_knowledge_release.install_knowledge_release",
+            side_effect=install_with_source_swap,
+        ):
+            report = install_and_verify_candidate(
+                data_dir=self.root / "pinned-install-data",
+                release_dir=candidate.release_dir,
+                embedding_provider=DeterministicEmbeddingProviderFixture(),
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+        self.assertEqual(report["knowledge_release_id"], "kr-2026-08-17.1")
+        active = load_active_release(
+            self.root / "pinned-install-data",
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        self.assertEqual(
+            active["manifest"]["knowledge_release_id"],
+            "kr-2026-08-17.1",
+        )
+
+    def test_candidate_creation_cannot_predate_bound_review_evidence(self):
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "cannot predate reviewed evidence",
+        ):
+            self.build_candidate(
+                "backdated-candidate",
+                created_at_utc="2026-01-01T00:00:00Z",
+                next_review_due_utc="2026-10-26T20:55:12Z",
+            )
+
+    def test_release_content_uses_the_same_extraction_bytes_that_were_hashed(self):
+        review_dir = self.copy_review_dir("racing-extraction-review")
+        extraction_path = (
+            review_dir
+            / "normalized"
+            / "nyidanmark-permanent-residence-language-requirements.txt"
+        )
+        real_read_bytes = Path.read_bytes
+        mutated = False
+
+        def read_bytes_then_mutate(path: Path) -> bytes:
+            nonlocal mutated
+            content = real_read_bytes(path)
+            if path == extraction_path and not mutated:
+                mutated = True
+                path.write_bytes(content + b"\nUNREVIEWED-RACE-CONTENT")
+            return content
+
+        with patch.object(Path, "read_bytes", read_bytes_then_mutate):
+            candidate = self.build_candidate(
+                "racing-extraction-candidate",
+                review_dir=review_dir,
+            )
+
+        released_content = " ".join(
+            chunk["content"] for chunk in candidate.release["documents"]
+        )
+        self.assertNotIn("UNREVIEWED-RACE-CONTENT", released_content)
 
     def test_concurrent_builds_cannot_share_candidate_output_paths(self):
         registry_path = self.root / "concurrent" / "candidate.json"
@@ -504,9 +610,7 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
                     release_id=release_id,
                     created_at_utc="2026-08-17T12:00:00Z",
                     next_review_due_utc="2026-10-26T20:55:12Z",
-                    release_operator_ids=("ericleungDK",),
-                    release_approver_ids=("ericleungDK",),
-                    recovery_owner_ids=("ericleungDK",),
+                    release_governance=self.release_governance("2026-08-17T12:00:00Z"),
                     signing_private_key_path=(
                         self.release_trust.signing_private_key_path
                     ),
