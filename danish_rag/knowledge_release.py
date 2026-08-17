@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import stat
 import uuid
 import zipfile
@@ -30,7 +31,7 @@ from .github_release_client import (
     MAX_ARTIFACT_BYTES,
 )
 from .release_trust import ReleaseTrustError, verify_manifest_signature
-from .semantic_chunks import stable_chunk_id
+from .semantic_chunks import is_valid_stable_identity, stable_chunk_id
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -145,10 +146,16 @@ def install_knowledge_release(
     active = _load_active_release_file(resolved_data_dir)
     if (
         active
-        and active.get("manifest", {}).get("knowledge_release_id") == release_id
+        and _active_release_matches_verified_artifact(
+            resolved_data_dir,
+            active,
+            manifest,
+            documents,
+        )
         and _active_index_matches_embedding_contract(
             resolved_data_dir,
             manifest,
+            documents=documents,
             embedding_model=str(embedding_profile["name"]),
             embedding_provider=resolved_embedding_provider,
             embedding_model_identity=resolved_model_identity,
@@ -977,11 +984,7 @@ def _validate_release(
         raise KnowledgeReleaseError(f"Release manifest missing field(s): {', '.join(missing)}")
     for identity_field in ("knowledge_release_id", "corpus_id"):
         identity = manifest[identity_field]
-        if (
-            not isinstance(identity, str)
-            or not identity.strip()
-            or any(ord(character) < 32 or ord(character) == 127 for character in identity)
-        ):
+        if not is_valid_stable_identity(identity):
             raise KnowledgeReleaseError(
                 f"Release manifest lacks a valid {identity_field.replace('_', ' ')}."
             )
@@ -1023,10 +1026,7 @@ def _validate_release(
     source_ids = set()
     for source in manifest["sources"]:
         source_identity = source.get("source_id")
-        if (
-            not isinstance(source_identity, str)
-            or not source_identity.strip()
-        ):
+        if not is_valid_stable_identity(source_identity):
             raise KnowledgeReleaseError(
                 "Release source lacks a valid approved source identity."
             )
@@ -1090,11 +1090,15 @@ def _validate_release(
             )
         source_ids.add(source_identity)
 
+    if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA and not source_ids:
+        raise KnowledgeReleaseError(
+            "A chunked release requires at least one approved source."
+        )
+
     sources_by_id = {
         str(source["source_id"]): source for source in manifest["sources"]
     }
     seen_document_ids: set[str] = set()
-    chunk_occurrences: dict[tuple[str, str, str], int] = {}
     chunks_by_source_document: dict[
         tuple[str, str], list[dict[str, Any]]
     ] = {}
@@ -1165,10 +1169,7 @@ def _validate_release(
                     f"{', '.join(missing_chunk_fields)}."
                 )
             source_document_id = document["source_document_id"]
-            if (
-                not isinstance(source_document_id, str)
-                or not source_document_id.strip()
-            ):
+            if not is_valid_stable_identity(source_document_id):
                 raise KnowledgeReleaseError(
                     f"Chunk {document_id} has an invalid source document identity."
                 )
@@ -1183,23 +1184,6 @@ def _validate_release(
             if document["chunk_content_sha256"] != content_hash:
                 raise KnowledgeReleaseError(
                     f"Chunk {document_id} chunk content hash does not match its content."
-                )
-            occurrence_key = (
-                str(document["source_id"]),
-                source_document_id,
-                content_hash,
-            )
-            occurrence = chunk_occurrences.get(occurrence_key, 0)
-            chunk_occurrences[occurrence_key] = occurrence + 1
-            expected_chunk_id = stable_chunk_id(
-                source_id=str(document["source_id"]),
-                source_document_id=source_document_id,
-                chunk_content_sha256=content_hash,
-                occurrence=occurrence,
-            )
-            if document["chunk_id"] != expected_chunk_id:
-                raise KnowledgeReleaseError(
-                    f"Chunk {document_id} is not bound to its source and chunk content identity."
                 )
             if document["chunk_id"] != document_id:
                 raise KnowledgeReleaseError(
@@ -1261,6 +1245,22 @@ def _validate_release(
             raise KnowledgeReleaseError(
                 f"Chunk sequence for {source_document_id} is incomplete or duplicated."
             )
+        occurrences: dict[str, int] = {}
+        for chunk in ordered_chunks:
+            content_hash = str(chunk["chunk_content_sha256"])
+            occurrence = occurrences.get(content_hash, 0)
+            occurrences[content_hash] = occurrence + 1
+            expected_chunk_id = stable_chunk_id(
+                source_id=source_id,
+                source_document_id=source_document_id,
+                chunk_content_sha256=content_hash,
+                occurrence=occurrence,
+            )
+            if chunk["chunk_id"] != expected_chunk_id:
+                raise KnowledgeReleaseError(
+                    f"Chunk {chunk['document_id']} is not bound to its source and "
+                    "chunk content identity."
+                )
         normalized_content = " ".join(item["content"] for item in ordered_chunks)
         normalized_content_hash = hashlib.sha256(
             normalized_content.encode("utf-8")
@@ -1371,10 +1371,37 @@ def _load_index_metadata(data_dir: Path, release_id: str) -> dict[str, Any]:
     return json.loads(metadata_path.read_text(encoding="utf-8"))
 
 
+def _active_release_matches_verified_artifact(
+    data_dir: Path,
+    active_release: dict[str, Any],
+    manifest: dict[str, Any],
+    documents: list[dict[str, Any]],
+) -> bool:
+    """Check that the active corpus is the exact newly verified signed artifact."""
+
+    try:
+        if active_release.get("manifest") != manifest:
+            return False
+        _validate_active_release_pair(data_dir, active_release)
+        release_id = str(manifest["knowledge_release_id"])
+        documents_path = data_dir / "corpus" / release_id / "documents.json"
+        artifact = _documents_artifact(manifest)
+        if (
+            documents_path.stat().st_size != int(artifact["bytes"])
+            or _sha256_file(documents_path) != artifact["sha256"]
+        ):
+            return False
+        installed_documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        return installed_documents == documents
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+        return False
+
+
 def _active_index_matches_embedding_contract(
     data_dir: Path,
     manifest: dict[str, Any],
     *,
+    documents: list[dict[str, Any]],
     embedding_model: str,
     embedding_provider: EmbeddingProvider,
     embedding_model_identity: dict[str, Any],
@@ -1395,7 +1422,12 @@ def _active_index_matches_embedding_contract(
         dense_metadata = dense_index["metadata"]
     except (FileNotFoundError, json.JSONDecodeError, KeyError, TypeError):
         return False
-    if not isinstance(index, dict) or not isinstance(dense_metadata, dict):
+    if (
+        not isinstance(index, dict)
+        or not isinstance(dense_index, dict)
+        or not isinstance(dense_metadata, dict)
+        or not isinstance(dense_index.get("vectors"), list)
+    ):
         return False
     expected = {
         "schema_version": corpus_schema.index_schema_version,
@@ -1415,10 +1447,74 @@ def _active_index_matches_embedding_contract(
                 "indexed_unit": corpus_schema.indexed_unit,
             }
         )
-    return all(
+    metadata_matches = all(
         index.get(field) == value and dense_metadata.get(field) == value
         for field, value in expected.items()
     )
+    if not metadata_matches:
+        return False
+    try:
+        from .retrieval import HybridRetriever, _is_release_eligible, _search_text
+
+        eligible_documents = [
+            document for document in documents if _is_release_eligible(document)
+        ]
+        expected_by_id = {
+            str(document["document_id"]): document for document in eligible_documents
+        }
+        vector_ids = [
+            item.get("document_id")
+            for item in dense_index["vectors"]
+            if isinstance(item, dict)
+        ]
+        if (
+            len(vector_ids) != len(dense_index["vectors"])
+            or len(vector_ids) != len(set(vector_ids))
+            or set(vector_ids) != set(expected_by_id)
+        ):
+            return False
+        HybridRetriever(
+            data_dir=data_dir,
+            active_release={"manifest": manifest},
+            documents=documents,
+            dense_index=dense_index,
+            embedding_model=embedding_model,
+            embedding_provider=embedding_provider,
+            embedding_model_identity=embedding_model_identity,
+        )
+        lexical_path = data_dir / "index" / release_id / "lexical.sqlite3"
+        connection = sqlite3.connect(f"file:{lexical_path}?mode=ro", uri=True)
+        try:
+            if connection.execute("PRAGMA quick_check").fetchone() != ("ok",):
+                return False
+            document_rows = connection.execute(
+                "SELECT document_id, document_json FROM documents"
+            ).fetchall()
+            lexical_documents = {
+                str(document_id): json.loads(document_json)
+                for document_id, document_json in document_rows
+            }
+            fts_rows = connection.execute(
+                "SELECT document_id, content FROM documents_fts"
+            ).fetchall()
+            fts_content = {
+                str(document_id): str(content) for document_id, content in fts_rows
+            }
+        finally:
+            connection.close()
+        return lexical_documents == expected_by_id and fts_content == {
+            document_id: _search_text(document)
+            for document_id, document in expected_by_id.items()
+        }
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        json.JSONDecodeError,
+        sqlite3.Error,
+    ):
+        return False
 
 
 class _InstallProgress:

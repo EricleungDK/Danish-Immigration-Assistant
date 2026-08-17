@@ -279,6 +279,121 @@ class ChunkReleaseValidationTests(unittest.TestCase):
                 trust_root_path=self.release_trust.trust_root_path,
             )
 
+    def test_chunked_release_rejects_unsafe_source_identities(self):
+        for source_id in ("official\0source", " official-source "):
+            with self.subTest(source_id=source_id):
+                manifest_path = self.release_dir / "manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest["sources"][0]["source_id"] = source_id
+                documents_path = self.release_dir / "corpus" / "documents.json"
+                documents = json.loads(documents_path.read_text(encoding="utf-8"))
+                documents[0]["source_id"] = source_id
+                self.write_documents_and_resign(documents, manifest=manifest)
+
+                with self.assertRaisesRegex(
+                    KnowledgeReleaseError,
+                    "valid approved source identity",
+                ):
+                    verify_knowledge_release(
+                        self.release_dir,
+                        trust_root_path=self.release_trust.trust_root_path,
+                    )
+
+    def test_chunked_release_rejects_unsafe_source_document_identities(self):
+        for source_document_id in ("reviewed\0document", " reviewed-document "):
+            with self.subTest(source_document_id=source_document_id):
+                self.rewrite_first_chunk_and_resign(
+                    source_document_id=source_document_id,
+                )
+
+                with self.assertRaisesRegex(
+                    KnowledgeReleaseError,
+                    "invalid source document identity",
+                ):
+                    verify_knowledge_release(
+                        self.release_dir,
+                        trust_root_path=self.release_trust.trust_root_path,
+                    )
+
+    def test_duplicate_chunk_identities_are_bound_to_canonical_chunk_order(self):
+        content = "Repeated fact.\n\nMiddle fact.\n\nRepeated fact."
+        source = {
+            **self.source,
+            "normalized_document_sha256": normalized_content_sha256(content),
+        }
+        document = {
+            "document_id": "duplicate-content-document",
+            "source_id": source["source_id"],
+            "title": source["title"],
+            "publisher": source["publisher"],
+            "official_url": source["official_url"],
+            "final_url": source["final_url"],
+            "language": source["language"],
+            "topic_tags": ["language-requirement"],
+            "review_state": source["review_state"],
+            "approval_state": "approved",
+            "source_health": "healthy",
+            "checked_at_utc": source["last_checked_at_utc"],
+            "content": content,
+        }
+        release_dir = self.root / "duplicate-content-release"
+        build_publishable_knowledge_release(
+            release_dir=release_dir,
+            release_id="kr-2026-07-30.4",
+            source_registry_version="sr-2026-07-30.1",
+            sources=[source],
+            documents=[document],
+            created_at_utc="2026-07-30T12:00:00Z",
+            minimum_application_version="0.1.0",
+            corpus_schema_version="2.0",
+            signing_private_key_path=self.release_trust.signing_private_key_path,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        documents_path = release_dir / "corpus" / "documents.json"
+        documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        reordered = list(reversed(documents))
+        occurrences: dict[str, int] = {}
+        for chunk in reordered:
+            content_hash = chunk["chunk_content_sha256"]
+            occurrence = occurrences.get(content_hash, 0)
+            occurrences[content_hash] = occurrence + 1
+            chunk_id = stable_chunk_id(
+                source_id=chunk["source_id"],
+                source_document_id=chunk["source_document_id"],
+                chunk_content_sha256=content_hash,
+                occurrence=occurrence,
+            )
+            chunk["chunk_id"] = chunk_id
+            chunk["document_id"] = chunk_id
+        documents_bytes = (
+            json.dumps(reordered, indent=2, sort_keys=True) + "\n"
+        ).encode("utf-8")
+        documents_path.write_bytes(documents_bytes)
+        manifest_path = release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["artifacts"][0]["sha256"] = hashlib.sha256(
+            documents_bytes
+        ).hexdigest()
+        manifest["artifacts"][0]["bytes"] = len(documents_bytes)
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        sign_manifest(
+            manifest_path,
+            self.release_trust.signing_private_key_path,
+            release_dir / "manifest.sig",
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "not bound to its source and chunk content identity",
+        ):
+            verify_knowledge_release(
+                release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
     def test_whole_document_schema_rejects_chunk_shaped_documents(self):
         chunk_documents = json.loads(
             (self.release_dir / "corpus" / "documents.json").read_text(

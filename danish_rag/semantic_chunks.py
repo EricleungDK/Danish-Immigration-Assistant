@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
 from collections import defaultdict
 from typing import Any
 
@@ -15,6 +16,20 @@ _SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+")
 
 class SemanticChunkError(ValueError):
     """Raised when reviewed source material cannot produce trusted chunks."""
+
+
+def is_valid_stable_identity(value: object) -> bool:
+    """Return whether an identity is canonical and safe to persist or render."""
+
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and value == value.strip()
+        and not any(
+            unicodedata.category(character) in {"Cc", "Cf"}
+            for character in value
+        )
+    )
 
 
 def build_stable_semantic_chunks(
@@ -34,15 +49,14 @@ def build_stable_semantic_chunks(
     source_identity = source.get("source_id")
     document_source_identity = document.get("source_id")
     if (
-        not isinstance(source_identity, str)
-        or not source_identity.strip()
-        or not isinstance(document_source_identity, str)
-        or document_source_identity.strip() != source_identity.strip()
+        not is_valid_stable_identity(source_identity)
+        or not is_valid_stable_identity(document_source_identity)
+        or document_source_identity != source_identity
     ):
         raise SemanticChunkError(
             "A chunked document must reference a valid reviewed source identity."
         )
-    source_id = source_identity.strip()
+    source_id = source_identity
     if source.get("review_state") not in {
         "approved-current",
         "overdue-policy-usable",
@@ -85,12 +99,9 @@ def build_stable_semantic_chunks(
         raise SemanticChunkError("Reviewed normalized source content is empty.")
 
     source_document_identity = document.get("document_id")
-    if (
-        not isinstance(source_document_identity, str)
-        or not source_document_identity.strip()
-    ):
+    if not is_valid_stable_identity(source_document_identity):
         raise SemanticChunkError("Reviewed normalized document is missing its identity.")
-    source_document_id = source_document_identity.strip()
+    source_document_id = source_document_identity
 
     occurrences: defaultdict[str, int] = defaultdict(int)
     chunks: list[dict[str, Any]] = []

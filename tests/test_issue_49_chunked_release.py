@@ -74,6 +74,24 @@ class ChunkedKnowledgeReleaseTests(unittest.TestCase):
                 trust_root_path=self.release_trust.trust_root_path,
             )
 
+    def test_chunked_release_requires_at_least_one_approved_source(self):
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "at least one approved source",
+        ):
+            build_publishable_knowledge_release(
+                release_dir=self.root / "empty-chunked-release",
+                release_id="kr-2026-07-30.5",
+                source_registry_version="sr-2026-07-30.1",
+                sources=[],
+                documents=[],
+                created_at_utc="2026-07-30T10:30:00Z",
+                minimum_application_version="0.1.0",
+                corpus_schema_version="2.0",
+                signing_private_key_path=self.release_trust.signing_private_key_path,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

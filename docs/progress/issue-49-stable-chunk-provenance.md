@@ -49,7 +49,7 @@ and reopens the saved conversation record with its original provenance.
 Focused issue and regression checks:
 
 ```text
-27 issue #49 tests passed
+37 issue #49 tests passed
 ```
 
 The focused set covers deterministic authoring, signed verification,
@@ -59,15 +59,16 @@ retrieval provenance, answer validation, and conversation persistence.
 Full Python verification:
 
 ```text
-303 tests passed; 2 opt-in live-provider tests skipped
+313 tests passed; 2 opt-in live-provider tests skipped
 ```
 
-The final full Playwright run passed all 30 non-live tests and skipped the
-opt-in live Ollama test. Earlier review runs reproduced the pre-existing
+Full Playwright runs on the final candidate passed 29 non-live tests, skipped
+the opt-in live Ollama test, and reproduced the pre-existing
 `eval-016-keyboard-evidence-drawer` race, where the assertion observed the
-scheduled, content-free `/knowledge-updates/automatic-check-status` request;
-the exact workflow passed when rerun in isolation. No issue #49 code changes
-the browser or automatic-update path.
+scheduled, content-free `/knowledge-updates/automatic-check-status` request.
+The exact workflow passed when rerun in isolation, and an earlier full issue
+candidate passed all 30 non-live tests. No issue #49 code changes the browser
+or automatic-update path.
 
 The repository does not configure a Python type checker or an npm `typecheck`
 script. Python modules were imported and executed by the focused tests with
@@ -94,6 +95,13 @@ chunks, reject duplicate source identities and malformed reviewer evidence,
 reject non-string content before authoring, reject control characters in
 release identities, and rebuild rather than crash when active dense-index
 metadata is malformed.
+
+The fourth review found five more signed-artifact and active-index integrity
+boundaries. Regression tests now bind duplicate-content occurrence numbers to
+canonical chunk order; reject control characters and surrounding whitespace in
+source and source-document identities; reject empty chunk releases; and force
+rebuilds for tampered corpus bytes, malformed dense vectors, changed signed
+content under a reused release ID, or divergent lexical-index content.
 
 The standards review also noted that production maintainer-role evidence is not
 part of the existing manifest contract. That gap predates issue #49, and the

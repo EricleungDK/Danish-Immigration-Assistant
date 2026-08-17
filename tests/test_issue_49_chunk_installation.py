@@ -1,4 +1,5 @@
 import json
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -203,6 +204,131 @@ class ChunkInstallationTests(unittest.TestCase):
 
         self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
         self.assertEqual(repeated["index"]["schema_version"], "hybrid-chunk-index-v1")
+
+    def test_already_active_chunked_release_rebuilds_malformed_dense_vectors(self):
+        release_dir = self.build_chunked_release()
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        dense_index_path = (
+            self.data_dir
+            / "index"
+            / "kr-2026-07-30.1"
+            / "dense-index.json"
+        )
+        dense_index = json.loads(dense_index_path.read_text(encoding="utf-8"))
+        dense_index["vectors"] = None
+        dense_index_path.write_text(
+            json.dumps(dense_index, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        repeated = install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+
+        self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
+        self.assertEqual(repeated["index"]["schema_version"], "hybrid-chunk-index-v1")
+
+    def test_already_active_chunked_release_rebuilds_tampered_corpus(self):
+        release_dir = self.build_chunked_release()
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        documents_path = (
+            self.data_dir
+            / "corpus"
+            / "kr-2026-07-30.1"
+            / "documents.json"
+        )
+        documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        documents[0]["content"] = "UNSIGNED POISON"
+        documents_path.write_text(
+            json.dumps(documents, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        repeated = install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+
+        self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
+        active_documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        self.assertNotEqual(active_documents[0]["content"], "UNSIGNED POISON")
+
+    def test_same_release_id_with_new_signed_content_replaces_active_corpus(self):
+        release_dir = self.build_chunked_release()
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        changed_content = "A newly reviewed signed fact replaces the prior content."
+        changed_source, changed_document = bundled_reviewed_source_and_document(
+            changed_content
+        )
+        replacement_dir = self.root / "replacement-same-id"
+        build_chunked_release_fixture(
+            release_dir=replacement_dir,
+            release_id="kr-2026-07-30.1",
+            source=changed_source,
+            document=changed_document,
+            release_trust=self.release_trust,
+            created_at_utc="2026-07-30T11:00:00Z",
+        )
+
+        repeated = install_knowledge_release(
+            self.data_dir,
+            release_dir=replacement_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+
+        self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
+        self.assertEqual(repeated["documents"][0]["content"], changed_content)
+
+    def test_already_active_chunked_release_rebuilds_tampered_lexical_index(self):
+        release_dir = self.build_chunked_release()
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        lexical_path = (
+            self.data_dir
+            / "index"
+            / "kr-2026-07-30.1"
+            / "lexical.sqlite3"
+        )
+        connection = sqlite3.connect(lexical_path)
+        try:
+            connection.execute("UPDATE documents_fts SET content = 'UNSIGNED POISON'")
+            connection.commit()
+        finally:
+            connection.close()
+
+        repeated = install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+
+        self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
 
 
 if __name__ == "__main__":

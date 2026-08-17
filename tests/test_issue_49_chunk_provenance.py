@@ -88,6 +88,30 @@ class StableSemanticChunkTests(unittest.TestCase):
                 document={**normalized_document(), "content": None},
             )
 
+    def test_stable_source_identities_reject_controls_and_surrounding_whitespace(self):
+        for source_id in ("official\0source", " official-source "):
+            with self.subTest(source_id=source_id):
+                with self.assertRaisesRegex(
+                    SemanticChunkError,
+                    "valid reviewed source identity",
+                ):
+                    build_stable_semantic_chunks(
+                        source={**reviewed_source(), "source_id": source_id},
+                        document={**normalized_document(), "source_id": source_id},
+                    )
+
+    def test_stable_source_document_identity_rejects_controls_and_whitespace(self):
+        for document_id in ("reviewed\0document", " reviewed-document "):
+            with self.subTest(document_id=document_id):
+                with self.assertRaisesRegex(
+                    SemanticChunkError,
+                    "missing its identity",
+                ):
+                    build_stable_semantic_chunks(
+                        source=reviewed_source(),
+                        document={**normalized_document(), "document_id": document_id},
+                    )
+
     def test_reviewed_source_is_deterministically_divided_into_source_bound_chunks(self):
         source = reviewed_source()
         document = normalized_document()
