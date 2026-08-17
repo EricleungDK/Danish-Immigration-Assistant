@@ -173,6 +173,37 @@ class ChunkInstallationTests(unittest.TestCase):
         self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
         self.assertEqual(repeated["index"]["schema_version"], "hybrid-chunk-index-v1")
 
+    def test_already_active_chunked_release_rebuilds_malformed_dense_metadata(self):
+        release_dir = self.build_chunked_release()
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        dense_index_path = (
+            self.data_dir
+            / "index"
+            / "kr-2026-07-30.1"
+            / "dense-index.json"
+        )
+        dense_index = json.loads(dense_index_path.read_text(encoding="utf-8"))
+        dense_index["metadata"] = []
+        dense_index_path.write_text(
+            json.dumps(dense_index, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        repeated = install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+
+        self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
+        self.assertEqual(repeated["index"]["schema_version"], "hybrid-chunk-index-v1")
+
 
 if __name__ == "__main__":
     unittest.main()

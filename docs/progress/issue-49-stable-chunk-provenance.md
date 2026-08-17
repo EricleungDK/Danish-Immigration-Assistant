@@ -49,7 +49,7 @@ and reopens the saved conversation record with its original provenance.
 Focused issue and regression checks:
 
 ```text
-21 issue #49 tests passed
+27 issue #49 tests passed
 ```
 
 The focused set covers deterministic authoring, signed verification,
@@ -59,16 +59,15 @@ retrieval provenance, answer validation, and conversation persistence.
 Full Python verification:
 
 ```text
-297 tests passed; 2 opt-in live-provider tests skipped
+303 tests passed; 2 opt-in live-provider tests skipped
 ```
 
-The final full Playwright run passed 29 tests, skipped the opt-in live Ollama
-test, and reproduced the pre-existing `eval-016-keyboard-evidence-drawer` race:
-the assertion observed the scheduled, content-free
-`/knowledge-updates/automatic-check-status` request. The exact workflow passed
-when rerun in isolation. No issue #49 code changes the browser or
-automatic-update path; an earlier full run of the same candidate passed all 30
-non-live browser tests.
+The final full Playwright run passed all 30 non-live tests and skipped the
+opt-in live Ollama test. Earlier review runs reproduced the pre-existing
+`eval-016-keyboard-evidence-drawer` race, where the assertion observed the
+scheduled, content-free `/knowledge-updates/automatic-check-status` request;
+the exact workflow passed when rerun in isolation. No issue #49 code changes
+the browser or automatic-update path.
 
 The repository does not configure a Python type checker or an npm `typecheck`
 script. Python modules were imported and executed by the focused tests with
@@ -88,6 +87,13 @@ cannot reach activation, blank source identities cannot produce source-less
 citations, invalid check timestamps cannot become trust indicators, and
 non-string chunk content cannot pass verification and fail later inside the
 SQLite index build.
+
+The third review confirmed the preceding fixes and found six final boundary
+cases. Regression tests now require every approved manifest source to produce
+chunks, reject duplicate source identities and malformed reviewer evidence,
+reject non-string content before authoring, reject control characters in
+release identities, and rebuild rather than crash when active dense-index
+metadata is malformed.
 
 The standards review also noted that production maintainer-role evidence is not
 part of the existing manifest contract. That gap predates issue #49, and the

@@ -977,7 +977,11 @@ def _validate_release(
         raise KnowledgeReleaseError(f"Release manifest missing field(s): {', '.join(missing)}")
     for identity_field in ("knowledge_release_id", "corpus_id"):
         identity = manifest[identity_field]
-        if not isinstance(identity, str) or not identity.strip():
+        if (
+            not isinstance(identity, str)
+            or not identity.strip()
+            or any(ord(character) < 32 or ord(character) == 127 for character in identity)
+        ):
             raise KnowledgeReleaseError(
                 f"Release manifest lacks a valid {identity_field.replace('_', ' ')}."
             )
@@ -1026,6 +1030,10 @@ def _validate_release(
             raise KnowledgeReleaseError(
                 "Release source lacks a valid approved source identity."
             )
+        if source_identity in source_ids:
+            raise KnowledgeReleaseError(
+                f"Release has duplicate approved source identity: {source_identity}."
+            )
         provenance_fields = {
             "source_id",
             "publisher",
@@ -1067,13 +1075,18 @@ def _validate_release(
             raise KnowledgeReleaseError(
                 f"Source {source.get('source_id', '<unknown>')} is not release-eligible."
             )
-        if not source.get("reviewers"):
-            raise KnowledgeReleaseError(
-                f"Source {source.get('source_id', '<unknown>')} lacks human reviewer evidence."
+        reviewers = source.get("reviewers")
+        if (
+            not isinstance(reviewers, list)
+            or not reviewers
+            or any(
+                not isinstance(reviewer, str) or not reviewer.strip()
+                for reviewer in reviewers
             )
-        if not source.get("reviewed_at_utc"):
+            or not is_utc_seconds(source.get("reviewed_at_utc"))
+        ):
             raise KnowledgeReleaseError(
-                f"Source {source.get('source_id', '<unknown>')} lacks human reviewer evidence."
+                f"Source {source_identity} lacks valid human reviewer evidence."
             )
         source_ids.add(source_identity)
 
@@ -1085,6 +1098,7 @@ def _validate_release(
     chunks_by_source_document: dict[
         tuple[str, str], list[dict[str, Any]]
     ] = {}
+    chunk_source_ids: set[str] = set()
     for document in documents:
         required_document_fields = {
             "document_id",
@@ -1227,8 +1241,17 @@ def _validate_release(
                 str(document["source_id"]),
                 source_document_id,
             )
+            chunk_source_ids.add(str(document["source_id"]))
             chunks_by_source_document.setdefault(source_document_key, []).append(
                 document
+            )
+
+    if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA:
+        sources_without_chunks = sorted(source_ids - chunk_source_ids)
+        if sources_without_chunks:
+            raise KnowledgeReleaseError(
+                "A chunked release approved source has no semantic chunks: "
+                f"{', '.join(sources_without_chunks)}."
             )
 
     for (source_id, source_document_id), chunks in chunks_by_source_document.items():
@@ -1371,6 +1394,8 @@ def _active_index_matches_embedding_contract(
         )
         dense_metadata = dense_index["metadata"]
     except (FileNotFoundError, json.JSONDecodeError, KeyError, TypeError):
+        return False
+    if not isinstance(index, dict) or not isinstance(dense_metadata, dict):
         return False
     expected = {
         "schema_version": corpus_schema.index_schema_version,

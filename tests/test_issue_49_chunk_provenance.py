@@ -1,3 +1,4 @@
+import hashlib
 import unittest
 
 from danish_rag.semantic_chunks import SemanticChunkError, build_stable_semantic_chunks
@@ -70,6 +71,21 @@ class StableSemanticChunkTests(unittest.TestCase):
             build_stable_semantic_chunks(
                 source={**reviewed_source(), "source_id": None},
                 document={**normalized_document(), "source_id": None},
+            )
+
+    def test_normalized_source_content_must_be_a_string(self):
+        with self.assertRaisesRegex(
+            SemanticChunkError,
+            "string content",
+        ):
+            build_stable_semantic_chunks(
+                source={
+                    **reviewed_source(),
+                    "normalized_document_sha256": hashlib.sha256(
+                        "None".encode("utf-8")
+                    ).hexdigest(),
+                },
+                document={**normalized_document(), "content": None},
             )
 
     def test_reviewed_source_is_deterministically_divided_into_source_bound_chunks(self):

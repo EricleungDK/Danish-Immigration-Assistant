@@ -155,6 +155,70 @@ class ChunkReleaseValidationTests(unittest.TestCase):
                 trust_root_path=self.release_trust.trust_root_path,
             )
 
+    def test_chunked_release_rejects_duplicate_source_identities(self):
+        manifest_path = self.release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["sources"].append(dict(manifest["sources"][0]))
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        sign_manifest(
+            manifest_path,
+            self.release_trust.signing_private_key_path,
+            self.release_dir / "manifest.sig",
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "duplicate approved source identity",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_chunked_release_requires_structured_human_review_evidence(self):
+        invalid_values = {
+            "reviewers": "not-a-list",
+            "reviewed_at_utc": "not-a-time",
+        }
+        for field, invalid_value in invalid_values.items():
+            with self.subTest(field=field):
+                manifest_path = self.release_dir / "manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                original_value = manifest["sources"][0][field]
+                manifest["sources"][0][field] = invalid_value
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                sign_manifest(
+                    manifest_path,
+                    self.release_trust.signing_private_key_path,
+                    self.release_dir / "manifest.sig",
+                )
+
+                with self.assertRaisesRegex(
+                    KnowledgeReleaseError,
+                    "valid human reviewer evidence",
+                ):
+                    verify_knowledge_release(
+                        self.release_dir,
+                        trust_root_path=self.release_trust.trust_root_path,
+                    )
+
+                manifest["sources"][0][field] = original_value
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                sign_manifest(
+                    manifest_path,
+                    self.release_trust.signing_private_key_path,
+                    self.release_dir / "manifest.sig",
+                )
+
     def test_chunked_release_requires_non_empty_release_and_corpus_identities(self):
         for field in ("knowledge_release_id", "corpus_id"):
             with self.subTest(field=field):
@@ -191,6 +255,29 @@ class ChunkReleaseValidationTests(unittest.TestCase):
                     self.release_trust.signing_private_key_path,
                     self.release_dir / "manifest.sig",
                 )
+
+    def test_chunked_release_rejects_control_characters_in_release_identity(self):
+        manifest_path = self.release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["knowledge_release_id"] = "bad\0id"
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        sign_manifest(
+            manifest_path,
+            self.release_trust.signing_private_key_path,
+            self.release_dir / "manifest.sig",
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "valid knowledge release id",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
 
     def test_whole_document_schema_rejects_chunk_shaped_documents(self):
         chunk_documents = json.loads(

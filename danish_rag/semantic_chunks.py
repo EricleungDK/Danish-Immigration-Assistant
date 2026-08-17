@@ -63,7 +63,11 @@ def build_stable_semantic_chunks(
         raise SemanticChunkError(
             "Reviewed source is missing a valid normalized document content identity."
         )
-    document_content = str(document.get("content", ""))
+    document_content = document.get("content")
+    if not isinstance(document_content, str):
+        raise SemanticChunkError(
+            "Reviewed normalized source must contain string content."
+        )
     normalized_content = " ".join(document_content.split())
     if _sha256_text(normalized_content) != normalized_document_sha256:
         raise SemanticChunkError(
