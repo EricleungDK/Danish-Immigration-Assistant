@@ -49,7 +49,7 @@ and reopens the saved conversation record with its original provenance.
 Focused issue and regression checks:
 
 ```text
-39 issue #49 tests passed
+43 issue #49 tests passed
 ```
 
 The focused set covers deterministic authoring, signed verification,
@@ -59,15 +59,14 @@ retrieval provenance, answer validation, and conversation persistence.
 Full Python verification:
 
 ```text
-315 tests passed; 2 opt-in live-provider tests skipped
+319 tests passed; 2 opt-in live-provider tests skipped
 ```
 
-Full Playwright runs on the final candidate passed 29 non-live tests, skipped
-the opt-in live Ollama test, and reproduced the pre-existing
+The final full Playwright run passed all 30 non-live tests and skipped the
+opt-in live Ollama test. Earlier runs reproduced the pre-existing
 `eval-016-keyboard-evidence-drawer` race, where the assertion observed the
-scheduled, content-free `/knowledge-updates/automatic-check-status` request.
-The exact workflow passed when rerun in isolation, and an earlier full issue
-candidate passed all 30 non-live tests. No issue #49 code changes the browser
+scheduled, content-free `/knowledge-updates/automatic-check-status` request;
+the exact workflow passed in isolation. No issue #49 code changes the browser
 or automatic-update path.
 
 The repository does not configure a Python type checker or an npm `typecheck`
@@ -109,6 +108,14 @@ content, new installations bind every derived index file to an activation-time
 digest, and retrieval owns the complete vector/lexical compatibility check.
 Canonical identities also reject lone Unicode surrogates with domain-specific
 validation errors instead of leaking encoding exceptions.
+
+The sixth review hardened the complete activation contract. Installed chunk
+corpora retain the signed manifest and detached signature and reverify them on
+load; derived vectors and lexical rows are recomputed against release content;
+activation rolls back directories and the active pointer together; and
+retrieval reads one locked active snapshot. Legacy whole-document indexes
+without digest metadata remain usable only after their derived content passes
+the same direct validation.
 
 The standards review also noted that production maintainer-role evidence is not
 part of the existing manifest contract. That gap predates issue #49, and the

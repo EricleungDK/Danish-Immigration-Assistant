@@ -22,7 +22,11 @@ from .embedding_provider import (
     resolve_embedding_provider,
     validate_embedding_vector,
 )
-from .knowledge_release import load_active_documents, load_active_release
+from .knowledge_release import (
+    active_release_snapshot,
+    load_active_documents,
+    load_active_release,
+)
 from .source_freshness import assess_source_freshness
 
 
@@ -282,6 +286,7 @@ class HybridRetriever:
         self.data_dir = Path(data_dir)
         self.active_release = active_release
         self.manifest = active_release["manifest"]
+        self.release_documents = documents
         sources_by_id = {
             str(source["source_id"]): source
             for source in self.manifest.get("sources", [])
@@ -320,14 +325,18 @@ class HybridRetriever:
         embedding_provider: EmbeddingProvider | None = None,
         embedding_endpoint: str | None = None,
     ) -> "HybridRetriever":
-        active_release = load_active_release(data_dir)
-        documents = load_active_documents(data_dir)
-        release_id = active_release["manifest"]["knowledge_release_id"]
-        dense_index = json.loads(
-            (Path(data_dir) / "index" / release_id / "dense-index.json").read_text(
-                encoding="utf-8"
+        with active_release_snapshot():
+            active_release = load_active_release(data_dir)
+            documents = load_active_documents(
+                data_dir,
+                active_release=active_release,
             )
-        )
+            release_id = active_release["manifest"]["knowledge_release_id"]
+            dense_index = json.loads(
+                (Path(data_dir) / "index" / release_id / "dense-index.json").read_text(
+                    encoding="utf-8"
+                )
+            )
         return cls(
             data_dir=data_dir,
             active_release=active_release,
@@ -476,6 +485,7 @@ class HybridRetriever:
         vectors = self.dense_index.get("vectors")
         if not isinstance(vectors, list):
             raise RetrievalError("Local dense index is malformed; re-index required.")
+        vectors_by_document: dict[str, list[float]] = {}
         for item in vectors:
             if not isinstance(item, dict) or not isinstance(item.get("document_id"), str):
                 raise RetrievalError("Local dense index is malformed; re-index required.")
@@ -488,9 +498,84 @@ class HybridRetriever:
                     "Local dense index contains incompatible vector dimensions; "
                     "re-index required."
                 )
+            document_id = str(item["document_id"])
+            if document_id in vectors_by_document:
+                raise RetrievalError(
+                    "Local dense index contains duplicate document identities; "
+                    "re-index required."
+                )
+            vectors_by_document[document_id] = vector
+        eligible_documents = [
+            document
+            for document in self.release_documents
+            if _is_release_eligible(document)
+        ]
+        expected_by_id = {
+            str(document["document_id"]): document for document in eligible_documents
+        }
+        if set(vectors_by_document) != set(expected_by_id):
+            raise RetrievalError(
+                "Local dense index document coverage does not match release content; "
+                "re-index required."
+            )
+        for document_id, document in expected_by_id.items():
+            expected_vector = embed_with_provider(
+                self.embedding_provider,
+                str(self.embedding_profile["name"]),
+                _search_text(document),
+                context=f"active index validation for document {document_id}",
+            )
+            indexed_vector = vectors_by_document[document_id]
+            if len(expected_vector) != len(indexed_vector) or any(
+                not math.isclose(expected, indexed, rel_tol=1e-6, abs_tol=1e-6)
+                for expected, indexed in zip(
+                    expected_vector,
+                    indexed_vector,
+                    strict=True,
+                )
+            ):
+                raise RetrievalError(
+                    "Local dense index is not derived from the active release content; "
+                    "re-index required."
+                )
         lexical_path = self.index_dir / "lexical.sqlite3"
         if not lexical_path.exists():
             raise RetrievalError("Local lexical index is missing; re-index required.")
+        try:
+            connection = sqlite3.connect(f"file:{lexical_path}?mode=ro", uri=True)
+            try:
+                if connection.execute("PRAGMA quick_check").fetchone() != ("ok",):
+                    raise RetrievalError(
+                        "Local lexical index integrity check failed; re-index required."
+                    )
+                document_rows = connection.execute(
+                    "SELECT document_id, document_json FROM documents"
+                ).fetchall()
+                lexical_documents = {
+                    str(document_id): json.loads(document_json)
+                    for document_id, document_json in document_rows
+                }
+                fts_rows = connection.execute(
+                    "SELECT document_id, content FROM documents_fts"
+                ).fetchall()
+                fts_content = {
+                    str(document_id): str(content)
+                    for document_id, content in fts_rows
+                }
+            finally:
+                connection.close()
+        except (sqlite3.Error, OSError, ValueError, TypeError) as exc:
+            raise RetrievalError(
+                "Local lexical index content is invalid; re-index required."
+            ) from exc
+        if lexical_documents != expected_by_id or fts_content != {
+            document_id: _search_text(document)
+            for document_id, document in expected_by_id.items()
+        }:
+            raise RetrievalError(
+                "Local lexical index content does not match the active release; "
+                "re-index required."
+            )
 
 
 def active_index_matches_release(
@@ -549,23 +634,6 @@ def active_index_matches_release(
             for field, value in expected.items()
         ):
             return False
-        eligible_documents = [
-            document for document in documents if _is_release_eligible(document)
-        ]
-        expected_by_id = {
-            str(document["document_id"]): document for document in eligible_documents
-        }
-        vector_ids = [
-            item.get("document_id")
-            for item in dense_index["vectors"]
-            if isinstance(item, dict)
-        ]
-        if (
-            len(vector_ids) != len(dense_index["vectors"])
-            or len(vector_ids) != len(set(vector_ids))
-            or set(vector_ids) != set(expected_by_id)
-        ):
-            return False
         HybridRetriever(
             data_dir=data_dir,
             active_release={"manifest": manifest},
@@ -575,30 +643,7 @@ def active_index_matches_release(
             embedding_provider=embedding_provider,
             embedding_model_identity=embedding_model_identity,
         )
-        lexical_path = index_dir / "lexical.sqlite3"
-        connection = sqlite3.connect(f"file:{lexical_path}?mode=ro", uri=True)
-        try:
-            if connection.execute("PRAGMA quick_check").fetchone() != ("ok",):
-                return False
-            document_rows = connection.execute(
-                "SELECT document_id, document_json FROM documents"
-            ).fetchall()
-            lexical_documents = {
-                str(document_id): json.loads(document_json)
-                for document_id, document_json in document_rows
-            }
-            fts_rows = connection.execute(
-                "SELECT document_id, content FROM documents_fts"
-            ).fetchall()
-            fts_content = {
-                str(document_id): str(content) for document_id, content in fts_rows
-            }
-        finally:
-            connection.close()
-        return lexical_documents == expected_by_id and fts_content == {
-            document_id: _search_text(document)
-            for document_id, document in expected_by_id.items()
-        }
+        return True
     except (
         OSError,
         ValueError,

@@ -1,16 +1,23 @@
+import hashlib
 import json
 import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from danish_rag.knowledge_release import (
     KnowledgeReleaseError,
     active_corpus_summary,
     install_knowledge_release,
     install_minimal_knowledge_release,
+    load_active_release,
 )
-from danish_rag.retrieval import HybridRetriever, build_hybrid_index
+from danish_rag.retrieval import (
+    HybridRetriever,
+    RetrievalError,
+    build_hybrid_index,
+)
 from tests.chunk_release_fixture import (
     build_chunked_release_fixture,
     bundled_reviewed_source_and_document,
@@ -293,6 +300,185 @@ class ChunkInstallationTests(unittest.TestCase):
             KnowledgeReleaseError,
             "artifact integrity",
         ):
+            HybridRetriever.from_data_dir(
+                self.data_dir,
+                embedding_provider=self.embedding_provider,
+            )
+
+    def test_signed_manifest_rejects_tampered_corpus_and_active_hash_evidence(self):
+        release_dir = self.build_chunked_release()
+        install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        documents_path = (
+            self.data_dir
+            / "corpus"
+            / "kr-2026-07-30.1"
+            / "documents.json"
+        )
+        documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        documents[0]["content"] = "UNSIGNED POISON"
+        encoded_documents = (
+            json.dumps(documents, indent=2, sort_keys=True) + "\n"
+        ).encode("utf-8")
+        documents_path.write_bytes(encoded_documents)
+        active_path = self.data_dir / "active-release.json"
+        active = json.loads(active_path.read_text(encoding="utf-8"))
+        active["manifest"]["artifacts"][0]["sha256"] = hashlib.sha256(
+            encoded_documents
+        ).hexdigest()
+        active["manifest"]["artifacts"][0]["bytes"] = len(encoded_documents)
+        active_path.write_text(
+            json.dumps(active, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(KnowledgeReleaseError, "signed manifest"):
+            HybridRetriever.from_data_dir(
+                self.data_dir,
+                embedding_provider=self.embedding_provider,
+            )
+
+    def test_same_id_pointer_write_failure_restores_previous_active_pair(self):
+        release_dir = self.build_chunked_release()
+        original = install_knowledge_release(
+            self.data_dir,
+            release_dir=release_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        changed_content = "Replacement content must roll back on pointer failure."
+        changed_source, changed_document = bundled_reviewed_source_and_document(
+            changed_content
+        )
+        replacement_dir = self.root / "rollback-same-id"
+        build_chunked_release_fixture(
+            release_dir=replacement_dir,
+            release_id="kr-2026-07-30.1",
+            source=changed_source,
+            document=changed_document,
+            release_trust=self.release_trust,
+            created_at_utc="2026-07-30T11:00:00Z",
+        )
+
+        with patch(
+            "danish_rag.knowledge_release._write_json_atomic",
+            side_effect=OSError("simulated active pointer failure"),
+        ):
+            with self.assertRaisesRegex(OSError, "active pointer failure"):
+                install_knowledge_release(
+                    self.data_dir,
+                    release_dir=replacement_dir,
+                    embedding_provider=self.embedding_provider,
+                    trust_root_path=self.release_trust.trust_root_path,
+                )
+
+        active_documents = json.loads(
+            Path(original["active"]["documents_path"]).read_text(encoding="utf-8")
+        )
+        self.assertEqual(active_documents, original["documents"])
+        retriever = HybridRetriever.from_data_dir(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
+        self.assertNotIn(
+            changed_content,
+            " ".join(
+                document["content"]
+                for document in retriever.documents_by_id.values()
+            ),
+        )
+
+    def test_retrieval_uses_one_active_snapshot_if_pointer_changes_mid_load(self):
+        first_install = install_knowledge_release(
+            self.data_dir,
+            release_dir=self.build_chunked_release("kr-2026-07-30.1"),
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        first_active = first_install["active"]
+        second_content = (
+            "A different release must not be mixed into the first snapshot."
+        )
+        second_source, second_document = bundled_reviewed_source_and_document(
+            second_content
+        )
+        second_dir = self.root / "second-release"
+        build_chunked_release_fixture(
+            release_dir=second_dir,
+            release_id="kr-2026-07-30.2",
+            source=second_source,
+            document=second_document,
+            release_trust=self.release_trust,
+            created_at_utc="2026-07-30T11:00:00Z",
+        )
+        second_install = install_knowledge_release(
+            self.data_dir,
+            release_dir=second_dir,
+            embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        active_path = self.data_dir / "active-release.json"
+        active_path.write_text(
+            json.dumps(first_active, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        def switch_after_first_read(data_dir: str | Path):
+            snapshot = load_active_release(data_dir)
+            active_path.write_text(
+                json.dumps(second_install["active"], indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            return snapshot
+
+        with patch(
+            "danish_rag.retrieval.load_active_release",
+            side_effect=switch_after_first_read,
+        ):
+            retriever = HybridRetriever.from_data_dir(
+                self.data_dir,
+                embedding_provider=self.embedding_provider,
+            )
+
+        self.assertEqual(
+            retriever.manifest["knowledge_release_id"],
+            "kr-2026-07-30.1",
+        )
+        self.assertNotIn(
+            second_content,
+            " ".join(
+                document["content"]
+                for document in retriever.documents_by_id.values()
+            ),
+        )
+
+    def test_legacy_index_without_digests_rejects_valid_vector_tampering(self):
+        installation = install_minimal_knowledge_release(
+            self.data_dir,
+            embedding_provider=self.embedding_provider,
+        )
+        active_path = self.data_dir / "active-release.json"
+        active = json.loads(active_path.read_text(encoding="utf-8"))
+        active.pop("index_artifacts")
+        active_path.write_text(
+            json.dumps(active, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        dense_path = Path(installation["active"]["index_path"]) / "dense-index.json"
+        dense = json.loads(dense_path.read_text(encoding="utf-8"))
+        dense["vectors"][0]["vector"] = [
+            0.123456
+        ] * installation["index"]["vector_dimensions"]
+        dense_path.write_text(
+            json.dumps(dense, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(RetrievalError, "content"):
             HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,

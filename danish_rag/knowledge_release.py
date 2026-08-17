@@ -8,8 +8,10 @@ import os
 import re
 import shutil
 import stat
+import threading
 import uuid
 import zipfile
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Protocol
@@ -50,6 +52,7 @@ GITHUB_KNOWLEDGE_RELEASE_PATTERN = re.compile(
     r"kr-(\d{4})-(\d{2})-(\d{2})\.(\d+)\Z"
 )
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}\Z")
+_ACTIVE_RELEASE_LOCK = threading.RLock()
 
 
 class KnowledgeReleaseError(ValueError):
@@ -137,6 +140,10 @@ def install_knowledge_release(
     )
     manifest = verified["manifest"]
     documents = verified["documents"]
+    resolved_trust_root_path = _resolved_release_trust_root_path(
+        manifest,
+        trust_root_path,
+    )
     release_id = str(manifest["knowledge_release_id"])
     if expected_release_id is not None and release_id != expected_release_id:
         raise KnowledgeReleaseError(
@@ -168,7 +175,10 @@ def install_knowledge_release(
             progress.report("already_active", "Knowledge release is already active.", 100)
             return {
                 "manifest": active["manifest"],
-                "documents": load_active_documents(resolved_data_dir),
+                "documents": load_active_documents(
+                    resolved_data_dir,
+                    active_release=active,
+                ),
                 "index": _load_index_metadata(resolved_data_dir, release_id),
                 "active": active,
                 "progress": progress.entries,
@@ -189,6 +199,14 @@ def install_knowledge_release(
     temporary_documents_path = installed_documents_path.with_suffix(".json.tmp")
     shutil.copyfile(source_documents_path, temporary_documents_path)
     temporary_documents_path.replace(installed_documents_path)
+    shutil.copyfile(
+        resolved_release_dir / "manifest.json",
+        staging_corpus_dir / "manifest.json",
+    )
+    shutil.copyfile(
+        resolved_release_dir / "manifest.sig",
+        staging_corpus_dir / "manifest.sig",
+    )
 
     from .retrieval import build_hybrid_index
     from .retrieval import HybridRetriever
@@ -233,23 +251,28 @@ def install_knowledge_release(
         staging_dir / "index" / release_id
     )
 
-    progress.report("activation", "Activating verified corpus and local index.", 95)
-    _inject_install_fault(fault_injector, "activation")
-    final_documents_path, final_index_path = _promote_staged_release(
-        resolved_data_dir,
-        staging_dir,
-        release_id,
-        fault_injector=fault_injector,
-    )
-    _inject_install_fault(fault_injector, "activation")
+    final_corpus_dir = resolved_data_dir / "corpus" / release_id
+    final_index_path = resolved_data_dir / "index" / release_id
     active_release = {
         "manifest": manifest,
-        "documents_path": str(final_documents_path),
+        "documents_path": str(final_corpus_dir / "documents.json"),
         "index_path": str(final_index_path),
+        "manifest_path": str(final_corpus_dir / "manifest.json"),
+        "signature_path": str(final_corpus_dir / "manifest.sig"),
+        "trust_root_path": str(resolved_trust_root_path),
         "index_artifacts": index_artifacts,
         "installed_at_utc": datetime.now(UTC).isoformat(),
     }
-    _write_json_atomic(active_release, resolved_data_dir / ACTIVE_RELEASE_FILE)
+    progress.report("activation", "Activating verified corpus and local index.", 95)
+    _inject_install_fault(fault_injector, "activation")
+    with active_release_snapshot():
+        _activate_staged_release(
+            resolved_data_dir,
+            staging_dir,
+            release_id,
+            active_release=active_release,
+            fault_injector=fault_injector,
+        )
     progress.report("complete", "Knowledge release installation is active.", 100)
     if staging_dir.exists():
         shutil.rmtree(staging_dir)
@@ -273,7 +296,7 @@ def ensure_minimal_knowledge_release(
         active = load_active_release(data_dir)
         return {
             "manifest": active["manifest"],
-            "documents": load_active_documents(data_dir),
+            "documents": load_active_documents(data_dir, active_release=active),
             "index": _load_index_metadata(
                 Path(data_dir),
                 active["manifest"]["knowledge_release_id"],
@@ -301,8 +324,16 @@ def load_active_release(data_dir: str | Path) -> dict[str, Any]:
     return active_release
 
 
-def load_active_documents(data_dir: str | Path) -> list[dict[str, Any]]:
-    active = load_active_release(data_dir)
+def load_active_documents(
+    data_dir: str | Path,
+    *,
+    active_release: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    if active_release is None:
+        with active_release_snapshot():
+            active = load_active_release(data_dir)
+            return load_active_documents(data_dir, active_release=active)
+    active = active_release
     documents_path = Path(active["documents_path"])
     documents = json.loads(documents_path.read_text(encoding="utf-8"))
     if not isinstance(documents, list):
@@ -310,10 +341,22 @@ def load_active_documents(data_dir: str | Path) -> list[dict[str, Any]]:
     return [dict(document) for document in documents]
 
 
+@contextmanager
+def active_release_snapshot():
+    """Keep active pointer and artifact reads consistent with activation."""
+
+    with _ACTIVE_RELEASE_LOCK:
+        yield
+
+
 def active_corpus_summary(data_dir: str | Path) -> dict[str, str]:
-    active = load_active_release(data_dir)
-    manifest = active["manifest"]
-    index = _load_index_metadata(Path(data_dir), str(manifest["knowledge_release_id"]))
+    with active_release_snapshot():
+        active = load_active_release(data_dir)
+        manifest = active["manifest"]
+        index = _load_index_metadata(
+            Path(data_dir),
+            str(manifest["knowledge_release_id"]),
+        )
     return {
         "knowledge_release_id": str(manifest["knowledge_release_id"]),
         "corpus_id": str(manifest["corpus_id"]),
@@ -887,10 +930,9 @@ def _verify_release_signature(
         label="detached signature",
     )
     trust_root_id = str(integrity["trust_root_id"])
-    resolved_trust_root = (
-        Path(trust_root_path)
-        if trust_root_path is not None
-        else DEFAULT_TRUST_ROOTS_DIR / f"{trust_root_id}.json"
+    resolved_trust_root = _resolved_release_trust_root_path(
+        manifest,
+        trust_root_path,
     )
     try:
         verify_manifest_signature(
@@ -903,6 +945,16 @@ def _verify_release_signature(
         raise KnowledgeReleaseError(
             f"Knowledge release signature verification failed: {exc}"
         ) from exc
+
+
+def _resolved_release_trust_root_path(
+    manifest: dict[str, Any],
+    trust_root_path: str | Path | None,
+) -> Path:
+    if trust_root_path is not None:
+        return Path(trust_root_path).resolve()
+    trust_root_id = str(manifest["integrity"]["trust_root_id"])
+    return (DEFAULT_TRUST_ROOTS_DIR / f"{trust_root_id}.json").resolve()
 
 
 def _validate_integrity_contract(manifest: dict[str, Any]) -> None:
@@ -1337,6 +1389,49 @@ def _validate_active_release_pair(data_dir: Path, active_release: dict[str, Any]
         raise KnowledgeReleaseError(
             "Installed active corpus/index pair is invalid: corpus documents must be a JSON array."
         )
+    corpus_schema = corpus_schema_contract(
+        str(manifest.get("corpus_schema_version", ""))
+    )
+    signed_evidence_fields = {
+        "manifest_path",
+        "signature_path",
+        "trust_root_path",
+    }
+    has_signed_evidence = signed_evidence_fields.issubset(active_release)
+    if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA and not has_signed_evidence:
+        raise KnowledgeReleaseError(
+            "Installed active chunk corpus lacks signed manifest evidence."
+        )
+    if has_signed_evidence:
+        manifest_path = Path(str(active_release["manifest_path"]))
+        signature_path = Path(str(active_release["signature_path"]))
+        expected_manifest_path = expected_documents_path.parent / "manifest.json"
+        expected_signature_path = expected_documents_path.parent / "manifest.sig"
+        if (
+            _normalized_path(manifest_path)
+            != _normalized_path(expected_manifest_path)
+            or _normalized_path(signature_path)
+            != _normalized_path(expected_signature_path)
+        ):
+            raise KnowledgeReleaseError(
+                "Installed active signed manifest paths are mismatched."
+            )
+        try:
+            signed_manifest = _load_manifest(expected_documents_path.parent)
+            verify_manifest_signature(
+                manifest_path,
+                signature_path,
+                Path(str(active_release["trust_root_path"])),
+                str(signed_manifest["integrity"]["trust_root_id"]),
+            )
+        except (ReleaseTrustError, OSError, KeyError, TypeError) as exc:
+            raise KnowledgeReleaseError(
+                "Installed active signed manifest verification failed."
+            ) from exc
+        if signed_manifest != manifest:
+            raise KnowledgeReleaseError(
+                "Installed active record does not match its signed manifest."
+            )
     try:
         documents_artifact = _documents_artifact(manifest)
         documents_match = (
@@ -1366,14 +1461,6 @@ def _validate_active_release_pair(data_dir: Path, active_release: dict[str, Any]
             )
 
     index_artifacts = active_release.get("index_artifacts")
-    if (
-        corpus_schema_contract(str(manifest.get("corpus_schema_version", "")))
-        is SEMANTIC_CHUNK_CORPUS_SCHEMA
-        and not isinstance(index_artifacts, dict)
-    ):
-        raise KnowledgeReleaseError(
-            "Installed active chunk index lacks artifact integrity evidence."
-        )
     if index_artifacts is not None:
         if not isinstance(index_artifacts, dict):
             raise KnowledgeReleaseError(
@@ -1502,13 +1589,14 @@ def _staging_dir(data_dir: Path, release_id: str) -> Path:
     return data_dir / ".installing" / f"{release_id}-{uuid.uuid4().hex}"
 
 
-def _promote_staged_release(
+def _activate_staged_release(
     data_dir: Path,
     staging_dir: Path,
     release_id: str,
     *,
+    active_release: dict[str, Any],
     fault_injector: Callable[[str], None] | None,
-) -> tuple[Path, Path]:
+) -> None:
     final_corpus_dir = data_dir / "corpus" / release_id
     final_index_dir = data_dir / "index" / release_id
     staged_corpus_dir = staging_dir / "corpus" / release_id
@@ -1517,6 +1605,8 @@ def _promote_staged_release(
     pending_index_dir = data_dir / "index" / f".{release_id}.pending"
     backup_corpus_dir = data_dir / "corpus" / f".{release_id}.backup"
     backup_index_dir = data_dir / "index" / f".{release_id}.backup"
+    active_path = data_dir / ACTIVE_RELEASE_FILE
+    active_backup_path = data_dir / f".{ACTIVE_RELEASE_FILE}.backup"
 
     for temporary_dir in (
         pending_corpus_dir,
@@ -1531,6 +1621,9 @@ def _promote_staged_release(
     pending_index_dir.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(staged_corpus_dir, pending_corpus_dir)
     shutil.copytree(staged_index_dir, pending_index_dir)
+    active_backup_path.unlink(missing_ok=True)
+    if active_path.exists():
+        shutil.copy2(active_path, active_backup_path)
     _inject_install_fault(fault_injector, "activation")
 
     try:
@@ -1544,9 +1637,14 @@ def _promote_staged_release(
         _inject_install_fault(fault_injector, "activation")
         pending_index_dir.replace(final_index_dir)
         _inject_install_fault(fault_injector, "activation")
+        _write_json_atomic(active_release, active_path)
     except Exception:
         _restore_directory_backup(final_corpus_dir, backup_corpus_dir)
         _restore_directory_backup(final_index_dir, backup_index_dir)
+        if active_backup_path.exists():
+            active_backup_path.replace(active_path)
+        else:
+            active_path.unlink(missing_ok=True)
         raise
     finally:
         for temporary_dir in (
@@ -1557,7 +1655,7 @@ def _promote_staged_release(
         ):
             if temporary_dir.exists():
                 shutil.rmtree(temporary_dir)
-    return final_corpus_dir / "documents.json", final_index_dir
+        active_backup_path.unlink(missing_ok=True)
 
 
 def _restore_directory_backup(final_dir: Path, backup_dir: Path) -> None:
