@@ -167,6 +167,10 @@ def build_publishable_knowledge_release(
         raise KnowledgeReleaseError(
             f"Unsupported corpus schema version: {corpus_schema_version}."
         )
+    if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA and not sources:
+        raise KnowledgeReleaseError(
+            "A chunked release requires at least one approved source."
+        )
 
     for source in sources:
         if source.get("review_state") not in ELIGIBLE_RELEASE_STATES:
@@ -323,6 +327,7 @@ def _manifest_source(source: dict[str, Any]) -> dict[str, Any]:
         "reviewers",
         "last_checked_at_utc",
         "source_content_sha256",
+        "normalized_extraction_sha256",
         "normalized_document_sha256",
         "extraction_schema_version",
         "fresh_tomato_inputs",

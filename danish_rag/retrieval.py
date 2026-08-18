@@ -6,6 +6,7 @@ import json
 import math
 import re
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +23,11 @@ from .embedding_provider import (
     resolve_embedding_provider,
     validate_embedding_vector,
 )
-from .knowledge_release import load_active_documents, load_active_release
+from .knowledge_release import (
+    active_release_snapshot,
+    load_active_documents,
+    load_active_release,
+)
 from .source_freshness import assess_source_freshness
 
 
@@ -34,6 +39,7 @@ VECTOR_DIMENSIONS = 768
 RRF_K = 60
 RETRIEVAL_CHANNEL_LIMIT = 20
 TOKEN_PATTERN = re.compile(r"[0-9a-zA-ZæøåÆØÅ]+")
+REVIEWED_SOURCE_LANGUAGES = ("da", "en-GB")
 
 
 class RetrievalError(ValueError):
@@ -282,6 +288,7 @@ class HybridRetriever:
         self.data_dir = Path(data_dir)
         self.active_release = active_release
         self.manifest = active_release["manifest"]
+        self.release_documents = documents
         sources_by_id = {
             str(source["source_id"]): source
             for source in self.manifest.get("sources", [])
@@ -311,6 +318,8 @@ class HybridRetriever:
             )
         )
         self._validate_index()
+        self._lexical_connection = self._snapshot_lexical_index()
+        self._lexical_lock = threading.Lock()
 
     @classmethod
     def from_data_dir(
@@ -319,23 +328,31 @@ class HybridRetriever:
         *,
         embedding_provider: EmbeddingProvider | None = None,
         embedding_endpoint: str | None = None,
+        trust_root_path: str | Path | None = None,
     ) -> "HybridRetriever":
-        active_release = load_active_release(data_dir)
-        documents = load_active_documents(data_dir)
-        release_id = active_release["manifest"]["knowledge_release_id"]
-        dense_index = json.loads(
-            (Path(data_dir) / "index" / release_id / "dense-index.json").read_text(
-                encoding="utf-8"
+        with active_release_snapshot():
+            active_release = load_active_release(
+                data_dir,
+                trust_root_path=trust_root_path,
             )
-        )
-        return cls(
-            data_dir=data_dir,
-            active_release=active_release,
-            documents=documents,
-            dense_index=dense_index,
-            embedding_provider=embedding_provider,
-            embedding_endpoint=embedding_endpoint,
-        )
+            documents = load_active_documents(
+                data_dir,
+                active_release=active_release,
+            )
+            release_id = active_release["manifest"]["knowledge_release_id"]
+            dense_index = json.loads(
+                (Path(data_dir) / "index" / release_id / "dense-index.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            return cls(
+                data_dir=data_dir,
+                active_release=active_release,
+                documents=documents,
+                dense_index=dense_index,
+                embedding_provider=embedding_provider,
+                embedding_endpoint=embedding_endpoint,
+            )
 
     def retrieve(self, question: str, *, limit: int = 3) -> list[dict[str, Any]]:
         normalized_question = normalize_question(question)
@@ -377,10 +394,8 @@ class HybridRetriever:
         expression = _fts_match_expression(normalized_question)
         if not expression:
             return []
-        connection = sqlite3.connect(self.index_dir / "lexical.sqlite3")
-        connection.row_factory = sqlite3.Row
-        try:
-            rows = connection.execute(
+        with self._lexical_lock:
+            rows = self._lexical_connection.execute(
                 """
                 SELECT documents.document_id, bm25(documents_fts) AS rank
                 FROM documents_fts
@@ -390,10 +405,6 @@ class HybridRetriever:
                 """,
                 (expression,),
             ).fetchall()
-        except sqlite3.DatabaseError as exc:
-            raise RetrievalError("Local lexical index is unavailable; re-index required.") from exc
-        finally:
-            connection.close()
         ranked_ids = [str(row["document_id"]) for row in rows]
         eligible_ids = [
             document_id
@@ -476,6 +487,7 @@ class HybridRetriever:
         vectors = self.dense_index.get("vectors")
         if not isinstance(vectors, list):
             raise RetrievalError("Local dense index is malformed; re-index required.")
+        vectors_by_document: dict[str, list[float]] = {}
         for item in vectors:
             if not isinstance(item, dict) or not isinstance(item.get("document_id"), str):
                 raise RetrievalError("Local dense index is malformed; re-index required.")
@@ -488,9 +500,176 @@ class HybridRetriever:
                     "Local dense index contains incompatible vector dimensions; "
                     "re-index required."
                 )
+            document_id = str(item["document_id"])
+            if document_id in vectors_by_document:
+                raise RetrievalError(
+                    "Local dense index contains duplicate document identities; "
+                    "re-index required."
+                )
+            vectors_by_document[document_id] = vector
+        eligible_documents = [
+            document
+            for document in self.release_documents
+            if _is_release_eligible(document)
+        ]
+        expected_by_id = {
+            str(document["document_id"]): document for document in eligible_documents
+        }
+        if set(vectors_by_document) != set(expected_by_id):
+            raise RetrievalError(
+                "Local dense index document coverage does not match release content; "
+                "re-index required."
+            )
+        for document_id, document in expected_by_id.items():
+            expected_vector = embed_with_provider(
+                self.embedding_provider,
+                str(self.embedding_profile["name"]),
+                _search_text(document),
+                context=f"active index validation for document {document_id}",
+            )
+            indexed_vector = vectors_by_document[document_id]
+            if len(expected_vector) != len(indexed_vector) or any(
+                not math.isclose(expected, indexed, rel_tol=1e-6, abs_tol=1e-6)
+                for expected, indexed in zip(
+                    expected_vector,
+                    indexed_vector,
+                    strict=True,
+                )
+            ):
+                raise RetrievalError(
+                    "Local dense index is not derived from the active release content; "
+                    "re-index required."
+                )
         lexical_path = self.index_dir / "lexical.sqlite3"
         if not lexical_path.exists():
             raise RetrievalError("Local lexical index is missing; re-index required.")
+        try:
+            connection = sqlite3.connect(f"file:{lexical_path}?mode=ro", uri=True)
+            try:
+                if connection.execute("PRAGMA quick_check").fetchone() != ("ok",):
+                    raise RetrievalError(
+                        "Local lexical index integrity check failed; re-index required."
+                    )
+                document_rows = connection.execute(
+                    "SELECT document_id, document_json FROM documents"
+                ).fetchall()
+                lexical_documents = {
+                    str(document_id): json.loads(document_json)
+                    for document_id, document_json in document_rows
+                }
+                fts_rows = connection.execute(
+                    "SELECT document_id, content FROM documents_fts"
+                ).fetchall()
+                fts_content = {
+                    str(document_id): str(content)
+                    for document_id, content in fts_rows
+                }
+            finally:
+                connection.close()
+        except (sqlite3.Error, OSError, ValueError, TypeError) as exc:
+            raise RetrievalError(
+                "Local lexical index content is invalid; re-index required."
+            ) from exc
+        if lexical_documents != expected_by_id or fts_content != {
+            document_id: _search_text(document)
+            for document_id, document in expected_by_id.items()
+        }:
+            raise RetrievalError(
+                "Local lexical index content does not match the active release; "
+                "re-index required."
+            )
+
+    def _snapshot_lexical_index(self) -> sqlite3.Connection:
+        lexical_path = self.index_dir / "lexical.sqlite3"
+        try:
+            source = sqlite3.connect(f"file:{lexical_path}?mode=ro", uri=True)
+            snapshot = sqlite3.connect(":memory:", check_same_thread=False)
+            try:
+                source.backup(snapshot)
+            finally:
+                source.close()
+            snapshot.row_factory = sqlite3.Row
+            return snapshot
+        except sqlite3.Error as exc:
+            raise RetrievalError(
+                "Could not snapshot the active lexical index; re-index required."
+            ) from exc
+
+
+def active_index_matches_release(
+    data_dir: str | Path,
+    manifest: dict[str, Any],
+    *,
+    documents: list[dict[str, Any]],
+    embedding_model: str,
+    embedding_provider: EmbeddingProvider,
+    embedding_model_identity: dict[str, Any],
+) -> bool:
+    """Validate the complete derived index against its release and documents."""
+
+    release_id = str(manifest.get("knowledge_release_id", ""))
+    corpus_schema = corpus_schema_contract(
+        str(manifest.get("corpus_schema_version", ""))
+    )
+    if not release_id or corpus_schema is None:
+        return False
+    index_dir = Path(data_dir) / "index" / release_id
+    try:
+        index = json.loads(
+            (index_dir / "index-metadata.json").read_text(encoding="utf-8")
+        )
+        dense_index = json.loads(
+            (index_dir / "dense-index.json").read_text(encoding="utf-8")
+        )
+        dense_metadata = dense_index["metadata"]
+        if (
+            not isinstance(index, dict)
+            or not isinstance(dense_index, dict)
+            or not isinstance(dense_metadata, dict)
+            or not isinstance(dense_index.get("vectors"), list)
+        ):
+            return False
+        expected = {
+            "schema_version": corpus_schema.index_schema_version,
+            "knowledge_release_id": release_id,
+            "corpus_identity": manifest.get("corpus_id"),
+            "embedding_model": embedding_model,
+            "embedding_provider": embedding_provider_id(embedding_provider),
+            "embedding_model_identity": embedding_model_identity,
+        }
+        if corpus_schema is SEMANTIC_CHUNK_CORPUS_SCHEMA:
+            expected.update(
+                {
+                    "corpus_schema_version": corpus_schema.version,
+                    "content_unit_schema_version": (
+                        corpus_schema.content_unit_schema_version
+                    ),
+                    "indexed_unit": corpus_schema.indexed_unit,
+                }
+            )
+        if not all(
+            index.get(field) == value and dense_metadata.get(field) == value
+            for field, value in expected.items()
+        ):
+            return False
+        HybridRetriever(
+            data_dir=data_dir,
+            active_release={"manifest": manifest},
+            documents=documents,
+            dense_index=dense_index,
+            embedding_model=embedding_model,
+            embedding_provider=embedding_provider,
+            embedding_model_identity=embedding_model_identity,
+        )
+        return True
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        sqlite3.Error,
+    ):
+        return False
 
 
 def inspect_embedding_model(
@@ -667,6 +846,7 @@ def _attach_source_metadata(
     for field in (
         "fresh_tomato_inputs",
         "source_content_sha256",
+        "normalized_extraction_sha256",
         "normalized_document_sha256",
         "reviewed_at_utc",
         "reviewers",
@@ -708,7 +888,7 @@ def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:
     ):
         intent_topic_tag_groups.append(["certificate-equivalence"])
     if not shared_topic_tags and not intent_topic_tag_groups:
-        return {"language": "da"}
+        return {"language": list(REVIEWED_SOURCE_LANGUAGES)}
 
     topic_tag_groups = (
         [
@@ -720,14 +900,18 @@ def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:
     )
     return {
         "topic_tag_groups": topic_tag_groups,
-        "language": "da",
+        "language": list(REVIEWED_SOURCE_LANGUAGES),
     }
 
 
 def _matches_metadata_filter(document: dict[str, Any], metadata_filter: dict[str, Any]) -> bool:
     language = metadata_filter.get("language")
-    if language and document.get("language") != language:
-        return False
+    if language:
+        allowed_languages = (
+            set(language) if isinstance(language, list) else {str(language)}
+        )
+        if document.get("language") not in allowed_languages:
+            return False
     document_tags = set(document.get("topic_tags", []))
     topic_tag_groups = metadata_filter.get("topic_tag_groups")
     if topic_tag_groups is not None:

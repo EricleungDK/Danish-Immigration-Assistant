@@ -10,15 +10,15 @@ import re
 import shutil
 import sys
 import tempfile
+from dataclasses import dataclass
 from datetime import datetime
 from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin, urlparse
 from urllib.error import HTTPError
+from urllib.parse import urljoin, urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
-
 
 REVIEW_SET_SCHEMA_VERSION = "official-source-review-set-v1"
 REVIEW_BUNDLE_SCHEMA_VERSION = "official-source-review-bundle-v1"
@@ -94,6 +94,34 @@ class SourceReviewError(ValueError):
     """Raised when an official-source review bundle cannot be produced safely."""
 
 
+@dataclass(frozen=True)
+class ValidatedReviewArtifact:
+    relative_path: str
+    sha256: str
+    content: bytes
+
+
+@dataclass(frozen=True)
+class ValidatedSourceReviewEvidence:
+    source_id: str
+    completed_source: dict[str, Any]
+    machine_source: dict[str, Any]
+    snapshot: ValidatedReviewArtifact
+    normalized_extraction: ValidatedReviewArtifact
+
+
+@dataclass(frozen=True)
+class CompletedSourceReviewValidation:
+    completed_review: dict[str, Any]
+    sources: dict[str, ValidatedSourceReviewEvidence]
+
+
+@dataclass(frozen=True)
+class ValidatedSupplementalObservation:
+    payload: dict[str, Any]
+    retrieval: dict[str, Any]
+
+
 class _VisibleMainTextParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -154,7 +182,9 @@ class _VisibleMainTextParser(HTMLParser):
             if normalized_line:
                 lines.append(normalized_line)
         if not lines:
-            raise SourceReviewError("official source main element contains no visible text")
+            raise SourceReviewError(
+                "official source main element contains no visible text"
+            )
         return "\n".join(lines) + "\n"
 
 
@@ -366,7 +396,9 @@ def write_completed_source_review_bundle(
     decision_source_path = Path(decisions_path).resolve()
     destination = Path(output_dir).resolve()
     if destination.exists():
-        raise SourceReviewError(f"completed review output already exists: {destination}")
+        raise SourceReviewError(
+            f"completed review output already exists: {destination}"
+        )
     try:
         destination.relative_to(machine_root)
     except ValueError:
@@ -397,7 +429,7 @@ def write_completed_source_review_bundle(
     )
     decision_bytes = _read_bytes(decision_source_path, label="human decisions")
     decisions = _load_json_bytes(decision_bytes, label="human decisions")
-    completed = _validated_completed_review(
+    validation = _validated_completed_review(
         machine_root=machine_root,
         machine_manifest=machine_manifest,
         machine_manifest_sha256=hashlib.sha256(machine_manifest_bytes).hexdigest(),
@@ -411,6 +443,7 @@ def write_completed_source_review_bundle(
         decisions_sha256=hashlib.sha256(decision_bytes).hexdigest(),
     )
 
+    completed = validation.completed_review
     destination.parent.mkdir(parents=True, exist_ok=True)
     staging_path = Path(
         tempfile.mkdtemp(
@@ -434,6 +467,35 @@ def write_completed_source_review_bundle(
     return completed
 
 
+def validate_completed_source_review_evidence(
+    *,
+    review_dir: str | Path,
+    completed_review: dict[str, Any],
+    machine_manifest: dict[str, Any],
+    machine_manifest_sha256: str,
+    decisions: dict[str, Any],
+    decisions_sha256: str,
+    supplemental_observations: dict[str, Any] | None = None,
+    supplemental_observations_sha256: str | None = None,
+) -> CompletedSourceReviewValidation:
+    """Rebuild and compare the canonical completed-review contract."""
+
+    validation = _validated_completed_review(
+        machine_root=Path(review_dir).resolve(),
+        machine_manifest=machine_manifest,
+        machine_manifest_sha256=machine_manifest_sha256,
+        supplemental_observations=supplemental_observations,
+        supplemental_observations_sha256=supplemental_observations_sha256,
+        decisions=decisions,
+        decisions_sha256=decisions_sha256,
+    )
+    if validation.completed_review != completed_review:
+        raise SourceReviewError(
+            "completed review differs from the canonical validated review evidence"
+        )
+    return validation
+
+
 def _validated_completed_review(
     *,
     machine_root: Path,
@@ -443,7 +505,7 @@ def _validated_completed_review(
     supplemental_observations_sha256: str | None,
     decisions: dict[str, Any],
     decisions_sha256: str,
-) -> dict[str, Any]:
+) -> CompletedSourceReviewValidation:
     if machine_manifest.get("schema_version") != REVIEW_BUNDLE_SCHEMA_VERSION:
         raise SourceReviewError("machine review manifest has an invalid schema version")
     if decisions.get("schema_version") != "official-source-human-decisions-v1":
@@ -454,7 +516,9 @@ def _validated_completed_review(
         not isinstance(decision_bundle, dict)
         or decision_bundle.get("sha256") != machine_manifest_sha256
     ):
-        raise SourceReviewError("human decisions do not bind the machine review manifest")
+        raise SourceReviewError(
+            "human decisions do not bind the machine review manifest"
+        )
 
     machine_sources = machine_manifest.get("sources")
     decision_sources = decisions.get("source_decisions")
@@ -484,11 +548,13 @@ def _validated_completed_review(
     fallback_selected = fallback.get("selected") is True
     post_publication = fallback.get("post_publication_second_review")
     fallback_review_required = (
-        isinstance(post_publication, dict)
-        and post_publication.get("required") is True
+        isinstance(post_publication, dict) and post_publication.get("required") is True
     )
     if fallback_selected:
-        if not isinstance(fallback.get("reason"), str) or not fallback["reason"].strip():
+        if (
+            not isinstance(fallback.get("reason"), str)
+            or not fallback["reason"].strip()
+        ):
             raise SourceReviewError(
                 "single-maintainer fallback requires a documented reason"
             )
@@ -504,6 +570,7 @@ def _validated_completed_review(
             )
 
     completed_sources = []
+    validated_sources: dict[str, ValidatedSourceReviewEvidence] = {}
     approved_source_count = 0
     for source_id, machine_source in machine_by_id.items():
         record = decisions_by_id[source_id]
@@ -514,7 +581,9 @@ def _validated_completed_review(
                 f"source {source_id} is missing curation or review evidence"
             )
         if curation.get("decision") not in {"approve", "reject"}:
-            raise SourceReviewError(f"source {source_id} has an invalid curator decision")
+            raise SourceReviewError(
+                f"source {source_id} has an invalid curator decision"
+            )
         admitted_at = _parse_human_review_utc(curation.get("admitted_at_utc"))
         if admitted_at > recorded_at:
             raise SourceReviewError(
@@ -522,9 +591,7 @@ def _validated_completed_review(
             )
         for field in ("scope_rationale", "confirmed_topic", "confirmed_language"):
             if not isinstance(curation.get(field), str) or not curation[field].strip():
-                raise SourceReviewError(
-                    f"source {source_id} curation requires {field}"
-                )
+                raise SourceReviewError(f"source {source_id} curation requires {field}")
         _require_named_ids(
             curation.get("curator_ids"),
             label=f"source {source_id} curator_ids",
@@ -534,7 +601,9 @@ def _validated_completed_review(
             label=f"source {source_id} monitoring_owner_ids",
         )
         if review.get("decision") not in {"approve", "reject"}:
-            raise SourceReviewError(f"source {source_id} has an invalid review decision")
+            raise SourceReviewError(
+                f"source {source_id} has an invalid review decision"
+            )
         reviewed_at = _parse_human_review_utc(review.get("reviewed_at_utc"))
         if reviewed_at > recorded_at:
             raise SourceReviewError(
@@ -558,21 +627,21 @@ def _validated_completed_review(
 
         snapshot = machine_source.get("snapshot")
         extraction = machine_source.get("normalized_extraction")
-        snapshot_sha256 = _validated_artifact(
+        validated_snapshot = _validated_artifact(
             machine_root,
             snapshot,
             label=f"source {source_id} snapshot",
         )
-        extraction_sha256 = _validated_artifact(
+        validated_extraction = _validated_artifact(
             machine_root,
             extraction,
             label=f"source {source_id} normalized extraction",
         )
-        if review.get("official_source_snapshot_sha256") != snapshot_sha256:
+        if review.get("official_source_snapshot_sha256") != validated_snapshot.sha256:
             raise SourceReviewError(
                 f"source {source_id} review does not bind its official snapshot"
             )
-        if review.get("normalized_extraction_sha256") != extraction_sha256:
+        if review.get("normalized_extraction_sha256") != validated_extraction.sha256:
             raise SourceReviewError(
                 f"source {source_id} review does not bind its normalized extraction"
             )
@@ -585,9 +654,7 @@ def _validated_completed_review(
                 f"source {source_id} review predates its retrieved evidence"
             )
 
-        bound_registry_url_observation = machine_source.get(
-            "registry_url_observation"
-        )
+        bound_registry_url_observation = machine_source.get("registry_url_observation")
         if bound_registry_url_observation is not None:
             if not isinstance(bound_registry_url_observation, dict):
                 raise SourceReviewError(
@@ -612,7 +679,17 @@ def _validated_completed_review(
             registry_url_evidence is None
             and supplemental_registry_observation is not None
         ):
-            registry_url_evidence = supplemental_registry_observation["retrieval"]
+            if (
+                supplemental_registry_observation.retrieval["retrieved_at"]
+                <= reviewed_at
+            ):
+                raise SourceReviewError(
+                    f"source {source_id} supplemental registry evidence must postdate "
+                    "human review"
+                )
+            registry_url_evidence = supplemental_registry_observation.payload[
+                "retrieval"
+            ]
 
         url_resolution = record.get("url_resolution")
         if not isinstance(url_resolution, dict):
@@ -683,23 +760,27 @@ def _validated_completed_review(
                 f"source {source_id} claims eligibility without all required approvals"
             )
         approved_source_count += int(approved)
-        completed_sources.append(
-            {
-                "source_id": source_id,
-                "curator_admission": curation,
-                "url_resolution": url_resolution,
-                "human_review": review,
-                "official_source_snapshot_sha256": snapshot_sha256,
-                "normalized_extraction_sha256": extraction_sha256,
-                "registry_url_observation": bound_registry_url_observation,
-                "supplemental_registry_evidence": (
-                    source_id if supplemental_registry_observation is not None else None
-                ),
-                "source_review_gate_status": record.get(
-                    "source_review_gate_status"
-                ),
-                "eligible_for_follow_on_rebuild": approved,
-            }
+        completed_source = {
+            "source_id": source_id,
+            "curator_admission": curation,
+            "url_resolution": url_resolution,
+            "human_review": review,
+            "official_source_snapshot_sha256": validated_snapshot.sha256,
+            "normalized_extraction_sha256": validated_extraction.sha256,
+            "registry_url_observation": bound_registry_url_observation,
+            "supplemental_registry_evidence": (
+                source_id if supplemental_registry_observation is not None else None
+            ),
+            "source_review_gate_status": record.get("source_review_gate_status"),
+            "eligible_for_follow_on_rebuild": approved,
+        }
+        completed_sources.append(completed_source)
+        validated_sources[source_id] = ValidatedSourceReviewEvidence(
+            source_id=source_id,
+            completed_source=completed_source,
+            machine_source=machine_source,
+            snapshot=validated_snapshot,
+            normalized_extraction=validated_extraction,
         )
 
     packet_g = decisions.get("packet_g")
@@ -714,7 +795,7 @@ def _validated_completed_review(
         )
 
     blocked_source_count = len(completed_sources) - approved_source_count
-    return {
+    completed_review = {
         "schema_version": "completed-official-source-review-v1",
         "classification": "reviewed-official-source-evidence",
         "commit_policy": "version-control-eligible",
@@ -740,6 +821,10 @@ def _validated_completed_review(
         "follow_on_rebuild_required": True,
         "current_fixture_release_qualified": False,
     }
+    return CompletedSourceReviewValidation(
+        completed_review=completed_review,
+        sources=validated_sources,
+    )
 
 
 def _unique_sources(sources: list[Any], *, label: str) -> dict[str, dict[str, Any]]:
@@ -749,14 +834,20 @@ def _unique_sources(sources: list[Any], *, label: str) -> dict[str, dict[str, An
             raise SourceReviewError(f"{label} source entries must be objects")
         source_id = source.get("source_id")
         if not isinstance(source_id, str) or not source_id or source_id in result:
-            raise SourceReviewError(f"{label} source IDs must be unique non-empty strings")
+            raise SourceReviewError(
+                f"{label} source IDs must be unique non-empty strings"
+            )
         result[source_id] = source
     return result
 
 
 def _require_named_ids(value: Any, *, label: str) -> list[str]:
-    if not isinstance(value, list) or not value or any(
-        not isinstance(identity, str) or not identity.strip() for identity in value
+    if (
+        not isinstance(value, list)
+        or not value
+        or any(
+            not isinstance(identity, str) or not identity.strip() for identity in value
+        )
     ):
         raise SourceReviewError(f"{label} requires named human identities")
     if any(
@@ -780,16 +871,16 @@ def _validated_supplemental_observations(
     payload: dict[str, Any] | None,
     *,
     allowed_source_ids: set[str],
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, ValidatedSupplementalObservation]:
     if payload is None:
         return {}
     if payload.get("schema_version") != SUPPLEMENTAL_OBSERVATIONS_SCHEMA_VERSION:
         raise SourceReviewError("supplemental observations have an invalid schema")
-    _parse_utc(payload.get("recorded_at_utc"))
+    recorded_at = _parse_utc(payload.get("recorded_at_utc"))
     observations = payload.get("observations")
     if not isinstance(observations, list):
         raise SourceReviewError("supplemental observations must be an array")
-    by_source_id: dict[str, dict[str, Any]] = {}
+    by_source_id: dict[str, ValidatedSupplementalObservation] = {}
     for observation in observations:
         if not isinstance(observation, dict):
             raise SourceReviewError("supplemental observation entries must be objects")
@@ -811,7 +902,7 @@ def _validated_supplemental_observations(
                 f"source {source_id} supplemental observation is not classified safely"
             )
         retrieval = observation.get("retrieval")
-        _validated_retrieval(
+        validated_retrieval = _validated_retrieval(
             retrieval,
             label=f"source {source_id} supplemental registry retrieval",
         )
@@ -824,7 +915,14 @@ def _validated_supplemental_observations(
             retrieval.get("response"),
             label=f"source {source_id} supplemental registry response",
         )
-        by_source_id[source_id] = observation
+        if validated_retrieval["retrieved_at"] > recorded_at:
+            raise SourceReviewError(
+                f"source {source_id} supplemental retrieval postdates its record"
+            )
+        by_source_id[source_id] = ValidatedSupplementalObservation(
+            payload=observation,
+            retrieval=validated_retrieval,
+        )
     return by_source_id
 
 
@@ -855,7 +953,7 @@ def _validated_artifact(
     artifact: Any,
     *,
     label: str,
-) -> str:
+) -> ValidatedReviewArtifact:
     if not isinstance(artifact, dict):
         raise SourceReviewError(f"{label} metadata is missing")
     relative_path = artifact.get("path")
@@ -867,12 +965,15 @@ def _validated_artifact(
         artifact_path.relative_to(machine_root)
     except ValueError as exc:
         raise SourceReviewError(f"{label} path leaves the machine bundle") from exc
-    observed_sha256 = hashlib.sha256(
-        _read_bytes(artifact_path, label=label)
-    ).hexdigest()
+    content = _read_bytes(artifact_path, label=label)
+    observed_sha256 = hashlib.sha256(content).hexdigest()
     if observed_sha256 != expected_sha256:
         raise SourceReviewError(f"{label} SHA-256 does not match")
-    return observed_sha256
+    return ValidatedReviewArtifact(
+        relative_path=relative_path,
+        sha256=observed_sha256,
+        content=content,
+    )
 
 
 def _read_bytes(path: Path, *, label: str) -> bytes:
@@ -951,7 +1052,9 @@ def _offline_review_html(
         flags=re.IGNORECASE,
     )
     if with_head == snapshot_html:
-        raise SourceReviewError("official source snapshot does not contain a head element")
+        raise SourceReviewError(
+            "official source snapshot does not contain a head element"
+        )
     with_body = re.sub(
         r"(<body(?:\s[^>]*)?>)",
         lambda match: match.group(1) + body_injection,
@@ -960,7 +1063,9 @@ def _offline_review_html(
         flags=re.IGNORECASE,
     )
     if with_body == with_head:
-        raise SourceReviewError("official source snapshot does not contain a body element")
+        raise SourceReviewError(
+            "official source snapshot does not contain a body element"
+        )
     return with_body.encode("utf-8")
 
 
@@ -982,7 +1087,10 @@ def _load_review_set(config_path: str | Path) -> dict[str, Any]:
         raise SourceReviewError(f"could not read review set: {path}") from exc
     except json.JSONDecodeError as exc:
         raise SourceReviewError(f"review set is not valid JSON: {path}") from exc
-    if not isinstance(payload, dict) or payload.get("schema_version") != REVIEW_SET_SCHEMA_VERSION:
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema_version") != REVIEW_SET_SCHEMA_VERSION
+    ):
         raise SourceReviewError(
             f"review set must use schema version {REVIEW_SET_SCHEMA_VERSION}"
         )
@@ -1013,7 +1121,9 @@ def _load_review_set(config_path: str | Path) -> dict[str, Any]:
             raise SourceReviewError(f"review set source {index} contains a blank field")
         source_id = source["source_id"]
         if source_id in seen_ids:
-            raise SourceReviewError(f"review set contains duplicate source ID: {source_id}")
+            raise SourceReviewError(
+                f"review set contains duplicate source ID: {source_id}"
+            )
         seen_ids.add(source_id)
         _validate_fetch_url(source["requested_url"])
         _validate_fetch_url(source["registry_url"])
@@ -1095,10 +1205,11 @@ def _validate_fetch_url(value: str) -> None:
     if parsed.username or parsed.password or parsed.fragment:
         raise SourceReviewError(f"official source URL is not safe to fetch: {value}")
     is_https = parsed.scheme == "https" and parsed.port in {None, 443}
-    is_loopback_http = (
-        parsed.scheme == "http"
-        and parsed.hostname in {"127.0.0.1", "::1", "localhost"}
-    )
+    is_loopback_http = parsed.scheme == "http" and parsed.hostname in {
+        "127.0.0.1",
+        "::1",
+        "localhost",
+    }
     if not parsed.hostname or not (is_https or is_loopback_http):
         raise SourceReviewError(f"official source URL is not safe to fetch: {value}")
 
@@ -1122,7 +1233,9 @@ def _require_outside_repository(destination: Path, root: Path) -> None:
         destination.relative_to(root)
     except ValueError:
         return
-    raise SourceReviewError("source-review bundle must be written outside the repository")
+    raise SourceReviewError(
+        "source-review bundle must be written outside the repository"
+    )
 
 
 def _parse_utc(value: Any) -> datetime:
@@ -1140,7 +1253,9 @@ def _write_private_bytes(destination: Path, payload: bytes) -> None:
 
 
 def _write_private_json(destination: Path, payload: dict[str, Any]) -> None:
-    serialized = json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+    serialized = (
+        json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+    )
     temporary_path: Path | None = None
     try:
         file_descriptor, temporary_name = tempfile.mkstemp(

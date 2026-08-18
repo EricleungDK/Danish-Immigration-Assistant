@@ -30,6 +30,9 @@ def bundled_reviewed_source_and_document(
     )
     source = {
         **manifest["sources"][0],
+        "normalized_extraction_sha256": hashlib.sha256(
+            content.encode("utf-8")
+        ).hexdigest(),
         "normalized_document_sha256": normalized_content_sha256(content),
     }
     document = {**documents[0], "content": content}

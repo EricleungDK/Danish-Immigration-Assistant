@@ -254,7 +254,10 @@ def create_app(
                 expected_release_id=release_id,
                 progress_callback=record_installation_progress,
             )
-            active_release_id = _active_release_id(resolved_data_dir)
+            active_release_id = _active_release_id(
+                resolved_data_dir,
+                trust_root_path=resolved_trust_root_path,
+            )
             with installation_state_lock:
                 latest_phase = (
                     installation_state["events"][-1]["phase"]
@@ -272,7 +275,13 @@ def create_app(
             with update_record_lock:
                 dismiss_pending_knowledge_update(resolved_data_dir)
         except Exception as exc:
-            active_release_id = _active_release_id(resolved_data_dir) or "Unavailable"
+            active_release_id = (
+                _active_release_id(
+                    resolved_data_dir,
+                    trust_root_path=resolved_trust_root_path,
+                )
+                or "Unavailable"
+            )
             return {
                 "state": "failed",
                 "active_release_id": active_release_id,
@@ -467,7 +476,10 @@ def create_app(
                 embedding_provider=embedding_provider,
                 trust_root_path=resolved_trust_root_path,
             )
-            corpus = active_corpus_summary(resolved_data_dir)
+            corpus = active_corpus_summary(
+                resolved_data_dir,
+                trust_root_path=resolved_trust_root_path,
+            )
         except Exception as exc:
             corpus_error = _retrieval_failure_message(exc)
             corpus = _unavailable_corpus_summary()
@@ -534,7 +546,11 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     async def home(request: Request) -> HTMLResponse:
         return render_home(
-            update_status=_update_status_from_request(request, resolved_data_dir),
+            update_status=_update_status_from_request(
+                request,
+                resolved_data_dir,
+                trust_root_path=resolved_trust_root_path,
+            ),
             delete_all_status=(
                 "All local conversation records deleted."
                 if request.query_params.get("records_deleted") == "all"
@@ -662,6 +678,7 @@ def create_app(
                     update = select_github_knowledge_update(
                         resolved_data_dir,
                         resolved_github_release_client.list_published_releases(),
+                        trust_root_path=resolved_trust_root_path,
                     )
                     save_available_github_knowledge_update(resolved_data_dir, update)
         except HTTPException:
@@ -861,7 +878,13 @@ def create_app(
                 if is_github_release
                 else resolved_release_catalog_dir / requested_release_id
             )
-            previous_release_id = _active_release_id(resolved_data_dir) or "Unavailable"
+            previous_release_id = (
+                _active_release_id(
+                    resolved_data_dir,
+                    trust_root_path=resolved_trust_root_path,
+                )
+                or "Unavailable"
+            )
             with installation_state_lock:
                 if (
                     installation_state is not None
@@ -1024,6 +1047,7 @@ def create_app(
             retriever = HybridRetriever.from_data_dir(
                 resolved_data_dir,
                 embedding_provider=embedding_provider,
+                trust_root_path=resolved_trust_root_path,
             )
             result = AnswerService(
                 retriever=retriever,
@@ -1116,7 +1140,10 @@ def create_app(
                 embedding_provider=embedding_provider,
                 trust_root_path=resolved_trust_root_path,
             )
-            corpus = active_corpus_summary(resolved_data_dir)
+            corpus = active_corpus_summary(
+                resolved_data_dir,
+                trust_root_path=resolved_trust_root_path,
+            )
         except Exception as exc:
             corpus_error = _retrieval_failure_message(exc)
             corpus = _unavailable_corpus_summary()
@@ -1268,14 +1295,23 @@ def _check_github_update_metadata(
     update = select_github_knowledge_update(
         data_dir,
         client.list_published_releases(),
+        trust_root_path=trust_root_path,
     )
     save_available_github_knowledge_update(data_dir, update)
 
 
-def _update_status_from_request(request: Request, data_dir: Path) -> dict[str, str] | None:
+def _update_status_from_request(
+    request: Request,
+    data_dir: Path,
+    *,
+    trust_root_path: str | Path | None = None,
+) -> dict[str, str] | None:
     if request.query_params.get("update_status") != "installed":
         return None
-    active_release = _active_release_id(data_dir)
+    active_release = _active_release_id(
+        data_dir,
+        trust_root_path=trust_root_path,
+    )
     if not active_release:
         return None
     requested_release_id = request.query_params.get("release_id", "").strip()
@@ -1313,9 +1349,16 @@ def _rollback_update_status(data_dir: Path, exc: BaseException) -> dict[str, str
     }
 
 
-def _active_release_id(data_dir: Path) -> str:
+def _active_release_id(
+    data_dir: Path,
+    *,
+    trust_root_path: str | Path | None = None,
+) -> str:
     try:
-        return active_corpus_summary(data_dir)["knowledge_release_id"]
+        return active_corpus_summary(
+            data_dir,
+            trust_root_path=trust_root_path,
+        )["knowledge_release_id"]
     except Exception:
         return ""
 

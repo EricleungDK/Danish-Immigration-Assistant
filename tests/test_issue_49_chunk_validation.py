@@ -3,6 +3,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 from danish_rag.knowledge_release import KnowledgeReleaseError, verify_knowledge_release
 from danish_rag.release_trust import sign_manifest
@@ -35,6 +36,9 @@ class ChunkReleaseValidationTests(unittest.TestCase):
             "reviewers": ["fixture-reviewer"],
             "last_checked_at_utc": "2026-07-30T08:00:00Z",
             "source_content_sha256": "b" * 64,
+            "normalized_extraction_sha256": hashlib.sha256(
+                normalized_content.encode("utf-8")
+            ).hexdigest(),
             "normalized_document_sha256": normalized_content_sha256(
                 normalized_content
             ),
@@ -44,6 +48,7 @@ class ChunkReleaseValidationTests(unittest.TestCase):
                 "source_health": "current",
             },
         }
+        self.source = source
         document = {
             "document_id": "reviewed-source-document",
             "source_id": "official-source",
@@ -76,13 +81,25 @@ class ChunkReleaseValidationTests(unittest.TestCase):
         documents_path = self.release_dir / "corpus" / "documents.json"
         documents = json.loads(documents_path.read_text(encoding="utf-8"))
         documents[0].update(updates)
+        self.write_documents_and_resign(documents)
+
+    def write_documents_and_resign(
+        self,
+        documents: list[dict[str, Any]],
+        *,
+        manifest: dict[str, Any] | None = None,
+        release_dir: Path | None = None,
+    ) -> None:
+        resolved_release_dir = release_dir or self.release_dir
+        documents_path = resolved_release_dir / "corpus" / "documents.json"
         documents_bytes = (
             json.dumps(documents, indent=2, sort_keys=True) + "\n"
         ).encode("utf-8")
         documents_path.write_bytes(documents_bytes)
 
-        manifest_path = self.release_dir / "manifest.json"
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest_path = resolved_release_dir / "manifest.json"
+        if manifest is None:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest["artifacts"][0]["sha256"] = hashlib.sha256(
             documents_bytes
         ).hexdigest()
@@ -94,7 +111,7 @@ class ChunkReleaseValidationTests(unittest.TestCase):
         sign_manifest(
             manifest_path,
             self.release_trust.signing_private_key_path,
-            self.release_dir / "manifest.sig",
+            resolved_release_dir / "manifest.sig",
         )
 
     def test_chunked_release_without_explicit_content_unit_schema_is_rejected(self):
@@ -120,6 +137,308 @@ class ChunkReleaseValidationTests(unittest.TestCase):
                 trust_root_path=self.release_trust.trust_root_path,
             )
 
+    def test_chunked_release_requires_valid_source_content_identity(self):
+        manifest_path = self.release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["sources"][0]["source_content_sha256"] = ""
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        sign_manifest(
+            manifest_path,
+            self.release_trust.signing_private_key_path,
+            self.release_dir / "manifest.sig",
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "valid source content SHA-256 identity",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_chunked_release_requires_reviewed_extraction_identity(self):
+        manifest_path = self.release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["sources"][0].pop("normalized_extraction_sha256")
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        sign_manifest(
+            manifest_path,
+            self.release_trust.signing_private_key_path,
+            self.release_dir / "manifest.sig",
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "normalized_extraction_sha256",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_chunked_release_rejects_duplicate_source_identities(self):
+        manifest_path = self.release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["sources"].append(dict(manifest["sources"][0]))
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        sign_manifest(
+            manifest_path,
+            self.release_trust.signing_private_key_path,
+            self.release_dir / "manifest.sig",
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "duplicate approved source identity",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_chunked_release_requires_structured_human_review_evidence(self):
+        invalid_values = {
+            "reviewers": "not-a-list",
+            "reviewed_at_utc": "not-a-time",
+        }
+        for field, invalid_value in invalid_values.items():
+            with self.subTest(field=field):
+                manifest_path = self.release_dir / "manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                original_value = manifest["sources"][0][field]
+                manifest["sources"][0][field] = invalid_value
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                sign_manifest(
+                    manifest_path,
+                    self.release_trust.signing_private_key_path,
+                    self.release_dir / "manifest.sig",
+                )
+
+                with self.assertRaisesRegex(
+                    KnowledgeReleaseError,
+                    "valid human reviewer evidence",
+                ):
+                    verify_knowledge_release(
+                        self.release_dir,
+                        trust_root_path=self.release_trust.trust_root_path,
+                    )
+
+                manifest["sources"][0][field] = original_value
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                sign_manifest(
+                    manifest_path,
+                    self.release_trust.signing_private_key_path,
+                    self.release_dir / "manifest.sig",
+                )
+
+    def test_chunked_release_requires_non_empty_release_and_corpus_identities(self):
+        for field in ("knowledge_release_id", "corpus_id"):
+            with self.subTest(field=field):
+                manifest_path = self.release_dir / "manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                original_value = manifest[field]
+                manifest[field] = ""
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                sign_manifest(
+                    manifest_path,
+                    self.release_trust.signing_private_key_path,
+                    self.release_dir / "manifest.sig",
+                )
+
+                with self.assertRaisesRegex(
+                    KnowledgeReleaseError,
+                    f"valid {field.replace('_', ' ')}",
+                ):
+                    verify_knowledge_release(
+                        self.release_dir,
+                        trust_root_path=self.release_trust.trust_root_path,
+                    )
+
+                manifest[field] = original_value
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                sign_manifest(
+                    manifest_path,
+                    self.release_trust.signing_private_key_path,
+                    self.release_dir / "manifest.sig",
+                )
+
+    def test_chunked_release_rejects_control_characters_in_release_identity(self):
+        manifest_path = self.release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["knowledge_release_id"] = "bad\0id"
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        sign_manifest(
+            manifest_path,
+            self.release_trust.signing_private_key_path,
+            self.release_dir / "manifest.sig",
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "valid knowledge release id",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_chunked_release_rejects_unsafe_source_identities(self):
+        for source_id in (
+            "official\0source",
+            " official-source ",
+            "official-\ud800source",
+        ):
+            with self.subTest(source_id=source_id):
+                manifest_path = self.release_dir / "manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest["sources"][0]["source_id"] = source_id
+                documents_path = self.release_dir / "corpus" / "documents.json"
+                documents = json.loads(documents_path.read_text(encoding="utf-8"))
+                documents[0]["source_id"] = source_id
+                self.write_documents_and_resign(documents, manifest=manifest)
+
+                with self.assertRaisesRegex(
+                    KnowledgeReleaseError,
+                    "valid approved source identity",
+                ):
+                    verify_knowledge_release(
+                        self.release_dir,
+                        trust_root_path=self.release_trust.trust_root_path,
+                    )
+
+    def test_chunked_release_rejects_unsafe_source_document_identities(self):
+        for source_document_id in (
+            "reviewed\0document",
+            " reviewed-document ",
+            "reviewed-\ud800document",
+        ):
+            with self.subTest(source_document_id=source_document_id):
+                self.rewrite_first_chunk_and_resign(
+                    source_document_id=source_document_id,
+                )
+
+                with self.assertRaisesRegex(
+                    KnowledgeReleaseError,
+                    "invalid source document identity",
+                ):
+                    verify_knowledge_release(
+                        self.release_dir,
+                        trust_root_path=self.release_trust.trust_root_path,
+                    )
+
+    def test_duplicate_chunk_identities_are_bound_to_canonical_chunk_order(self):
+        content = "Repeated fact.\n\nMiddle fact.\n\nRepeated fact."
+        source = {
+            **self.source,
+            "normalized_document_sha256": normalized_content_sha256(content),
+        }
+        document = {
+            "document_id": "duplicate-content-document",
+            "source_id": source["source_id"],
+            "title": source["title"],
+            "publisher": source["publisher"],
+            "official_url": source["official_url"],
+            "final_url": source["final_url"],
+            "language": source["language"],
+            "topic_tags": ["language-requirement"],
+            "review_state": source["review_state"],
+            "approval_state": "approved",
+            "source_health": "healthy",
+            "checked_at_utc": source["last_checked_at_utc"],
+            "content": content,
+        }
+        release_dir = self.root / "duplicate-content-release"
+        build_publishable_knowledge_release(
+            release_dir=release_dir,
+            release_id="kr-2026-07-30.4",
+            source_registry_version="sr-2026-07-30.1",
+            sources=[source],
+            documents=[document],
+            created_at_utc="2026-07-30T12:00:00Z",
+            minimum_application_version="0.1.0",
+            corpus_schema_version="2.0",
+            signing_private_key_path=self.release_trust.signing_private_key_path,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        documents_path = release_dir / "corpus" / "documents.json"
+        documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        reordered = list(reversed(documents))
+        occurrences: dict[str, int] = {}
+        for chunk in reordered:
+            content_hash = chunk["chunk_content_sha256"]
+            occurrence = occurrences.get(content_hash, 0)
+            occurrences[content_hash] = occurrence + 1
+            chunk_id = stable_chunk_id(
+                source_id=chunk["source_id"],
+                source_document_id=chunk["source_document_id"],
+                chunk_content_sha256=content_hash,
+                occurrence=occurrence,
+            )
+            chunk["chunk_id"] = chunk_id
+            chunk["document_id"] = chunk_id
+        self.write_documents_and_resign(
+            reordered,
+            release_dir=release_dir,
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "not bound to its source and chunk content identity",
+        ):
+            verify_knowledge_release(
+                release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_whole_document_schema_rejects_chunk_shaped_documents(self):
+        chunk_documents = json.loads(
+            (self.release_dir / "corpus" / "documents.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "whole-document corpus cannot contain semantic chunk provenance",
+        ):
+            build_publishable_knowledge_release(
+                release_dir=self.root / "mislabelled-whole-document-release",
+                release_id="kr-2026-07-30-mislabelled",
+                source_registry_version="sr-2026-07-30.1",
+                sources=[dict(self.source)],
+                documents=chunk_documents,
+                created_at_utc="2026-07-30T12:30:00Z",
+                minimum_application_version="0.1.0",
+                corpus_schema_version="1.0",
+                signing_private_key_path=self.release_trust.signing_private_key_path,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
     def test_chunked_release_with_content_not_matching_chunk_identity_is_rejected(self):
         self.rewrite_first_chunk_and_resign(
             content="Content changed after stable chunk identity was assigned."
@@ -140,6 +459,112 @@ class ChunkReleaseValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(
             KnowledgeReleaseError,
             "source and chunk content identity",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_chunked_release_rejects_null_source_document_identity(self):
+        documents_path = self.release_dir / "corpus" / "documents.json"
+        documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        for document in documents:
+            chunk_id = stable_chunk_id(
+                source_id="official-source",
+                source_document_id="None",
+                chunk_content_sha256=document["chunk_content_sha256"],
+                occurrence=0,
+            )
+            document.update(
+                source_document_id=None,
+                chunk_id=chunk_id,
+                document_id=chunk_id,
+            )
+        self.write_documents_and_resign(documents)
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "source document identity",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_chunked_release_rejects_blank_source_identity(self):
+        documents_path = self.release_dir / "corpus" / "documents.json"
+        documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        for document in documents:
+            chunk_id = stable_chunk_id(
+                source_id="",
+                source_document_id=document["source_document_id"],
+                chunk_content_sha256=document["chunk_content_sha256"],
+                occurrence=0,
+            )
+            document.update(
+                source_id="",
+                chunk_id=chunk_id,
+                document_id=chunk_id,
+            )
+        manifest_path = self.release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["sources"][0]["source_id"] = ""
+        self.write_documents_and_resign(documents, manifest=manifest)
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "valid approved source identity",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_chunked_release_rejects_blank_source_check_time(self):
+        documents_path = self.release_dir / "corpus" / "documents.json"
+        documents = json.loads(documents_path.read_text(encoding="utf-8"))
+        for document in documents:
+            document["checked_at_utc"] = ""
+        manifest_path = self.release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["sources"][0]["last_checked_at_utc"] = ""
+        self.write_documents_and_resign(documents, manifest=manifest)
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "valid source check time",
+        ):
+            verify_knowledge_release(
+                self.release_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_chunked_release_rejects_non_string_chunk_content(self):
+        documents_path = self.release_dir / "corpus" / "documents.json"
+        document = json.loads(documents_path.read_text(encoding="utf-8"))[0]
+        content_hash = hashlib.sha256("None".encode("utf-8")).hexdigest()
+        chunk_id = stable_chunk_id(
+            source_id="official-source",
+            source_document_id=document["source_document_id"],
+            chunk_content_sha256=content_hash,
+            occurrence=0,
+        )
+        document.update(
+            content=None,
+            chunk_content_sha256=content_hash,
+            normalized_document_sha256=content_hash,
+            chunk_index=0,
+            chunk_id=chunk_id,
+            document_id=chunk_id,
+        )
+        manifest_path = self.release_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["sources"][0]["normalized_document_sha256"] = content_hash
+        self.write_documents_and_resign([document], manifest=manifest)
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "non-empty string content",
         ):
             verify_knowledge_release(
                 self.release_dir,
