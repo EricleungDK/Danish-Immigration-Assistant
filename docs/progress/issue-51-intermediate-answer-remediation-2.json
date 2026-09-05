@@ -1,0 +1,207 @@
+{
+  "adjudications": {
+    "automated_workflow_case_count": 6,
+    "case_count": 6,
+    "independent_human_case_count": 0,
+    "provided": true,
+    "sha256": "e9c66b504b0033f50475403c47195afa2654d063edb3b7826b4414a329b679db"
+  },
+  "dataset": {
+    "case_count": 20,
+    "dataset_id": "di-rag-eval-set-v0.1-candidate",
+    "sha256": "468bede9c7f55c8c06ace2f48d7df54e7861b0267bc2eee2ea1c855651b89dab",
+    "uses_production_user_conversation_data": false,
+    "version": "0.1.0-candidate"
+  },
+  "execution": {
+    "answer_case_execution_count": 10,
+    "case_count": 20,
+    "completed_count": 20,
+    "error_count": 0,
+    "live_provider_calls": true,
+    "mode": "live-ollama",
+    "not_evaluable_count": 0
+  },
+  "generated_at_utc": "2026-09-05T20:05:12Z",
+  "generation_model_digest": "4eb23ef187e2c5462566d6a1d3bbbc2f1346d0b4327cbb66d58fffbcc9b2b05c",
+  "generation_model_digest_unchanged": true,
+  "identity": {
+    "corpus_id": "kr-2026-09-05.1",
+    "model": "gemma4:12b",
+    "model_identity": {
+      "architecture": "gemma4",
+      "family": "gemma4",
+      "quantization_level": "Q4_K_M"
+    },
+    "provider_id": "ollama",
+    "provider_version": "0.30.6"
+  },
+  "metrics": {
+    "case_execution_errors": {
+      "observed": 0,
+      "status": "passed",
+      "threshold": 0
+    },
+    "citation_correctness": {
+      "incorrect_relation_count": 0,
+      "not_evaluable_relation_count": 44,
+      "observed": null,
+      "reason": "Some paraphrased claim-to-evidence relationships lack independent adjudication; exact support was not invented.",
+      "relation_count": 48,
+      "status": "not_evaluable",
+      "supported_relation_count": 4,
+      "threshold": 1.0
+    },
+    "clarify_answer_refuse_accuracy": {
+      "applicable_case_count": 14,
+      "best_possible": 0.9285714285714286,
+      "case_count": 14,
+      "failed_case_count": 1,
+      "not_applicable_case_count": 6,
+      "not_evaluable_case_count": 0,
+      "observed": 0.9285714285714286,
+      "passed_case_count": 13,
+      "status": "failed",
+      "threshold": 0.95
+    },
+    "evaluation_surface_completion": {
+      "case_count": 20,
+      "completed_case_count": 20,
+      "observed": 1.0,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "forbidden_claims": {
+      "expectation_count": 41,
+      "observed": null,
+      "reason": "The dataset forbidden_claims entries are prose instructions without machine-readable matchers or complete adjudications.",
+      "status": "not_evaluable",
+      "threshold": 0
+    },
+    "forbidden_source_domain_violations": {
+      "observed": 0,
+      "status": "passed",
+      "threshold": 0
+    },
+    "fresh_tomato_min_material_source_rule_pass_rate": {
+      "applicable_case_count": 13,
+      "failed_case_count": 0,
+      "not_evaluable_case_count": 0,
+      "observed": 1.0,
+      "passed_case_count": 13,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "official_fact_citation_coverage": {
+      "cited_official_fact_count": 48,
+      "observed": 1.0,
+      "official_fact_count": 48,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "personal_eligibility_conclusions": {
+      "observed": 0,
+      "status": "passed",
+      "threshold": 0
+    },
+    "privacy_requirement_compliance": {
+      "compliant_count": 10,
+      "expectation_count": 20,
+      "failed_count": 0,
+      "not_evaluable_count": 10,
+      "observed": null,
+      "status": "not_evaluable",
+      "threshold": 1.0
+    },
+    "required_fact_coverage": {
+      "expectation_count": 60,
+      "observed": null,
+      "reason": "The dataset required_facts entries are prose instructions without machine-readable fact identifiers or complete adjudications.",
+      "status": "not_evaluable",
+      "threshold": 0.95
+    },
+    "required_source_domain_coverage": {
+      "missing_domain_count": 1,
+      "observed": 0.9090909090909091,
+      "required_domain_count": 11,
+      "status": "failed",
+      "threshold": 1.0
+    },
+    "trust_indicator_correctness": {
+      "best_possible": 1.0,
+      "case_count": 20,
+      "failed_case_count": 0,
+      "not_evaluable_case_count": 0,
+      "observed": 1.0,
+      "passed_case_count": 20,
+      "status": "passed",
+      "threshold": 0.95
+    },
+    "unsupported_claim_rate": {
+      "audited_claim_count": 48,
+      "not_evaluable_count": 44,
+      "observed": null,
+      "status": "not_evaluable",
+      "threshold": 0.0,
+      "unsupported_count": 0
+    }
+  },
+  "note": "Second intermediate capture: zero execution errors, but two machine gates failed. Not the final human-review packet.",
+  "partial_verification": {
+    "case_count": 2,
+    "cases": [
+      {
+        "case_id": "eval-003-registration-logistics",
+        "omitted_reasons": {
+          "dependent_statement": 1,
+          "hard_constraint": 1,
+          "non_fact": 0,
+          "unsupported": 0
+        },
+        "omitted_section_count": 2,
+        "retained_official_fact_count": 6,
+        "status": "partial"
+      },
+      {
+        "case_id": "eval-004-certificate-equivalence-boundary",
+        "omitted_reasons": {
+          "dependent_statement": 0,
+          "hard_constraint": 1,
+          "non_fact": 0,
+          "unsupported": 2
+        },
+        "omitted_section_count": 3,
+        "retained_official_fact_count": 5,
+        "status": "partial"
+      }
+    ],
+    "does_not_establish_required_fact_coverage": true
+  },
+  "privacy_assertions": {
+    "contains_case_prompts": false,
+    "contains_conversation_identifiers": false,
+    "contains_conversation_records": false,
+    "contains_generated_answer_text": false
+  },
+  "private_evidence": {
+    "capture_sha256": "d7bfd8023c293842ed769a3a0c3e5963e5345b29610e3e92983a194c8be78a2a",
+    "report_sha256": "3db9293a43f1b065c03ad811c30a5eaf2bd75512d5f0723ff74de10c219a6d86"
+  },
+  "qualification_status": "blocked-behavior-and-required-source-domain-gates",
+  "quality_bar": {
+    "quality_bar_id": "mvp-evaluation-quality-bar-issue-7",
+    "sha256": "415981ae0aa134a072632c73c58d8a93d1be76264738265c8d9d61ba03ab053f",
+    "version": "0.1.0-candidate"
+  },
+  "schema_version": "final-answer-evaluation-v1",
+  "strict_passed": false,
+  "threshold_failures": [
+    "required_fact_coverage",
+    "forbidden_claims",
+    "privacy_requirement_compliance",
+    "citation_correctness",
+    "unsupported_claim_rate",
+    "clarify_answer_refuse_accuracy",
+    "required_source_domain_coverage"
+  ]
+}

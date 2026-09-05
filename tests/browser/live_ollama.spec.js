@@ -8,6 +8,7 @@ test("production browser journey uses live Ollama and the active signed corpus",
     "Set DI_RAG_RUN_LIVE_BROWSER=1 and target a configured production app process.",
   );
   test.setTimeout(180_000);
+  const expectedCorpus = process.env.DI_RAG_EXPECTED_CORPUS ?? "kr-2026-07-06.1";
 
   const browserRequests = [];
   page.on("request", (request) => browserRequests.push(request.url()));
@@ -15,7 +16,7 @@ test("production browser journey uses live Ollama and the active signed corpus",
 
   await expect(page.getByLabel("Runtime status")).toContainText("Ollama - gemma4:12b");
   const localTools = page.getByRole("complementary", { name: "Local tools" });
-  await expect(localTools).toContainText("kr-2026-07-06.1");
+  await expect(localTools).toContainText(expectedCorpus);
   await expect(localTools).toContainText("embeddinggemma");
 
   await page
@@ -32,7 +33,7 @@ test("production browser journey uses live Ollama and the active signed corpus",
   await expect(answer.locator(".answer-meta")).toContainText("Provider: ollama");
   await expect(answer.locator(".answer-meta")).toContainText("Model: gemma4:12b");
   await expect(answer.locator(".answer-meta")).toContainText(
-    "Corpus: kr-2026-07-06.1",
+    `Corpus: ${expectedCorpus}`,
   );
   await expect(
     page.getByRole("button", { name: /Inspect evidence:/ }).first(),
@@ -47,7 +48,7 @@ test("production browser journey uses live Ollama and the active signed corpus",
     "Model: gemma4:12b",
   );
   await expect(followUpAnswer.locator(".answer-meta")).toContainText(
-    "Corpus: kr-2026-07-06.1",
+    `Corpus: ${expectedCorpus}`,
   );
 
   for (const value of browserRequests) {

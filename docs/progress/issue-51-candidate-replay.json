@@ -1,0 +1,155 @@
+{
+  "adjudications": {
+    "automated_workflow_case_count": 6,
+    "case_count": 6,
+    "independent_human_case_count": 0,
+    "provided": true,
+    "sha256": "4f2073af800cbcbd5e2d2588fcfaa4c45e9d2001f263ce664d50ac00ae0db71a"
+  },
+  "contains_prompt_or_answer_text": false,
+  "execution": {
+    "answer_case_execution_count": 10,
+    "case_count": 20,
+    "completed_count": 20,
+    "error_count": 0,
+    "live_provider_calls": false,
+    "mode": "captured-live-ollama",
+    "not_evaluable_count": 0
+  },
+  "generated_at_utc": "2026-09-05T20:37:06Z",
+  "identity": {
+    "corpus_id": "kr-2026-09-05.1",
+    "model": "gemma4:12b",
+    "model_identity": {
+      "architecture": "gemma4",
+      "family": "gemma4",
+      "quantization_level": "Q4_K_M"
+    },
+    "provider_id": "ollama",
+    "provider_version": "0.30.6"
+  },
+  "metrics": {
+    "case_execution_errors": {
+      "observed": 0,
+      "status": "passed",
+      "threshold": 0
+    },
+    "citation_correctness": {
+      "incorrect_relation_count": 0,
+      "not_evaluable_relation_count": 43,
+      "observed": null,
+      "reason": "Some paraphrased claim-to-evidence relationships lack independent adjudication; exact support was not invented.",
+      "relation_count": 47,
+      "status": "not_evaluable",
+      "supported_relation_count": 4,
+      "threshold": 1.0
+    },
+    "clarify_answer_refuse_accuracy": {
+      "applicable_case_count": 14,
+      "best_possible": 1.0,
+      "case_count": 14,
+      "failed_case_count": 0,
+      "not_applicable_case_count": 6,
+      "not_evaluable_case_count": 0,
+      "observed": 1.0,
+      "passed_case_count": 14,
+      "status": "passed",
+      "threshold": 0.95
+    },
+    "evaluation_surface_completion": {
+      "case_count": 20,
+      "completed_case_count": 20,
+      "observed": 1.0,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "forbidden_claims": {
+      "expectation_count": 41,
+      "observed": null,
+      "reason": "The dataset forbidden_claims entries are prose instructions without machine-readable matchers or complete adjudications.",
+      "status": "not_evaluable",
+      "threshold": 0
+    },
+    "forbidden_source_domain_violations": {
+      "observed": 0,
+      "status": "passed",
+      "threshold": 0
+    },
+    "fresh_tomato_min_material_source_rule_pass_rate": {
+      "applicable_case_count": 13,
+      "failed_case_count": 0,
+      "not_evaluable_case_count": 0,
+      "observed": 1.0,
+      "passed_case_count": 13,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "official_fact_citation_coverage": {
+      "cited_official_fact_count": 47,
+      "observed": 1.0,
+      "official_fact_count": 47,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "personal_eligibility_conclusions": {
+      "observed": 0,
+      "status": "passed",
+      "threshold": 0
+    },
+    "privacy_requirement_compliance": {
+      "compliant_count": 10,
+      "expectation_count": 20,
+      "failed_count": 0,
+      "not_evaluable_count": 10,
+      "observed": null,
+      "status": "not_evaluable",
+      "threshold": 1.0
+    },
+    "required_fact_coverage": {
+      "expectation_count": 60,
+      "observed": null,
+      "reason": "The dataset required_facts entries are prose instructions without machine-readable fact identifiers or complete adjudications.",
+      "status": "not_evaluable",
+      "threshold": 0.95
+    },
+    "required_source_domain_coverage": {
+      "missing_domain_count": 0,
+      "observed": 1.0,
+      "required_domain_count": 11,
+      "status": "passed",
+      "threshold": 1.0
+    },
+    "trust_indicator_correctness": {
+      "best_possible": 1.0,
+      "case_count": 20,
+      "failed_case_count": 0,
+      "not_evaluable_case_count": 0,
+      "observed": 1.0,
+      "passed_case_count": 20,
+      "status": "passed",
+      "threshold": 0.95
+    },
+    "unsupported_claim_rate": {
+      "audited_claim_count": 47,
+      "not_evaluable_count": 43,
+      "observed": null,
+      "status": "not_evaluable",
+      "threshold": 0.0,
+      "unsupported_count": 0
+    }
+  },
+  "private_evidence": {
+    "capture_sha256": "8400d06823ef0b35165fef2bddfd41ef55d7ba98f7e3ee2e380ffbd68d7b54f0",
+    "report_sha256": "0c2bdb6ce59410077f98f729a9cad137b0fc90549010e203f336cf9f5d68d309"
+  },
+  "schema_version": "final-answer-evaluation-v1",
+  "scope": "explicit-candidate-only",
+  "strict_passed": false,
+  "threshold_failures": [
+    "required_fact_coverage",
+    "forbidden_claims",
+    "privacy_requirement_compliance",
+    "citation_correctness",
+    "unsupported_claim_rate"
+  ]
+}

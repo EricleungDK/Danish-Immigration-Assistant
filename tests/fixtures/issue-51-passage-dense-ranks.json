@@ -1,0 +1,58 @@
+{
+  "description": "Content-free live embedding boundary replay for compound passage regressions; no prompts, answers, or corpus text.",
+  "embedding_model": "embeddinggemma",
+  "manifest_sha256": "b154ef00bd63a6a8b5eac526a5e5af7653e7754ac55e1e40fbc72b0d1234b0fb",
+  "cases": [
+    {
+      "case_id": "gf-composite-01",
+      "dense_ranked_ids": [
+        "nyidanmark-permanent-residence-language-requirements::chunk::c7e262d583174cbd243ab717",
+        "nyidanmark-permanent-residence-language-requirements::chunk::3a97b739f8c09c1d1d887d3c",
+        "nyidanmark-permanent-residence-language-requirements::chunk::b05826818bafe82b904131bb",
+        "nyidanmark-permanent-residence-language-requirements::chunk::8970335deceb1084d3f07b16",
+        "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+        "nyidanmark-permanent-residence-language-requirements::chunk::93e3ec43a368a7212e39f33e",
+        "nyidanmark-permanent-residence-language-requirements::chunk::4d380d401432d0ce70c07a9d",
+        "nyidanmark-permanent-residence-language-requirements::chunk::6d257425cba4990260b40294",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::5f9913e91f6590521504e21d",
+        "nyidanmark-permanent-residence-language-requirements::chunk::b56e3940fbc52832d705e009",
+        "nyidanmark-permanent-residence-language-requirements::chunk::d263b7fa25fd1a992edb53b1",
+        "nyidanmark-permanent-residence-language-requirements::chunk::9eb5cf6237307beb1effdc23",
+        "nyidanmark-permanent-residence-language-requirements::chunk::5231e46ee83ae4b1613e8db8",
+        "nyidanmark-permanent-residence-language-requirements::chunk::6f8fd578ee18655ff7ded515",
+        "nyidanmark-permanent-residence-language-requirements::chunk::e3629838243f3e9c2280b5c2",
+        "nyidanmark-permanent-residence-language-requirements::chunk::4f6c9e5ab3f3a0bdb321c5d9",
+        "nyidanmark-permanent-residence-language-requirements::chunk::dcaa807314e4f75deb26faf7",
+        "nyidanmark-permanent-residence-language-requirements::chunk::6943f4451eceb09223c63cf3",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::78cd77db10c78420339c3608",
+        "danskogproever-registration-deadlines-2026::chunk::3ceda157051e27f6738f7d2f"
+      ]
+    },
+    {
+      "case_id": "gf-composite-02",
+      "dense_ranked_ids": [
+        "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::5f9913e91f6590521504e21d",
+        "danskogproever-registration-deadlines-2026::chunk::3ceda157051e27f6738f7d2f",
+        "nyidanmark-permanent-residence-language-requirements::chunk::b05826818bafe82b904131bb",
+        "danskogproever-registration-deadlines-2026::chunk::fa7142a8e46fc476de8d94cb",
+        "danskogproever-registration-deadlines-2026::chunk::df44edfcc20fb925cc9a3257",
+        "nyidanmark-permanent-residence-language-requirements::chunk::6d257425cba4990260b40294",
+        "danskogproever-registration-deadlines-2026::chunk::358202cab95e3da73a28df7f",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::78cd77db10c78420339c3608",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::b088681d1d5458c98674bb82",
+        "nyidanmark-permanent-residence-language-requirements::chunk::4c1bdc104eeb76012f90b069",
+        "nyidanmark-permanent-residence-language-requirements::chunk::4a1a3be630e8f0c0b17f3c3d",
+        "nyidanmark-permanent-residence-language-requirements::chunk::c7e262d583174cbd243ab717",
+        "danskogproever-registration-deadlines-2026::chunk::04fd2e1d73d31cee6bb5da84",
+        "nyidanmark-permanent-residence-language-requirements::chunk::b56e3940fbc52832d705e009",
+        "nyidanmark-permanent-residence-language-requirements::chunk::4d380d401432d0ce70c07a9d",
+        "nyidanmark-permanent-residence-language-requirements::chunk::c17441f4a322247ff77dcab4",
+        "nyidanmark-permanent-residence-language-requirements::chunk::3a97b739f8c09c1d1d887d3c",
+        "nyidanmark-permanent-residence-language-requirements::chunk::9083cad0edfff8c837b67757",
+        "nyidanmark-permanent-residence-language-requirements::chunk::9721e2708406a3494482344f"
+      ]
+    }
+  ],
+  "embedding_model_digest": "85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1"
+}

@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "case_count": 10,
+  "recorded_human_decisions": 0,
+  "independent_attestation_checked": false,
+  "accepted_export_disabled": true,
+  "loopback_requests_only": true,
+  "packet_sha256": "8400d06823ef0b35165fef2bddfd41ef55d7ba98f7e3ee2e380ffbd68d7b54f0",
+  "review_page_sha256": "b6f9d1722e1496b1d72495d7a3d7ae4a7097ab3616523d4d085373846ff9c2cc",
+  "contains_prompt_or_answer_text": false
+}

@@ -72,6 +72,7 @@ Issue #4 approves the MVP retrieval baseline. Production release thresholds and 
 - Whole documents use `hybrid-index-v1`; semantic chunks use `hybrid-chunk-index-v1` with the corpus and content-unit schema recorded in index compatibility metadata. Both use the approved hybrid retrieval baseline.
 - Reviewed production-release authoring consumes the completed source-review bundle directly, semantically cross-checks its flattened completion record against the bound human decisions, binds its machine manifest, official snapshots, normalized extractions, approved URLs, and named source/release governance evidence, then signs and cross-checks the resulting source registry and schema-2 release. Candidate output paths are exclusively claimed and partial builds are removed on failure. The production private key remains an explicit off-repository input.
 - Chunk retrieval searches both reviewed Danish and English source documents and prefers distinct approved sources before filling remaining result positions with additional chunks from a source. This prevents a long page from crowding smaller reviewed sources out of a bounded result set.
+- Semantic-chunk retrieval also fuses source-title relevance as a third ranking channel with the same RRF `k=60`. It scores actual-question/title token overlap with source-level inverse document frequency, excludes common function words, and gives one title vote to each source's strongest already-retrieved chunk. This preserves source-title relevance without multiplying it by chunk count or changing signed corpus/index bytes. Residence and enrolment paraphrases retain separate intent reservations; title ranking cannot bypass source eligibility. Within-source passage preference and remaining-slot coverage preserve examinations explicitly named in the actual question; source metadata alone cannot satisfy passage-level subject coverage. Broad Danish-examination requests prefer passages covering the examination family. Lexical normalization retains exam-level digits and removes English function words before its bounded term limit. For an explicit certificate-equivalence intent, an earlier same-source list-introduction colon can nominate a separate exact context chunk within the existing top-three budget, after intent reservations and named-exam coverage. This bounded relevance heuristic can replace redundant source-diversity fill; it does not infer list membership from the flattened corpus. Qualification evidence binds retrieval and collector implementation hashes alongside corpus/index identity. See [issue #51 retrieval remediation](progress/issue-51-retrieval-remediation.md).
 - Installation builds and validates the new corpus/index pair in private staging. Verification, extraction, embedding, indexing, compatibility, or activation failure removes that staging directory and leaves the prior usable pair active and queryable. Activation updates future answer provenance only; persisted historical citations remain unchanged.
 
 ## Source Governance And Updates
@@ -109,10 +110,90 @@ This section is project-level answer-pipeline direction. Issue #26 proved only l
 
 - The MVP is expected to use a constrained RAG pipeline, not an autonomous agent loop.
 - The intended pipeline normalizes the question, identifies ambiguity, retrieves approved evidence, rejects unsupported claims, generates a structured answer, validates citations, and stores the answer with its provenance.
+- General examination-term questions can include documented relevance to
+  permanent-residence language requirements as an explicitly displayed context.
+  The same application-derived interpretation reaches both retrieval and
+  generation, while the original question remains in the conversation record.
+  An explicit different purpose or logistics task does not gain that context;
+  consequential or unspecified application ambiguity still requires clarification.
 - A pre-retrieval conversation router keeps greetings and clearly non-domain turns out of hybrid retrieval. The separate social-generation schema prohibits external factual, immigration, legal, eligibility, and examination claims; it does not turn the generation model into a factual source.
 - The generation model must not browse, choose arbitrary tools, or supply unsupported facts from its pretrained knowledge.
 - When only part of a question is supported, the application should answer that portion and explicitly decline the unsupported portion.
 - Official facts and interpretation should remain visibly distinct.
+- Production local-provider answers use a separate local verification request to
+  check the summary and every model-authored section against exact spans of the
+  retrieved evidence. The displayed summary repeats the first official-fact section, or
+  the refusal when no official fact exists, before verification; it cannot add
+  a separate generated claim. This supports English translations of Danish sources without
+  treating English/Danish word overlap as entailment. The application checks
+  complete coverage, citation and source-byte bindings, examination identities,
+  numeric fidelity using recorded source language, and polarity. A bounded
+  protocol correction can repair invalid witness selection; a negative semantic
+  verdict is not retried as a verifier protocol error. One bounded answer repair
+  may regenerate a rejected answer, and exhausted or invalid checks fail closed.
+  Verification uses the same configured local model in a separate request, with
+  an explicit 8192-token Ollama context for verification and answer repair.
+  Repair retains the original evidence and rejected answer. It is model-based runtime evidence, not
+  independent human adjudication or a guarantee of semantic correctness. Direct
+  validation and controlled fixtures retain the deterministic lexical guard;
+  untrusted generated JSON cannot supply the internal verification bindings.
+- Explicitly cited chunks may jointly support a claim only when their complete
+  source-document provenance matches, including source and document identities,
+  content and extraction hashes, URLs, language, corpus, and release. Missing or
+  invalid provenance keeps chunks separate. Every cited chunk must contribute an
+  exact witness; uncited context cannot supply a missing qualification. Shared
+  provenance alone does not establish a list relationship across missing text.
+  Generation receives these verified groups and the application safety boundary
+  so it can explain supported general rules without deciding personal eligibility.
+  Generator requests use short, unique citation labels to distinguish similar
+  chunk identifiers. Initial and repair outputs map through the same exact
+  bijection back to canonical IDs before verification; unknown and duplicate
+  labels fail closed. Saved provenance retains the canonical signed-corpus IDs.
+  A declared package label can explicitly select multiple retrieved chunks from
+  one verified document, when every member is allowed by the caller. Selecting
+  that label expands only its listed members; selecting an individual label
+  never adds context. Duplicate or overlapping selections fail closed. Repair
+  represents earlier citations individually, without inferring a package.
+  Expanded citations undergo the same per-chunk material-witness checks.
+  Repair can receive bounded, item-specific missing exam/number-anchor details
+  under the existing guard rules. Suggested packages must already be declared,
+  caller-allowed, from the currently cited document, and cover the deficit.
+  Anchor coverage does not establish entailment or add a citation; the writer
+  must explicitly revise, and ordinary verification still applies.
+  The human review page displays the same explicitly cited context and binds each
+  judgment to the complete cited group; earlier isolated-citation judgments are
+  not silently reused.
+- After the complete model answer passes verification, the application appends
+  its own safety refusals and source-status warnings from the safety decision
+  and validated evidence metadata. These program-derived statements receive
+  local bindings, rather than asking a source-text verifier to prove application
+  policy or review metadata. No model-supplied section kind or origin flag grants
+  this treatment. Final validation checks the exact complete binding set,
+  including every appended section and the derived summary.
+- After the single answer repair is exhausted, a complete typed verification
+  response may support an explicitly partial answer. It retains only unchanged,
+  self-contained official facts with positive semantic verdicts and valid exact
+  witnesses under the ordinary guards. Text rejected elsewhere in the same
+  response cannot be reintroduced through a duplicate or the summary. Partial
+  success requires at least one qualifying fact; incomplete or malformed
+  verification, transport failure, and resource failure remain errors.
+  Safety and source warnings are reconstructed,
+  the application discloses incomplete verification, and stored/captured
+  metadata records retained and omitted counts. This does not establish
+  required-fact coverage or replace independent human review.
+- Witnesses use exact contiguous whole-sentence ranges, preserving chains of
+  referential context. At most 16 adjacent sentence groups per retrieved chunk
+  bound enumeration. Each item retains its eligible base groups, up to eight
+  contextual ranges, and the full-chunk candidate. Number and examination-name
+  candidate filters are rechecked at validation; they do not establish semantic
+  entailment. Affirmative claims cannot select negative witness ranges that the
+  unchanged final polarity guard necessarily rejects. Governing referential
+  context remains intact, and negative claims keep their existing candidates.
+  Every verifier request, including a protocol correction, rejects
+  message content exceeding 24,000 UTF-8 bytes before provider execution. This
+  resource bound is not exact model-token accounting or proof of context fit.
+  Compact JSON and request-local source-group labels reduce repeated protocol
+  overhead without removing evidence or changing the internal provenance keys.
 
 ## Trust Indicators
 

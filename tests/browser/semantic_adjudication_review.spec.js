@@ -212,3 +212,89 @@ test("a different exact packet fingerprint cannot inherit saved decisions", asyn
     page.getByRole("button", { name: "Export accepted adjudications" }),
   ).toBeDisabled();
 });
+
+function contextualPacket() {
+  const packet = reviewPacket();
+  const item = packet.cases[0];
+  const identity = {
+    source_id: "reviewed-page",
+    source_document_id: "reviewed-document",
+    source_content_sha256: "1".repeat(64),
+    normalized_document_sha256: "2".repeat(64),
+    normalized_extraction_sha256: "3".repeat(64),
+    official_url: "https://nyidanmark.dk/fixture",
+    final_url: "https://nyidanmark.dk/fixture",
+    language: "en-GB",
+    corpus_identity: "kr-fixture",
+    knowledge_release_id: "kr-fixture",
+  };
+  item.execution.evidence[0] = { ...item.execution.evidence[0], ...identity };
+  item.execution.evidence.push({
+    ...identity, citation_id: "fixture-context", content: "The cited heading supplies the examination context.",
+  });
+  item.execution.evidence.push({
+    ...identity, citation_id: "uncited-context", content: "Uncited context must never support the decision.",
+  });
+  item.execution.result.answer.sections[0].citation_ids.push("fixture-context");
+  item.blank_adjudication_template.claim_support["section-1"]["fixture-context"] = null;
+  return packet;
+}
+
+test("joint source context shows only explicit citations and leaves every judgment blank", async ({ page }) => {
+  await loadPacket(page, contextualPacket());
+  const first = page.locator("#support-body .relationship-card").first();
+  await expect(first).toContainText("Does this citation materially contribute");
+  await expect(first.locator(".joint-source-context")).toContainText("The cited heading supplies the examination context.");
+  await expect(first.locator(".joint-source-context")).not.toContainText("Uncited context must never support the decision.");
+  await expect(first).toContainText("An irrelevant citation still fails.");
+  await expect(page.locator("#support-body button[aria-pressed='true']")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Export accepted adjudications" })).toBeDisabled();
+});
+
+test("missing or mismatched provenance cannot join source context", async ({ page }) => {
+  for (const mutate of [
+    (evidence) => { delete evidence.normalized_document_sha256; },
+    (evidence) => { evidence.normalized_extraction_sha256 = "4".repeat(64); },
+    (evidence) => { evidence.source_document_id = "different-document"; },
+  ]) {
+    const packet = contextualPacket();
+    mutate(packet.cases[0].execution.evidence[1]);
+    await loadPacket(page, packet);
+    await expect(page.locator("#support-body .joint-source-context")).toHaveCount(0);
+    await page.getByRole("button", { name: "Load another packet" }).click();
+  }
+});
+
+test("same claim and focused citation cannot share decisions across changed cited context", async ({ page }) => {
+  const packet = contextualPacket();
+  const second = structuredClone(packet.cases[0]);
+  second.case_id = "eval-fixture-context-changed";
+  second.execution.case_id = second.case_id;
+  second.blank_adjudication_template.case_id = second.case_id;
+  second.execution_sha256 = "d".repeat(64);
+  second.review_payload_sha256 = "e".repeat(64);
+  second.blank_adjudication_template.evidence_binding.execution_sha256 = second.execution_sha256;
+  second.blank_adjudication_template.evidence_binding.sha256 = second.review_payload_sha256;
+  second.execution.evidence[1].content = "A different heading changes the scope of the same tail passage.";
+  packet.cases.push(second);
+  packet.case_count = 2;
+  await loadPacket(page, packet);
+  await page.locator("#support-body .relationship-card").first().locator("button[data-value='true']").click();
+  await page.locator("#case-nav button").nth(1).click();
+  await expect(page.locator("#support-body button[aria-pressed='true']")).toHaveCount(0);
+  await expect(page.locator("#support-body .relationship-card").first()).not.toContainText("Exact duplicate");
+});
+
+test("older context-free saved decisions remain stored but are not inherited", async ({ page }) => {
+  const packet = reviewPacket();
+  const item = packet.cases[0];
+  const oldKey = `danish-rag-product-owner-review:${packet.dataset.sha256}:${item.case_id}:${item.execution_sha256}:${item.review_payload_sha256}`;
+  const saved = JSON.stringify({ cases: { [item.case_id]: {
+    assertion_results: { "eval-fixture-review:required-facts:01": "passed" },
+    claim_support: { "section-1": { "fixture-source": true } }, notes: "Existing private notes",
+  } } });
+  await page.evaluate(({ oldKey, saved }) => window.localStorage.setItem(oldKey, saved), { oldKey, saved });
+  await loadPacket(page, packet);
+  await expect(page.locator("#progress-count")).toHaveText("0 / 2");
+  expect(await page.evaluate((key) => window.localStorage.getItem(key), oldKey)).toBe(saved);
+});

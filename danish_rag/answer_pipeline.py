@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 import re
 import urllib.error
 import urllib.request
@@ -11,6 +12,12 @@ from enum import Enum
 from typing import Any, Protocol
 
 from .claim_support import assess_claim_support
+from .answer_verification import (
+    VerificationError, claim_binding, validate_verification,
+    verification_messages, verification_schema, enforce_verification_message_bound,
+    verification_rejects_claim,
+    evidence_group_keys, claim_anchor_deficits, partial_verified_answer,
+)
 from .ollama_contract import OLLAMA_DETERMINISTIC_CHAT_OPTIONS
 from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
 from .provider_setup import ProviderConfiguration
@@ -26,6 +33,16 @@ class AnswerValidationError(AnswerPipelineError):
     """Raised when generated structured output is not evidence-bounded."""
 
 
+class _RejectedVerifiedAnswer(AnswerValidationError):
+    """Private exact machine evidence; never accepted from generated JSON."""
+
+    def __init__(self, message, payload, evidence, verification):
+        super().__init__(message)
+        self.payload = deepcopy(payload)
+        self.evidence = deepcopy(evidence)
+        self.verification = deepcopy(verification)
+
+
 class TrustLevel(Enum):
     LOW = "Low"
     MEDIUM = "Medium"
@@ -36,6 +53,11 @@ CONFLICTING_AGREEMENT_STATES = {"conflict", "conflicts", "conflicting", "contrad
 LOW_RISK_EXAM_TERM_ASSUMPTION = (
     "You are asking for a general explanation of the Danish examination term, not "
     "a personal eligibility decision."
+)
+GENERAL_EXAM_TERM_CONTEXT = (
+    "I am explaining the examination term generally and, where the "
+    "sources support it, its relevance to permanent-residence language "
+    "requirements. This is not a personal eligibility decision."
 )
 CITIZENSHIP_TOPIC_TERMS = ("citizenship", "statsborgerskab", "indfødsret")
 PERMANENT_RESIDENCE_TOPIC_TERMS = (
@@ -82,6 +104,7 @@ class AmbiguityDecision:
     assumptions: list[str]
     clarification_question: str = ""
     clarification_reason: str = ""
+    answer_context: str = ""
 
 
 class SafetyBoundary(Enum):
@@ -152,6 +175,118 @@ def conversation_schema() -> dict[str, Any]:
     }
 
 
+def _generation_citation_namespace(
+    evidence: list[dict[str, Any]], schema: dict[str, Any],
+) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, tuple[str, ...]], dict[str, list[str]]]:
+    """Declare leaf aliases and explicit complete-document citation packages."""
+    ids = [item.get('citation_id') for item in evidence]
+    if (not all(isinstance(key, str) and key for key in ids)
+            or len(ids) != len(set(ids))):
+        raise AnswerValidationError('Generation evidence has invalid or duplicate citation identities.')
+    canonical_ids = {f'e{index}': key for index, key in enumerate(ids, 1)}
+    aliases = {value: key for key, value in canonical_ids.items()}
+    projected = [{**item, 'citation_id': aliases[item['citation_id']]} for item in evidence]
+    projected_schema = deepcopy(schema)
+    try:
+        citation_schema = projected_schema['properties']['sections']['items']['properties']['citation_ids']['items']
+        allowed = citation_schema.get('enum', ids)
+        if (not isinstance(allowed, list) or any(not isinstance(key, str) or key not in aliases for key in allowed)
+                or len(allowed) != len(set(allowed))):
+            raise AnswerValidationError('Generation schema contains an unknown citation identity.')
+        citation_schema['enum'] = [aliases[key] for key in allowed]
+    except (KeyError, TypeError) as exc:
+        raise AnswerValidationError('Generation schema has invalid citation structure.') from exc
+    identities = {key: (value,) for key, value in canonical_ids.items() if value in allowed}
+    groups: dict[str, list[str]] = {}
+    for citation_id, group_key in evidence_group_keys(evidence).items():
+        if group_key.startswith("document:"):
+            groups.setdefault(group_key, []).append(citation_id)
+    packages = {}
+    for members in groups.values():
+        if len(members) < 2 or not all(member in allowed for member in members):
+            continue
+        package = f"g{len(packages) + 1}"
+        packages[package] = [aliases[member] for member in members]
+        identities[package] = tuple(members)
+        citation_schema['enum'].append(package)
+    return projected, projected_schema, identities, packages
+
+
+def _map_generated_citations(payload: dict[str, Any], identities: dict[str, tuple[str, ...]]) -> dict[str, Any]:
+    """Map only exact declared IDs; never infer, trim, merge, or add citations.
+
+    Other malformed answer structure is left to the existing bounded structural
+    repair. No unrecognized citation reaches verification or persisted answers.
+    """
+    mapped = deepcopy(payload)
+    sections = mapped.get('sections') if isinstance(mapped, dict) else None
+    if not isinstance(sections, list):
+        return mapped
+    for section in sections:
+        if not isinstance(section, dict) or not isinstance(section.get('citation_ids'), list):
+            continue
+        citations = section['citation_ids']
+        if (any(not isinstance(key, str) or key not in identities for key in citations)
+                or len(citations) != len(set(citations))):
+            raise AnswerValidationError('Generated answer contains unknown or duplicate citation aliases.')
+        expanded = [member for key in citations for member in identities[key]]
+        if len(expanded) != len(set(expanded)):
+            raise AnswerValidationError('Generated answer contains overlapping citation selections.')
+        section['citation_ids'] = expanded
+    return mapped
+
+
+def _repair_anchor_diagnostics(
+    answer: dict[str, Any], evidence: list[dict[str, Any]],
+    identities: dict[str, tuple[str, ...]], packages: dict[str, list[str]],
+) -> dict[str, Any]:
+    """Describe calculable deficits without choosing citations for the writer."""
+    groups = evidence_group_keys(evidence)
+    leaves = {members[0]: alias for alias, members in identities.items() if alias.startswith('e')}
+    by_id = {item['citation_id']: item for item in evidence}
+    diagnostics = []
+    sections = answer.get('sections', []) if isinstance(answer, dict) else []
+    if not isinstance(sections, list):
+        sections = []
+    for index, section in enumerate(sections, 1):
+        if (not isinstance(section, dict) or not isinstance(section.get('text'), str)
+                or not isinstance(section.get('citation_ids'), list)):
+            continue
+        cited: dict[str, list[str]] = {}
+        for key in section['citation_ids']:
+            if isinstance(key, str) and key in leaves:
+                cited.setdefault(groups[key], []).append(key)
+        for group, members in cited.items():
+            language = by_id[members[0]].get('language')
+            deficits = claim_anchor_deficits(section['text'],
+                ' '.join(by_id[key]['content'] for key in members), language)
+            if not any(deficits.values()):
+                continue
+            options = []
+            for alias in packages:
+                candidate = identities[alias]
+                if (not set(members).issubset(candidate)
+                        or any(groups[key] != group for key in candidate)):
+                    continue
+                full = claim_anchor_deficits(section['text'],
+                    ' '.join(by_id[key]['content'] for key in candidate), language)
+                if not any(full.values()):
+                    options.append(alias)
+            # Diagnostics are bounded metadata, not an edited answer. State any
+            # omitted numeric anchors/items explicitly; never truncate a claim.
+            numbers = deficits['missing_number_anchors']
+            shown = [token for token in numbers if len(token) <= 64][:16]
+            diagnostics.append({'item_index': index,
+                'current_citation_ids': [leaves[key] for key in members],
+                'missing_exam_anchors': deficits['missing_exam_anchors'],
+                'missing_number_anchors': shown,
+                'omitted_number_anchor_count': len(numbers) - len(shown),
+                'context_package_options': options})
+    return {'items': diagnostics[:16], 'omitted_item_count': max(0, len(diagnostics) - 16),
+            'meaning': 'Anchor coverage is not entailment. Explicitly choose citations or rewrite; '
+                       'preserve every qualifier and require each cited chunk to contribute.'}
+
+
 class LocalProviderAnswerGenerator:
     """Structured answer generator for configured loopback providers."""
 
@@ -167,23 +302,101 @@ class LocalProviderAnswerGenerator:
         configuration: ProviderConfiguration,
         schema: dict[str, Any],
     ) -> dict[str, Any]:
+        aliased_evidence, aliased_schema, canonical_ids, packages = _generation_citation_namespace(evidence, schema)
+        arguments = dict(question=question, normalized_question=normalized_question,
+                         evidence=aliased_evidence, configuration=configuration, schema=aliased_schema, citation_packages=packages)
         if configuration.provider_id == "ollama":
-            return self._generate_ollama(
-                question=question,
-                normalized_question=normalized_question,
-                evidence=evidence,
-                configuration=configuration,
-                schema=schema,
-            )
-        if configuration.provider_id == "openai_compatible":
-            return self._generate_openai_compatible(
-                question=question,
-                normalized_question=normalized_question,
-                evidence=evidence,
-                configuration=configuration,
-                schema=schema,
-            )
-        raise AnswerPipelineError("Configured generation provider is unsupported.")
+            payload = self._generate_ollama(**arguments)
+        elif configuration.provider_id == "openai_compatible":
+            payload = self._generate_openai_compatible(**arguments)
+        else:
+            raise AnswerPipelineError("Configured generation provider is unsupported.")
+        return _map_generated_citations(payload, canonical_ids)
+
+    def verify_answer(
+        self, payload: dict[str, Any], *, evidence: list[dict[str, Any]],
+        configuration: ProviderConfiguration,
+    ) -> frozenset[str]:
+        try:
+            messages = verification_messages(payload, evidence)
+            schema = verification_schema(answer=payload, evidence=evidence)
+        except VerificationError as exc:
+            raise AnswerValidationError(str(exc)) from exc
+        for attempt in range(2):
+            try:
+                enforce_verification_message_bound(messages)
+            except VerificationError as exc:
+                raise AnswerValidationError(str(exc)) from exc
+            if configuration.provider_id == "ollama":
+                verification = self._generate_ollama_messages(
+                    messages=messages, configuration=configuration,
+                    schema=schema, context_tokens=8192, verification_request=True,
+                )
+            elif configuration.provider_id == "openai_compatible":
+                verification = self._generate_openai_compatible_messages(
+                    messages=messages, configuration=configuration,
+                    schema=schema, schema_name="danish_rag_verification",
+                )
+            else:
+                raise AnswerPipelineError("Configured verification provider is unsupported.")
+            try:
+                return validate_verification(payload, evidence, verification)
+            except VerificationError as exc:
+                rejected_claim = verification_rejects_claim(verification)
+                # Never ask a verifier to turn a negative semantic decision into
+                # approval. One correction is only for invalid witness/protocol
+                # output; an unsupported claim goes back to the answer writer.
+                if attempt == 1 or rejected_claim:
+                    raise _RejectedVerifiedAnswer(str(exc), payload, evidence, verification) from exc
+                messages = [
+                    *messages,
+                    {"role": "assistant", "content": json.dumps(verification, ensure_ascii=False)},
+                    {"role": "user", "content": (
+                        "Your verification failed an application constraint: " + str(exc) +
+                        " Recheck the unchanged proposed answer. Correct only witness "
+                        "selection or verdict structure. Select the source spans that "
+                        "actually support each exact claim and all its qualifications. "
+                        "Return verdict=unsupported whenever the claim lacks support; do "
+                        "not change the answer or manufacture support."
+                    )},
+                ]
+        raise AssertionError("unreachable")
+
+    def repair_answer(
+        self, *, question: str, normalized_question: str,
+        evidence: list[dict[str, Any]], configuration: ProviderConfiguration,
+        schema: dict[str, Any], rejection: str, previous_answer: dict[str, Any],
+    ) -> dict[str, Any]:
+        aliased_evidence, aliased_schema, canonical_ids, packages = _generation_citation_namespace(evidence, schema)
+        prior = _map_generated_citations(previous_answer, {
+            members[0]: (alias,) for alias, members in canonical_ids.items()
+            if alias.startswith('e')
+        })
+        messages = _answer_messages(question, normalized_question, aliased_evidence, schema=aliased_schema, citation_packages=packages)
+        messages.append({"role": "assistant", "content": json.dumps(prior, ensure_ascii=False)})
+        repair_instruction = (
+            "An earlier attempt failed the separate evidence check: " + rejection +
+            " Regenerate the complete English answer. Use short, precise factual "
+            "propositions supported by the exact cited evidence. When one source document "
+            "requires multiple chunks for context, explicitly cite every contributing "
+            "chunk. Preserve every qualifier "
+            "and number notation, and answer all supported parts. Do not convert facts "
+            "into interpretation or refuse supported parts to evade validation."
+        )
+        messages.append({"role": "user", "content": json.dumps({
+            'instruction': repair_instruction,
+            'citation_anchor_diagnostics': _repair_anchor_diagnostics(
+                previous_answer, evidence, canonical_ids, packages),
+        }, ensure_ascii=False, separators=(',', ':'))})
+        if configuration.provider_id == "ollama":
+            payload = self._generate_ollama_messages(
+                messages=messages, configuration=configuration, schema=aliased_schema,
+                context_tokens=8192)
+        else:
+            payload = self._generate_openai_compatible_messages(
+                messages=messages, configuration=configuration, schema=aliased_schema,
+                schema_name="danish_rag_answer")
+        return _map_generated_citations(payload, canonical_ids)
 
     def converse(
         self,
@@ -216,12 +429,14 @@ class LocalProviderAnswerGenerator:
         evidence: list[dict[str, Any]],
         configuration: ProviderConfiguration,
         schema: dict[str, Any],
+        citation_packages: dict[str, list[str]] | None = None,
     ) -> dict[str, Any]:
         messages = _answer_messages(
             question,
             normalized_question,
             evidence,
             schema=schema,
+            citation_packages=citation_packages,
         )
         return self._generate_ollama_messages(
             messages=messages,
@@ -235,6 +450,8 @@ class LocalProviderAnswerGenerator:
         messages: list[dict[str, str]],
         configuration: ProviderConfiguration,
         schema: dict[str, Any],
+        context_tokens: int | None = None,
+        verification_request: bool = False,
     ) -> dict[str, Any]:
         payload = {
             "model": configuration.model,
@@ -244,13 +461,25 @@ class LocalProviderAnswerGenerator:
             "think": False,
             "options": dict(OLLAMA_DETERMINISTIC_CHAT_OPTIONS),
         }
+        if context_tokens is not None:
+            payload["options"]["num_ctx"] = context_tokens
         for attempt in range(2):
+            if verification_request:
+                try:
+                    enforce_verification_message_bound(payload["messages"])
+                except VerificationError as exc:
+                    raise AnswerValidationError(str(exc)) from exc
             response = self._request_json(
                 configuration.endpoint,
                 "POST",
                 "/api/chat",
                 payload,
             )
+            if response.get("done_reason") == "length":
+                raise AnswerValidationError(
+                    "Local provider exhausted the available context before completing "
+                    "structured output."
+                )
             content = response.get("message", {}).get("content")
             try:
                 return _parse_provider_content(content)
@@ -281,10 +510,11 @@ class LocalProviderAnswerGenerator:
         evidence: list[dict[str, Any]],
         configuration: ProviderConfiguration,
         schema: dict[str, Any],
+        citation_packages: dict[str, list[str]] | None = None,
     ) -> dict[str, Any]:
         return self._generate_openai_compatible_messages(
             messages=_answer_messages(
-                question, normalized_question, evidence, schema=schema
+                question, normalized_question, evidence, schema=schema, citation_packages=citation_packages
             ),
             configuration=configuration,
             schema=schema,
@@ -435,11 +665,14 @@ class AnswerService:
                 corpus_identity=str(self.retriever.manifest["corpus_id"]),
             )
 
-        evidence = self.retriever.retrieve(effective_question)
+        interpreted_question = effective_question
+        if ambiguity.answer_context:
+            interpreted_question += "\n\nApplication interpretation: " + ambiguity.answer_context
+        evidence = self.retriever.retrieve(interpreted_question)
         eligible_evidence, blocked_evidence = _partition_evidence_by_policy(evidence)
         safety = classify_question_safety(effective_question)
-        generation_question = effective_question
-        generation_normalized_question = normalized_question
+        generation_question = interpreted_question
+        generation_normalized_question = normalize_question(interpreted_question)
         if (
             safety.boundary is SafetyBoundary.CITIZENSHIP_TO_PERMANENT_RESIDENCE
             and _approved_corpus_capability_for_topic(
@@ -494,14 +727,54 @@ class AnswerService:
                     [str(item["citation_id"]) for item in eligible_evidence]
                 ),
             )
-        generated = _augment_generated_payload(
-            generated,
-            safety=safety,
-            evidence=eligible_evidence,
-            blocked_evidence=blocked_evidence,
-        )
-        _reject_prohibited_safety_claims(generated, safety=safety)
-        answer = validate_answer(generated, evidence=eligible_evidence)
+        # Verification is a fresh local provider call, never a flag accepted from
+        # the generated JSON. Retry once with bounded feedback and fail closed.
+        for attempt in range(2):
+            try:
+                if isinstance(self.generator, LocalProviderAnswerGenerator) and not safety.skip_generation:
+                    generated = _assemble_supported_summary(generated)
+                    verified_claims = self.generator.verify_answer(
+                        generated, evidence=eligible_evidence, configuration=configuration)
+                    answer = _complete_verified_answer(
+                        generated, verified_claims=verified_claims,
+                        safety=safety, evidence=eligible_evidence,
+                        blocked_evidence=blocked_evidence,
+                    )
+                else:
+                    augmented = _augment_generated_payload(
+                        generated, safety=safety, evidence=eligible_evidence,
+                        blocked_evidence=blocked_evidence,
+                    )
+                    if isinstance(self.generator, LocalProviderAnswerGenerator):
+                        augmented = _assemble_supported_summary(augmented)
+                    _reject_prohibited_safety_claims(augmented, safety=safety)
+                    answer = validate_answer(augmented, evidence=eligible_evidence)
+                break
+            except AnswerValidationError as exc:
+                if (attempt == 1 and isinstance(exc, _RejectedVerifiedAnswer)
+                        and not safety.skip_generation
+                        and exc.payload == generated and exc.evidence == eligible_evidence):
+                    try:
+                        partial, bindings, status = partial_verified_answer(
+                            generated, eligible_evidence, exc.verification)
+                    except VerificationError:
+                        raise exc
+                    answer = _complete_verified_answer(
+                        partial, verified_claims=bindings, safety=safety,
+                        evidence=eligible_evidence, blocked_evidence=blocked_evidence,
+                        verification_status=status,
+                    )
+                    break
+                if (attempt == 1 or safety.skip_generation
+                        or not isinstance(self.generator, LocalProviderAnswerGenerator)):
+                    raise
+                generated = self.generator.repair_answer(
+                    question=generation_question,
+                    normalized_question=generation_normalized_question,
+                    evidence=eligible_evidence, configuration=configuration,
+                    schema=answer_schema([str(item["citation_id"]) for item in eligible_evidence]),
+                    rejection=str(exc), previous_answer=generated,
+                )
         answer["response_kind"] = safety.response_kind
         answer["assumptions"] = ambiguity.assumptions
         answer["suggested_follow_ups"] = _suggested_follow_ups(
@@ -517,10 +790,72 @@ class AnswerService:
         )
 
 
+def _assemble_supported_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    """Introduce the answer with a section that will receive the same verification.
+
+    A freeform model summary must not introduce scope or facts missing from the
+    cited sections. Prefer the first official fact, preserving answer ordering;
+    a refusal-only answer introduces its actual evidence boundary instead.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    sections = payload.get("sections")
+    if isinstance(sections, list):
+        for kind in ("official_fact", "refusal"):
+            for section in sections:
+                if (isinstance(section, dict) and section.get("kind") == kind
+                        and isinstance(section.get("text"), str) and section["text"].strip()):
+                    return {**payload, "summary": section["text"]}
+    return payload
+
+
+def _complete_verified_answer(
+    payload: dict[str, Any], *, verified_claims: frozenset[str],
+    safety: SafetyDecision, evidence: list[dict[str, Any]],
+    blocked_evidence: list[dict[str, Any]],
+    verification_status: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Append program-derived policy statements to a fully verified model answer.
+
+    Model section kinds and origin flags confer no trust. Every model section
+    must pass verification before the application constructs its own additions
+    from the safety decision and source metadata. Only those exact appended
+    sections receive local bindings; the final complete binding set is checked.
+    """
+    validate_answer(payload, evidence=evidence, verified_claims=verified_claims)
+    augmented = _assemble_supported_summary(_augment_generated_payload(
+        payload, safety=safety, evidence=evidence, blocked_evidence=blocked_evidence,
+    ))
+    if verification_status is not None:
+        augmented['sections'].append({
+            'kind': 'refusal', 'citation_ids': [],
+            'text': 'This answer is partial. Some generated statements did not pass the '
+                    'complete verification process and have been omitted. The retained '
+                    'facts may not answer every part of your question.',
+        })
+    bindings = set(verified_claims)
+    original_citations = sorted({c for s in payload['sections'] for c in s['citation_ids']})
+    bindings.remove(claim_binding(payload['summary'], original_citations, evidence, kind='summary'))
+    original_count = len(payload['sections'])
+    for index, section in enumerate(augmented['sections'][original_count:], original_count + 1):
+        bindings.add(claim_binding(
+            section['text'], section['citation_ids'], evidence,
+            kind=section['kind'], position=index,
+        ))
+    final_citations = sorted({c for s in augmented['sections'] for c in s['citation_ids']})
+    bindings.add(claim_binding(augmented['summary'], final_citations, evidence, kind='summary'))
+    _reject_prohibited_safety_claims(augmented, safety=safety)
+    answer = validate_answer(augmented, evidence=evidence, verified_claims=frozenset(bindings))
+    if verification_status is not None:
+        answer['verification'] = deepcopy(verification_status)
+    return answer
+
+
 def validate_answer(
     payload: dict[str, Any],
     *,
     evidence: list[dict[str, Any]],
+    verified_claims: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise AnswerValidationError("Structured answer was not a JSON object.")
@@ -537,6 +872,7 @@ def validate_answer(
     official_fact_count = 0
     cited_official_fact_count = 0
     refusal_count = 0
+    expected_verifications: set[str] = set()
     for index, section in enumerate(sections, start=1):
         if not isinstance(section, dict):
             raise AnswerValidationError(f"Answer section {index} was not an object.")
@@ -566,6 +902,12 @@ def validate_answer(
                 "Answer cited material that is not eligible to support answers: "
                 f"{', '.join(sorted(ineligible_citation_ids))}"
             )
+        if verified_claims is not None:
+            binding = claim_binding(
+                text, normalized_citation_ids, evidence, kind=kind, position=index)
+            expected_verifications.add(binding)
+            if binding not in verified_claims:
+                raise AnswerValidationError("Answer section changed after local verification.")
         if kind == "official_fact":
             official_fact_count += 1
             if not normalized_citation_ids:
@@ -579,7 +921,11 @@ def validate_answer(
                     for citation_id in normalized_citation_ids
                 ),
             )
-            if not support.supported:
+            verified = (verified_claims is not None and claim_binding(
+                text, normalized_citation_ids, evidence, position=index) in verified_claims)
+            if (verified_claims is not None and not verified) or (
+                verified_claims is None and not support.supported
+            ):
                 raise AnswerValidationError(
                     "Answer validation failed: an official fact is not supported by its "
                     "cited evidence."
@@ -605,6 +951,11 @@ def validate_answer(
             "Answer validation failed: no official fact or evidence-bounded refusal was produced."
         )
 
+    if verified_claims is not None:
+        expected_verifications.add(claim_binding(
+            summary, sorted(used_citation_ids), evidence, kind="summary"))
+        if expected_verifications != verified_claims:
+            raise AnswerValidationError("Answer changed after local verification.")
     used_evidence = [
         evidence_by_citation_id[citation_id]
         for citation_id in sorted(used_citation_ids)
@@ -750,15 +1101,20 @@ def _mentions_supported_domain(lookup: str) -> bool:
 
 
 def classify_question_ambiguity(question: str) -> AmbiguityDecision:
-    lookup = question.casefold()
+    lookup = question.casefold().replace("permanent-residence", "permanent residence")
     if _asks_about_source_conflict(lookup):
         return AmbiguityDecision(response_kind="answer", assumptions=[])
-    if _is_low_risk_exam_term_question(lookup):
-        return AmbiguityDecision(
-            response_kind="answer",
-            assumptions=[LOW_RISK_EXAM_TERM_ASSUMPTION],
-        )
-    if _has_consequential_ambiguity(lookup):
+    low_risk_definition = _is_low_risk_exam_term_question(lookup)
+    unspecified_application = (
+        low_risk_definition and not _has_specific_application_context(lookup)
+        and re.search(r"\b(?:application|apply|applying|eligibility)\b", lookup)
+    )
+    if unspecified_application or (_has_consequential_ambiguity(lookup) and (
+        not low_risk_definition
+        or _contrasts_permanent_residence_and_citizenship(lookup)
+        or _mixes_registration_and_requirement(lookup)
+        or re.search(r"\b(?:application|apply|applying|eligibility)\b", lookup)
+    )):
         return AmbiguityDecision(
             response_kind="clarification",
             assumptions=[],
@@ -770,6 +1126,18 @@ def classify_question_ambiguity(question: str) -> AmbiguityDecision:
                 "permanent residence, citizenship, another residence path, or exam "
                 "registration logistics."
             ),
+        )
+    if low_risk_definition:
+        contextual = not _has_specific_application_context(lookup) and not re.search(
+            r"\b(?:cost|costs|fee|fees|price|deadline|deadlines|date|dates|schedule|"
+            r"duration|location|address|exemption|certificate|certificates)\b|"
+            r"\b(?:for|regarding|concerning|towards?|about)\s+\S|"
+            r"\bin\s+(?!(?:general|this\s+(?:app|context))\b)\S", lookup,
+        )
+        return AmbiguityDecision(
+            response_kind="answer",
+            assumptions=[GENERAL_EXAM_TERM_CONTEXT if contextual else LOW_RISK_EXAM_TERM_ASSUMPTION],
+            answer_context=GENERAL_EXAM_TERM_CONTEXT if contextual else "",
         )
     return AmbiguityDecision(response_kind="answer", assumptions=[])
 
@@ -1434,10 +1802,17 @@ def _answer_messages(
     evidence: list[dict[str, Any]],
     *,
     schema: dict[str, Any] | None = None,
+    citation_packages: dict[str, list[str]] | None = None,
 ) -> list[dict[str, str]]:
+    group_keys = evidence_group_keys(evidence)
+    group_labels = {
+        key: f"source-{index}"
+        for index, key in enumerate(dict.fromkeys(group_keys.values()), 1)
+    }
     evidence_payload = [
         {
             "citation_id": item["citation_id"],
+            "source_document_group": group_labels[group_keys[item["citation_id"]]],
             "title": item["title"],
             "publisher": item["publisher"],
             "official_url": item["official_url"],
@@ -1450,24 +1825,56 @@ def _answer_messages(
         "question": question,
         "normalized_question": normalized_question,
         "approved_official_evidence": evidence_payload,
+        "explicit_citation_packages": citation_packages or {},
     }
     if schema is not None:
         user_payload["required_output_schema"] = schema
+    safety = classify_question_safety(question)
+    boundary_instruction = ""
+    if safety.refusal_text:
+        boundary_instruction = (
+            " Application response boundary: " + safety.refusal_text
+            + " Explain the supported general rule even when an individual decision "
+            "cannot be made. Do not map a person's document or circumstances onto "
+            "a listed qualification."
+        )
     return [
         {
             "role": "system",
             "content": (
                 "Return only JSON matching the provided schema. Answer in English and "
                 "preserve important Danish terms. Use citation_ids exactly as provided in "
-                "approved_official_evidence; never invent or alter an ID. Cite every "
+                "approved_official_evidence or explicit_citation_packages; never invent or "
+                "alter an ID. Selecting a package cites EVERY declared member passage; "
+                "each member must materially contribute. Use an individual passage ID "
+                "when only that passage contributes. Never combine overlapping package "
+                "and individual selections. Cite every "
                 "official_fact. Keep each official_fact to one factual proposition and a "
-                "close paraphrase of its cited evidence. If the evidence directly supports "
+                "close paraphrase of its cited evidence. Translate Danish source facts "
+                "faithfully into English, preserving qualifications, negation, exam names "
+                "and complete conditions. For English sources, retain an exact complete "
+                "qualified statement when shortening it would lose a condition. Preserve "
+                "the exact source number notation (do not change decimal/thousands "
+                "separators). Passages sharing source_document_group belong to the "
+                "same verified source document. When a rule needs a heading or "
+                "qualification from another passage in that group, explicitly cite "
+                "BOTH passages. Every citation must materially contribute and the "
+                "jointly cited passages must support the complete proposition. Never "
+                "borrow uncited context or merge different source document groups. "
+                "Answer the requested question directly. Include examples or exhaustive "
+                "lists only when requested or needed to explain the documented rule. "
+                "If the evidence directly supports "
                 "any part of the question, answer every part that the evidence directly "
                 "supports. Use a refusal section with no citations only for a requested "
-                "detail that the evidence does not support. Never claim that something is "
+                "detail that the evidence does not support. State your inability to "
+                "answer that part without adding claims about what an entire corpus "
+                "or authority contains or omits. Never claim that something is "
                 "absent, invalid, or disallowed unless the evidence explicitly says so. "
+                "Keep the summary a short introduction to the cited sections; put "
+                "detailed dates, fees, criteria and lists in official_fact sections. "
                 "The summary may summarize sections but must not add official facts. "
                 "The exact required_output_schema is included in the user payload."
+                + boundary_instruction
             ),
         },
         {

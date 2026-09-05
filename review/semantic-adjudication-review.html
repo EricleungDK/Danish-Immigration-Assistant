@@ -813,6 +813,16 @@
       text-transform: uppercase;
     }
 
+    .joint-source-context {
+      margin-top: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .joint-source-context .context-box {
+      margin-top: 10px;
+      background: var(--surface-strong);
+    }
+
     .evidence-card {
       margin-top: 12px;
       border: 1px solid var(--line);
@@ -1000,8 +1010,8 @@
               <span class="drop-icon" aria-hidden="true">+</span>
               <strong>Choose or drop the review packet</strong>
               <span>
-                Use canonical <code>final-answer-capture-g.json</code>; packet E was
-                lost and must not be recreated
+                Use the exact new capture named in your review handoff. Earlier
+                packets describe different executions and cannot substitute for it.
               </span>
             </span>
           </label>
@@ -1283,7 +1293,9 @@
               ].join(":"),
           )
           .join(":");
-        return `danish-rag-product-owner-review:${datasetHash}:${caseBindings}`;
+        // Preserve earlier saved records without inheriting decisions propagated
+        // under the old signature that omitted jointly cited context.
+        return `danish-rag-product-owner-review:context-v2:${datasetHash}:${caseBindings}`;
       }
 
       function stableSerialize(value) {
@@ -1306,10 +1318,48 @@
         return JSON.stringify(value);
       }
 
+      function citedContext(caseItem, section) {
+        const evidence = evidenceById(caseItem);
+        return [...new Set(section?.citation_ids || [])].map((citationId) => ({
+          citationId: String(citationId),
+          evidence: evidence.get(String(citationId)) || null,
+        }));
+      }
+
+      function sourceDocumentIdentity(evidence) {
+        // Match the runtime grouping tuple. Missing provenance never joins two
+        // citations; the signed candidate is checked separately during replay.
+        const fields = [
+          "source_id", "source_document_id", "source_content_sha256",
+          "normalized_document_sha256", "normalized_extraction_sha256",
+          "official_url", "final_url", "language", "corpus_identity",
+          "knowledge_release_id",
+        ];
+        if (!evidence || fields.some((key) =>
+          typeof evidence[key] !== "string" || !evidence[key].trim())) return null;
+        if (fields.filter((key) => key.endsWith("_sha256")).some((key) =>
+          !/^[0-9a-f]{64}$/.test(evidence[key]))) return null;
+        return stableSerialize(fields.map((key) => evidence[key]));
+      }
+
+      function jointlyCitedContext(caseItem, section, citationId) {
+        const context = citedContext(caseItem, section);
+        const focused = context.find((item) => item.citationId === String(citationId));
+        const identity = sourceDocumentIdentity(focused?.evidence);
+        if (identity === null) return [];
+        return context.filter((item) =>
+          item.citationId !== String(citationId) &&
+          sourceDocumentIdentity(item.evidence) === identity);
+      }
+
       function relationshipSignature(caseItem, sectionId, citationId) {
         const section = answerSection(caseItem, sectionId);
         const evidence = evidenceById(caseItem).get(String(citationId));
-        return stableSerialize({ claim: section || null, evidence: evidence || null });
+        return stableSerialize({
+          claim: section || null,
+          evidence: evidence || null,
+          citedContext: citedContext(caseItem, section),
+        });
       }
 
       function buildRelationshipIndex(candidate) {
@@ -1733,6 +1783,7 @@
           for (const citationId of Object.keys(citations)) {
             relationshipCount += 1;
             const evidenceItem = evidence.get(String(citationId));
+            const context = jointlyCitedContext(item, section, citationId);
             const signature = relationshipSignature(item, sectionId, citationId);
             const linked = relationshipIndex.get(signature) || [];
             const selected = decisions.claim_support[sectionId][citationId];
@@ -1748,7 +1799,9 @@
               node("div", {
                 className: "criterion",
                 text:
-                  "Does this cited evidence support the complete official-fact claim?",
+                  context.length
+                    ? "Does this citation materially contribute, and do the jointly cited passages from this source document support the complete claim?"
+                    : "Does this cited evidence support the complete official-fact claim?",
               }),
             );
             if (linked.length > 1) {
@@ -1790,6 +1843,26 @@
                 ]),
               ]),
             );
+            if (context.length) {
+              const contextPanel = node("div", { className: "joint-source-context context-box" });
+              contextPanel.append(
+                node("strong", { text: "Jointly cited source context" }),
+                node("p", { text:
+                  "These explicitly cited passages carry matching source-document provenance in this packet. " +
+                  "Assess their combined support and this citation's material contribution. " +
+                  "Do not borrow uncited passages or context from a different source document. " +
+                  "An irrelevant citation still fails. Signed provenance is checked separately during replay.",
+                }),
+              );
+              for (const related of context) {
+                contextPanel.append(node("div", { className: "context-box" }, [
+                  node("strong", { text: related.citationId }),
+                  node("span", { className: "evidence-content", text: related.evidence.content || related.evidence.text ||
+                    "Matching evidence text was not found" }),
+                ]));
+              }
+              copy.append(contextPanel);
+            }
             card.append(copy);
             card.append(
               choiceButtons(

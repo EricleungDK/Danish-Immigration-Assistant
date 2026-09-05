@@ -141,13 +141,13 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
 
         payload = generator.payloads[0]
         self.assertIs(payload["think"], False)
-        self.assertEqual(payload["format"], schema)
+        self.assertEqual(payload["format"], answer_schema(["e1"]))
         self.assertEqual(
             payload["options"],
             {"temperature": 0, "seed": 0},
         )
         self.assertIn(
-            json.dumps(schema, ensure_ascii=False, sort_keys=True),
+            json.dumps(answer_schema(["e1"]), ensure_ascii=False, sort_keys=True),
             payload["messages"][1]["content"],
         )
 

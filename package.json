@@ -7,7 +7,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
-    "@playwright/test": "^1.57.0",
+    "@playwright/test": "^1.63.0",
     "htmx.org": "^2.0.8"
   }
 }

@@ -43,6 +43,17 @@ RETRIEVAL_CHANNEL_LIMIT = 20
 TOKEN_PATTERN = re.compile(r"[0-9a-zA-ZæøåÆØÅ]+")
 REVIEWED_SOURCE_LANGUAGES = ("da", "en-GB")
 
+LEXICAL_STOP_WORDS = frozenset({
+    "which", "what", "where", "how", "when", "do", "does", "did", "is", "are",
+    "was", "were", "be", "been", "being", "a", "an", "the", "and", "or", "for",
+    "of", "in", "on", "at", "to", "from", "with", "by", "that", "this", "these",
+    "those", "it", "its", "they", "them", "their", "he", "she", "we", "you",
+    "your", "i", "me", "my", "have", "has", "had", "can", "could", "would",
+    "should", "will", "shall", "then", "tell", "please", "personally", "about",
+    "as", "s", "am", "up",
+})
+
+
 # Only successful derivation checks enter this process-local cache. The key
 # binds every input and vector, so edited artifacts cannot inherit validation.
 _VERIFIED_DENSE_DERIVATIONS: OrderedDict[str, None] = OrderedDict()
@@ -131,8 +142,19 @@ def normalize_question(question: str) -> str:
     for phrase, expansion in phrase_expansions.items():
         if phrase in lookup:
             expansions.append(expansion)
-    if "danish" in lookup and "test" not in lookup and "exam" not in lookup:
+    # Intervening words (for example "Danish language test") must not suppress
+    # Danish search terms just because the question contains "test" or "exam".
+    if "danish" in lookup and not any(
+        phrase in lookup for phrase in ("danish test", "danish exam")
+    ):
         expansions.append("dansk Prøve i Dansk danskprøve")
+    if (
+        re.search(r"\b(?:tests?|exams?|examinations?)\b", lookup)
+        and "Prøve i Dansk" not in " ".join([normalized, *expansions])
+    ):
+        expansions.append("Prøve i Dansk danskprøve dansk prøve")
+    if re.search(r"\benrol(?:l)?(?:ment|ing|ed|s)?\b", lookup):
+        expansions.append("tilmelding tilmeldingsfrist prøvedatoer sprogcenter")
     if "permanent" in lookup and "permanent residence" not in lookup:
         expansions.append("permanent ophold permanent opholdstilladelse")
     return " ".join([normalized, *expansions]).strip()
@@ -367,6 +389,15 @@ class HybridRetriever:
         lexical_ids = self._lexical_ranked_ids(normalized_question, metadata_filter)
         dense_ids = self._dense_ranked_ids(normalized_question, metadata_filter)
         fused_ids, fusion_scores = reciprocal_rank_fusion([lexical_ids, dense_ids], k=RRF_K)
+        if self.manifest.get("corpus_schema_version") == "2.0":
+            # A source title is a separate retrieval field. Its relevance should
+            # not be diluted by a long body or multiplied by its chunk count.
+            title_ids = _title_ranked_source_representatives(
+                question, fused_ids, documents_by_id=self.documents_by_id,
+            )
+            fused_ids, fusion_scores = reciprocal_rank_fusion(
+                [lexical_ids, dense_ids, title_ids], k=RRF_K,
+            )
         eligible_ids = [
             document_id
             for document_id in fused_ids
@@ -376,12 +407,25 @@ class HybridRetriever:
                 metadata_filter,
             )
         ]
+        if self.manifest.get("corpus_schema_version") == "2.0":
+            eligible_ids = _prefer_named_exam_passages(
+                question, eligible_ids, documents_by_id=self.documents_by_id,
+            )
         selected_ids = _select_result_ids_for_topic_groups(
             eligible_ids,
             documents_by_id=self.documents_by_id,
             metadata_filter=metadata_filter,
             limit=limit,
             prefer_distinct_sources=(self.manifest.get("corpus_schema_version") == "2.0"),
+            requested_exams=(
+                _mentioned_exams(question)
+                if self.manifest.get("corpus_schema_version") == "2.0" else None
+            ),
+            include_list_context=(
+                self.manifest.get("corpus_schema_version") == "2.0"
+                and any("certificate-equivalence" in group for group
+                        in metadata_filter.get("topic_tag_groups", []))
+            ),
         )
         results: list[dict[str, Any]] = []
         for document_id in selected_ids:
@@ -899,7 +943,13 @@ def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:
     is_exam_comparison = any(
         term in lookup for term in ("compare", "sammenlign", "exam-comparison")
     )
-    if ("permanent" in lookup or "ophold" in lookup) and not is_exam_comparison:
+    # Route the subject independently of a particular phrase such as
+    # "permanent residence". Otherwise paraphrased compound questions lose
+    # their per-intent reservations before the final top-k selection.
+    if (
+        "permanent" in lookup or "ophold" in lookup
+        or re.search(r"\bresidence\b", lookup)
+    ) and not is_exam_comparison:
         intent_topic_tag_groups.append(["permanent-residence"])
     if (
         "language" in lookup
@@ -915,7 +965,7 @@ def _metadata_filter_for_question(normalized_question: str) -> dict[str, Any]:
     if any(
         term in lookup
         for term in ("register", "registration", "sign up", "tilmeld", "tilmelding")
-    ):
+    ) or re.search(r"\benrol(?:l)?(?:ment|ing|ed|s)?\b", lookup):
         intent_topic_tag_groups.append(["registration-logistics"])
     if any(
         term in lookup
@@ -965,6 +1015,8 @@ def _select_result_ids_for_topic_groups(
     metadata_filter: dict[str, Any],
     limit: int,
     prefer_distinct_sources: bool = False,
+    requested_exams: set[str] | None = None,
+    include_list_context: bool = False,
 ) -> list[str]:
     topic_tag_groups = metadata_filter.get("topic_tag_groups")
     if not topic_tag_groups and not prefer_distinct_sources:
@@ -981,6 +1033,29 @@ def _select_result_ids_for_topic_groups(
                 break
 
     selected_ids = reserved_ids[:limit]
+    if requested_exams:
+        covered = set().union(*(
+            _mentioned_exams(documents_by_id[document_id]["content"])
+            for document_id in selected_ids
+        ))
+        remaining = requested_exams - covered
+        while remaining and len(selected_ids) < limit:
+            # Cover actual requested subjects before adding another source
+            # whose passage only repeats examinations already represented.
+            candidates = [document_id for document_id in ranked_ids
+                          if document_id not in selected_ids]
+            if not candidates:
+                break
+            candidate = max(candidates, key=lambda document_id: len(
+                remaining & _mentioned_exams(documents_by_id[document_id]["content"])
+            ))
+            newly_covered = remaining & _mentioned_exams(
+                documents_by_id[candidate]["content"]
+            )
+            if not newly_covered:
+                break
+            selected_ids.append(candidate)
+            remaining -= newly_covered
     if prefer_distinct_sources:
         represented_sources = {
             documents_by_id[document_id]["source_id"] for document_id in selected_ids
@@ -997,23 +1072,180 @@ def _select_result_ids_for_topic_groups(
             break
         if document_id not in selected_ids:
             selected_ids.append(document_id)
-    selected_id_set = set(selected_ids)
+    if include_list_context:
+        selected_ids = _include_introductory_list_context(
+            selected_ids, documents_by_id=documents_by_id,
+            metadata_filter=metadata_filter, reserved_ids=set(reserved_ids[:limit]),
+            requested_exams=requested_exams or set(), limit=limit,
+        )
+    rank = {document_id: index for index, document_id in enumerate(ranked_ids)}
+    return sorted(selected_ids, key=lambda document_id: rank.get(document_id, len(rank)))
+
+
+def _include_introductory_list_context(
+    selected_ids: list[str], *, documents_by_id: dict[str, dict[str, Any]],
+    metadata_filter: dict[str, Any], reserved_ids: set[str],
+    requested_exams: set[str], limit: int,
+) -> list[str]:
+    """Retrieve a preceding list introduction as context, not inferred parenthood.
+
+    The signed flattened corpus has no list-membership metadata. A bounded
+    introductory-colon cue is only a relevance hint; both chunks remain separate
+    exact evidence. Existing intent reservations and named-exam coverage win
+    when the result budget cannot also accommodate this context candidate.
+    """
+    introduction = re.compile(r"\b(?:list\s+of|liste\s+over)\b[^.!?:]{1,240}:", re.I)
+    selected = list(selected_ids)
+    protected = set(reserved_ids)
+    for document_id in selected_ids:
+        if document_id not in selected:
+            continue
+        document = documents_by_id[document_id]
+        index = document.get("chunk_index")
+        if not isinstance(index, int) or index <= 0:
+            continue
+        if introduction.search(document["content"]):
+            continue
+        preceding = [candidate for candidate in documents_by_id.values()
+                     if candidate["source_id"] == document["source_id"]
+                     and isinstance(candidate.get("chunk_index"), int)
+                     and candidate["chunk_index"] < index
+                     and introduction.search(candidate["content"])
+                     and _is_release_eligible(candidate)
+                     and _matches_metadata_filter(candidate, metadata_filter)]
+        if not preceding:
+            continue
+        context_id = max(preceding, key=lambda candidate: candidate["chunk_index"])["document_id"]
+        if context_id in selected:
+            protected.update((document_id, context_id))
+            continue
+        if len(selected) < limit:
+            selected.append(context_id)
+        else:
+            covered = requested_exams & set().union(*(
+                _mentioned_exams(documents_by_id[key]["content"]) for key in selected
+            ))
+            for replace_id in reversed(selected):
+                if replace_id in protected or replace_id == document_id:
+                    continue
+                trial = [context_id if key == replace_id else key for key in selected]
+                remaining_coverage = set().union(*(
+                    _mentioned_exams(documents_by_id[key]["content"]) for key in trial
+                ))
+                if not covered.issubset(remaining_coverage):
+                    continue
+                selected = trial
+                break
+            else:
+                continue
+        protected.update((document_id, context_id))
+    return selected
+
+
+def _mentioned_exams(text: str) -> set[str]:
+    """Recognize examination names, never bare levels, dates, or durations."""
+    lookup = text.casefold()
+    exams = {
+        f"pd{match.group(1)}"
+        for match in re.finditer(
+            r"\b(?:pd\s*|prøve\s+i\s+dansk\s+|danish\s+(?:language\s+)?test\s+)([123])\b",
+            lookup,
+        )
+    }
+    if re.search(r"\b(?:studieprøven|studieproven)\b", lookup):
+        exams.add("studieprøven")
+    return exams
+
+
+def _prefer_named_exam_passages(
+    question: str,
+    ranked_ids: list[str],
+    *,
+    documents_by_id: dict[str, dict[str, Any]],
+) -> list[str]:
+    """Keep source positions, preferring bodies about explicitly named exams.
+
+    Source metadata can mention an exam on every chunk. A selected source's
+    passage must not lose the actual named subject to an unrelated passage with
+    matching source metadata. Only already-eligible retrieved candidates enter.
+    """
+    requested = _mentioned_exams(question)
+    generic_danish_exam = bool(re.search(
+        r"\b(?:danish\s+(?:language\s+)?(?:tests?|exams?|examinations?)|"
+        r"prøve\s+i\s+dansk|danskprøver?)\b", question.casefold(),
+    ))
+    if not requested and not generic_danish_exam:
+        return ranked_ids
+    by_source: dict[str, list[str]] = {}
+    for document_id in ranked_ids:
+        source_id = documents_by_id[document_id]["source_id"]
+        by_source.setdefault(source_id, []).append(document_id)
+    def subject_coverage(document_id: str) -> int:
+        mentioned = _mentioned_exams(documents_by_id[document_id]["content"])
+        # A compound query may name exams belonging to different intents.
+        # One explicit match preserves a shared passage without favoring a
+        # list of unrelated fees merely because it repeats more exam names.
+        return int(bool(requested & mentioned)) if requested else len(mentioned)
+
+    ordered = {
+        source_id: iter(sorted(ids, key=lambda document_id: -subject_coverage(document_id)))
+        for source_id, ids in by_source.items()
+    }
     return [
-        document_id
+        next(ordered[documents_by_id[document_id]["source_id"]])
         for document_id in ranked_ids
-        if document_id in selected_id_set
     ]
+
+
+def _title_ranked_source_representatives(
+    question: str,
+    ranked_ids: list[str],
+    *,
+    documents_by_id: dict[str, dict[str, Any]],
+) -> list[str]:
+    """Rank source titles, returning their strongest already-retrieved chunk.
+
+    Source-level inverse document frequency keeps common title words weak;
+    one vote per source prevents a long document's repeated title dominating.
+    Use the actual question so bilingual query expansions do not create title
+    matches for words the user did not ask about.
+    """
+    stopwords = {
+        "a", "an", "and", "at", "by", "for", "from", "in", "is", "of",
+        "on", "or", "the", "to", "with", "en", "et", "og", "i", "af",
+        "til", "på", "med", "om", "er",
+    }
+    terms = set(TOKEN_PATTERN.findall(question.casefold())) - stopwords
+    representatives: dict[str, str] = {}
+    title_terms: dict[str, set[str]] = {}
+    for document_id in ranked_ids:
+        document = documents_by_id[document_id]
+        source_id = document["source_id"]
+        representatives.setdefault(source_id, document_id)
+        title_terms[source_id] = set(TOKEN_PATTERN.findall(document["title"].casefold()))
+    scores = {}
+    for source_id, words in title_terms.items():
+        score = sum(
+            math.log1p(len(title_terms) / sum(term in title for title in title_terms.values()))
+            for term in terms & words
+        )
+        if score:
+            scores[source_id] = score
+    # Stable sorting preserves the original fused rank for equal title scores.
+    return [representatives[source_id] for source_id in sorted(
+        scores, key=lambda source_id: -scores[source_id],
+    )]
 
 
 def _fts_match_expression(text: str) -> str:
     tokens = []
     for token in TOKEN_PATTERN.findall(text):
         folded = token.casefold()
-        if len(folded) < 2:
+        if folded in LEXICAL_STOP_WORDS or (len(folded) < 2 and not folded.isdigit()):
             continue
         if folded not in tokens:
             tokens.append(folded)
-    return " OR ".join(tokens[:24])
+    return " OR ".join(tokens[:48])
 
 
 def _write_json(path: Path, value: dict[str, Any]) -> None:

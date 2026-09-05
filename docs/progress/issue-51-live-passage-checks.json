@@ -1,0 +1,16 @@
+{
+  "schema_version": "retrieval-passage-checks-v1",
+  "generated_at_utc": "2026-09-05T17:49:42Z",
+  "command": "DI_RAG_RUN_LIVE_PASSAGE_RETRIEVAL=1 .venv/bin/python -B -m unittest tests.test_retrieval_passages_live",
+  "completed_execution_session": 2945,
+  "tests_run": 3,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "passed": true,
+  "retrieval_implementation_sha256": "1f555749cc315a0895d02a731a51a992fb71a266e2a23a4fe2adae62023b75f3",
+  "test_implementation_sha256": "2f58a8850dd6e060867e7d863096ae67f61d4d94eb20a8559fc4933ce1e9f4f3",
+  "grounded_flexibility_dataset_sha256": "ea98464031f45b1c3cb4d47cd77ed8876908596d80f7369d08f6e40771a22fe6",
+  "final_answer_dataset_sha256": "468bede9c7f55c8c06ace2f48d7df54e7861b0267bc2eee2ea1c855651b89dab",
+  "semantic_adjudication": "not_evaluated"
+}

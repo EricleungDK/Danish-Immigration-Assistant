@@ -48,6 +48,8 @@ does not override those sources.
 - [Issue #51 live qualification evidence](../progress/issue-51-live-qualification.md)
   records production-candidate retrieval misses, live answer-validation failures,
   private packet custody, and the remaining independent-human review requirement.
+- [Issue #51 engineering remediation](../progress/issue-51-engineering-remediation.md)
+  tracks the subsequent fixes, current verification, and fresh review handoff.
 
 ## Quick Verification
 

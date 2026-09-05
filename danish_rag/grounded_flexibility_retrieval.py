@@ -89,6 +89,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     report = evaluate_retrieval(args.dataset, retriever=retriever)
     report["provenance"] = {
+        "retrieval_implementation_sha256": sha256_file(
+            Path(__file__).with_name("retrieval.py")
+        ),
+        "collector_implementation_sha256": sha256_file(__file__),
         "manifest_sha256": sha256_file(retriever.active_release["manifest_path"]),
         "dense_index_sha256": sha256_file(retriever.index_dir / "dense-index.json"),
         "index_metadata": retriever.dense_index["metadata"],

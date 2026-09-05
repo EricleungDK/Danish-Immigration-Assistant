@@ -1,0 +1,12 @@
+{
+  "browser": "Chromium 153",
+  "contains_prompt_or_answer_text": false,
+  "corpus_id": "kr-2026-09-05.1",
+  "isolated_conversation_store": true,
+  "log_sha256": "31d621bf1fea6d761b9abe8748465eb320f206e0a40da1bdeec074081d65d3f9",
+  "mode": "actual-candidate-live-ollama",
+  "model": "gemma4:12b",
+  "passed": true,
+  "test": "tests/browser/live_ollama.spec.js",
+  "test_sha256": "9966be7219d77465780f9b0d0c82b678564972b35c85c475e91a7fb759eced18"
+}

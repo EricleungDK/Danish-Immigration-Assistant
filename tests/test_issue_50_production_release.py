@@ -158,7 +158,240 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
             )
             self.assertEqual([r["source_id"] for r in results], [pd2, pd3, primary])
             all_results = retriever.retrieve("permanent residence", limit=4)
-            self.assertEqual([r["document_id"] for r in all_results], ranking)
+            self.assertCountEqual([r["document_id"] for r in all_results], ranking)
+            self.assertEqual(all_results[0]["source_id"], primary)
+
+    def test_residence_and_enrolment_paraphrases_reserve_both_sources(self):
+        candidate = self.build_candidate("candidate")
+        provider = DeterministicEmbeddingProviderFixture()
+        data_dir = self.root / "installed"
+        install_knowledge_release(
+            data_dir, release_dir=candidate.release_dir,
+            embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        retriever = HybridRetriever.from_data_dir(
+            data_dir, embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        by_source = {}
+        for document in candidate.release["documents"]:
+            by_source.setdefault(document["source_id"], document["document_id"])
+        primary = "nyidanmark-permanent-residence-language-requirements"
+        registration = "danskogproever-registration-deadlines-2026"
+        # Realistic rank pressure: general exam and equivalence material ranks
+        # above both requested subjects before the intent reservations apply.
+        ranking = [by_source[source] for source in (
+            "danskogproever-danish-exam-overview",
+            "nyidanmark-equivalent-tests-language-test-2",
+            "nyidanmark-equivalent-tests-language-test-3",
+            primary,
+            registration,
+        )]
+        with (
+            patch.object(retriever, "_lexical_ranked_ids", return_value=ranking),
+            patch.object(retriever, "_dense_ranked_ids", return_value=ranking),
+        ):
+            for question in (
+                "Explain Danish exam requirements for residence and PD3 enrolment.",
+                "Can you cover residence language rules and how to enroll for PD3?",
+                "PD2 residence evidence and PD3 enrollment: what do sources say?",
+            ):
+                with self.subTest(question=question):
+                    results = retriever.retrieve(question, limit=3)
+                    self.assertTrue({primary, registration}.issubset(
+                        {result["source_id"] for result in results}
+                    ))
+
+    def test_language_test_question_retrieves_requirement_passage(self):
+        candidate = self.build_candidate("candidate")
+        provider = DeterministicEmbeddingProviderFixture()
+        data_dir = self.root / "installed"
+        install_knowledge_release(
+            data_dir, release_dir=candidate.release_dir,
+            embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        retriever = HybridRetriever.from_data_dir(
+            data_dir, embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        for question in (
+            "Which Danish language test is documented for permanent residence?",
+            "What Danish language examination is required for permanent residence?",
+            "What does PD2 establish for permanent residence; do I personally qualify?",
+            "Summarize the official facts about Danish exam requirements and fees "
+            "for permanent residence.",
+        ):
+            with self.subTest(question=question):
+                results = retriever.retrieve(question)
+                self.assertTrue(any(
+                    "Du skal have bestået Prøve i Dansk 2 eller en danskprøve "
+                    "på et tilsvarende eller højere niveau." in result["content"]
+                    or "grundlæggende betingelse om at have bestået Prøve i Dansk 2 "
+                    "eller en danskprøve på et tilsvarende eller højere niveau."
+                    in result["content"]
+                    for result in results
+                ))
+
+    def test_compound_passages_with_recorded_live_dense_rankings(self):
+        candidate = self.build_candidate("candidate")
+        provider = DeterministicEmbeddingProviderFixture()
+        data_dir = self.root / "installed"
+        install_knowledge_release(
+            data_dir, release_dir=candidate.release_dir,
+            embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        retriever = HybridRetriever.from_data_dir(
+            data_dir, embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        cases = {case["case_id"]: case for case in self.load_json(
+            ROOT / "data/evaluation/grounded-flexibility-v0.1-candidate.json"
+        )["cases"]}
+        captures = self.load_json(
+            ROOT / "tests/fixtures/issue-51-passage-dense-ranks.json"
+        )["cases"]
+        # Replay the real semantic-provider boundary. The toy embedding
+        # fixture's synthetic vectors do not model these passage semantics;
+        # lexical ranking and final production selection remain real here.
+        for capture in captures:
+            with self.subTest(case_id=capture["case_id"]), patch.object(
+                retriever, "_dense_ranked_ids", return_value=capture["dense_ranked_ids"],
+            ):
+                results = retriever.retrieve(cases[capture["case_id"]]["prompt"])
+                self.assertTrue(any(
+                    "Prøve i Dansk 2 eller en danskprøve på et tilsvarende "
+                    "eller højere niveau." in result["content"] for result in results
+                ))
+                self.assertTrue(any(
+                    "Du tilmelder dig en prøve direkte ved det sprogcenter, "
+                    "hvor du ønsker at tage prøven." in result["content"]
+                    for result in results
+                ))
+
+    def test_comparison_retrieves_all_named_exam_evidence(self):
+        candidate = self.build_candidate("candidate")
+        provider = DeterministicEmbeddingProviderFixture()
+        data_dir = self.root / "installed"
+        install_knowledge_release(
+            data_dir, release_dir=candidate.release_dir,
+            embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        retriever = HybridRetriever.from_data_dir(
+            data_dir, embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        results = retriever.retrieve(
+            "Can you compare Prøve i Dansk 1, Prøve i Dansk 2, "
+            "Prøve i Dansk 3, and Studieprøven for permanent residence?"
+        )
+        self.assertTrue(any(
+            "Prøve i Dansk 1 (PD1) består af en skriftlig og en mundtlig del."
+            in result["content"] for result in results
+        ))
+        self.assertTrue(any(
+            "Studieprøven består af en skriftlig og en mundtlig del."
+            in result["content"] for result in results
+        ))
+        self.assertEqual(len(results), 3)
+
+    def test_certificate_list_retains_separate_introductory_context(self):
+        candidate = self.build_candidate("candidate")
+        provider = DeterministicEmbeddingProviderFixture()
+        data_dir = self.root / "installed"
+        install_knowledge_release(
+            data_dir, release_dir=candidate.release_dir,
+            embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        retriever = HybridRetriever.from_data_dir(
+            data_dir, embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        documents = candidate.release["documents"]
+        checklist = next(d for d in documents
+                         if "Dokumentation for danskkundskaber" in d["content"])
+        equivalent_three = {
+            d["chunk_index"]: d for d in documents
+            if d["source_id"] == "nyidanmark-equivalent-tests-language-test-3"
+        }
+        equivalent_two = next(d for d in documents
+                              if d["source_id"] == "nyidanmark-equivalent-tests-language-test-2")
+        # Reproduce the captured provider rankings: the useful old-certificate
+        # list tail is selected, but its governing introduction falls outside
+        # both channel windows. Context must remain separate signed evidence.
+        ranking = [d["document_id"] for d in (
+            checklist, equivalent_three[1], equivalent_two,
+        )]
+        with (
+            patch.object(retriever, "_lexical_ranked_ids", return_value=ranking),
+            patch.object(retriever, "_dense_ranked_ids", return_value=ranking),
+        ):
+            for question in (
+                "I have an old Danish certificate. Can you tell me whether SIRI "
+                "will accept it for permanent residence?",
+                "Explain the official information about older certificate equivalence.",
+                "Which older diploma is accepted as equivalent?",
+            ):
+                with self.subTest(question=question):
+                    results = retriever.retrieve(question, limit=3)
+                    self.assertEqual(len(results), 3)
+                    result_ids = {d["document_id"] for d in results}
+                    for index in (0, 1):
+                        expected = equivalent_three[index]
+                        self.assertIn(expected["document_id"], result_ids)
+                        actual = next(d for d in results
+                                      if d["document_id"] == expected["document_id"])
+                        self.assertEqual(actual["content"], expected["content"])
+                        self.assertEqual(actual["chunk_content_sha256"],
+                                         expected["chunk_content_sha256"])
+            ordinary = retriever.retrieve("What language requirement applies to residence?")
+            self.assertNotIn(equivalent_three[0]["document_id"],
+                             {d["document_id"] for d in ordinary})
+
+    def test_title_matches_cannot_admit_blocked_sources(self):
+        candidate = self.build_candidate("candidate")
+        provider = DeterministicEmbeddingProviderFixture()
+        data_dir = self.root / "installed"
+        install_knowledge_release(
+            data_dir, release_dir=candidate.release_dir,
+            embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        retriever = HybridRetriever.from_data_dir(
+            data_dir, embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        primary = "nyidanmark-permanent-residence-language-requirements"
+        primary_ids = [
+            key for key, value in retriever.documents_by_id.items()
+            if value["source_id"] == primary
+        ]
+        # Controlled runtime metadata changes; signed release files stay intact.
+        for field, value in (
+            ("source_health", "changed-unreviewed"),
+            ("source_health", "broken"),
+            ("source_health", "extraction-failed"),
+            ("review_state", "unapproved"),
+        ):
+            with self.subTest(field=field, value=value):
+                for document_id in primary_ids:
+                    document = retriever.documents_by_id[document_id]
+                    document["source_health"] = "healthy"
+                    document["review_state"] = "approved-current"
+                    document[field] = value
+                with (
+                    patch.object(retriever, "_lexical_ranked_ids", return_value=primary_ids),
+                    patch.object(retriever, "_dense_ranked_ids", return_value=primary_ids),
+                ):
+                    for question in (
+                        "Permanent residence requirements", "PD2 residence requirements",
+                        "Danish examination requirements", "Compare PD1 and PD3",
+                    ):
+                        self.assertEqual(retriever.retrieve(question), [])
 
     def test_release_changes_during_extraction_keep_prior_release_active(self):
         provider = DeterministicEmbeddingProviderFixture()

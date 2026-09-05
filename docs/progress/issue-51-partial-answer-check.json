@@ -1,0 +1,21 @@
+{
+  "case_id": "eval-004-certificate-equivalence-boundary",
+  "contains_prompt_or_answer_text": false,
+  "establishes_required_fact_coverage": false,
+  "execution_completed": true,
+  "implementation_sha256": {
+    "danish_rag/answer_pipeline.py": "0bc8eb1ec88007beaee4a0ff7cd28b1263ab3c9f1ef14b466bfd6c1d0455e277",
+    "danish_rag/answer_verification.py": "c128f5d203cbbd585fc658f271251ffb7511dbe65e9932134c7fb9a937c11e25",
+    "danish_rag/retrieval.py": "1f555749cc315a0895d02a731a51a992fb71a266e2a23a4fe2adae62023b75f3"
+  },
+  "independent_human_review_completed": false,
+  "is_complete_ten_case_capture": false,
+  "omitted_reasons": {
+    "hard_constraint": 1,
+    "unsupported": 2
+  },
+  "omitted_section_count": 3,
+  "private_diagnostic_sha256": "1d636dcb99daab2548c92a35bd2ac047dabba44cf3eced74f00cbc7b8abae6ba",
+  "retained_official_fact_count": 5,
+  "verification_status": "partial"
+}

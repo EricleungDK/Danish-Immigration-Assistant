@@ -167,9 +167,10 @@ First run the strict live release monitors:
   --strict
 ```
 
-The new production candidate has separate [issue #51 qualification evidence](docs/progress/issue-51-live-qualification.md).
-Its retrieval and live answer checks failed; the private diagnostic packet does
-not establish semantic qualification or replace packet G.
+The original [issue #51 qualification run](docs/progress/issue-51-live-qualification.md)
+failed. The [engineering remediation and current review handoff](docs/progress/issue-51-engineering-remediation.md)
+now record passing machine gates and the exact new private packet for independent
+human review. Semantic qualification remains pending; packet G is unchanged.
 
 Canonical private packet G was generated directly with the approved local
 runtime, model, and corpus. Both outputs are private mode-`0600` evidence. Do
@@ -207,6 +208,25 @@ Captured replay rejects any whole-file hash or validated internal binding
 mismatch. Its report records `live_provider_calls: false`. It remains
 non-strict until an independent reviewer supplies the exact-bound
 adjudications; none are supplied here.
+
+For a **new candidate** whose corpus differs from the release-policy corpus,
+keep the same exact packet/report hash arguments and additionally supply
+`--candidate-release-dir /path/to/signed/release`,
+`--candidate-manifest-sha256 <exact-manifest-sha256>`, and
+`--trust-root-path /path/to/trusted/root.json`. Replay verifies the signature,
+artifact integrity, and every captured evidence field against that candidate.
+It still requires error-free executions and the approved runtime/model identity.
+The resulting report is scoped `explicit-candidate-only`; it does not promote
+release policy or replace canonical packet G.
+
+Open [the local semantic review page](review/semantic-adjudication-review.html)
+and load the **new packet named in the current review handoff**. Review each
+exact answer and its cited evidence. Mark unsupported claims as failed and use
+not evaluable when the evidence is insufficient to decide. Only the independent
+human reviewer should complete the attestation
+and export the adjudication bundle. Supply that private export with
+`--adjudications /path/to/export.json` when replaying the same exact packet;
+workflow evidence is collected separately.
 
 The live run generated at `2026-07-14T18:06:02Z` completed all 20 surfaces with
 zero execution errors.

@@ -269,16 +269,74 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
             result.answer["assumptions"],
             [
                 (
-                    "You are asking for a general explanation of the Danish examination "
-                    "term, not a personal eligibility decision."
+                    "I am explaining the examination term generally and, where the "
+                    "sources support it, its relevance to permanent-residence language "
+                    "requirements. This is not a personal eligibility decision."
                 )
             ],
         )
-        self.assertEqual(retriever.calls, ["What is PD3?"])
+        self.assertEqual(len(retriever.calls), 1)
+        self.assertIn(result.answer["assumptions"][0], retriever.calls[0])
+        self.assertEqual(generator.calls[0]["question"], retriever.calls[0])
         self.assertEqual(
             generator.calls[0]["schema"],
             answer_schema(["di-rag-doc-permanent-residence-language"]),
         )
+
+    def test_definition_does_not_override_consequential_application_ambiguity(self):
+        retriever = CountingRetriever()
+        generator = FixtureAnswerGenerator()
+        result = AnswerService(retriever=retriever, generator=generator).answer(
+            "What is PD3 for permanent residence or citizenship?",
+            provider_configuration(),
+        )
+        self.assertEqual(result.answer["response_kind"], "clarification")
+        self.assertEqual(retriever.calls, [])
+        self.assertEqual(generator.calls, [])
+
+    def test_explicit_registration_definition_does_not_gain_residence_context(self):
+        retriever = CountingRetriever()
+        generator = FixtureAnswerGenerator()
+        question = "What is PD3 registration?"
+        result = AnswerService(retriever=retriever, generator=generator).answer(
+            question, provider_configuration(),
+        )
+        self.assertEqual(result.answer["response_kind"], "answer")
+        self.assertEqual(retriever.calls, [question])
+        self.assertEqual(generator.calls[0]["question"], question)
+
+    def test_application_specific_definition_without_purpose_needs_clarification(self):
+        for question in (
+            "What does PD3 mean for my application?",
+            "What does Studieprøven mean for my application?",
+            "What does Studieproven mean for my application?",
+            "What is PD3 for permanent-residence or citizenship?",
+        ):
+            with self.subTest(question=question):
+                retriever = CountingRetriever()
+                generator = FixtureAnswerGenerator()
+                result = AnswerService(retriever=retriever, generator=generator).answer(
+                    question, provider_configuration(),
+                )
+                self.assertEqual(result.answer["response_kind"], "clarification")
+                self.assertEqual(retriever.calls, [])
+                self.assertEqual(generator.calls, [])
+
+    def test_other_explicit_definition_purpose_does_not_gain_residence_context(self):
+        for question in (
+            "What is PD3 for university admission?",
+            "What does PD3 mean in professional accreditation?",
+            "What does PD3 cost?",
+        ):
+            with self.subTest(question=question):
+                retriever = CountingRetriever()
+                generator = FixtureAnswerGenerator()
+                result = AnswerService(retriever=retriever, generator=generator).answer(
+                    question, provider_configuration(),
+                )
+                self.assertEqual(result.answer["response_kind"], "answer")
+                self.assertEqual(retriever.calls, [question])
+                self.assertEqual(generator.calls[0]["question"], question)
 
     async def test_clarification_turn_stays_in_conversation_and_feeds_next_question(self):
         generator = FixtureAnswerGenerator()

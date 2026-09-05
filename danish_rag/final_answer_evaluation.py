@@ -44,7 +44,7 @@ from .provider_setup import (
     default_config_path,
     load_provider_configuration,
 )
-from .retrieval import HybridRetriever
+from .retrieval import HybridRetriever, _attach_source_metadata
 
 
 SCHEMA_VERSION = "final-answer-evaluation-v1"
@@ -258,6 +258,9 @@ def build_captured_live_ollama_runner(
     execution_capture_sha256: str,
     capture_report_path: str | Path,
     capture_report_sha256: str,
+    candidate_release_dir: str | Path | None = None,
+    candidate_manifest_sha256: str | None = None,
+    trust_root_path: str | Path | None = None,
 ) -> CapturedLiveOllamaCaseRunner:
     """Load and validate a private exact capture without invoking a provider."""
 
@@ -294,6 +297,32 @@ def build_captured_live_ollama_runner(
         root / DEFAULT_RELEASE_QUALIFICATION_PATH,
         label="release qualification",
     )
+    candidate = None
+    candidate_provenance: dict[str, Any] = {}
+    if candidate_release_dir is not None:
+        if not candidate_manifest_sha256 or trust_root_path is None:
+            raise FinalAnswerEvaluationError(
+                "candidate replay requires an exact manifest SHA-256 and trust root"
+            )
+        candidate_path = Path(candidate_release_dir).expanduser()
+        _verify_expected_file_sha256(
+            candidate_path / "manifest.json",
+            expected_sha256=candidate_manifest_sha256,
+            label="candidate manifest",
+        )
+        candidate = verify_knowledge_release(
+            candidate_path, trust_root_path=trust_root_path
+        )
+        candidate_provenance = {
+            "qualification_scope": "explicit-candidate-only",
+            "candidate_manifest_sha256": candidate_manifest_sha256,
+            "candidate_knowledge_release_id": candidate["manifest"]["knowledge_release_id"],
+            "release_policy_changed": False,
+        }
+    elif candidate_manifest_sha256 is not None or trust_root_path is not None:
+        raise FinalAnswerEvaluationError(
+            "candidate manifest SHA-256 and trust root require a candidate release directory"
+        )
     approved_identity = _validate_capture_report(
         source_report,
         dataset=dataset,
@@ -302,6 +331,7 @@ def build_captured_live_ollama_runner(
         quality_bar_sha256=_sha256_file(quality_bar_path),
         runtime_policy=runtime_policy,
         release_qualification=release_qualification,
+        candidate_manifest=candidate["manifest"] if candidate else None,
     )
     executions = _validate_execution_capture(
         packet,
@@ -310,6 +340,8 @@ def build_captured_live_ollama_runner(
         dataset_sha256=dataset_sha256,
         approved_identity=approved_identity,
     )
+    if candidate is not None:
+        _validate_candidate_evidence(executions, candidate=candidate)
     return CapturedLiveOllamaCaseRunner(
         executions=executions,
         public_identity=approved_identity,
@@ -321,6 +353,7 @@ def build_captured_live_ollama_runner(
             "original_execution_mode": "live-ollama",
             "original_live_provider_calls": True,
             "scoring_live_provider_calls": False,
+            **candidate_provenance,
         },
     )
 
@@ -364,6 +397,7 @@ def _validate_capture_report(
     quality_bar_sha256: str,
     runtime_policy: dict[str, Any],
     release_qualification: dict[str, Any],
+    candidate_manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if report.get("schema_version") != SCHEMA_VERSION:
         raise FinalAnswerEvaluationError("capture report has an unsupported schema")
@@ -410,6 +444,8 @@ def _validate_capture_report(
     active_corpus = release_qualification["active_corpus_requirements"][
         "knowledge_release_id"
     ]
+    if candidate_manifest is not None:
+        active_corpus = candidate_manifest["corpus_id"]
     identity = report.get("identity")
     if not isinstance(identity, dict):
         raise FinalAnswerEvaluationError("capture report has no provider identity")
@@ -640,6 +676,38 @@ def _validate_captured_result_identity(
             if value not in {None, "", approved_identity["corpus_id"]}:
                 raise FinalAnswerEvaluationError(
                     f"execution capture case {case_id} evidence has a mismatched corpus"
+                )
+
+
+def _validate_candidate_evidence(
+    executions: dict[str, CaseExecution], *, candidate: dict[str, Any]
+) -> None:
+    """Bind every captured evidence field to the signed candidate artifacts."""
+    manifest = candidate["manifest"]
+    sources = {item["source_id"]: item for item in manifest["sources"]}
+    documents = {
+        item["document_id"]: _attach_source_metadata(item, sources[item["source_id"]])
+        for item in candidate["documents"]
+    }
+    for case_id, execution in executions.items():
+        for item in execution.evidence:
+            document = documents.get(item.get("document_id"))
+            if document is None:
+                raise FinalAnswerEvaluationError(
+                    f"execution capture case {case_id} evidence is absent from candidate"
+                )
+            expected = {
+                **document,
+                "citation_id": document["document_id"],
+                "corpus_identity": manifest["corpus_id"],
+                "knowledge_release_id": manifest["knowledge_release_id"],
+            }
+            # Ranking scores are query-derived; all factual/trust metadata must
+            # come from the verified release, without unbound extra fields.
+            observed = {key: value for key, value in item.items() if key != "retrieval_score"}
+            if observed != expected:
+                raise FinalAnswerEvaluationError(
+                    f"execution capture case {case_id} evidence differs from signed candidate"
                 )
 
 
@@ -1895,8 +1963,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--trust-root-path",
         help=(
             "Trusted application-configured release root for a non-bundled active "
-            "release in live-ollama mode."
+            "release in live-ollama mode or explicit candidate replay."
         ),
+    )
+    parser.add_argument(
+        "--candidate-release-dir",
+        help="Verify this signed candidate for replay only; does not promote release policy.",
+    )
+    parser.add_argument(
+        "--candidate-manifest-sha256",
+        help="Exact expected SHA-256 of the candidate manifest used for replay.",
     )
     parser.add_argument(
         "--execution-capture",
@@ -2002,14 +2078,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             or args.execution_capture_sha256
             or args.capture_report
             or args.capture_report_sha256
+            or args.candidate_release_dir
+            or args.candidate_manifest_sha256
         ):
             raise FinalAnswerEvaluationError(
                 "execution-capture and capture-report paths and SHA-256 values "
                 "are only valid in captured-live-ollama mode"
             )
-        if args.trust_root_path and args.mode != "live-ollama":
+        if args.trust_root_path and not (
+            args.mode == "live-ollama"
+            or (args.mode == "captured-live-ollama" and args.candidate_release_dir)
+        ):
             raise FinalAnswerEvaluationError(
-                "--trust-root-path is only valid in live-ollama mode"
+                "--trust-root-path requires live-ollama mode or explicit candidate replay"
             )
         adjudications = None
         if args.adjudications:
@@ -2050,6 +2131,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 execution_capture_sha256=args.execution_capture_sha256,
                 capture_report_path=args.capture_report,
                 capture_report_sha256=args.capture_report_sha256,
+                candidate_release_dir=args.candidate_release_dir,
+                candidate_manifest_sha256=args.candidate_manifest_sha256,
+                trust_root_path=args.trust_root_path,
             )
         elif args.mode == "live-ollama":
             configuration = load_provider_configuration(args.config_path)
