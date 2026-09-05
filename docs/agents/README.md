@@ -45,6 +45,9 @@ does not override those sources.
   so release evaluation can hash and validate it.
 - [Issue #50 production knowledge release](../progress/issue-50-production-knowledge-release.md)
   records the reviewed semantic-chunk builder, v2 key reset, and live candidate installation.
+- [Issue #51 live qualification evidence](../progress/issue-51-live-qualification.md)
+  records production-candidate retrieval misses, live answer-validation failures,
+  private packet custody, and the remaining independent-human review requirement.
 
 ## Quick Verification
 

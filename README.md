@@ -167,6 +167,10 @@ First run the strict live release monitors:
   --strict
 ```
 
+The new production candidate has separate [issue #51 qualification evidence](docs/progress/issue-51-live-qualification.md).
+Its retrieval and live answer checks failed; the private diagnostic packet does
+not establish semantic qualification or replace packet G.
+
 Canonical private packet G was generated directly with the approved local
 runtime, model, and corpus. Both outputs are private mode-`0600` evidence. Do
 not rerun this command unless deliberately replacing the canonical execution:

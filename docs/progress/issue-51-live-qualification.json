@@ -1,0 +1,290 @@
+{
+  "candidate_provenance": {
+    "dense_index_sha256": "0cbe8be8ac28963be2cea0edea4643d6e4fdf78b9bab43696434c4cfc87ef953",
+    "index_metadata": {
+      "content_unit_schema_version": "semantic-chunk-v1",
+      "corpus_identity": "kr-2026-09-05.1",
+      "corpus_schema_version": "2.0",
+      "dense_engine": "local-dense-json",
+      "embedding_model": "embeddinggemma",
+      "embedding_model_identity": {
+        "capabilities": [
+          "embedding"
+        ],
+        "details": {
+          "families": [
+            "gemma3"
+          ],
+          "family": "gemma3",
+          "format": "gguf",
+          "parameter_size": "307.58M",
+          "parent_model": "embeddinggemma:300m-bf16",
+          "quantization_level": "BF16"
+        },
+        "digest": "85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1",
+        "identity_fingerprint_sha256": "8a443f6ccccb2419c10579a5939ac62d508325362b136a0c55dc0a85ac0c2bb5",
+        "model": "embeddinggemma:latest",
+        "model_info": {
+          "gemma3.attention.causal": false,
+          "gemma3.attention.head_count": 3,
+          "gemma3.attention.head_count_kv": 1,
+          "gemma3.attention.key_length": 256,
+          "gemma3.attention.layer_norm_rms_epsilon": 1e-06,
+          "gemma3.attention.sliding_window": 512,
+          "gemma3.attention.sliding_window_pattern": null,
+          "gemma3.attention.value_length": 256,
+          "gemma3.block_count": 24,
+          "gemma3.context_length": 2048,
+          "gemma3.embedding_length": 768,
+          "gemma3.feed_forward_length": 1152,
+          "gemma3.pooling_type": 1,
+          "gemma3.rope.freq_base": 1000000,
+          "general.architecture": "gemma3",
+          "general.basename": "embeddinggemma",
+          "general.file_type": 32,
+          "general.license": "gemma",
+          "general.parameter_count": 307581696,
+          "general.quantization_version": 2,
+          "general.size_label": "300M",
+          "general.tags": null,
+          "general.type": "model",
+          "tokenizer.ggml.add_bos_token": true,
+          "tokenizer.ggml.add_eos_token": true,
+          "tokenizer.ggml.add_sep_token": false,
+          "tokenizer.ggml.add_space_prefix": false,
+          "tokenizer.ggml.bos_token_id": 2,
+          "tokenizer.ggml.eos_token_id": 1,
+          "tokenizer.ggml.model": "llama",
+          "tokenizer.ggml.padding_token_id": 0,
+          "tokenizer.ggml.pre": "default",
+          "tokenizer.ggml.scores": null,
+          "tokenizer.ggml.token_type": null,
+          "tokenizer.ggml.tokens": null,
+          "tokenizer.ggml.unknown_token_id": 3
+        },
+        "modified_at": "2026-07-19T20:11:08.649236761+02:00"
+      },
+      "embedding_provider": "ollama",
+      "indexed_unit": "semantic-chunk",
+      "knowledge_release_id": "kr-2026-09-05.1",
+      "lexical_engine": "sqlite-fts5",
+      "retrieval": "hybrid",
+      "rrf_k": 60,
+      "schema_version": "hybrid-chunk-index-v1",
+      "vector_dimensions": 768
+    },
+    "manifest_sha256": "b154ef00bd63a6a8b5eac526a5e5af7653e7754ac55e1e40fbc72b0d1234b0fb"
+  },
+  "dataset": {
+    "case_count": 20,
+    "dataset_id": "di-rag-eval-set-v0.1-candidate",
+    "sha256": "468bede9c7f55c8c06ace2f48d7df54e7861b0267bc2eee2ea1c855651b89dab",
+    "uses_production_user_conversation_data": false,
+    "version": "0.1.0-candidate"
+  },
+  "error_counts": {
+    "AnswerValidationError": 8
+  },
+  "execution": {
+    "answer_case_execution_count": 10,
+    "case_count": 20,
+    "completed_count": 14,
+    "error_count": 8,
+    "live_provider_calls": true,
+    "mode": "live-ollama",
+    "not_evaluable_count": 6
+  },
+  "generated_at_utc": "2026-09-05T15:37:38Z",
+  "generation_observations": [
+    {
+      "digest": "4eb23ef187e2c5462566d6a1d3bbbc2f1346d0b4327cbb66d58fffbcc9b2b05c",
+      "identity": {
+        "architecture": "gemma4",
+        "family": "gemma4",
+        "quantization_level": "Q4_K_M"
+      },
+      "model": "gemma4:12b",
+      "observed_at_utc": "2026-09-05T15:35:54.182551+00:00",
+      "provider_version": "0.30.6"
+    },
+    {
+      "digest": "4eb23ef187e2c5462566d6a1d3bbbc2f1346d0b4327cbb66d58fffbcc9b2b05c",
+      "identity": {
+        "architecture": "gemma4",
+        "family": "gemma4",
+        "quantization_level": "Q4_K_M"
+      },
+      "model": "gemma4:12b",
+      "observed_at_utc": "2026-09-05T15:40:03.822462+00:00",
+      "provider_version": "0.30.6"
+    }
+  ],
+  "identity": {
+    "corpus_id": "kr-2026-09-05.1",
+    "model": "gemma4:12b",
+    "model_identity": {
+      "architecture": "gemma4",
+      "family": "gemma4",
+      "quantization_level": "Q4_K_M"
+    },
+    "provider_id": "ollama",
+    "provider_version": "0.30.6"
+  },
+  "independent_human_adjudication": "not_supplied",
+  "metrics": {
+    "case_execution_errors": {
+      "observed": 8,
+      "status": "failed",
+      "threshold": 0
+    },
+    "citation_correctness": {
+      "incorrect_relation_count": 0,
+      "not_evaluable_relation_count": 0,
+      "observed": null,
+      "reason": "Some paraphrased claim-to-evidence relationships lack independent adjudication; exact support was not invented.",
+      "relation_count": 4,
+      "status": "not_evaluable",
+      "supported_relation_count": 4,
+      "threshold": 1.0
+    },
+    "clarify_answer_refuse_accuracy": {
+      "applicable_case_count": 20,
+      "best_possible": 1.0,
+      "case_count": 20,
+      "failed_case_count": 0,
+      "not_applicable_case_count": 0,
+      "not_evaluable_case_count": 14,
+      "observed": 0.3,
+      "passed_case_count": 6,
+      "status": "not_evaluable",
+      "threshold": 0.95
+    },
+    "evaluation_surface_completion": {
+      "case_count": 20,
+      "completed_case_count": 14,
+      "observed": 0.7,
+      "status": "not_evaluable",
+      "threshold": 1.0
+    },
+    "forbidden_claims": {
+      "expectation_count": 41,
+      "observed": null,
+      "reason": "The dataset forbidden_claims entries are prose instructions without machine-readable matchers or complete adjudications.",
+      "status": "not_evaluable",
+      "threshold": 0
+    },
+    "forbidden_source_domain_violations": {
+      "observed": 0,
+      "status": "not_evaluable",
+      "threshold": 0
+    },
+    "fresh_tomato_min_material_source_rule_pass_rate": {
+      "applicable_case_count": 13,
+      "failed_case_count": 0,
+      "not_evaluable_case_count": 8,
+      "observed": 0.38461538461538464,
+      "passed_case_count": 5,
+      "status": "not_evaluable",
+      "threshold": 1.0
+    },
+    "official_fact_citation_coverage": {
+      "cited_official_fact_count": 4,
+      "observed": 1.0,
+      "official_fact_count": 4,
+      "status": "not_evaluable",
+      "threshold": 1.0
+    },
+    "personal_eligibility_conclusions": {
+      "observed": 0,
+      "status": "not_evaluable",
+      "threshold": 0
+    },
+    "privacy_requirement_compliance": {
+      "compliant_count": 4,
+      "expectation_count": 20,
+      "failed_count": 0,
+      "not_evaluable_count": 16,
+      "observed": null,
+      "status": "not_evaluable",
+      "threshold": 1.0
+    },
+    "required_fact_coverage": {
+      "expectation_count": 60,
+      "observed": null,
+      "reason": "The dataset required_facts entries are prose instructions without machine-readable fact identifiers or complete adjudications.",
+      "status": "not_evaluable",
+      "threshold": 0.95
+    },
+    "required_source_domain_coverage": {
+      "missing_domain_count": 0,
+      "observed": 1.0,
+      "required_domain_count": 3,
+      "status": "not_evaluable",
+      "threshold": 1.0
+    },
+    "trust_indicator_correctness": {
+      "best_possible": 1.0,
+      "case_count": 20,
+      "failed_case_count": 0,
+      "not_evaluable_case_count": 14,
+      "observed": 0.3,
+      "passed_case_count": 6,
+      "status": "not_evaluable",
+      "threshold": 0.95
+    },
+    "unsupported_claim_rate": {
+      "audited_claim_count": 4,
+      "not_evaluable_count": 0,
+      "observed": 0.0,
+      "status": "not_evaluable",
+      "threshold": 0.0,
+      "unsupported_count": 0
+    }
+  },
+  "privacy_assertions": {
+    "contains_case_prompts": false,
+    "contains_conversation_identifiers": false,
+    "contains_conversation_records": false,
+    "contains_generated_answer_text": false
+  },
+  "private_evidence": {
+    "case_count": 10,
+    "companion_report_sha256": "6b271c141490c6629df5ef43f3853d307225de774d0bb4376af6c5fa193545be",
+    "file_mode": "0600",
+    "internal_hash_bindings_verified": true,
+    "packet_sha256": "ee03fd34324b7925e7a4bcbb53e1eba6411de09b2cbbf5b1475a2122225bbffe"
+  },
+  "qualification_status": "blocked",
+  "quality_bar": {
+    "quality_bar_id": "mvp-evaluation-quality-bar-issue-7",
+    "sha256": "415981ae0aa134a072632c73c58d8a93d1be76264738265c8d9d61ba03ab053f",
+    "version": "0.1.0-candidate"
+  },
+  "release_decision": "do-not-release",
+  "retrieval_report_sha256": "f612434422d9b13a3c681dc5e4aea0143360ad0cf97500eb4a3a58ad349cd2d6",
+  "schema_version": "issue-51-live-qualification-evidence-v1",
+  "scope": {
+    "controlled_source_policy_cases": 4,
+    "grounded_flexibility_answer_semantics": "not_evaluated",
+    "grounded_flexibility_retrieval_cases": 9,
+    "live_answer_path_cases": 10,
+    "unevaluated_workflow_cases": 6
+  },
+  "strict_passed": false,
+  "threshold_failures": [
+    "required_fact_coverage",
+    "forbidden_claims",
+    "privacy_requirement_compliance",
+    "official_fact_citation_coverage",
+    "citation_correctness",
+    "unsupported_claim_rate",
+    "personal_eligibility_conclusions",
+    "clarify_answer_refuse_accuracy",
+    "trust_indicator_correctness",
+    "fresh_tomato_min_material_source_rule_pass_rate",
+    "required_source_domain_coverage",
+    "forbidden_source_domain_violations",
+    "case_execution_errors",
+    "evaluation_surface_completion"
+  ]
+}
