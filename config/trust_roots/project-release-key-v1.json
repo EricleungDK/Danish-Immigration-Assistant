@@ -1,9 +1,15 @@
 {
   "algorithm": "ed25519",
+  "allowed_manifest_sha256": [
+    "d7326bbf091fc44cd97696a3ba30da2fff43c1c25d0d84b237867ec8c186a538"
+  ],
   "created_date": "2026-07-14",
   "private_key_committed": false,
   "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASQJ1Cy8eBxVXQ765ScKBZ5MW1oMX1EFtWFoQBzcTrXM=\n-----END PUBLIC KEY-----\n",
+  "replacement_trust_root_id": "project-release-key-v2",
+  "retired_date": "2026-09-05",
+  "retirement_reason": "Private-key custody unavailable; user authorized a replacement key. Verification retained only for the exact historical fixture manifest.",
   "schema_version": "1.0",
-  "status": "active",
+  "status": "retired",
   "trust_root_id": "project-release-key-v1"
 }

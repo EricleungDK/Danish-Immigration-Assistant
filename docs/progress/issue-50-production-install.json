@@ -1,0 +1,783 @@
+{
+  "candidate_identity": {
+    "corpus_artifact_sha256": "5250e3598a15ba68b9b6aab7ee653b50dff6210f64bf6c55c791cc1954336e30",
+    "index_metadata": {
+      "content_unit_schema_version": "semantic-chunk-v1",
+      "corpus_identity": "kr-2026-09-05.1",
+      "corpus_schema_version": "2.0",
+      "dense_engine": "local-dense-json",
+      "embedding_model": "embeddinggemma",
+      "embedding_model_identity": {
+        "capabilities": [
+          "embedding"
+        ],
+        "details": {
+          "families": [
+            "gemma3"
+          ],
+          "family": "gemma3",
+          "format": "gguf",
+          "parameter_size": "307.58M",
+          "parent_model": "embeddinggemma:300m-bf16",
+          "quantization_level": "BF16"
+        },
+        "digest": "85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1",
+        "identity_fingerprint_sha256": "8a443f6ccccb2419c10579a5939ac62d508325362b136a0c55dc0a85ac0c2bb5",
+        "model": "embeddinggemma:latest",
+        "model_info": {
+          "gemma3.attention.causal": false,
+          "gemma3.attention.head_count": 3,
+          "gemma3.attention.head_count_kv": 1,
+          "gemma3.attention.key_length": 256,
+          "gemma3.attention.layer_norm_rms_epsilon": 1e-06,
+          "gemma3.attention.sliding_window": 512,
+          "gemma3.attention.sliding_window_pattern": null,
+          "gemma3.attention.value_length": 256,
+          "gemma3.block_count": 24,
+          "gemma3.context_length": 2048,
+          "gemma3.embedding_length": 768,
+          "gemma3.feed_forward_length": 1152,
+          "gemma3.pooling_type": 1,
+          "gemma3.rope.freq_base": 1000000,
+          "general.architecture": "gemma3",
+          "general.basename": "embeddinggemma",
+          "general.file_type": 32,
+          "general.license": "gemma",
+          "general.parameter_count": 307581696,
+          "general.quantization_version": 2,
+          "general.size_label": "300M",
+          "general.tags": null,
+          "general.type": "model",
+          "tokenizer.ggml.add_bos_token": true,
+          "tokenizer.ggml.add_eos_token": true,
+          "tokenizer.ggml.add_sep_token": false,
+          "tokenizer.ggml.add_space_prefix": false,
+          "tokenizer.ggml.bos_token_id": 2,
+          "tokenizer.ggml.eos_token_id": 1,
+          "tokenizer.ggml.model": "llama",
+          "tokenizer.ggml.padding_token_id": 0,
+          "tokenizer.ggml.pre": "default",
+          "tokenizer.ggml.scores": null,
+          "tokenizer.ggml.token_type": null,
+          "tokenizer.ggml.tokens": null,
+          "tokenizer.ggml.unknown_token_id": 3
+        },
+        "modified_at": "2026-07-19T20:11:08.649236761+02:00"
+      },
+      "embedding_provider": "ollama",
+      "indexed_unit": "semantic-chunk",
+      "knowledge_release_id": "kr-2026-09-05.1",
+      "lexical_engine": "sqlite-fts5",
+      "retrieval": "hybrid",
+      "rrf_k": 60,
+      "schema_version": "hybrid-chunk-index-v1",
+      "vector_dimensions": 768
+    },
+    "knowledge_release_id": "kr-2026-09-05.1",
+    "manifest_sha256": "b154ef00bd63a6a8b5eac526a5e5af7653e7754ac55e1e40fbc72b0d1234b0fb",
+    "signature_sha256": "6779fcc89dbcd25d9472d728b8daf08e398862c93be0f8c34488f6429892c908",
+    "trust_root_id": "project-release-key-v2"
+  },
+  "content_unit_schema_version": "semantic-chunk-v1",
+  "corpus_schema_version": "2.0",
+  "evidence_kind": "live-local-ollama-production-key-candidate-retrieval",
+  "indexed_chunk_count": 52,
+  "indexed_unit": "semantic-chunk",
+  "knowledge_release_id": "kr-2026-09-05.1",
+  "packet_g_used_as_qualification_evidence": false,
+  "queries": [
+    {
+      "blocked_result_ids": [],
+      "forbidden_document_ids": [
+        "di-rag-doc-citizenship-language"
+      ],
+      "forbidden_result_document_ids": [],
+      "id": "permanent-residence-language-requirement",
+      "missing_required_source_ids": [],
+      "query_text": "What Danish language test is required for permanent residence?",
+      "required_source_ids": [
+        "nyidanmark-permanent-residence-language-requirements"
+      ],
+      "results": [
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "268ef80c69cfdca6e912506be24b1375981af02759c5b9db8c10cdaaefeb3f87",
+          "chunk_id": "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+          "chunk_index": 0,
+          "citation_id": "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+          "content": "Breadcrumb Frontpage Words and concepts Tests equivalent to or higher than the Danish language test 2 Below is a list of Danish language tests that are equivalent to or higher than the Danish language test 2. List of Danish language tests that are equivalent to or higher than the Danish language test 2: Danskuddannelsernes Pr\u00f8ve i Dansk 2 (with an average score of 6 or higher on the Danish 13-point scale, or 02 on the Danish seven-point scale) FVU reading exam (level 2 or 3) FVU Danish exam (level 2 or 3) Any test considered to be of an equivalent or higher level than Danish language test 3 Send link Last updated 06-07-2022 - Published by: The Danish Immigration Service",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+          "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "en-GB",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "268ef80c69cfdca6e912506be24b1375981af02759c5b9db8c10cdaaefeb3f87",
+          "normalized_extraction_sha256": "bee3bb2f18b5c50633e2b83183d29df4074d30ec4864a1dd8c32d77f60651e91",
+          "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+          "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+          "retrieval_score": 0.032522475,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "8a7a21699e6639a7dea03f6d631706790fb9037c6858eeb900747c55a95d1e6c",
+          "source_document_id": "di-rag-doc-equivalent-tests-language-test-2",
+          "source_health": "healthy",
+          "source_id": "nyidanmark-equivalent-tests-language-test-2",
+          "title": "Tests equivalent to or higher than Danish language test 2",
+          "topic_tags": [
+            "permanent-residence",
+            "language-requirement",
+            "certificate-equivalence",
+            "exam-comparison"
+          ]
+        },
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "cf51db25aadcb636d34e75d1d861d061055615e0e67bd5e586a15a7d6f2ec5ba",
+          "chunk_id": "nyidanmark-equivalent-tests-language-test-3::chunk::5f9913e91f6590521504e21d",
+          "chunk_index": 2,
+          "citation_id": "nyidanmark-equivalent-tests-language-test-3::chunk::5f9913e91f6590521504e21d",
+          "content": "The Danish language test 3 at the study school in Copenhagen, the study school in Odense or \u00c5rhus Kommunes Sprogcenter. Passed Profiltest, taken at a language centre, with an average grade of at least 3.. Erhvervsforberedende pr\u00f8ve (ERH), taken at a language centre, passed with an average grade of at least 6 or B. Voksenuddannelsesforberedende pr\u00f8ve (VUF), taken at a language centre, passed with an average grade of at least 6 or B. Passed Danish as a second language, level 1, Dansk level 1 or Dansk level 2 as part of an avu programme with an average grade of at least 6 (on the Danish 13 point grading scale) or 02 (on the Danish 7 point grading scale) Social and health care helper education, the pedagogical basis education (pgu), social and healt care assistant education passed with an average grade of at least 6 (on the Danish 13 point grading scale) or 02 (on the Danish 7 point grading scale). Send link Last updated 07-07-2026 - Published by: The Danish Immigration Service",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "nyidanmark-equivalent-tests-language-test-3::chunk::5f9913e91f6590521504e21d",
+          "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "en-GB",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "eef9636a9273c8a55c51140198127dc8db0d3f7954c25665688388422a31365f",
+          "normalized_extraction_sha256": "d29ca772e35ae460f8b6ea142b0cc21ef54a72666f352d225d9b93f058ade5fd",
+          "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+          "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+          "retrieval_score": 0.03125,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "fd4271c42a66831270a201f4b4fc7b002851692154baf12d98f5220b54f8e18d",
+          "source_document_id": "di-rag-doc-equivalent-tests-language-test-3",
+          "source_health": "healthy",
+          "source_id": "nyidanmark-equivalent-tests-language-test-3",
+          "title": "Tests equivalent to or higher than Danish language test 3",
+          "topic_tags": [
+            "permanent-residence",
+            "language-requirement",
+            "certificate-equivalence",
+            "exam-comparison"
+          ]
+        },
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "883fe105b4327ecee0258030052c93275abbdc0fda8e800b756fd445042138c0",
+          "chunk_id": "nyidanmark-permanent-residence-language-requirements::chunk::d263b7fa25fd1a992edb53b1",
+          "chunk_index": 2,
+          "citation_id": "nyidanmark-permanent-residence-language-requirements::chunk::d263b7fa25fd1a992edb53b1",
+          "content": "2 eller 3 (opholdstilladelse givet p\u00e5 baggrund af familiesammenf\u00f8ring, asyl, studie eller arbejde mv.). Det fremg\u00e5r af din nuv\u00e6rende opholdstilladelse, hvilken lovbestemmelse (paragraf) den er givet efter. I visse tilf\u00e6lde kan du f\u00e5 permanent opholdstilladelse efter mindst 4 \u00e5rs uafbrudt lovligt ophold i Danmark. Hvis du har opholdstilladelse efter lov om midlertidig opholdstilladelse til personer, der er fordrevet fra Ukraine, eller lov om midlertidig opholdstilladelse til personer, der i Afghanistan har bist\u00e5et danske myndigheder m.v., opfylder du ikke opholdskravet, og dit ophold kan ikke indg\u00e5 i beregningen af de 8 \u00e5rs ophold. 8 \u00e5rs lovligt ophold Det er en grundl\u00e6ggende betingelse for at f\u00e5 permanent ophold, at du har haft mindst 8 \u00e5rs uafbrudt lovligt ophold i Danmark p\u00e5 det tidspunkt, hvor der tr\u00e6ffes afg\u00f8relse om permanent ophold. 4 \u00e5rs lovligt ophold Hvis du udover de grundl\u00e6ggende betingelser for permanent opholdstilladelse ogs\u00e5 opfylder alle 4 supplerende betingelser, kan du f\u00e5 permanent opholdstilladelse, hvis du har haft mindst 4 \u00e5rs uafbrudt lovligt ophold i Danmark p\u00e5 det tidspunkt, hvor der tr\u00e6ffes afg\u00f8relse om permanent ophold.",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "nyidanmark-permanent-residence-language-requirements::chunk::d263b7fa25fd1a992edb53b1",
+          "final_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "da",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "dffc130d82c2bc8cb753d0fab8d4a715b6cc25d383d158f267cd8e5b85c590ba",
+          "normalized_extraction_sha256": "02e7ab4dcf1cbc31f8ddcb8eb153fb78ab67b42237c2d25ab0c4813dfef7e2a8",
+          "official_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+          "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+          "retrieval_score": 0.029083246,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "cedc3526858d09626cee90236b9cb63e656426afddf7e6ed7d3d89b2d08cf186",
+          "source_document_id": "di-rag-doc-permanent-residence-language",
+          "source_health": "healthy",
+          "source_id": "nyidanmark-permanent-residence-language-requirements",
+          "title": "Permanent residence requirements",
+          "topic_tags": [
+            "permanent-residence",
+            "language-requirement",
+            "exam-comparison",
+            "certificate-equivalence"
+          ]
+        }
+      ]
+    },
+    {
+      "blocked_result_ids": [],
+      "forbidden_document_ids": [
+        "di-rag-doc-citizenship-language"
+      ],
+      "forbidden_result_document_ids": [],
+      "id": "language-test-2-equivalence",
+      "missing_required_source_ids": [],
+      "query_text": "Is FVU reading exam level 2 or 3 equivalent to Danish language test 2?",
+      "required_source_ids": [
+        "nyidanmark-equivalent-tests-language-test-2"
+      ],
+      "results": [
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "268ef80c69cfdca6e912506be24b1375981af02759c5b9db8c10cdaaefeb3f87",
+          "chunk_id": "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+          "chunk_index": 0,
+          "citation_id": "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+          "content": "Breadcrumb Frontpage Words and concepts Tests equivalent to or higher than the Danish language test 2 Below is a list of Danish language tests that are equivalent to or higher than the Danish language test 2. List of Danish language tests that are equivalent to or higher than the Danish language test 2: Danskuddannelsernes Pr\u00f8ve i Dansk 2 (with an average score of 6 or higher on the Danish 13-point scale, or 02 on the Danish seven-point scale) FVU reading exam (level 2 or 3) FVU Danish exam (level 2 or 3) Any test considered to be of an equivalent or higher level than Danish language test 3 Send link Last updated 06-07-2022 - Published by: The Danish Immigration Service",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+          "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "en-GB",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "268ef80c69cfdca6e912506be24b1375981af02759c5b9db8c10cdaaefeb3f87",
+          "normalized_extraction_sha256": "bee3bb2f18b5c50633e2b83183d29df4074d30ec4864a1dd8c32d77f60651e91",
+          "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+          "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+          "retrieval_score": 0.032786885,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "8a7a21699e6639a7dea03f6d631706790fb9037c6858eeb900747c55a95d1e6c",
+          "source_document_id": "di-rag-doc-equivalent-tests-language-test-2",
+          "source_health": "healthy",
+          "source_id": "nyidanmark-equivalent-tests-language-test-2",
+          "title": "Tests equivalent to or higher than Danish language test 2",
+          "topic_tags": [
+            "permanent-residence",
+            "language-requirement",
+            "certificate-equivalence",
+            "exam-comparison"
+          ]
+        },
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "ad3822716a9cf750147d79b22d7e8636a7dec443979447608b68d40d835d0857",
+          "chunk_id": "nyidanmark-equivalent-tests-language-test-3::chunk::78cd77db10c78420339c3608",
+          "chunk_index": 1,
+          "citation_id": "nyidanmark-equivalent-tests-language-test-3::chunk::78cd77db10c78420339c3608",
+          "content": "Proof of passed Danish \u2018gymnasium\u2019 final exams (STX, HF, HHX, HTX) or a minimum requirement for entrance exam in connection with a vocational program (eux). Proof of passed General Preparatory Examination (almen forberedelsesekamen \u2013 avu). Test diploma for passed single subjects in Danish or Danish as a second language with a passed test in at least one Danish discipline/subject area between the levels G-A and with a grade average of at least 6 (on the Danish 13 point grading scale) or 02 (on the Danish 7 point grading scale) from e.g. one of the following educations: stx, hf, hhx, htx, eux, eud or avu. Passed Danish level 4 FVU (before 1 August 2020: FVU-reading level 4). Proof of passed International Baccalaureate (IB) with Danish on an A or B level. Proof of having passed a higher educational program at a university, university college (e.g. business school, nursing college or teacher training college) etc., unless the program was not taken in Danish Previous tests which still qualify Passed Almenpr\u00f8ve 2, taken at a language centre, with an average grade of at least 6. Danskpr\u00f8ve 2, taken at a language centre, (known as Studiepr\u00f8ven from 2002).",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "nyidanmark-equivalent-tests-language-test-3::chunk::78cd77db10c78420339c3608",
+          "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "en-GB",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "eef9636a9273c8a55c51140198127dc8db0d3f7954c25665688388422a31365f",
+          "normalized_extraction_sha256": "d29ca772e35ae460f8b6ea142b0cc21ef54a72666f352d225d9b93f058ade5fd",
+          "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+          "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+          "retrieval_score": 0.032258065,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "fd4271c42a66831270a201f4b4fc7b002851692154baf12d98f5220b54f8e18d",
+          "source_document_id": "di-rag-doc-equivalent-tests-language-test-3",
+          "source_health": "healthy",
+          "source_id": "nyidanmark-equivalent-tests-language-test-3",
+          "title": "Tests equivalent to or higher than Danish language test 3",
+          "topic_tags": [
+            "permanent-residence",
+            "language-requirement",
+            "certificate-equivalence",
+            "exam-comparison"
+          ]
+        },
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "d49044cc8ded289ca8c46908cfe5b42cfbb0e7e1ea149b8557cf1af67d901d99",
+          "chunk_id": "nyidanmark-permanent-residence-language-requirements::chunk::4a1a3be630e8f0c0b17f3c3d",
+          "chunk_index": 21,
+          "citation_id": "nyidanmark-permanent-residence-language-requirements::chunk::4a1a3be630e8f0c0b17f3c3d",
+          "content": "L\u00e6s om tilmelding og pr\u00f8veafholdelse Forberedelse til pr\u00f8ven Medborgerskabspr\u00f8ven er udformet som en multiple choice-test og indeholder 25 sp\u00f8rgsm\u00e5l om det danske folkestyre og hverdagsliv, samt om dansk kultur og historie. Der er udarbejdet l\u00e6remateriale, s\u00e5 du kan forberede dig til pr\u00f8ven. Pr\u00f8vens sp\u00f8rgsm\u00e5l tager udgangspunkt i dette materiale. Find l\u00e6remateriale til medborgerskabspr\u00f8ven Aktivt medborgerskab Du kan opfylde den supplerende betingelse om medborgerskab, hvis du kan dokumentere, at du har udvist aktivt medborgerskab i Danmark gennem mindst 1 \u00e5rs medlemskab af en bestyrelse eller en organisation mv. Det er et krav, at der er tale om bestyrelser, organisationer mv., som i ord og handling underst\u00f8tter grundl\u00e6ggende demokratiske v\u00e6rdier og retsprincipper i det danske samfund. Det er ogs\u00e5 et krav, at der er tale om aktiviteter, der styrker din demokratiske udvikling og integration i Danmark, og som kan medvirke til at fremme medborgerskab og f\u00e6llesskab om det danske samfunds v\u00e6rdier, normer og principper. Det er ikke et krav, at du har deltaget i en organisation eller bestyrelse mv. uafbrudt igennem 1 \u00e5r.",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "nyidanmark-permanent-residence-language-requirements::chunk::4a1a3be630e8f0c0b17f3c3d",
+          "final_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "da",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "dffc130d82c2bc8cb753d0fab8d4a715b6cc25d383d158f267cd8e5b85c590ba",
+          "normalized_extraction_sha256": "02e7ab4dcf1cbc31f8ddcb8eb153fb78ab67b42237c2d25ab0c4813dfef7e2a8",
+          "official_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+          "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+          "retrieval_score": 0.030309989,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "cedc3526858d09626cee90236b9cb63e656426afddf7e6ed7d3d89b2d08cf186",
+          "source_document_id": "di-rag-doc-permanent-residence-language",
+          "source_health": "healthy",
+          "source_id": "nyidanmark-permanent-residence-language-requirements",
+          "title": "Permanent residence requirements",
+          "topic_tags": [
+            "permanent-residence",
+            "language-requirement",
+            "exam-comparison",
+            "certificate-equivalence"
+          ]
+        }
+      ]
+    },
+    {
+      "blocked_result_ids": [],
+      "forbidden_document_ids": [
+        "di-rag-doc-citizenship-language"
+      ],
+      "forbidden_result_document_ids": [],
+      "id": "language-test-3-equivalence",
+      "missing_required_source_ids": [],
+      "query_text": "Does an International Baccalaureate with Danish A or B qualify for language test 3 equivalence?",
+      "required_source_ids": [
+        "nyidanmark-equivalent-tests-language-test-3"
+      ],
+      "results": [
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "ad3822716a9cf750147d79b22d7e8636a7dec443979447608b68d40d835d0857",
+          "chunk_id": "nyidanmark-equivalent-tests-language-test-3::chunk::78cd77db10c78420339c3608",
+          "chunk_index": 1,
+          "citation_id": "nyidanmark-equivalent-tests-language-test-3::chunk::78cd77db10c78420339c3608",
+          "content": "Proof of passed Danish \u2018gymnasium\u2019 final exams (STX, HF, HHX, HTX) or a minimum requirement for entrance exam in connection with a vocational program (eux). Proof of passed General Preparatory Examination (almen forberedelsesekamen \u2013 avu). Test diploma for passed single subjects in Danish or Danish as a second language with a passed test in at least one Danish discipline/subject area between the levels G-A and with a grade average of at least 6 (on the Danish 13 point grading scale) or 02 (on the Danish 7 point grading scale) from e.g. one of the following educations: stx, hf, hhx, htx, eux, eud or avu. Passed Danish level 4 FVU (before 1 August 2020: FVU-reading level 4). Proof of passed International Baccalaureate (IB) with Danish on an A or B level. Proof of having passed a higher educational program at a university, university college (e.g. business school, nursing college or teacher training college) etc., unless the program was not taken in Danish Previous tests which still qualify Passed Almenpr\u00f8ve 2, taken at a language centre, with an average grade of at least 6. Danskpr\u00f8ve 2, taken at a language centre, (known as Studiepr\u00f8ven from 2002).",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "nyidanmark-equivalent-tests-language-test-3::chunk::78cd77db10c78420339c3608",
+          "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "en-GB",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "eef9636a9273c8a55c51140198127dc8db0d3f7954c25665688388422a31365f",
+          "normalized_extraction_sha256": "d29ca772e35ae460f8b6ea142b0cc21ef54a72666f352d225d9b93f058ade5fd",
+          "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+          "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+          "retrieval_score": 0.032522475,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "fd4271c42a66831270a201f4b4fc7b002851692154baf12d98f5220b54f8e18d",
+          "source_document_id": "di-rag-doc-equivalent-tests-language-test-3",
+          "source_health": "healthy",
+          "source_id": "nyidanmark-equivalent-tests-language-test-3",
+          "title": "Tests equivalent to or higher than Danish language test 3",
+          "topic_tags": [
+            "permanent-residence",
+            "language-requirement",
+            "certificate-equivalence",
+            "exam-comparison"
+          ]
+        },
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "268ef80c69cfdca6e912506be24b1375981af02759c5b9db8c10cdaaefeb3f87",
+          "chunk_id": "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+          "chunk_index": 0,
+          "citation_id": "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+          "content": "Breadcrumb Frontpage Words and concepts Tests equivalent to or higher than the Danish language test 2 Below is a list of Danish language tests that are equivalent to or higher than the Danish language test 2. List of Danish language tests that are equivalent to or higher than the Danish language test 2: Danskuddannelsernes Pr\u00f8ve i Dansk 2 (with an average score of 6 or higher on the Danish 13-point scale, or 02 on the Danish seven-point scale) FVU reading exam (level 2 or 3) FVU Danish exam (level 2 or 3) Any test considered to be of an equivalent or higher level than Danish language test 3 Send link Last updated 06-07-2022 - Published by: The Danish Immigration Service",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+          "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "en-GB",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "268ef80c69cfdca6e912506be24b1375981af02759c5b9db8c10cdaaefeb3f87",
+          "normalized_extraction_sha256": "bee3bb2f18b5c50633e2b83183d29df4074d30ec4864a1dd8c32d77f60651e91",
+          "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+          "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+          "retrieval_score": 0.031498016,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "8a7a21699e6639a7dea03f6d631706790fb9037c6858eeb900747c55a95d1e6c",
+          "source_document_id": "di-rag-doc-equivalent-tests-language-test-2",
+          "source_health": "healthy",
+          "source_id": "nyidanmark-equivalent-tests-language-test-2",
+          "title": "Tests equivalent to or higher than Danish language test 2",
+          "topic_tags": [
+            "permanent-residence",
+            "language-requirement",
+            "certificate-equivalence",
+            "exam-comparison"
+          ]
+        },
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "d49044cc8ded289ca8c46908cfe5b42cfbb0e7e1ea149b8557cf1af67d901d99",
+          "chunk_id": "nyidanmark-permanent-residence-language-requirements::chunk::4a1a3be630e8f0c0b17f3c3d",
+          "chunk_index": 21,
+          "citation_id": "nyidanmark-permanent-residence-language-requirements::chunk::4a1a3be630e8f0c0b17f3c3d",
+          "content": "L\u00e6s om tilmelding og pr\u00f8veafholdelse Forberedelse til pr\u00f8ven Medborgerskabspr\u00f8ven er udformet som en multiple choice-test og indeholder 25 sp\u00f8rgsm\u00e5l om det danske folkestyre og hverdagsliv, samt om dansk kultur og historie. Der er udarbejdet l\u00e6remateriale, s\u00e5 du kan forberede dig til pr\u00f8ven. Pr\u00f8vens sp\u00f8rgsm\u00e5l tager udgangspunkt i dette materiale. Find l\u00e6remateriale til medborgerskabspr\u00f8ven Aktivt medborgerskab Du kan opfylde den supplerende betingelse om medborgerskab, hvis du kan dokumentere, at du har udvist aktivt medborgerskab i Danmark gennem mindst 1 \u00e5rs medlemskab af en bestyrelse eller en organisation mv. Det er et krav, at der er tale om bestyrelser, organisationer mv., som i ord og handling underst\u00f8tter grundl\u00e6ggende demokratiske v\u00e6rdier og retsprincipper i det danske samfund. Det er ogs\u00e5 et krav, at der er tale om aktiviteter, der styrker din demokratiske udvikling og integration i Danmark, og som kan medvirke til at fremme medborgerskab og f\u00e6llesskab om det danske samfunds v\u00e6rdier, normer og principper. Det er ikke et krav, at du har deltaget i en organisation eller bestyrelse mv. uafbrudt igennem 1 \u00e5r.",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "nyidanmark-permanent-residence-language-requirements::chunk::4a1a3be630e8f0c0b17f3c3d",
+          "final_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "da",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "dffc130d82c2bc8cb753d0fab8d4a715b6cc25d383d158f267cd8e5b85c590ba",
+          "normalized_extraction_sha256": "02e7ab4dcf1cbc31f8ddcb8eb153fb78ab67b42237c2d25ab0c4813dfef7e2a8",
+          "official_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+          "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+          "retrieval_score": 0.030090498,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "cedc3526858d09626cee90236b9cb63e656426afddf7e6ed7d3d89b2d08cf186",
+          "source_document_id": "di-rag-doc-permanent-residence-language",
+          "source_health": "healthy",
+          "source_id": "nyidanmark-permanent-residence-language-requirements",
+          "title": "Permanent residence requirements",
+          "topic_tags": [
+            "permanent-residence",
+            "language-requirement",
+            "exam-comparison",
+            "certificate-equivalence"
+          ]
+        }
+      ]
+    },
+    {
+      "blocked_result_ids": [],
+      "forbidden_document_ids": [
+        "di-rag-doc-citizenship-language"
+      ],
+      "forbidden_result_document_ids": [],
+      "id": "danish-exam-overview",
+      "missing_required_source_ids": [],
+      "query_text": "What are the Danish language examinations PD1 PD2 PD3 and Studiepr\u00f8ven?",
+      "required_source_ids": [
+        "danskogproever-danish-exam-overview"
+      ],
+      "results": [
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "14a8dfcf681c4142c3b194e42a0af4b9e6aed70fdd2c4a6f753c1a317b5c522c",
+          "chunk_id": "danskogproever-danish-exam-overview::chunk::1e5d203d4211f238cdc84977",
+          "chunk_index": 0,
+          "citation_id": "danskogproever-danish-exam-overview::chunk::1e5d203d4211f238cdc84977",
+          "content": "Forside Borger Danskpr\u00f8ver Danskpr\u00f8ver Om pr\u00f8verne Med en pr\u00f8ve i dansk f\u00e5r du dokumentation for dine f\u00e6rdigheder. F\u00e5 indblik i pr\u00f8verne, hvem der kan deltage, og hvad du skal kunne, f\u00f8r du tilmelder dig til en pr\u00f8ve. Tilmelding til pr\u00f8ve Danskpr\u00f8verne bliver afholdt 2 gange om \u00e5ret. Her f\u00e5r du svar p\u00e5, hvor og hvorn\u00e5r du skal tilmelde dig, og hvad det koster at tage en pr\u00f8ve, hvis du er selvstuderende. Om Pr\u00f8ve i Dansk 1 og krav til at best\u00e5 Pr\u00f8ve i Dansk 1 (PD1) best\u00e5r af en skriftlig og en mundtlig del. L\u00e6s mere om hver af delpr\u00f8verne, hvordan pr\u00f8ven foreg\u00e5r og kravene til at best\u00e5 pr\u00f8ven. Om Pr\u00f8ve i Dansk 2 og krav til at best\u00e5 Pr\u00f8ve i Dansk 2 (PD2) best\u00e5r af en skriftlig og en mundtlig del. L\u00e6s mere om hver af delpr\u00f8verne, hvordan pr\u00f8ven foreg\u00e5r og kravene til at best\u00e5 pr\u00f8ven. Om Pr\u00f8ve i Dansk 3 og krav til at best\u00e5 Pr\u00f8ve i Dansk 3 (PD3) best\u00e5r af en skriftlig og en mundtlig del. L\u00e6s mere om hver af delpr\u00f8verne, hvordan pr\u00f8ven foreg\u00e5r og kravene til at best\u00e5 pr\u00f8ven. Om Studiepr\u00f8ven og krav til at best\u00e5 Studiepr\u00f8ven best\u00e5r af en skriftlig og en mundtlig del. L\u00e6s mere om hver af delpr\u00f8verne, hvordan pr\u00f8ven foreg\u00e5r og kravene til at best\u00e5 pr\u00f8ven.",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "danskogproever-danish-exam-overview::chunk::1e5d203d4211f238cdc84977",
+          "final_url": "https://danskogproever.dk/borger/danskproever/",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "da",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "8a0810893647adac348b72320df121acf34fb791963cb482a48a64c6ddcfed61",
+          "normalized_extraction_sha256": "5c3024c8fd0825b2488a33d38d215f5f90d997f6331e2f75880fc2eca3632004",
+          "official_url": "https://danskogproever.dk/borger/danskproever/",
+          "publisher": "Danish Agency for International Recruitment and Integration (SIRI)",
+          "retrieval_score": 0.032786885,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "2f98bde5e598ba30bef1a60caba3b4933f42059a713a59391362ef5165ca807a",
+          "source_document_id": "di-rag-doc-danish-exam-overview",
+          "source_health": "healthy",
+          "source_id": "danskogproever-danish-exam-overview",
+          "title": "Danish language examinations overview",
+          "topic_tags": [
+            "language-requirement",
+            "exam",
+            "exam-comparison"
+          ]
+        },
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "6ef410b5096520020765630ad1688b1cd114d0aeb16704741fb9f62f22c616e4",
+          "chunk_id": "nyidanmark-equivalent-tests-language-test-3::chunk::b088681d1d5458c98674bb82",
+          "chunk_index": 0,
+          "citation_id": "nyidanmark-equivalent-tests-language-test-3::chunk::b088681d1d5458c98674bb82",
+          "content": "Breadcrumb Frontpage Words and concepts Tests equivalent to or higher than the Danish language test 3 Below is a list of Danish language tests that are equivalent to or higher than the Danish language test 3. List of Danish language tests that are equivalent to or higher than the Danish language test 3: Danish language test 3 (Pr\u00f8ve i Dansk 3) with a grade average of at least 6 (on the Danish 13 point grading scale) or 02 (on the Danish 7 point grading scale). The study test called studiepr\u00f8ven with a grade average of at least 6 (on the Danish 13 point grading scale) or 02 (on the Danish 7 point grading scale) in each of the tests. 9th or 10th grade final exams with a grade average of at least 6 (on the Danish 13 point grading scale) or 02 (on the Danish 7 point grading scale) in the Danish disciplines, except for conduct. If you completed the 9th grade final exams after May 2018, the Danish Immigration Service uses a weighted average of the marks for the written Danish examination. Spelling accounts for 25%, reading for 25%, and written composition for 50%. The overall average mark for the Danish examination is calculated as the average of the written and oral examination marks.",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "nyidanmark-equivalent-tests-language-test-3::chunk::b088681d1d5458c98674bb82",
+          "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "en-GB",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "eef9636a9273c8a55c51140198127dc8db0d3f7954c25665688388422a31365f",
+          "normalized_extraction_sha256": "d29ca772e35ae460f8b6ea142b0cc21ef54a72666f352d225d9b93f058ade5fd",
+          "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+          "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+          "retrieval_score": 0.032002048,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "fd4271c42a66831270a201f4b4fc7b002851692154baf12d98f5220b54f8e18d",
+          "source_document_id": "di-rag-doc-equivalent-tests-language-test-3",
+          "source_health": "healthy",
+          "source_id": "nyidanmark-equivalent-tests-language-test-3",
+          "title": "Tests equivalent to or higher than Danish language test 3",
+          "topic_tags": [
+            "permanent-residence",
+            "language-requirement",
+            "certificate-equivalence",
+            "exam-comparison"
+          ]
+        },
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "268ef80c69cfdca6e912506be24b1375981af02759c5b9db8c10cdaaefeb3f87",
+          "chunk_id": "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+          "chunk_index": 0,
+          "citation_id": "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+          "content": "Breadcrumb Frontpage Words and concepts Tests equivalent to or higher than the Danish language test 2 Below is a list of Danish language tests that are equivalent to or higher than the Danish language test 2. List of Danish language tests that are equivalent to or higher than the Danish language test 2: Danskuddannelsernes Pr\u00f8ve i Dansk 2 (with an average score of 6 or higher on the Danish 13-point scale, or 02 on the Danish seven-point scale) FVU reading exam (level 2 or 3) FVU Danish exam (level 2 or 3) Any test considered to be of an equivalent or higher level than Danish language test 3 Send link Last updated 06-07-2022 - Published by: The Danish Immigration Service",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+          "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "en-GB",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "268ef80c69cfdca6e912506be24b1375981af02759c5b9db8c10cdaaefeb3f87",
+          "normalized_extraction_sha256": "bee3bb2f18b5c50633e2b83183d29df4074d30ec4864a1dd8c32d77f60651e91",
+          "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+          "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+          "retrieval_score": 0.031513648,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "8a7a21699e6639a7dea03f6d631706790fb9037c6858eeb900747c55a95d1e6c",
+          "source_document_id": "di-rag-doc-equivalent-tests-language-test-2",
+          "source_health": "healthy",
+          "source_id": "nyidanmark-equivalent-tests-language-test-2",
+          "title": "Tests equivalent to or higher than Danish language test 2",
+          "topic_tags": [
+            "permanent-residence",
+            "language-requirement",
+            "certificate-equivalence",
+            "exam-comparison"
+          ]
+        }
+      ]
+    },
+    {
+      "blocked_result_ids": [],
+      "forbidden_document_ids": [
+        "di-rag-doc-citizenship-language"
+      ],
+      "forbidden_result_document_ids": [],
+      "id": "registration-deadlines",
+      "missing_required_source_ids": [],
+      "query_text": "When is the registration deadline for Danish language examinations?",
+      "required_source_ids": [
+        "danskogproever-registration-deadlines-2026"
+      ],
+      "results": [
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "d5fc102d404280518886563697d5a603b68f1a7875f0d1e378ffc83768563180",
+          "chunk_id": "danskogproever-registration-deadlines-2026::chunk::3ceda157051e27f6738f7d2f",
+          "chunk_index": 0,
+          "citation_id": "danskogproever-registration-deadlines-2026::chunk::3ceda157051e27f6738f7d2f",
+          "content": "Forside Tilmeldingsfrister og pr\u00f8vedatoer Tilmeldingsfrister og pr\u00f8vedatoer Danskpr\u00f8verne, medborgerskabspr\u00f8ven og indf\u00f8dsretspr\u00f8ven bliver afholdt 2 gange om \u00e5ret i maj/juni og i november/december. Styrelsen for International Rekruttering og Integration (SIRI) offentligg\u00f8r pr\u00f8vedatoer og gebyrsatser p\u00e5 denne side. Tilmeldingsfrister og pr\u00f8vedatoer Herunder kan du se de kommende tilmeldingsfrister og pr\u00f8vedatoer. Du tilmelder dig en pr\u00f8ve direkte ved det sprogcenter, hvor du \u00f8nsker at tage pr\u00f8ven. Pr\u00f8ve i Dansk 1 Skriftlig pr\u00f8ve Pr\u00f8ve i Dansk 1 afholdes n\u00e6ste gang den 12. november 2026. Tilmeldingsfristen er den 31. august 2026. Mundtlig pr\u00f8ve Den mundtlige del af Pr\u00f8ve i Dansk 1 afholdes i perioden den 2. - 15. december 2026. Det er pr\u00f8veafholderen, der beslutter, p\u00e5 hvilke datoer, pr\u00f8ven bliver afholdt. Pr\u00f8ve i Dansk 2 Skriftlig pr\u00f8ve Pr\u00f8ve i Dansk 2 afholdes n\u00e6ste gang den 11. november 2026. Tilmeldingsfristen er den 31. august 2026. Mundtlig pr\u00f8ve Den mundtlige del af Pr\u00f8ve i Dansk 2 afholdes i perioden den 2. - 15. december 2026. Det er pr\u00f8veafholderen, der beslutter, p\u00e5 hvilke datoer, pr\u00f8ven bliver afholdt.",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "danskogproever-registration-deadlines-2026::chunk::3ceda157051e27f6738f7d2f",
+          "final_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "da",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "0b4a420413cfc23de52b3316160c51ea9e4e8f198cde6b4da29d2d05652c0114",
+          "normalized_extraction_sha256": "4e17cb33c05a025f764ebb626232ec12cadfa54eb420ca93a6a6bcd8032bcbab",
+          "official_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+          "publisher": "Danish Agency for International Recruitment and Integration (SIRI)",
+          "retrieval_score": 0.032522475,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "9bf530c74de8ec3e933074348dc45489ecfad8356c5f2d7d4ce0f50fa6710ba6",
+          "source_document_id": "di-rag-doc-registration-deadlines-2026",
+          "source_health": "healthy",
+          "source_id": "danskogproever-registration-deadlines-2026",
+          "title": "Registration deadlines and examination dates",
+          "topic_tags": [
+            "language-requirement",
+            "registration-logistics",
+            "exam"
+          ]
+        },
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "0c7d59d01447df616612f7df8bea0660d19898e75189c9d0fbb76cc1704de4d5",
+          "chunk_id": "danskogproever-registration-deadlines-2026::chunk::fa7142a8e46fc476de8d94cb",
+          "chunk_index": 4,
+          "citation_id": "danskogproever-registration-deadlines-2026::chunk::fa7142a8e46fc476de8d94cb",
+          "content": "Se oversigt over sprogcentre Bem\u00e6rk at Forl\u00e6ngelsespr\u00f8ven samt Danskpr\u00f8ve A1 og A2 udelukkende afholdes p\u00e5 VSKdansk i Glostrup og p\u00e5 Sprogcenter Vejle.",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "danskogproever-registration-deadlines-2026::chunk::fa7142a8e46fc476de8d94cb",
+          "final_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "da",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "0b4a420413cfc23de52b3316160c51ea9e4e8f198cde6b4da29d2d05652c0114",
+          "normalized_extraction_sha256": "4e17cb33c05a025f764ebb626232ec12cadfa54eb420ca93a6a6bcd8032bcbab",
+          "official_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+          "publisher": "Danish Agency for International Recruitment and Integration (SIRI)",
+          "retrieval_score": 0.032266458,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "9bf530c74de8ec3e933074348dc45489ecfad8356c5f2d7d4ce0f50fa6710ba6",
+          "source_document_id": "di-rag-doc-registration-deadlines-2026",
+          "source_health": "healthy",
+          "source_id": "danskogproever-registration-deadlines-2026",
+          "title": "Registration deadlines and examination dates",
+          "topic_tags": [
+            "language-requirement",
+            "registration-logistics",
+            "exam"
+          ]
+        },
+        {
+          "approval_state": "approved",
+          "checked_at_utc": "2026-07-26T20:55:12Z",
+          "chunk_content_sha256": "f238985397d2967e474c840f6ac3d86d58d24a5b27aebaea74ea55b28c82da06",
+          "chunk_id": "danskogproever-registration-deadlines-2026::chunk::04fd2e1d73d31cee6bb5da84",
+          "chunk_index": 2,
+          "citation_id": "danskogproever-registration-deadlines-2026::chunk::04fd2e1d73d31cee6bb5da84",
+          "content": "(2026) Sygdom Der afholdes ikke sygepr\u00f8ve. Hvis du bliver syg, m\u00e5 du derfor vente og tilmelde dig den n\u00e6ste pr\u00f8ve. Du skal i den forbindelse betale et nyt gebyr. Gebyrer 2026 Gebyr for Pr\u00f8ve i Dansk 1, Pr\u00f8ve i Dansk 2 og Pr\u00f8ve i Dansk 3 Hvis du tilmelder dig Pr\u00f8ve i Dansk 1, Pr\u00f8ve i Dansk 2 eller Pr\u00f8ve i Dansk 3 som selvstuderende er gebyret 1.646 kr. (2026). Gebyr for Studiepr\u00f8ven Hvis du tilmelder dig Studiepr\u00f8ven som selvstuderende, skal du betale et gebyr for b\u00e5de den mundtlige og skriftlige del af pr\u00f8ven. Gebyret for den skriftlige del af pr\u00f8ven er 987 kr. (2026), og gebyret for den mundtlige del af pr\u00f8ven er ligeledes 987 kr. (2026) Gebyr for medborgerskabspr\u00f8ven og indf\u00f8dsretspr\u00f8ven Hvis du tilmelder dig medborgerskabspr\u00f8ven eller indf\u00f8dsretspr\u00f8ven er gebyret 946 kr. (2026) Pr\u00f8vedatoer 2027 Pr\u00f8vedatoerne for 2027 offentligg\u00f8res p\u00e5 denne side senest 1. oktober 2026 Tilmelding efter fristen Pr\u00f8ve i Dansk 1, Pr\u00f8ve i Dansk 2, Pr\u00f8ve i Dansk 3 eller Studiepr\u00f8ven: Har du ikke tilmeldt dig til en danskpr\u00f8ve inden fristens udl\u00f8b, kan et sprogcenter i s\u00e6rlige tilf\u00e6lde tillade, at du alligevel kan afl\u00e6gge pr\u00f8ven.",
+          "content_origin": "official-source-normalized-extract",
+          "corpus_identity": "kr-2026-09-05.1",
+          "document_id": "danskogproever-registration-deadlines-2026::chunk::04fd2e1d73d31cee6bb5da84",
+          "final_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+          "fresh_tomato_inputs": {
+            "next_review_due_utc": "2026-10-26T20:55:12Z",
+            "source_health": "current"
+          },
+          "knowledge_release_id": "kr-2026-09-05.1",
+          "language": "da",
+          "last_checked_at_utc": "2026-07-26T20:55:12Z",
+          "normalized_document_sha256": "0b4a420413cfc23de52b3316160c51ea9e4e8f198cde6b4da29d2d05652c0114",
+          "normalized_extraction_sha256": "4e17cb33c05a025f764ebb626232ec12cadfa54eb420ca93a6a6bcd8032bcbab",
+          "official_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+          "publisher": "Danish Agency for International Recruitment and Integration (SIRI)",
+          "retrieval_score": 0.032002048,
+          "review_state": "approved-current",
+          "reviewed_at_utc": "2026-07-26T21:20:10Z",
+          "reviewers": [
+            "ericleungDK"
+          ],
+          "source_content_sha256": "9bf530c74de8ec3e933074348dc45489ecfad8356c5f2d7d4ce0f50fa6710ba6",
+          "source_document_id": "di-rag-doc-registration-deadlines-2026",
+          "source_health": "healthy",
+          "source_id": "danskogproever-registration-deadlines-2026",
+          "title": "Registration deadlines and examination dates",
+          "topic_tags": [
+            "language-requirement",
+            "registration-logistics",
+            "exam"
+          ]
+        }
+      ]
+    }
+  ],
+  "recorded_at_utc": "2026-09-05T15:16:40Z",
+  "summary": {
+    "blocked_source_violations": 0,
+    "forbidden_result_violations": 0,
+    "query_count": 5,
+    "required_source_misses": 0
+  }
+}

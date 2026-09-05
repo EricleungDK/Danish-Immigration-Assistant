@@ -1,0 +1,295 @@
+{
+  "artifact_scope": "production-source-registry",
+  "knowledge_release_id": "kr-2026-09-05.1",
+  "production_qualification": {
+    "production_release_eligible": true,
+    "reason_codes": [],
+    "status": "qualified"
+  },
+  "release_governance": {
+    "recorded_at_utc": "2026-09-05T15:12:00Z",
+    "recovery_owner_ids": [
+      "ericleungDK"
+    ],
+    "release_approver_ids": [
+      "ericleungDK"
+    ],
+    "release_operator_ids": [
+      "ericleungDK"
+    ]
+  },
+  "review_bundle_binding": {
+    "completed_review_path": "completed-review.json",
+    "human_decisions_path": "human-decisions.json",
+    "human_decisions_sha256": "afd78dd4942e0e9ca5b8782edab66c9e57b0e38af008238e354fdce9361b656d",
+    "machine_review_manifest_path": "review-bundle.json",
+    "machine_review_manifest_sha256": "30069b0fad0bfd1900c29a359b6ae494217b878e4176e9cef28de3838a00c134"
+  },
+  "schema_version": "1.0",
+  "single_maintainer_fallback": {
+    "post_publication_second_review": {
+      "required": true,
+      "schedule": "Set a due timestamp when a production knowledge release containing either material source is published.",
+      "status": "pending-publication"
+    },
+    "reason": "Danish Immigration RAG is a personal-use MVP maintained only by ericleungDK, so no second maintainer is currently available.",
+    "second_reviewer_ids": [],
+    "selected": true
+  },
+  "source_registry_version": "sr-2026-09-05.1",
+  "sources": [
+    {
+      "content_origin": "official-source-normalized-extract",
+      "curation_evidence": {
+        "admitted_at_utc": "2026-07-26T21:20:10Z",
+        "curator_ids": [
+          "ericleungDK"
+        ],
+        "scope_rationale": "The official Danish Immigration Service page directly covers permanent-residence language requirements within the product scope.",
+        "status": "completed"
+      },
+      "language": "da",
+      "monitoring_evidence": {
+        "final_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+        "http_status": 200,
+        "last_fetched_at_utc": "2026-07-26T20:55:12Z",
+        "owner_ids": [
+          "ericleungDK"
+        ],
+        "status": "recorded"
+      },
+      "normalized_document_sha256": "dffc130d82c2bc8cb753d0fab8d4a715b6cc25d383d158f267cd8e5b85c590ba",
+      "official_url": "https://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold",
+      "production_release_eligible": true,
+      "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+      "registry_state": "approved-current",
+      "review_evidence": {
+        "assessment_method": "human-source-and-normalized-extraction-review",
+        "decision": "approved-current",
+        "interpretation_risks": [],
+        "materiality": "material",
+        "normalized_extraction_path": "normalized/nyidanmark-permanent-residence-language-requirements.txt",
+        "normalized_extraction_sha256": "02e7ab4dcf1cbc31f8ddcb8eb153fb78ab67b42237c2d25ab0c4813dfef7e2a8",
+        "notes": "Approved with no additional reviewer notes. Materiality is conservative because the official URL changed and the page reports an update after the fixture observation.",
+        "official_source_snapshot_path": "snapshots/nyidanmark-permanent-residence-language-requirements.html",
+        "official_source_snapshot_sha256": "cedc3526858d09626cee90236b9cb63e656426afddf7e6ed7d3d89b2d08cf186",
+        "reviewed_at_utc": "2026-07-26T21:20:10Z",
+        "reviewer_ids": [
+          "ericleungDK"
+        ],
+        "second_reviewer_ids": [],
+        "single_maintainer_fallback": {
+          "post_publication_second_review": {
+            "required": true,
+            "schedule": "Set a due timestamp when a production knowledge release containing either material source is published.",
+            "status": "pending-publication"
+          },
+          "reason": "Danish Immigration RAG is a personal-use MVP maintained only by ericleungDK, so no second maintainer is currently available.",
+          "second_reviewer_ids": [],
+          "selected": true
+        },
+        "staffing": "mvp-single-maintainer-fallback",
+        "status": "completed"
+      },
+      "source_id": "nyidanmark-permanent-residence-language-requirements",
+      "topic": "permanent-residence language requirements"
+    },
+    {
+      "content_origin": "official-source-normalized-extract",
+      "curation_evidence": {
+        "admitted_at_utc": "2026-07-26T21:20:10Z",
+        "curator_ids": [
+          "ericleungDK"
+        ],
+        "scope_rationale": "The official Danish Immigration Service page directly identifies tests equivalent to or higher than Danish language test 2.",
+        "status": "completed"
+      },
+      "language": "en-GB",
+      "monitoring_evidence": {
+        "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+        "http_status": 200,
+        "last_fetched_at_utc": "2026-07-26T20:55:12Z",
+        "owner_ids": [
+          "ericleungDK"
+        ],
+        "status": "recorded"
+      },
+      "normalized_document_sha256": "268ef80c69cfdca6e912506be24b1375981af02759c5b9db8c10cdaaefeb3f87",
+      "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-2/",
+      "production_release_eligible": true,
+      "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+      "registry_state": "approved-current",
+      "review_evidence": {
+        "assessment_method": "human-source-and-normalized-extraction-review",
+        "decision": "approved-current",
+        "interpretation_risks": [],
+        "materiality": "non-material",
+        "normalized_extraction_path": "normalized/nyidanmark-equivalent-tests-language-test-2.txt",
+        "normalized_extraction_sha256": "bee3bb2f18b5c50633e2b83183d29df4074d30ec4864a1dd8c32d77f60651e91",
+        "notes": "Approved with no additional reviewer notes. The reviewed content matches the fixture summary and the official page reports no post-fixture update.",
+        "official_source_snapshot_path": "snapshots/nyidanmark-equivalent-tests-language-test-2.html",
+        "official_source_snapshot_sha256": "8a7a21699e6639a7dea03f6d631706790fb9037c6858eeb900747c55a95d1e6c",
+        "reviewed_at_utc": "2026-07-26T21:20:10Z",
+        "reviewer_ids": [
+          "ericleungDK"
+        ],
+        "second_reviewer_ids": [],
+        "single_maintainer_fallback": null,
+        "staffing": "single-reviewer-non-material",
+        "status": "completed"
+      },
+      "source_id": "nyidanmark-equivalent-tests-language-test-2",
+      "topic": "tests equivalent to or higher than Danish language test 2"
+    },
+    {
+      "content_origin": "official-source-normalized-extract",
+      "curation_evidence": {
+        "admitted_at_utc": "2026-07-26T21:20:10Z",
+        "curator_ids": [
+          "ericleungDK"
+        ],
+        "scope_rationale": "The official Danish Immigration Service page directly identifies tests equivalent to or higher than Danish language test 3.",
+        "status": "completed"
+      },
+      "language": "en-GB",
+      "monitoring_evidence": {
+        "final_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+        "http_status": 200,
+        "last_fetched_at_utc": "2026-07-26T20:55:12Z",
+        "owner_ids": [
+          "ericleungDK"
+        ],
+        "status": "recorded"
+      },
+      "normalized_document_sha256": "eef9636a9273c8a55c51140198127dc8db0d3f7954c25665688388422a31365f",
+      "official_url": "https://www.nyidanmark.dk/en-GB/Words-and-concepts/US/Diverse-US/Tests-equivalent-to-or-higher-than-the-Danish-language-test-3/",
+      "production_release_eligible": true,
+      "publisher": "The Danish Immigration Service (Udl\u00e6ndingestyrelsen)",
+      "registry_state": "approved-current",
+      "review_evidence": {
+        "assessment_method": "human-source-and-normalized-extraction-review",
+        "decision": "approved-current",
+        "interpretation_risks": [],
+        "materiality": "material",
+        "normalized_extraction_path": "normalized/nyidanmark-equivalent-tests-language-test-3.txt",
+        "normalized_extraction_sha256": "d29ca772e35ae460f8b6ea142b0cc21ef54a72666f352d225d9b93f058ade5fd",
+        "notes": "Approved with no additional reviewer notes. Materiality is conservative because the official page reports a 07-07-2026 update after the fixture's 06-07-2026 check.",
+        "official_source_snapshot_path": "snapshots/nyidanmark-equivalent-tests-language-test-3.html",
+        "official_source_snapshot_sha256": "fd4271c42a66831270a201f4b4fc7b002851692154baf12d98f5220b54f8e18d",
+        "reviewed_at_utc": "2026-07-26T21:20:10Z",
+        "reviewer_ids": [
+          "ericleungDK"
+        ],
+        "second_reviewer_ids": [],
+        "single_maintainer_fallback": {
+          "post_publication_second_review": {
+            "required": true,
+            "schedule": "Set a due timestamp when a production knowledge release containing either material source is published.",
+            "status": "pending-publication"
+          },
+          "reason": "Danish Immigration RAG is a personal-use MVP maintained only by ericleungDK, so no second maintainer is currently available.",
+          "second_reviewer_ids": [],
+          "selected": true
+        },
+        "staffing": "mvp-single-maintainer-fallback",
+        "status": "completed"
+      },
+      "source_id": "nyidanmark-equivalent-tests-language-test-3",
+      "topic": "tests equivalent to or higher than Danish language test 3"
+    },
+    {
+      "content_origin": "official-source-normalized-extract",
+      "curation_evidence": {
+        "admitted_at_utc": "2026-07-26T21:20:10Z",
+        "curator_ids": [
+          "ericleungDK"
+        ],
+        "scope_rationale": "The official SIRI page describes the Danish language examinations covered by the product.",
+        "status": "completed"
+      },
+      "language": "da",
+      "monitoring_evidence": {
+        "final_url": "https://danskogproever.dk/borger/danskproever/",
+        "http_status": 200,
+        "last_fetched_at_utc": "2026-07-26T20:55:12Z",
+        "owner_ids": [
+          "ericleungDK"
+        ],
+        "status": "recorded"
+      },
+      "normalized_document_sha256": "8a0810893647adac348b72320df121acf34fb791963cb482a48a64c6ddcfed61",
+      "official_url": "https://danskogproever.dk/borger/danskproever/",
+      "production_release_eligible": true,
+      "publisher": "Danish Agency for International Recruitment and Integration (SIRI)",
+      "registry_state": "approved-current",
+      "review_evidence": {
+        "assessment_method": "human-source-and-normalized-extraction-review",
+        "decision": "approved-current",
+        "interpretation_risks": [],
+        "materiality": "non-material",
+        "normalized_extraction_path": "normalized/danskogproever-danish-exam-overview.txt",
+        "normalized_extraction_sha256": "5c3024c8fd0825b2488a33d38d215f5f90d997f6331e2f75880fc2eca3632004",
+        "notes": "Approved with no additional reviewer notes. The reviewed content matches the fixture summary.",
+        "official_source_snapshot_path": "snapshots/danskogproever-danish-exam-overview.html",
+        "official_source_snapshot_sha256": "2f98bde5e598ba30bef1a60caba3b4933f42059a713a59391362ef5165ca807a",
+        "reviewed_at_utc": "2026-07-26T21:20:10Z",
+        "reviewer_ids": [
+          "ericleungDK"
+        ],
+        "second_reviewer_ids": [],
+        "single_maintainer_fallback": null,
+        "staffing": "single-reviewer-non-material",
+        "status": "completed"
+      },
+      "source_id": "danskogproever-danish-exam-overview",
+      "topic": "Danish language examinations overview"
+    },
+    {
+      "content_origin": "official-source-normalized-extract",
+      "curation_evidence": {
+        "admitted_at_utc": "2026-07-26T21:20:10Z",
+        "curator_ids": [
+          "ericleungDK"
+        ],
+        "scope_rationale": "The official SIRI page provides the examination registration deadlines and dates covered by the product.",
+        "status": "completed"
+      },
+      "language": "da",
+      "monitoring_evidence": {
+        "final_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+        "http_status": 200,
+        "last_fetched_at_utc": "2026-07-26T20:55:12Z",
+        "owner_ids": [
+          "ericleungDK"
+        ],
+        "status": "recorded"
+      },
+      "normalized_document_sha256": "0b4a420413cfc23de52b3316160c51ea9e4e8f198cde6b4da29d2d05652c0114",
+      "official_url": "https://danskogproever.dk/tilmeldingsfrister-og-proevedatoer/",
+      "production_release_eligible": true,
+      "publisher": "Danish Agency for International Recruitment and Integration (SIRI)",
+      "registry_state": "approved-current",
+      "review_evidence": {
+        "assessment_method": "human-source-and-normalized-extraction-review",
+        "decision": "approved-current",
+        "interpretation_risks": [],
+        "materiality": "non-material",
+        "normalized_extraction_path": "normalized/danskogproever-registration-deadlines-2026.txt",
+        "normalized_extraction_sha256": "4e17cb33c05a025f764ebb626232ec12cadfa54eb420ca93a6a6bcd8032bcbab",
+        "notes": "Approved with no additional reviewer notes. The reviewed 2026 dates and registration information match the fixture summary.",
+        "official_source_snapshot_path": "snapshots/danskogproever-registration-deadlines-2026.html",
+        "official_source_snapshot_sha256": "9bf530c74de8ec3e933074348dc45489ecfad8356c5f2d7d4ce0f50fa6710ba6",
+        "reviewed_at_utc": "2026-07-26T21:20:10Z",
+        "reviewer_ids": [
+          "ericleungDK"
+        ],
+        "second_reviewer_ids": [],
+        "single_maintainer_fallback": null,
+        "staffing": "single-reviewer-non-material",
+        "status": "completed"
+      },
+      "source_id": "danskogproever-registration-deadlines-2026",
+      "topic": "registration deadlines and examination dates"
+    }
+  ]
+}

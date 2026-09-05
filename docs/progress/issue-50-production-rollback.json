@@ -1,0 +1,124 @@
+{
+  "candidate_identity": {
+    "corpus_artifact_sha256": "5250e3598a15ba68b9b6aab7ee653b50dff6210f64bf6c55c791cc1954336e30",
+    "index_metadata": {
+      "content_unit_schema_version": "semantic-chunk-v1",
+      "corpus_identity": "kr-2026-09-05.1",
+      "corpus_schema_version": "2.0",
+      "dense_engine": "local-dense-json",
+      "embedding_model": "embeddinggemma",
+      "embedding_model_identity": {
+        "capabilities": [
+          "embedding"
+        ],
+        "details": {
+          "families": [
+            "gemma3"
+          ],
+          "family": "gemma3",
+          "format": "gguf",
+          "parameter_size": "307.58M",
+          "parent_model": "embeddinggemma:300m-bf16",
+          "quantization_level": "BF16"
+        },
+        "digest": "85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1",
+        "identity_fingerprint_sha256": "8a443f6ccccb2419c10579a5939ac62d508325362b136a0c55dc0a85ac0c2bb5",
+        "model": "embeddinggemma:latest",
+        "model_info": {
+          "gemma3.attention.causal": false,
+          "gemma3.attention.head_count": 3,
+          "gemma3.attention.head_count_kv": 1,
+          "gemma3.attention.key_length": 256,
+          "gemma3.attention.layer_norm_rms_epsilon": 1e-06,
+          "gemma3.attention.sliding_window": 512,
+          "gemma3.attention.sliding_window_pattern": null,
+          "gemma3.attention.value_length": 256,
+          "gemma3.block_count": 24,
+          "gemma3.context_length": 2048,
+          "gemma3.embedding_length": 768,
+          "gemma3.feed_forward_length": 1152,
+          "gemma3.pooling_type": 1,
+          "gemma3.rope.freq_base": 1000000,
+          "general.architecture": "gemma3",
+          "general.basename": "embeddinggemma",
+          "general.file_type": 32,
+          "general.license": "gemma",
+          "general.parameter_count": 307581696,
+          "general.quantization_version": 2,
+          "general.size_label": "300M",
+          "general.tags": null,
+          "general.type": "model",
+          "tokenizer.ggml.add_bos_token": true,
+          "tokenizer.ggml.add_eos_token": true,
+          "tokenizer.ggml.add_sep_token": false,
+          "tokenizer.ggml.add_space_prefix": false,
+          "tokenizer.ggml.bos_token_id": 2,
+          "tokenizer.ggml.eos_token_id": 1,
+          "tokenizer.ggml.model": "llama",
+          "tokenizer.ggml.padding_token_id": 0,
+          "tokenizer.ggml.pre": "default",
+          "tokenizer.ggml.scores": null,
+          "tokenizer.ggml.token_type": null,
+          "tokenizer.ggml.tokens": null,
+          "tokenizer.ggml.unknown_token_id": 3
+        },
+        "modified_at": "2026-07-19T20:11:08.649236761+02:00"
+      },
+      "embedding_provider": "ollama",
+      "indexed_unit": "semantic-chunk",
+      "knowledge_release_id": "kr-2026-09-05.1",
+      "lexical_engine": "sqlite-fts5",
+      "retrieval": "hybrid",
+      "rrf_k": 60,
+      "schema_version": "hybrid-chunk-index-v1",
+      "vector_dimensions": 768
+    },
+    "knowledge_release_id": "kr-2026-09-05.1",
+    "manifest_sha256": "b154ef00bd63a6a8b5eac526a5e5af7653e7754ac55e1e40fbc72b0d1234b0fb",
+    "signature_sha256": "6779fcc89dbcd25d9472d728b8daf08e398862c93be0f8c34488f6429892c908",
+    "trust_root_id": "project-release-key-v2"
+  },
+  "candidate_release_id": "kr-2026-09-05.1",
+  "cases": [
+    {
+      "fault_observed": true,
+      "phase": "verification",
+      "prior_release_id": "kr-2026-07-06.1",
+      "prior_release_queryable": true,
+      "prior_release_retained": true
+    },
+    {
+      "fault_observed": true,
+      "phase": "extraction",
+      "prior_release_id": "kr-2026-07-06.1",
+      "prior_release_queryable": true,
+      "prior_release_retained": true
+    },
+    {
+      "fault_observed": true,
+      "phase": "embedding",
+      "prior_release_id": "kr-2026-07-06.1",
+      "prior_release_queryable": true,
+      "prior_release_retained": true
+    },
+    {
+      "fault_observed": true,
+      "phase": "indexing",
+      "prior_release_id": "kr-2026-07-06.1",
+      "prior_release_queryable": true,
+      "prior_release_retained": true
+    },
+    {
+      "fault_observed": true,
+      "phase": "activation",
+      "prior_release_id": "kr-2026-07-06.1",
+      "prior_release_queryable": true,
+      "prior_release_retained": true
+    }
+  ],
+  "evidence_kind": "live-local-ollama-install-fault-injection",
+  "packet_g_used_as_qualification_evidence": false,
+  "prior_fixture_role": "Rollback control only; not qualification evidence for reviewed candidate content.",
+  "recorded_at_utc": "2026-09-05T15:19:34Z",
+  "status": "passed"
+}

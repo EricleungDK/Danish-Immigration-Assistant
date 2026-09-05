@@ -1,8 +1,8 @@
 # Issue #50 — Reviewed production knowledge release
 
 **Date:** 2026-09-05
-**Status:** Implementation candidate machine-tested; production artifact pending
-the existing project private signing key
+**Status:** Signing key reset; reviewed candidate signed, live-qualified, and
+installed locally as `kr-2026-09-05.1` (52 semantic chunks)
 
 ## Delivered contract
 
@@ -61,8 +61,8 @@ languages (`da` and `en-GB`).
 | Review and approved-URL binding | Exact review/bundle/decision/snapshot/extraction checks plus registry-to-release cross-check | Machine-tested |
 | Five deterministic sources with provenance | Two independent builds produce identical chunk IDs; all five sources appear | Machine-tested |
 | Named registry roles, materiality, and fallback | Qualified generated registry assertions for all five sources and both material sources | Machine-tested |
-| Versioned, signed, compatible, installed, indexed; no packet G reuse | Test candidate is versioned, test-signed, verified, qualified before activation, installed, and indexed; packet G is not used as qualification evidence | Production signing pending |
-| Zero blocked/forbidden retrieval violations | Five installed-candidate cases report zero blocked, forbidden, or required-source misses | Test candidate passed; production run pending |
+| Versioned, signed, compatible, installed, indexed; no packet G reuse | Production candidate is versioned, v2-signed, verified, live-qualified before activation, installed, and indexed; packet G is not used as qualification evidence | Production-key signed and locally installed |
+| Zero blocked/forbidden retrieval violations | Five installed-candidate cases report zero blocked, forbidden, or required-source misses | Live candidate passed all five cases |
 | Prior release retained on failure | Five-stage candidate rollback matrix | Machine-tested |
 
 ## Integration and validation (2026-09-05)
@@ -106,38 +106,70 @@ unchanged; the final review found no test weakening.
 
 These are machine/test-candidate results, not production release qualification.
 
-## Production signing gate
+## Signing-key reset and live candidate (2026-09-05)
 
-The repository intentionally contains only
-`config/trust_roots/project-release-key-v1.json`, the public trust root. No
-matching private key or configured private-key path is present. The test suite
-uses an explicitly test-only isolated Ed25519 key and does not represent that
-candidate as production-signed.
+The owner authorized a reset after confirming that custody of the original
+private key could not be established. The new `project-release-key-v2` private
+key resides at:
 
-After the existing private key is made available from its durable
-off-repository custody, the release operator can build the real candidate
-without placing the key in the repository:
-
-```bash
-.venv/bin/python -B -m danish_rag.production_knowledge_release \
-  --review-dir data/source_reviews/issue-46 \
-  --registry-path data/source_registry/sr-2026-09-05.1.json \
-  --release-dir data/knowledge_releases/kr-2026-09-05.1 \
-  --source-registry-version sr-2026-09-05.1 \
-  --release-id kr-2026-09-05.1 \
-  --created-at-utc 2026-09-05T12:00:00Z \
-  --next-review-due-utc 2026-10-26T20:55:12Z \
-  --release-operator ericleungDK \
-  --release-approver ericleungDK \
-  --recovery-owner ericleungDK \
-  --signing-private-key /secure/off-repository/project-release-key-v1.pem \
-  --trust-root config/trust_roots/project-release-key-v1.json \
-  --install-data-dir /secure/local-production-qualification-data \
-  --embedding-model embeddinggemma \
-  --embedding-endpoint http://127.0.0.1:11434
+```text
+/home/ericl/.local/share/danish-immigration-rag-signing/project-release-key-v2.pem
 ```
 
-The production artifact, local production-key verification/install report, and
-GitHub issue closure must remain pending until that command is run with the
-real key. Canonical packet G and `kr-2026-07-06.1` remain unchanged and are not
-used as qualification evidence for this candidate.
+The directory is owner-only (`0700`), and the file is owner-readable/writable
+(`0600`). Only the public key is committed. The custody/fingerprint record is
+[`issue-50-signing-key-reset.json`](issue-50-signing-key-reset.json).
+An off-device owner-controlled backup remains pending before public publication.
+
+The v1 trust root is retired and restricted to the exact existing fixture
+manifest digest. Its original signature is still verified. Neither fixture
+bytes nor canonical packet G were changed; v1 cannot authorize new manifests.
+
+The real `embeddinggemma` qualification initially found one required-source
+miss: multiple chunks from the equivalence pages occupied all three result
+slots, excluding the primary permanent-residence source. Schema-2 final result
+selection now reserves detected intents, then prefers distinct eligible sources,
+then fills remaining slots with repeat-source chunks. Selected chunks retain
+fused rank order, and schema-1 selection is unchanged. A deterministic regression
+reproduces the ranking pressure. The original five-case query suite and its
+thresholds were unchanged.
+
+The signed candidate contains all five reviewed sources and 52 deterministic
+semantic chunks. It passed live qualification with zero blocked-source,
+forbidden-result, or required-source violations and was atomically installed at
+`/home/ericl/.local/share/danish-immigration-rag`.
+
+Artifacts and evidence:
+
+- [`kr-2026-09-05.1/manifest.json`](../../data/knowledge_releases/kr-2026-09-05.1/manifest.json)
+  and its detached signature bind the exact reviewed corpus artifact.
+- [`sr-2026-09-05.1.json`](../../data/source_registry/sr-2026-09-05.1.json)
+  records source admissions, review/monitor provenance, named roles, and fallback.
+- [`issue-50-production-install.json`](issue-50-production-install.json)
+  records the five-case live retrieval results from the pinned candidate.
+- [`issue-50-production-rollback.json`](issue-50-production-rollback.json)
+  records live-provider fault injection at verification, extraction, embedding,
+  indexing, and activation. The old fixture is only a rollback control; packet G
+  is not used as candidate qualification evidence.
+
+Reset verification: `356` Python tests ran (`354 passed`, `2` opt-in skips);
+Playwright passed `30` tests with `1` opt-in live-Ollama skip. The live five-stage
+rollback matrix passed. Baseline Ruff and parse/import/whitespace checks passed.
+Both final independent review axes reported no findings. Signed knowledge-release
+files are marked `-text` in `.gitattributes` to preserve exact bytes across
+Windows and Linux checkouts.
+
+No GitHub release was published. This candidate does not satisfy the separate
+final-answer human adjudication, accessibility, environment, post-publication
+second review, or public-release approval gates.
+
+To verify the committed release without accessing the private key:
+
+```bash
+.venv/bin/python -B -c "from danish_rag.knowledge_release import verify_knowledge_release; verify_knowledge_release('data/knowledge_releases/kr-2026-09-05.1')"
+```
+
+For a future rebuild, use a new release ID and output directory with the
+`danish_rag.production_knowledge_release` command, supplying the private-key path
+above and `--trust-root config/trust_roots/project-release-key-v2.json`.
+Existing candidate outputs are deliberately not overwritten.

@@ -381,6 +381,7 @@ class HybridRetriever:
             documents_by_id=self.documents_by_id,
             metadata_filter=metadata_filter,
             limit=limit,
+            prefer_distinct_sources=(self.manifest.get("corpus_schema_version") == "2.0"),
         )
         results: list[dict[str, Any]] = []
         for document_id in selected_ids:
@@ -963,13 +964,14 @@ def _select_result_ids_for_topic_groups(
     documents_by_id: dict[str, dict[str, Any]],
     metadata_filter: dict[str, Any],
     limit: int,
+    prefer_distinct_sources: bool = False,
 ) -> list[str]:
     topic_tag_groups = metadata_filter.get("topic_tag_groups")
-    if not topic_tag_groups:
+    if not topic_tag_groups and not prefer_distinct_sources:
         return ranked_ids[:limit]
 
     reserved_ids: list[str] = []
-    for required_tags in topic_tag_groups:
+    for required_tags in topic_tag_groups or ():
         required_tag_set = set(required_tags)
         for document_id in ranked_ids:
             document_tags = set(documents_by_id[document_id].get("topic_tags", []))
@@ -979,6 +981,17 @@ def _select_result_ids_for_topic_groups(
                 break
 
     selected_ids = reserved_ids[:limit]
+    if prefer_distinct_sources:
+        represented_sources = {
+            documents_by_id[document_id]["source_id"] for document_id in selected_ids
+        }
+        for document_id in ranked_ids:
+            if len(selected_ids) >= limit:
+                break
+            source_id = documents_by_id[document_id]["source_id"]
+            if source_id not in represented_sources:
+                selected_ids.append(document_id)
+                represented_sources.add(source_id)
     for document_id in ranked_ids:
         if len(selected_ids) >= limit:
             break

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import shutil
 import subprocess
@@ -310,6 +311,41 @@ class ReleaseTrustTests(unittest.TestCase):
                         self.signature_path,
                         self.trust_root_path,
                         expected_id,
+                    )
+
+    def test_retired_key_only_verifies_exact_previously_approved_manifest(self):
+        self._sign_default_manifest()
+        digest = hashlib.sha256(self.manifest_path.read_bytes()).hexdigest()
+        self._write_trust_root(
+            self.public_key_path,
+            status="retired",
+            allowed_manifest_sha256=[digest],
+        )
+        verify_manifest_signature(
+            self.manifest_path, self.signature_path,
+            self.trust_root_path, self.trust_root_id,
+        )
+        self.manifest_path.write_bytes(b'{"knowledge_release_id":"another-release"}')
+        sign_manifest(self.manifest_path, self.private_key_path, self.signature_path)
+        with self.assertRaisesRegex(ReleaseTrustError, "not permitted"):
+            verify_manifest_signature(
+                self.manifest_path, self.signature_path,
+                self.trust_root_path, self.trust_root_id,
+            )
+
+    def test_retired_key_requires_nonempty_valid_manifest_restrictions(self):
+        self._sign_default_manifest()
+        for allowed in (None, [], "all", ["bad-hash"], [None]):
+            with self.subTest(allowed=allowed):
+                self._write_trust_root(
+                    self.public_key_path,
+                    status="retired",
+                    allowed_manifest_sha256=allowed,
+                )
+                with self.assertRaisesRegex(ReleaseTrustError, "manifest restrictions"):
+                    verify_manifest_signature(
+                        self.manifest_path, self.signature_path,
+                        self.trust_root_path, self.trust_root_id,
                     )
 
     def test_path_like_trust_root_id_is_rejected(self):

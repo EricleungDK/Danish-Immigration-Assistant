@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import subprocess
@@ -96,7 +97,7 @@ def verify_manifest_signature(
     trust_root_path: str | Path,
     expected_trust_root_id: str,
 ) -> None:
-    """Verify a raw signature against the exact manifest bytes and active trust root."""
+    """Verify exact manifest bytes against an active or restricted retired key."""
 
     if not isinstance(expected_trust_root_id, str) or not TRUST_ROOT_ID_PATTERN.fullmatch(
         expected_trust_root_id
@@ -112,6 +113,12 @@ def verify_manifest_signature(
         raise ReleaseTrustError("Detached signature is not a raw Ed25519 signature.")
 
     trust_root = _load_trust_root(Path(trust_root_path), expected_trust_root_id)
+    allowed_manifests = trust_root.get("allowed_manifest_sha256")
+    if (
+        allowed_manifests is not None
+        and hashlib.sha256(manifest_bytes).hexdigest() not in allowed_manifests
+    ):
+        raise ReleaseTrustError("Manifest is not permitted by this trust root.")
     public_key_pem = trust_root["public_key_pem"]
 
     try:
@@ -205,8 +212,20 @@ def _load_trust_root(
         )
     if trust_root["algorithm"] != SIGNATURE_ALGORITHM:
         raise ReleaseTrustError("Trust root does not use Ed25519.")
-    if trust_root["status"] != ACTIVE_TRUST_ROOT_STATUS:
+    if trust_root["status"] not in (ACTIVE_TRUST_ROOT_STATUS, "retired"):
         raise ReleaseTrustError("Trust root is not active.")
+    if trust_root["status"] == "retired" or "allowed_manifest_sha256" in trust_root:
+        allowed_manifests = trust_root.get("allowed_manifest_sha256")
+        if (
+            not isinstance(allowed_manifests, list)
+            or not allowed_manifests
+            or any(
+                not isinstance(digest, str)
+                or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+                for digest in allowed_manifests
+            )
+        ):
+            raise ReleaseTrustError("Trust root has invalid manifest restrictions.")
 
     public_key_pem = trust_root["public_key_pem"]
     if not isinstance(public_key_pem, str) or not public_key_pem.strip():

@@ -1,6 +1,6 @@
 # Current Project Context
 
-**Last updated:** 2026-08-17
+**Last updated:** 2026-09-05
 
 ## Current Project State
 
@@ -11,9 +11,10 @@ trust indicators, staged GitHub update approval, and atomic rollback.
 
 Machine verification is consolidated under `docs/progress/`. The five completed
 official-source reviews now have a machine-tested production-registry and
-semantic-chunk release builder. The installed active release remains the fixture
-because the project private signing key is intentionally absent from the
-repository. Exact final-answer executions still require independent human
+semantic-chunk release builder. The signing key has been reset to v2, and
+`kr-2026-09-05.1` is signed, live-qualified with zero retrieval violations, and
+installed locally with 52 chunks. The private key is held outside Git in the
+owner's Ubuntu account; an off-device backup is pending before publication. Exact final-answer executions still require independent human
 adjudication, the supported-environment matrix needs replacement
 real-process/browser evidence, and the manual assistive-technology gate has not
 been run.
@@ -23,9 +24,9 @@ been run.
 - Rerun the elevated Playwright suite and live Ollama supported-environment
   monitor, then regenerate strict monitor/final workflow evidence. The current
   platform usage limit prevented that run; the Python suite is current and clean.
-- Supply the existing project private signing key from durable off-repository
-  custody, build and install the issue-50 production candidate, and record its
-  zero-violation retrieval and rollback reports.
+- Back up the v2 private signing key off-device before public publication; see
+  `docs/progress/issue-50-signing-key-reset.json` for its custody path. The reviewed
+  issue-50 candidate is now signed and locally installed.
 - Obtain independent human final-answer adjudication and final release-owner
   approval.
 - Run and record the required manual assistive-technology check.
@@ -46,9 +47,8 @@ been run.
 
 ## Known Issues
 
-- The active installed source registry is still the fixture; the issue-50 builder
-  qualifies all five human-reviewed sources, but the durable project key is
-  required before its candidate can be production-signed and activated.
+- The reviewed candidate is locally installed; public publication and independent
+  off-device signing-key backup are not yet recorded.
 - Independent human answer adjudication, manual assistive-technology evidence,
   and production release-owner approval are not recorded.
 - The prior environment monitor did not qualify a restarted real process/browser.

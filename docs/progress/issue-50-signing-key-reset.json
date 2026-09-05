@@ -1,0 +1,31 @@
+{
+  "active_trust_root_id": "project-release-key-v2",
+  "authorization": "User requested a signing-key reset in the issue-50 implementation session on 2026-09-05.",
+  "custody": {
+    "backup_status": "pending-owner-off-device-backup",
+    "directory": "/home/ericl/.local/share/danish-immigration-rag-signing",
+    "directory_mode": "0700",
+    "environment": "Ubuntu user account ericl",
+    "key_file_mode": "0600",
+    "private_key_path": "/home/ericl/.local/share/danish-immigration-rag-signing/project-release-key-v2.pem",
+    "recovery_access": "Owner ericleungDK via the ericl Ubuntu account; independent backup not yet recorded."
+  },
+  "owner_ids": [
+    "ericleungDK"
+  ],
+  "private_key_committed": false,
+  "public_key_sha256": "0e93524b92e03116f500958995946b8226a7a9f565d9cba420f80dad675ccb5c",
+  "publication_status": "No external publication performed; off-device key backup remains required before public release.",
+  "recorded_at_utc": "2026-09-05T15:14:10Z",
+  "retired_keys": [
+    {
+      "allowed_manifest_sha256": [
+        "d7326bbf091fc44cd97696a3ba30da2fff43c1c25d0d84b237867ec8c186a538"
+      ],
+      "reason": "Private-key custody unavailable; user authorized a replacement key. Verification retained only for the exact historical fixture manifest.",
+      "trust_root_id": "project-release-key-v1"
+    }
+  ],
+  "revoked_key_ids": [],
+  "schema_version": "release-signing-key-reset-v1"
+}

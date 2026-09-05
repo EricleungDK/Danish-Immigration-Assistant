@@ -127,6 +127,39 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
         self.assertTrue(retriever.retrieve("Prøve i Dansk 2", limit=3))
         self.assertEqual(len(provider.embedding_calls), 1)
 
+    def test_chunk_results_keep_distinct_sources_before_repeat_source_chunks(self):
+        candidate = self.build_candidate("candidate")
+        provider = DeterministicEmbeddingProviderFixture()
+        data_dir = self.root / "installed"
+        install_knowledge_release(
+            data_dir,
+            release_dir=candidate.release_dir,
+            embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        retriever = HybridRetriever.from_data_dir(
+            data_dir, embedding_provider=provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        by_source = {}
+        for document in candidate.release["documents"]:
+            by_source.setdefault(document["source_id"], []).append(document["document_id"])
+        primary = "nyidanmark-permanent-residence-language-requirements"
+        pd2 = "nyidanmark-equivalent-tests-language-test-2"
+        pd3 = "nyidanmark-equivalent-tests-language-test-3"
+        ranking = [by_source[pd2][0], *by_source[pd3][:2], by_source[primary][12]]
+        with (
+            patch.object(retriever, "_lexical_ranked_ids", return_value=ranking),
+            patch.object(retriever, "_dense_ranked_ids", return_value=ranking),
+        ):
+            results = retriever.retrieve(
+                "What Danish language test is required for permanent residence?",
+                limit=3,
+            )
+            self.assertEqual([r["source_id"] for r in results], [pd2, pd3, primary])
+            all_results = retriever.retrieve("permanent residence", limit=4)
+            self.assertEqual([r["document_id"] for r in all_results], ranking)
+
     def test_release_changes_during_extraction_keep_prior_release_active(self):
         provider = DeterministicEmbeddingProviderFixture()
         prior = self.build_candidate("prior")

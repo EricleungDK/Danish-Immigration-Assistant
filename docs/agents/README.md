@@ -1,6 +1,6 @@
 # Danish Immigration RAG — Agent Documentation
 
-**Last updated:** 2026-08-17
+**Last updated:** 2026-09-05
 **Status:** MVP implementation candidate; release remains blocked by recorded human-evidence gates.
 
 Start with [`CONTEXT.md`](../../CONTEXT.md), the GitHub issue named in the task,
@@ -44,7 +44,7 @@ does not override those sources.
 - Durable machine-readable gate evidence lives in [`docs/progress/`](../progress/)
   so release evaluation can hash and validate it.
 - [Issue #50 production knowledge release](../progress/issue-50-production-knowledge-release.md)
-  records the reviewed semantic-chunk builder, tests, and pending private-key gate.
+  records the reviewed semantic-chunk builder, v2 key reset, and live candidate installation.
 
 ## Quick Verification
 

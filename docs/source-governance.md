@@ -303,6 +303,31 @@ the active key ID, the revoked-key record, and the rotation/withdrawal procedure
 The current signed project-authored fixture proves verification mechanics only;
 it does not prove production signing-key custody.
 
+## Signing-key reset (2026-09-05)
+
+The owner authorized a reset because custody of the original private key could
+not be established. `project-release-key-v2` is the active signing key. Its public
+trust root is distributed with the application; the private key is held outside
+Git in the owner's Ubuntu account with directory mode `0700` and file mode `0600`.
+The exact custody path and public-key fingerprint are recorded in
+[`issue-50-signing-key-reset.json`](progress/issue-50-signing-key-reset.json).
+An independent off-device backup is pending and remains required before public
+publication. Local candidate building and installation do not imply publication.
+
+`project-release-key-v1` is retired, not known compromised. Its verifier accepts
+only the exact SHA-256-pinned historical fixture manifest, with its original
+signature still required. It cannot authorize any new or changed manifest.
+The fixture and packet G remain unchanged. Retired roots must have a nonempty
+list of valid `allowed_manifest_sha256` values; revoked roots accept nothing.
+
+Recovery: restore the active private key from an owner-controlled backup and
+check its derived public-key fingerprint against the committed trust root. If
+recovery is impossible, create a new key ID and distribute its public root in
+an application update. For a suspected compromise, mark the old root `revoked`
+(remove any historical exception), stop publishing with it, and follow the
+withdrawal procedure below. Merely editing a release-supplied key does not change
+the application-owned trust configuration.
+
 ## Maintainer Roles
 
 | Role | Responsibilities | Separation rule |
