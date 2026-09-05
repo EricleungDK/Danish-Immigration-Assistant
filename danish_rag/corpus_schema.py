@@ -25,6 +25,14 @@ SEMANTIC_CHUNK_CORPUS_SCHEMA = CorpusSchemaContract(
     index_schema_version="hybrid-chunk-index-v1",
     indexed_unit="semantic-chunk",
 )
+SEMANTIC_CHUNK_DOCUMENT_FIELDS = frozenset(
+    {
+        "chunk_id",
+        "source_document_id",
+        "chunk_index",
+        "chunk_content_sha256",
+    }
+)
 SUPPORTED_CORPUS_SCHEMAS = {
     contract.version: contract
     for contract in (

@@ -1,3 +1,4 @@
+import hashlib
 import unittest
 
 from danish_rag.semantic_chunks import SemanticChunkError, build_stable_semantic_chunks
@@ -51,6 +52,73 @@ class StableSemanticChunkTests(unittest.TestCase):
                 source=reviewed_source(),
                 document=normalized_document(content="Changed unreviewed content."),
             )
+
+    def test_source_document_identity_must_be_a_non_empty_string(self):
+        with self.assertRaisesRegex(
+            SemanticChunkError,
+            "missing its identity",
+        ):
+            build_stable_semantic_chunks(
+                source=reviewed_source(),
+                document={**normalized_document(), "document_id": None},
+            )
+
+    def test_approved_source_identity_must_be_a_non_empty_string(self):
+        with self.assertRaisesRegex(
+            SemanticChunkError,
+            "reviewed source identity",
+        ):
+            build_stable_semantic_chunks(
+                source={**reviewed_source(), "source_id": None},
+                document={**normalized_document(), "source_id": None},
+            )
+
+    def test_normalized_source_content_must_be_a_string(self):
+        with self.assertRaisesRegex(
+            SemanticChunkError,
+            "string content",
+        ):
+            build_stable_semantic_chunks(
+                source={
+                    **reviewed_source(),
+                    "normalized_document_sha256": hashlib.sha256(
+                        "None".encode("utf-8")
+                    ).hexdigest(),
+                },
+                document={**normalized_document(), "content": None},
+            )
+
+    def test_stable_source_identities_reject_controls_and_surrounding_whitespace(self):
+        for source_id in (
+            "official\0source",
+            " official-source ",
+            "official-\ud800source",
+        ):
+            with self.subTest(source_id=source_id):
+                with self.assertRaisesRegex(
+                    SemanticChunkError,
+                    "valid reviewed source identity",
+                ):
+                    build_stable_semantic_chunks(
+                        source={**reviewed_source(), "source_id": source_id},
+                        document={**normalized_document(), "source_id": source_id},
+                    )
+
+    def test_stable_source_document_identity_rejects_controls_and_whitespace(self):
+        for document_id in (
+            "reviewed\0document",
+            " reviewed-document ",
+            "reviewed-\ud800document",
+        ):
+            with self.subTest(document_id=document_id):
+                with self.assertRaisesRegex(
+                    SemanticChunkError,
+                    "missing its identity",
+                ):
+                    build_stable_semantic_chunks(
+                        source=reviewed_source(),
+                        document={**normalized_document(), "document_id": document_id},
+                    )
 
     def test_reviewed_source_is_deterministically_divided_into_source_bound_chunks(self):
         source = reviewed_source()

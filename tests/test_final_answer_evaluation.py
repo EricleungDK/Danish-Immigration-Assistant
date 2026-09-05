@@ -178,6 +178,87 @@ class FinalAnswerEvaluationPublicSeamTests(unittest.TestCase):
         )
         self.assertEqual(runner.public_identity["corpus_id"], "kr-2026-07-06.1")
 
+    def test_live_runner_forwards_trusted_custom_release_root(self):
+        configuration = ProviderConfiguration(
+            provider_id="ollama",
+            endpoint="http://127.0.0.1:11434",
+            model="gemma4:12b",
+            provider_version="0.30.6",
+            model_identity={"model": "gemma4:12b", "digest": "fixture-digest"},
+            capabilities=["completion"],
+            validated_at_utc="2026-07-13T12:00:00Z",
+        )
+        trust_root_path = Path("/trusted/config/custom-release-root.json")
+
+        with mock.patch(
+            "danish_rag.final_answer_evaluation.HybridRetriever.from_data_dir"
+        ) as from_data_dir:
+            build_live_ollama_runner(
+                data_dir="/local/data",
+                configuration=configuration,
+                embedding_provider=DeterministicEmbeddingProviderFixture(),
+                trust_root_path=trust_root_path,
+            )
+
+        from_data_dir.assert_called_once_with(
+            "/local/data",
+            embedding_provider=mock.ANY,
+            embedding_endpoint=configuration.endpoint,
+            trust_root_path=trust_root_path,
+        )
+
+    def test_live_cli_forwards_trusted_custom_release_root(self):
+        configuration = ProviderConfiguration(
+            provider_id="ollama",
+            endpoint="http://127.0.0.1:11434",
+            model="gemma4:12b",
+            provider_version="0.30.6",
+            model_identity={"model": "gemma4:12b", "digest": "fixture-digest"},
+            capabilities=["completion"],
+            validated_at_utc="2026-07-13T12:00:00Z",
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            trust_root_path = root / "trusted-release-root.json"
+            output_path = root / "report.json"
+            with (
+                mock.patch(
+                    "danish_rag.final_answer_evaluation.load_provider_configuration",
+                    return_value=configuration,
+                ),
+                mock.patch(
+                    "danish_rag.final_answer_evaluation.build_live_ollama_runner",
+                    return_value=_SyntheticApprovedLiveRunner(),
+                ) as build_runner,
+                mock.patch(
+                    "danish_rag.final_answer_evaluation.generate_final_answer_evaluation",
+                    return_value={"strict_passed": True},
+                ),
+            ):
+                status = main(
+                    [
+                        "--repo-root",
+                        str(ROOT),
+                        "--mode",
+                        "live-ollama",
+                        "--data-dir",
+                        str(root / "data"),
+                        "--config-path",
+                        str(root / "provider.json"),
+                        "--trust-root-path",
+                        str(trust_root_path),
+                        "--output",
+                        str(output_path),
+                    ]
+                )
+
+        self.assertEqual(status, 0)
+        build_runner.assert_called_once_with(
+            data_dir=str(root / "data"),
+            configuration=configuration,
+            trust_root_path=str(trust_root_path),
+        )
+
     def test_case_evaluation_scores_structural_claim_citation_and_trust_evidence(self):
         evidence = {
             "citation_id": "official-1",

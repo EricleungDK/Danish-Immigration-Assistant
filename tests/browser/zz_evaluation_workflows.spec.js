@@ -71,6 +71,8 @@ function cssTimeInMilliseconds(value) {
 test("eval-016-keyboard-evidence-drawer", async ({ page }) => {
   await page.goto("/");
   await askSupportedQuestion(page);
+  // Measure drawer requests after the independent page-load update check ends.
+  await expect(page.locator("#knowledge-updates")).not.toHaveAttribute("aria-busy", "true");
 
   const observedRequests = [];
   page.on("request", (request) => observedRequests.push(request.url()));

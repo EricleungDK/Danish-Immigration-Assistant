@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from danish_rag.knowledge_release import KnowledgeReleaseError
 from danish_rag.source_maintenance import build_publishable_knowledge_release
 from tests.chunk_release_fixture import bundled_reviewed_source_and_document
 from tests.release_trust_fixture import create_test_release_trust_fixture
@@ -49,6 +50,47 @@ class ChunkedKnowledgeReleaseTests(unittest.TestCase):
         self.assertTrue(
             all(item["document_id"] == item["chunk_id"] for item in result["documents"])
         )
+
+    def test_every_manifest_source_must_produce_semantic_chunks(self):
+        source_without_document = {
+            **self.source,
+            "source_id": "second-approved-source",
+        }
+
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "approved source has no semantic chunks",
+        ):
+            build_publishable_knowledge_release(
+                release_dir=self.root / "incomplete-chunked-release",
+                release_id="kr-2026-07-30.2",
+                source_registry_version="sr-2026-07-30.1",
+                sources=[self.source, source_without_document],
+                documents=[self.document],
+                created_at_utc="2026-07-30T10:30:00Z",
+                minimum_application_version="0.1.0",
+                corpus_schema_version="2.0",
+                signing_private_key_path=self.release_trust.signing_private_key_path,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
+
+    def test_chunked_release_requires_at_least_one_approved_source(self):
+        with self.assertRaisesRegex(
+            KnowledgeReleaseError,
+            "at least one approved source",
+        ):
+            build_publishable_knowledge_release(
+                release_dir=self.root / "empty-chunked-release",
+                release_id="kr-2026-07-30.5",
+                source_registry_version="sr-2026-07-30.1",
+                sources=[],
+                documents=[],
+                created_at_utc="2026-07-30T10:30:00Z",
+                minimum_application_version="0.1.0",
+                corpus_schema_version="2.0",
+                signing_private_key_path=self.release_trust.signing_private_key_path,
+                trust_root_path=self.release_trust.trust_root_path,
+            )
 
 
 if __name__ == "__main__":

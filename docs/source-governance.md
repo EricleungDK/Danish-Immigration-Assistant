@@ -116,6 +116,11 @@ Blocked transitions:
 
 Publication assembles only eligible sources into a knowledge release. The release operator verifies manifest completeness, schema compatibility, source eligibility, artifact hashes, and signature status before publishing.
 
+The production source registry records the named release operator, release
+approver, and recovery owner alongside the source-level curator, reviewer, and
+monitoring owner. A single maintainer may occupy multiple roles for the MVP,
+but the identities and audit timestamp remain explicit.
+
 Allowed transitions:
 
 - Eligible `approved-current` and policy-allowed `overdue-policy-usable` sources -> included in a release manifest.
@@ -151,7 +156,7 @@ Knowledge-release compatibility is evaluated before installation:
 
 - `manifest_schema_version` must be in the application's supported manifest schema range. Unknown major versions are blocked; unknown minor versions are allowed only when the manifest declares backward-compatible fields.
 - `corpus_schema_version` must be supported by the installed application. A release that changes document shape, source-state semantics, chunk metadata, citation metadata, or trust-indicator inputs must bump the corpus schema version.
-- Corpus schema `1.0` is the existing whole-document contract. Corpus schema `2.0` must declare `content_unit_schema_version: semantic-chunk-v1`; each chunk must carry a deterministic chunk ID, source-document ID, chunk index, chunk-content hash, and reviewed normalized-content hash. Authoring and signed-release verification recompute the reviewed normalized-content identity from the supplied or reconstructed ordered content. A schema `1.0` release cannot declare chunk content units, so existing releases are never silently reinterpreted.
+- Corpus schema `1.0` is the existing whole-document contract. Corpus schema `2.0` must declare `content_unit_schema_version: semantic-chunk-v1`; each source must carry its exact reviewed normalized-extraction hash, and each chunk must carry a deterministic chunk ID, source-document ID, chunk index, chunk-content hash, and reviewed normalized-content hash. Authoring and signed-release verification recompute the reviewed normalized-content identity from the supplied or reconstructed ordered content. A schema `1.0` release cannot declare chunk content units, so existing releases are never silently reinterpreted.
 - `minimum_application_version` is the lowest application version that understands the manifest, corpus schema, source-state eligibility rules, and installation checks required by the release. Older applications must refuse installation with an upgrade message.
 - A knowledge release may require a higher `minimum_application_version`, but it may not lower the requirement below the version needed by its schema or source-state semantics.
 - Downgrades are allowed only to a previously verified release whose schema remains supported and whose release ID is not withdrawn.
@@ -184,6 +189,7 @@ Each knowledge release should include a manifest with these fields:
       "reviewers": ["reviewer-id"],
       "last_checked_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
       "source_content_sha256": "<hex>",
+      "normalized_extraction_sha256": "<hex>",
       "normalized_document_sha256": "<hex>",
       "extraction_schema_version": "1.0",
       "fresh_tomato_inputs": {
@@ -208,7 +214,14 @@ Each knowledge release should include a manifest with these fields:
 }
 ```
 
-The manifest is the installation contract. Retrieval indexes are local derived data and should record compatibility with this manifest rather than become the authoritative source of provenance.
+The manifest is the installation contract. `normalized_extraction_sha256`
+identifies the exact archived text file that received human review;
+`normalized_document_sha256` identifies the deterministic whitespace-normalized
+content reconstructed from the ordered semantic chunks. Both identities are
+retained because an extraction-format change can leave normalized content
+unchanged. Retrieval indexes are local derived data and should record
+compatibility with this manifest rather than become the authoritative source of
+provenance.
 
 ## Current MVP Fixture Registry Evidence
 

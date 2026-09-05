@@ -478,7 +478,9 @@ class GroundedFlexibilityDatasetContractTests(unittest.TestCase):
         self.assertNotIn("conversation_id", serialized)
 
     def test_production_answer_path_qualifies_every_synthetic_variant(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
+        from tests.source_freshness_fixture import fixture_review_time
+
+        with fixture_review_time(), tempfile.TemporaryDirectory() as tmpdir:
             report = generate_grounded_flexibility_evaluation(
                 DATASET_PATH,
                 runner=build_production_answer_runner(tmpdir),

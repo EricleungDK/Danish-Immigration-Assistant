@@ -131,12 +131,16 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
 
     def assert_previous_release_still_queryable(self) -> None:
         self.assertEqual(
-            active_corpus_summary(self.data_dir)["knowledge_release_id"],
+            active_corpus_summary(
+                self.data_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )["knowledge_release_id"],
             "kr-2026-07-06.1",
         )
         results = HybridRetriever.from_data_dir(
             self.data_dir,
             embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
         ).retrieve("What Danish test do I need for permanent residence?")
         self.assertTrue(results)
         self.assertEqual(results[0]["knowledge_release_id"], "kr-2026-07-06.1")
@@ -155,7 +159,10 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result["manifest"]["knowledge_release_id"], "kr-2026-07-07.1")
         self.assertEqual(
-            active_corpus_summary(self.data_dir)["knowledge_release_id"],
+            active_corpus_summary(
+                self.data_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )["knowledge_release_id"],
             "kr-2026-07-07.1",
         )
         self.assertEqual(result["progress"], streamed_progress)
@@ -177,6 +184,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
             HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
+                trust_root_path=self.release_trust.trust_root_path,
             ).retrieve("permanent residence")
         )
 
@@ -223,6 +231,11 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
                     )
 
                 self.assert_previous_release_still_queryable()
+                installing_dir = self.data_dir / ".installing"
+                self.assertFalse(
+                    installing_dir.exists() and any(installing_dir.iterdir()),
+                    f"{phase} failure left staged installation artifacts",
+                )
 
     def test_late_activation_fault_restores_promoted_directories_before_pointer_update(self):
         release_dir = self.make_newer_release()

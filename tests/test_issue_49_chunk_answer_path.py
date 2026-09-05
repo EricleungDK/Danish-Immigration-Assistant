@@ -78,6 +78,7 @@ class ChunkAnswerPathTests(unittest.TestCase):
             retriever=HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
+                trust_root_path=self.release_trust.trust_root_path,
             ),
             generator=ChunkCitationGenerator(),
         ).answer(

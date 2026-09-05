@@ -26,10 +26,12 @@ async function askGreeting(page) {
 }
 
 async function askSupportedQuestion(page) {
+  const previousTurnCount = await page.locator(".turn").count();
   await page
     .getByRole("textbox", { name: "Question" })
     .fill("What Danish test do I need for permanent residence?");
   await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".turn")).toHaveCount(previousTurnCount + 1);
   await expect(page.locator(".turn").last()).toBeVisible();
 }
 

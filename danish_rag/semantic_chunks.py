@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
 from collections import defaultdict
 from typing import Any
 
@@ -15,6 +16,20 @@ _SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+")
 
 class SemanticChunkError(ValueError):
     """Raised when reviewed source material cannot produce trusted chunks."""
+
+
+def is_valid_stable_identity(value: object) -> bool:
+    """Return whether an identity is canonical and safe to persist or render."""
+
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and value == value.strip()
+        and not any(
+            unicodedata.category(character) in {"Cc", "Cf", "Cs"}
+            for character in value
+        )
+    )
 
 
 def build_stable_semantic_chunks(
@@ -31,12 +46,17 @@ def build_stable_semantic_chunks(
     chunk's identity.
     """
 
-    source_id = str(source.get("source_id", "")).strip()
-    document_source_id = str(document.get("source_id", "")).strip()
-    if not source_id or document_source_id != source_id:
+    source_identity = source.get("source_id")
+    document_source_identity = document.get("source_id")
+    if (
+        not is_valid_stable_identity(source_identity)
+        or not is_valid_stable_identity(document_source_identity)
+        or document_source_identity != source_identity
+    ):
         raise SemanticChunkError(
-            "A chunked document must reference the reviewed source being chunked."
+            "A chunked document must reference a valid reviewed source identity."
         )
+    source_id = source_identity
     if source.get("review_state") not in {
         "approved-current",
         "overdue-policy-usable",
@@ -57,7 +77,11 @@ def build_stable_semantic_chunks(
         raise SemanticChunkError(
             "Reviewed source is missing a valid normalized document content identity."
         )
-    document_content = str(document.get("content", ""))
+    document_content = document.get("content")
+    if not isinstance(document_content, str):
+        raise SemanticChunkError(
+            "Reviewed normalized source must contain string content."
+        )
     normalized_content = " ".join(document_content.split())
     if _sha256_text(normalized_content) != normalized_document_sha256:
         raise SemanticChunkError(
@@ -74,9 +98,10 @@ def build_stable_semantic_chunks(
     if not semantic_units:
         raise SemanticChunkError("Reviewed normalized source content is empty.")
 
-    source_document_id = str(document.get("document_id", "")).strip()
-    if not source_document_id:
+    source_document_identity = document.get("document_id")
+    if not is_valid_stable_identity(source_document_identity):
         raise SemanticChunkError("Reviewed normalized document is missing its identity.")
+    source_document_id = source_document_identity
 
     occurrences: defaultdict[str, int] = defaultdict(int)
     chunks: list[dict[str, Any]] = []

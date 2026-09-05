@@ -17,6 +17,7 @@ from danish_rag.provider_setup import ProviderConfiguration
 from danish_rag.retrieval import HybridRetriever
 from danish_rag.evaluation_quality_bar import load_evaluation_cases
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.source_freshness_fixture import fixture_review_time
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,6 +62,7 @@ class RecordingGenerator:
 
 class Issue15ExamCoverageTests(unittest.TestCase):
     def setUp(self) -> None:
+        self.enterContext(fixture_review_time())
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         self.data_dir = Path(self.tempdir.name)

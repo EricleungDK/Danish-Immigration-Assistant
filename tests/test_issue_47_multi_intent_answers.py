@@ -96,6 +96,9 @@ class MultiIntentAnswerGeneratorFixture:
 
 class Issue47MultiIntentAnswerTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
+        from tests.source_freshness_fixture import fixture_review_time
+
+        self.enterContext(fixture_review_time())
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         root = Path(self.tempdir.name)

@@ -132,6 +132,62 @@ def validate_source_registry_against_release(
                     f"Source {source_id} content origin differs from its corpus document"
                 )
 
+        if source["content_origin"] == "official-source-normalized-extract":
+            review = source["review_evidence"]
+            monitoring = source["monitoring_evidence"]
+            production_bindings = {
+                "source content": (
+                    review["official_source_snapshot_sha256"],
+                    manifest_source.get("source_content_sha256"),
+                ),
+                "normalized extraction": (
+                    review["normalized_extraction_sha256"],
+                    manifest_source.get("normalized_extraction_sha256"),
+                ),
+                "normalized document": (
+                    source.get("normalized_document_sha256"),
+                    manifest_source.get("normalized_document_sha256"),
+                ),
+                "reviewer evidence": (
+                    review["reviewer_ids"],
+                    manifest_source.get("reviewers"),
+                ),
+                "review timestamp": (
+                    review["reviewed_at_utc"],
+                    manifest_source.get("reviewed_at_utc"),
+                ),
+                "monitored final URL": (
+                    monitoring["final_url"],
+                    manifest_source.get("final_url"),
+                ),
+                "monitoring timestamp": (
+                    monitoring["last_fetched_at_utc"],
+                    manifest_source.get("last_checked_at_utc"),
+                ),
+            }
+            for label, (registry_value, release_value) in production_bindings.items():
+                if registry_value != release_value:
+                    raise SourceRegistryError(
+                        f"Source {source_id} {label} differs between registry and release"
+                    )
+            for document in source_documents:
+                if (
+                    document.get("normalized_extraction_sha256")
+                    != review["normalized_extraction_sha256"]
+                ):
+                    raise SourceRegistryError(
+                        f"Source {source_id} normalized extraction differs between "
+                        "registry and release document"
+                    )
+                if (
+                    document.get("normalized_document_sha256")
+                    != source.get("normalized_document_sha256")
+                ):
+                    raise SourceRegistryError(
+                        f"Source {source_id} normalized document differs between "
+                        "registry and release document"
+                    )
+
         if source["content_origin"] == "project-authored-fixture":
             fixture_document_count += len(source_documents)
             _validate_fixture_projection(
@@ -173,6 +229,8 @@ def _validate_registry(registry: dict[str, Any]) -> None:
         "production-source-registry",
     }:
         raise SourceRegistryError("Invalid source-registry artifact scope")
+    if registry["artifact_scope"] == "production-source-registry":
+        _validate_release_governance(registry.get("release_governance"))
     sources = registry["sources"]
     if not isinstance(sources, list) or not sources:
         raise SourceRegistryError("Source registry must contain at least one source")
@@ -181,14 +239,23 @@ def _validate_registry(registry: dict[str, Any]) -> None:
     for index, source in enumerate(sources):
         if not isinstance(source, dict):
             raise SourceRegistryError(f"Source registry entry {index} must be an object")
-        _validate_source(source, index=index)
+        _validate_source(
+            source,
+            index=index,
+            registry_fallback=registry.get("single_maintainer_fallback"),
+        )
         source_id = str(source["source_id"])
         if source_id in seen_source_ids:
             raise SourceRegistryError(f"Duplicate source ID {source_id!r}")
         seen_source_ids.add(source_id)
 
 
-def _validate_source(source: dict[str, Any], *, index: int) -> None:
+def _validate_source(
+    source: dict[str, Any],
+    *,
+    index: int,
+    registry_fallback: Any = None,
+) -> None:
     required = {
         "source_id",
         "publisher",
@@ -270,6 +337,7 @@ def _validate_source(source: dict[str, Any], *, index: int) -> None:
             review["reviewer_ids"]
             or review["second_reviewer_ids"]
             or review["interpretation_risks"]
+            or review.get("staffing") is not None
             or any(review[field] is not None for field in fields_that_must_be_empty)
         ):
             raise SourceRegistryError(
@@ -317,15 +385,39 @@ def _validate_source(source: dict[str, Any], *, index: int) -> None:
                 source_id=source_id,
                 label="second reviewer",
             )
+        staffing = review.get("staffing") or (
+            "separated-human-review"
+            if review["materiality"] == "material"
+            else "single-reviewer-non-material"
+        )
+        if staffing not in {
+            "single-reviewer-non-material",
+            "mvp-single-maintainer-fallback",
+            "separated-human-review",
+        }:
+            raise SourceRegistryError(
+                f"Source {source_id} completed review has invalid staffing evidence"
+            )
         if review["materiality"] == "material":
             distinct_reviewers = {
                 *review["reviewer_ids"],
                 *review["second_reviewer_ids"],
             }
-            if len(distinct_reviewers) < 2:
+            uses_fallback = staffing == "mvp-single-maintainer-fallback"
+            if len(distinct_reviewers) < 2 and not uses_fallback:
                 raise SourceRegistryError(
                     f"Source {source_id} material change requires second human reviewer evidence"
                 )
+            if uses_fallback:
+                _validate_single_maintainer_fallback(
+                    source_id,
+                    review.get("single_maintainer_fallback"),
+                    registry_fallback,
+                )
+        elif staffing == "mvp-single-maintainer-fallback":
+            raise SourceRegistryError(
+                f"Source {source_id} non-material review cannot use the material-change fallback"
+            )
 
     if source["production_release_eligible"]:
         if source["curation_evidence"]["status"] != "completed":
@@ -335,6 +427,11 @@ def _validate_source(source: dict[str, Any], *, index: int) -> None:
         if source["monitoring_evidence"]["status"] != "recorded":
             raise SourceRegistryError(
                 f"Source {source_id} production eligibility requires monitoring evidence"
+            )
+        http_status = source["monitoring_evidence"]["http_status"]
+        if not 200 <= http_status < 300:
+            raise SourceRegistryError(
+                f"Source {source_id} production eligibility requires a successful fetch"
             )
         if status != "completed":
             raise SourceRegistryError(
@@ -348,6 +445,10 @@ def _validate_source(source: dict[str, Any], *, index: int) -> None:
             raise SourceRegistryError(
                 f"Source {source_id} production eligibility requires official-source content"
             )
+        _validate_sha256(
+            source.get("normalized_document_sha256"),
+            f"Source {source_id} normalized document hash",
+        )
 
 
 def _assess_validated_registry(registry: dict[str, Any]) -> dict[str, Any]:
@@ -476,8 +577,80 @@ def _validate_monitoring_evidence(source_id: str, evidence: Any) -> None:
         "https://"
     ):
         raise SourceRegistryError(f"Source {source_id} monitored final URL must use HTTPS")
-    if not isinstance(evidence["http_status"], int) or not 100 <= evidence["http_status"] <= 599:
+    if (
+        isinstance(evidence["http_status"], bool)
+        or not isinstance(evidence["http_status"], int)
+        or not 100 <= evidence["http_status"] <= 599
+    ):
         raise SourceRegistryError(f"Source {source_id} monitoring HTTP status is invalid")
+
+
+def _validate_release_governance(evidence: Any) -> None:
+    if not isinstance(evidence, dict):
+        raise SourceRegistryError(
+            "Production source registry requires release governance evidence"
+        )
+    required = {
+        "release_operator_ids",
+        "release_approver_ids",
+        "recovery_owner_ids",
+        "recorded_at_utc",
+    }
+    missing = sorted(required - set(evidence))
+    if missing:
+        raise SourceRegistryError(
+            "Release governance evidence missing field(s): " + ", ".join(missing)
+        )
+    for field, label in (
+        ("release_operator_ids", "release operator"),
+        ("release_approver_ids", "release approver"),
+        ("recovery_owner_ids", "recovery owner"),
+    ):
+        identities = evidence[field]
+        if not isinstance(identities, list):
+            raise SourceRegistryError(f"Release governance {label} IDs must be a list")
+        _validate_non_placeholder_identities(
+            identities,
+            source_id="production registry",
+            label=label,
+        )
+    _parse_utc(evidence["recorded_at_utc"], "Release governance recorded_at_utc")
+
+
+def _validate_single_maintainer_fallback(
+    source_id: str,
+    source_fallback: Any,
+    registry_fallback: Any,
+) -> None:
+    if not isinstance(source_fallback, dict) or not isinstance(registry_fallback, dict):
+        raise SourceRegistryError(
+            f"Source {source_id} material change fallback requires explicit registry evidence"
+        )
+    for fallback in (source_fallback, registry_fallback):
+        if fallback.get("selected") is not True:
+            raise SourceRegistryError(
+                f"Source {source_id} material change fallback must be selected"
+            )
+        if not isinstance(fallback.get("reason"), str) or not fallback["reason"].strip():
+            raise SourceRegistryError(
+                f"Source {source_id} material change fallback requires a reason"
+            )
+        post_publication = fallback.get("post_publication_second_review")
+        if (
+            not isinstance(post_publication, dict)
+            or post_publication.get("required") is not True
+            or post_publication.get("status") != "pending-publication"
+            or not isinstance(post_publication.get("schedule"), str)
+            or not post_publication["schedule"].strip()
+        ):
+            raise SourceRegistryError(
+                f"Source {source_id} material change fallback requires a pending "
+                "post-publication second review"
+            )
+    if source_fallback != registry_fallback:
+        raise SourceRegistryError(
+            f"Source {source_id} material change fallback differs from registry evidence"
+        )
 
 
 def _validate_non_placeholder_identities(

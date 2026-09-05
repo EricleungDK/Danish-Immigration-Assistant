@@ -461,7 +461,10 @@ class GitHubKnowledgeUpdateFlowTests(unittest.IsolatedAsyncioTestCase):
         install_status = await self.wait_for_install_terminal_status(client)
         self.assertIn("Knowledge update installed", install_status.text)
         self.assertEqual(
-            active_corpus_summary(self.data_dir)["knowledge_release_id"],
+            active_corpus_summary(
+                self.data_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )["knowledge_release_id"],
             release_id,
         )
 
@@ -640,7 +643,10 @@ class GitHubKnowledgeUpdateFlowTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn(f'data-install-phase="{phase}"', status.text)
         self.assertIn('value="100"', status.text)
         self.assertEqual(
-            active_corpus_summary(self.data_dir)["knowledge_release_id"],
+            active_corpus_summary(
+                self.data_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )["knowledge_release_id"],
             release_id,
         )
 

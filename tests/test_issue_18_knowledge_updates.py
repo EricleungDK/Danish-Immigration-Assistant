@@ -51,7 +51,12 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(0.02)
         self.fail("Knowledge installation did not reach a terminal state")
 
-    def make_newer_release(self, *, release_id: str = "kr-2026-07-07.1") -> Path:
+    def make_newer_release(
+        self,
+        *,
+        release_id: str = "kr-2026-07-07.1",
+        extraction_identity_only: bool = False,
+    ) -> Path:
         current_manifest = json.loads(
             (BUNDLED_MINIMAL_RELEASE / "manifest.json").read_text(encoding="utf-8")
         )
@@ -64,20 +69,29 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
         for source in current_manifest["sources"]:
             updated = dict(source)
             if updated["source_id"] == "nyidanmark-permanent-residence-language-requirements":
-                updated["last_checked_at_utc"] = "2026-07-07T12:00:00Z"
-                updated["reviewed_at_utc"] = "2026-07-07T12:30:00Z"
-                updated["source_content_sha256"] = (
-                    "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
-                )
-                updated["normalized_document_sha256"] = (
-                    "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100"
-                )
+                if extraction_identity_only:
+                    updated["normalized_extraction_sha256"] = "a" * 64
+                else:
+                    updated["last_checked_at_utc"] = "2026-07-07T12:00:00Z"
+                    updated["reviewed_at_utc"] = "2026-07-07T12:30:00Z"
+                    updated["source_content_sha256"] = (
+                        "00112233445566778899aabbccddeeff"
+                        "00112233445566778899aabbccddeeff"
+                    )
+                    updated["normalized_document_sha256"] = (
+                        "ffeeddccbbaa99887766554433221100"
+                        "ffeeddccbbaa99887766554433221100"
+                    )
             sources.append(updated)
 
         documents = []
         for document in current_documents:
             updated = dict(document)
-            if updated["source_id"] == "nyidanmark-permanent-residence-language-requirements":
+            if (
+                not extraction_identity_only
+                and updated["source_id"]
+                == "nyidanmark-permanent-residence-language-requirements"
+            ):
                 updated["checked_at_utc"] = "2026-07-07T12:00:00Z"
                 updated["content"] = updated["content"] + "\nReviewed July update."
             documents.append(updated)
@@ -132,6 +146,23 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
             "citation_id",
         }:
             self.assertNotIn(private_marker, update_json)
+
+    def test_discovery_reports_reviewed_extraction_identity_changes(self):
+        self.make_newer_release(extraction_identity_only=True)
+
+        update = discover_knowledge_update(
+            self.data_dir,
+            self.release_catalog,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+
+        self.assertIsNotNone(update)
+        assert update is not None
+        self.assertEqual(update["reviewed_source_changes"]["updated"], 1)
+        self.assertEqual(
+            update["reviewed_source_changes"]["updated_sources"][0]["source_id"],
+            "nyidanmark-permanent-residence-language-requirements",
+        )
 
     async def test_app_review_dismiss_and_install_controls_preserve_explicit_user_approval(self):
         self.make_newer_release()
@@ -195,7 +226,10 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
         installation_status = await self.wait_for_install_terminal_status(client)
         self.assertIn("Knowledge update installed", installation_status.text)
         self.assertEqual(
-            active_corpus_summary(self.data_dir)["knowledge_release_id"],
+            active_corpus_summary(
+                self.data_dir,
+                trust_root_path=self.release_trust.trust_root_path,
+            )["knowledge_release_id"],
             "kr-2026-07-07.1",
         )
         self.assertTrue((self.data_dir / "index" / "kr-2026-07-07.1").exists())

@@ -1,6 +1,6 @@
 # Current Project Context
 
-**Last updated:** 2026-07-14
+**Last updated:** 2026-08-17
 
 ## Current Project State
 
@@ -9,20 +9,23 @@ The production path is implemented for Ollama `gemma4:12b`, local
 retrieval, evidence-bounded structured answers, local conversations, citations,
 trust indicators, staged GitHub update approval, and atomic rollback.
 
-Machine verification is consolidated under `docs/progress/`. Release is
-still blocked rather than declared complete because the production source registry
-truthfully records fixture summaries rather than human-reviewed official snapshots,
-exact final-answer executions still require independent human adjudication, the
-supported-environment matrix needs replacement real-process/browser evidence, and
-the manual assistive-technology gate has not been run.
+Machine verification is consolidated under `docs/progress/`. The five completed
+official-source reviews now have a machine-tested production-registry and
+semantic-chunk release builder. The installed active release remains the fixture
+because the project private signing key is intentionally absent from the
+repository. Exact final-answer executions still require independent human
+adjudication, the supported-environment matrix needs replacement
+real-process/browser evidence, and the manual assistive-technology gate has not
+been run.
 
 ## Active Tasks
 
 - Rerun the elevated Playwright suite and live Ollama supported-environment
   monitor, then regenerate strict monitor/final workflow evidence. The current
   platform usage limit prevented that run; the Python suite is current and clean.
-- Obtain named curator/monitor/source-review evidence and rebuild the production
-  signed corpus from official snapshots.
+- Supply the existing project private signing key from durable off-repository
+  custody, build and install the issue-50 production candidate, and record its
+  zero-violation retrieval and rollback reports.
 - Obtain independent human final-answer adjudication and final release-owner
   approval.
 - Run and record the required manual assistive-technology check.
@@ -37,10 +40,15 @@ the manual assistive-technology gate has not been run.
   extraction, and rollback monitoring.
 - Live final-answer and release monitor harnesses with fail-closed evidence binding.
 - Keyboard, reduced-motion, narrow-screen, 200% zoom, and live-Ollama browser gates.
+- Completed-review-to-production-registry/release authoring with semantic chunks,
+  multilingual source retrieval, exact extraction provenance, isolated
+  pre-activation retrieval qualification, and candidate rollback verification.
 
 ## Known Issues
 
-- The active source registry has zero production-qualified human-reviewed sources.
+- The active installed source registry is still the fixture; the issue-50 builder
+  qualifies all five human-reviewed sources, but the durable project key is
+  required before its candidate can be production-signed and activated.
 - Independent human answer adjudication, manual assistive-technology evidence,
   and production release-owner approval are not recorded.
 - The prior environment monitor did not qualify a restarted real process/browser.
