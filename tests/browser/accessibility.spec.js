@@ -316,12 +316,33 @@ test("manual update check announces its result without navigating or losing the 
   await page.goto("/");
   await ensureBrowserProvider(page);
   await page.getByRole("textbox", { name: "Question" }).fill("Unsubmitted accessibility test");
-  await page.evaluate(() => { window.updateCheckPageMarker = true; });
+  await page.evaluate(() => {
+    window.updateCheckPageMarker = true;
+    window.updateCheckOriginalButton = document.querySelector(".update-check-form button");
+    window.updateCheckButtonRemoved = false;
+    new MutationObserver(() => {
+      if (!window.updateCheckOriginalButton.isConnected) window.updateCheckButtonRemoved = true;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   const button = page.getByRole("button", { name: "Check for knowledge updates" });
   await button.focus();
   await page.keyboard.press("Enter");
-  await expect(page.locator("#interaction-status")).toContainText("Knowledge update available");
+  await expect(page.locator("#knowledge-check-announcement")).toContainText("Knowledge update available");
+  expect(await page.evaluate(() => window.updateCheckOriginalButton === document.querySelector(".update-check-form button"))).toBe(true);
+  expect(await page.evaluate(() => window.updateCheckButtonRemoved)).toBe(false);
   expect(await page.evaluate(() => window.updateCheckPageMarker)).toBe(true);
   await expect(page.getByRole("textbox", { name: "Question" })).toHaveValue("Unsubmitted accessibility test");
   await expect(page.getByRole("button", { name: "Check for knowledge updates" })).toBeFocused();
+});
+
+
+test("manual update network failure is announced beside the retained button", async ({ page }) => {
+  await page.goto("/");
+  await page.route("**/knowledge-updates/check", route => route.abort());
+  const button = page.getByRole("button", { name: "Check for knowledge updates" });
+  await button.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#knowledge-check-announcement")).toContainText("Knowledge update check failed");
+  await expect(button).toBeFocused();
+  await expect(page.locator(".update-check-form")).not.toHaveAttribute("aria-busy", "true");
 });

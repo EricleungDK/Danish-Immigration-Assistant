@@ -1,5 +1,15 @@
+<div id="knowledge-updates">
+  <p id="knowledge-check-announcement" role="status" aria-live="polite" aria-atomic="true"></p>
+  <form class="update-check-form" method="post" action="/knowledge-updates/check"
+        hx-post="/knowledge-updates/check" hx-target="#knowledge-update-content"
+        hx-select="#knowledge-update-content" hx-swap="outerHTML" hx-sync="this:drop">
+    <button type="submit">Check for knowledge updates</button>
+  </form>
 <div
-  id="knowledge-updates"
+  id="knowledge-update-content"
+  hx-select="#knowledge-update-content"
+  hx-target="this"
+  hx-disinherit="hx-select hx-target"
   {% if automatic_check_enabled %}
   hx-post="/knowledge-updates/automatic-check"
   hx-trigger="load"
@@ -36,13 +46,8 @@
   {% endif %}
   {% include "installation_status.html" %}
   {% if manual_check_message %}
-  <p id="manual-update-result">{{ manual_check_message }}</p>
+  <p id="manual-update-result" hidden>{{ manual_check_message }}</p>
   {% endif %}
-  <form class="update-check-form" method="post" action="/knowledge-updates/check"
-        hx-post="/knowledge-updates/check" hx-target="#knowledge-updates" hx-swap="outerHTML"
-        hx-disabled-elt="find button">
-    <button type="submit">Check for knowledge updates</button>
-  </form>
   {% if available_github_update %}
   <section class="update-review" aria-labelledby="github-update-metadata-title">
     <h3 id="github-update-metadata-title">Knowledge update metadata available</h3>
@@ -155,4 +160,6 @@
     </div>
   </section>
   {% endif %}
+</div>
+
 </div>

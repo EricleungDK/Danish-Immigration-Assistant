@@ -1,6 +1,5 @@
 const evidenceReturnTargets = new WeakMap();
 const requestStatusByFormClass = new Map([
-  ["update-check-form", "Checking for knowledge updates."],
   ["composer", "Preparing answer."],
   ["setup-form", "Testing provider."],
   ["model-discovery-button", "Finding compatible local models."],
@@ -79,6 +78,12 @@ document.body.addEventListener("htmx:beforeRequest", (event) => {
     return;
   }
 
+  if (source.classList.contains("update-check-form")) {
+    document.getElementById("knowledge-check-announcement").textContent = "Checking for knowledge updates.";
+    source.setAttribute("aria-busy", "true");
+    return;
+  }
+
   for (const [className, message] of requestStatusByFormClass) {
     if (source.classList.contains(className)) {
       announceStatus(message);
@@ -101,11 +106,10 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
     }
   }
 
-  if (target.id === "knowledge-updates") {
+  if (target.id === "knowledge-update-content") {
     const result = document.getElementById("manual-update-result");
     if (result) {
-      announceStatus(result.textContent.trim());
-      document.querySelector(".update-check-form button")?.focus({ preventScroll: true });
+      document.getElementById("knowledge-check-announcement").textContent = result.textContent.trim();
     }
   }
 
@@ -115,6 +119,17 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
   }
 });
 
-document.body.addEventListener("htmx:responseError", () => {
+document.body.addEventListener("htmx:afterRequest", (event) => {
+  if (event.target instanceof HTMLElement && event.target.classList.contains("update-check-form")) {
+    event.target.removeAttribute("aria-busy");
+    if (event.detail?.failed || event.detail?.xhr?.status === 0) {
+      document.getElementById("knowledge-check-announcement").textContent =
+        "Knowledge update check failed. Check the local app connection and retry.";
+    }
+  }
+});
+
+document.body.addEventListener("htmx:responseError", (event) => {
+  if (event.target instanceof HTMLElement && event.target.classList.contains("update-check-form")) return;
   announceStatus("Request failed. Review the visible error and retry.");
 });

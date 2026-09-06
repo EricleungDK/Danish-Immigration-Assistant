@@ -50,6 +50,23 @@ The final Python suite passes 468 tests with five opt-in skips (463 executed).
 Actual Narrator retesting, remaining manual journeys, and tool/browser version
 recording are still required before the manual gate can pass.
 
+### Narrator retest and focus preservation
+
+The owner retested the first fix and still heard Narrator start at the header.
+Live browser inspection confirmed no navigation, but the focused check button
+was removed and replaced. The follow-up keeps the form/button and a nearby live
+region mounted, updates only the release details, and avoids programmatic
+refocusing or disabling the focused button. Duplicate requests are dropped while
+one is running. Failed requests receive local feedback too.
+
+Nested installation polling does not inherit the parent update response selector
+or target. The existing installation-completion browser test covers that boundary.
+The update-flow Python tests pass (17 tests). The full browser run passed all
+35 previously passing tests, including installation polling. A new simulated
+network-failure test exposed an HTMX event without a failure flag; that path now
+checks the transport status too. All ten accessibility browser tests then passed.
+The manual gate remains failed pending a new actual Narrator retest.
+
 ## Required Manual Gate
 
 A human reviewer must use an actual screen reader or equivalent assistive technology in the published supported environment and record the tool/version, browser/version, date, reviewer identity, and pass/fail observations for provider setup, question submission, answer/status announcements, inline citation navigation, evidence-drawer focus/close behavior, history navigation, update review, and error recovery. Do not mark the gate passed from accessibility-tree inspection or automated axe results alone.
