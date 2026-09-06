@@ -30,6 +30,26 @@ current `npm run test:browser` run is required before qualification.
 - The prior review validated browser semantics and keyboard interaction with Playwright, but must be rerun after the current UI changes. It did not exercise an actual assistive-technology session or capture its output.
 - The approved quality bar requires both current browser automation and a manual assistive-technology check. Both are `not_verified` and remain release-blocking; the historical automated results above do not substitute for either gate.
 
+## Manual review follow-up (2026-09-06)
+
+The owner reported that checking for knowledge updates with Windows Narrator
+read the whole page without an identifiable result. The manual update-review
+journey is failed pending retest; it is not covered by the earlier automated pass.
+
+The manual check now swaps only the update panel, announces checking and the
+actual result through the existing live region, preserves the question draft,
+and returns focus to the check button. Empty, available, failed, and conflicting
+checks receive visible feedback. Origin validation and separate download/install
+approval remain enforced. Non-JavaScript submission retains a redirect with an
+explicit result at the updates section.
+
+Regression coverage includes empty/available/error responses, origin rejection,
+and a browser check for the announced result, preserved draft/page, and focus.
+The current browser suite passes 35 tests with one opt-in live test skipped.
+The final Python suite passes 468 tests with five opt-in skips (463 executed).
+Actual Narrator retesting, remaining manual journeys, and tool/browser version
+recording are still required before the manual gate can pass.
+
 ## Required Manual Gate
 
 A human reviewer must use an actual screen reader or equivalent assistive technology in the published supported environment and record the tool/version, browser/version, date, reviewer identity, and pass/fail observations for provider setup, question submission, answer/status announcements, inline citation navigation, evidence-drawer focus/close behavior, history navigation, update review, and error recovery. Do not mark the gate passed from accessibility-tree inspection or automated axe results alone.

@@ -3,6 +3,9 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+from fastapi import HTTPException
 
 import httpx
 
@@ -163,6 +166,40 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
             update["reviewed_source_changes"]["updated_sources"][0]["source_id"],
             "nyidanmark-permanent-residence-language-requirements",
         )
+
+    async def test_manual_check_returns_announced_fragment_for_empty_and_available_updates(self):
+        self.release_catalog.mkdir(parents=True, exist_ok=True)
+        app = create_app(
+            config_path=self.root / "provider-config.json", data_dir=self.data_dir,
+            release_catalog_dir=self.release_catalog, embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+            for available in (False, True):
+                if available:
+                    self.make_newer_release()
+                response = await client.post("/knowledge-updates/check", headers={"Origin": "http://testserver", "HX-Request": "true"})
+                self.assertEqual(response.status_code, 200)
+                self.assertNotIn("<html", response.text)
+                self.assertIn('id="manual-update-result"', response.text)
+                self.assertIn("Knowledge update available" if available else "No newer knowledge update is available", response.text)
+
+    async def test_manual_check_errors_are_visible_and_origin_guard_is_preserved(self):
+        app = create_app(
+            config_path=self.root / "provider-config.json", data_dir=self.data_dir,
+            release_catalog_dir=self.release_catalog, embedding_provider=self.embedding_provider,
+            trust_root_path=self.release_trust.trust_root_path,
+        )
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+            for error in (HTTPException(status_code=409, detail="Installation is in progress."), RuntimeError("unavailable")):
+                with patch("danish_rag.local_app.discover_knowledge_update", side_effect=error):
+                    response = await client.post("/knowledge-updates/check", headers={"Origin": "http://testserver", "HX-Request": "true"})
+                self.assertEqual(response.status_code, 200)
+                self.assertIn('id="manual-update-result"', response.text)
+                self.assertNotIn("No newer knowledge update is available", response.text)
+                self.assertIn("Installation is in progress." if isinstance(error, HTTPException) else "Knowledge update failed while checking", response.text)
+            rejected = await client.post("/knowledge-updates/check", headers={"HX-Request": "true"})
+            self.assertEqual(rejected.status_code, 403)
 
     async def test_app_review_dismiss_and_install_controls_preserve_explicit_user_approval(self):
         self.make_newer_release()

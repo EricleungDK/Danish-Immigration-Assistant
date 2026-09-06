@@ -1,5 +1,6 @@
 const evidenceReturnTargets = new WeakMap();
 const requestStatusByFormClass = new Map([
+  ["update-check-form", "Checking for knowledge updates."],
   ["composer", "Preparing answer."],
   ["setup-form", "Testing provider."],
   ["model-discovery-button", "Finding compatible local models."],
@@ -97,6 +98,14 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
     if (conversation instanceof HTMLElement) {
       focusConversationTitle(conversation, { preventScroll: true });
       revealLatestTurn(conversation);
+    }
+  }
+
+  if (target.id === "knowledge-updates") {
+    const result = document.getElementById("manual-update-result");
+    if (result) {
+      announceStatus(result.textContent.trim());
+      document.querySelector(".update-check-form button")?.focus({ preventScroll: true });
     }
   }
 

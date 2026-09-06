@@ -35,7 +35,12 @@
   </section>
   {% endif %}
   {% include "installation_status.html" %}
-  <form class="update-check-form" method="post" action="/knowledge-updates/check">
+  {% if manual_check_message %}
+  <p id="manual-update-result">{{ manual_check_message }}</p>
+  {% endif %}
+  <form class="update-check-form" method="post" action="/knowledge-updates/check"
+        hx-post="/knowledge-updates/check" hx-target="#knowledge-updates" hx-swap="outerHTML"
+        hx-disabled-elt="find button">
     <button type="submit">Check for knowledge updates</button>
   </form>
   {% if available_github_update %}

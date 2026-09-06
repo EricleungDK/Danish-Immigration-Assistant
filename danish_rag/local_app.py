@@ -422,6 +422,7 @@ def create_app(
 
     def render_knowledge_updates(
         *,
+        manual_check_message: str | None = None,
         automatic_check_status: dict[str, str] | None = None,
         automatic_check_enabled: bool = False,
     ) -> HTMLResponse:
@@ -435,12 +436,19 @@ def create_app(
             )
         except Exception:
             available_github_update = None
+        if manual_check_message == "checked":
+            manual_check_message = (
+                "Knowledge update available. Review the release details below."
+                if pending_update or available_github_update
+                else "Check complete. No newer knowledge update is available."
+            )
         template = TEMPLATES.get_template("knowledge_updates.html")
         return HTMLResponse(
             template.render(
                 pending_update=pending_update,
                 available_github_update=available_github_update,
                 update_status=None,
+                manual_check_message=manual_check_message,
                 automatic_check_status=automatic_check_status,
                 automatic_check_enabled=automatic_check_enabled,
                 installation_status=installation_status_snapshot(),
@@ -636,10 +644,15 @@ def create_app(
             ) from exc
         return RedirectResponse("/?records_deleted=all", status_code=303)
 
-    @app.post("/knowledge-updates/check")
-    async def check_knowledge_updates(request: Request) -> RedirectResponse:
+    @app.post("/knowledge-updates/check", response_model=None)
+    async def check_knowledge_updates(request: Request) -> HTMLResponse | RedirectResponse:
         _validate_state_changing_request(request)
-        acquire_update_record_lock_or_conflict()
+        try:
+            acquire_update_record_lock_or_conflict()
+        except HTTPException as exc:
+            if _is_htmx_request(request):
+                return render_knowledge_updates(manual_check_message=str(exc.detail))
+            raise
         try:
             if installation_is_running():
                 raise HTTPException(
@@ -681,16 +694,24 @@ def create_app(
                         trust_root_path=resolved_trust_root_path,
                     )
                     save_available_github_knowledge_update(resolved_data_dir, update)
-        except HTTPException:
+        except HTTPException as exc:
+            if _is_htmx_request(request):
+                return render_knowledge_updates(manual_check_message=str(exc.detail))
             raise
         except Exception as exc:
+            if _is_htmx_request(request):
+                return render_knowledge_updates(
+                    manual_check_message=_knowledge_update_failure_message("checking", exc)
+                )
             raise HTTPException(
                 status_code=503,
                 detail=_knowledge_update_failure_message("checking", exc),
             ) from exc
         finally:
             update_record_lock.release()
-        return RedirectResponse("/", status_code=303)
+        if _is_htmx_request(request):
+            return render_knowledge_updates(manual_check_message="checked")
+        return RedirectResponse("/?update_status=checked#knowledge-updates", status_code=303)
 
     @app.post("/knowledge-updates/automatic-check", response_class=HTMLResponse)
     async def automatic_knowledge_update_check(request: Request) -> HTMLResponse:
@@ -1306,6 +1327,12 @@ def _update_status_from_request(
     *,
     trust_root_path: str | Path | None = None,
 ) -> dict[str, str] | None:
+    if request.query_params.get("update_status") == "checked":
+        available = load_pending_knowledge_update(data_dir) or load_available_github_knowledge_update(data_dir)
+        return {
+            "kind": "success", "role": "status", "title": "Knowledge update check complete",
+            "message": "Knowledge update available. Review the release details below." if available else "No newer knowledge update is available.",
+        }
     if request.query_params.get("update_status") != "installed":
         return None
     active_release = _active_release_id(

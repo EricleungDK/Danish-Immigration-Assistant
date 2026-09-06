@@ -310,3 +310,18 @@ test("trust, warning, and refusal indicators are distinguishable without color",
   await expect(refusal.getByText("Evidence-bounded refusal")).toBeVisible();
   await expect(refusal).toHaveCSS("border-top-style", "solid");
 });
+
+
+test("manual update check announces its result without navigating or losing the draft", async ({ page }) => {
+  await page.goto("/");
+  await ensureBrowserProvider(page);
+  await page.getByRole("textbox", { name: "Question" }).fill("Unsubmitted accessibility test");
+  await page.evaluate(() => { window.updateCheckPageMarker = true; });
+  const button = page.getByRole("button", { name: "Check for knowledge updates" });
+  await button.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#interaction-status")).toContainText("Knowledge update available");
+  expect(await page.evaluate(() => window.updateCheckPageMarker)).toBe(true);
+  await expect(page.getByRole("textbox", { name: "Question" })).toHaveValue("Unsubmitted accessibility test");
+  await expect(page.getByRole("button", { name: "Check for knowledge updates" })).toBeFocused();
+});
