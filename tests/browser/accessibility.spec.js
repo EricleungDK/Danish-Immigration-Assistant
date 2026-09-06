@@ -346,3 +346,19 @@ test("manual update network failure is announced beside the retained button", as
   await expect(button).toBeFocused();
   await expect(page.locator(".update-check-form")).not.toHaveAttribute("aria-busy", "true");
 });
+
+
+test("download failure keeps review controls and announces the server error locally", async ({ page }) => {
+  await page.goto("/");
+  const download = page.getByRole("button", { name: "Download and verify signed release" });
+  await expect(download).toBeVisible();
+  await page.route("**/knowledge-updates/download", route => route.fulfill({
+    status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Signature verification failed. The active release is unchanged." }),
+  }));
+  await download.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#knowledge-check-announcement")).toContainText("Signature verification failed");
+  await expect(download).toBeFocused();
+  await expect(page.locator(".update-download-form")).not.toHaveAttribute("aria-busy", "true");
+  await expect(page.getByRole("button", { name: "Install reviewed release" })).toHaveCount(0);
+});

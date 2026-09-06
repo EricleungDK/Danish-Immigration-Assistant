@@ -100,3 +100,30 @@ After review, `config/release-qualification.json` must bind the exact file path,
 SHA-256, reviewer ID, assistive-technology identity, browser identity, and test
 timestamp. The evaluator fails closed on a missing journey, mismatch, or changed
 file hash.
+
+### Owner confirmation of update-check feedback
+
+The owner confirmed that Narrator now announces the update-check result correctly
+after commit `8da58c2`. This resolves the reported header-reading defect. The
+full manual gate remains in progress: available-release review/approval controls,
+error recovery, and exact tool/browser identities still need confirmation.
+
+### Download-to-review transition
+
+The owner tested available-release controls in the isolated local fixture app
+on port 8925 and reported a new full-page reading reset after downloading.
+The download action now returns the update details fragment for HTMX requests
+and moves keyboard focus to the signed-release review heading. Local status
+reports progress and specific server failures; network failures remain retryable.
+Exact artifact approval, signature verification, and separate install approval
+are preserved. Non-HTMX clients retain the original redirect behavior.
+
+A browser regression reproduced the old navigation before the fix and verifies
+page preservation, review-heading focus, and the subsequent explicit install.
+A separate error regression checks signature-failure feedback and retained
+controls. The update-flow Python tests pass (17 tests). The manual update-review
+gate remains failed pending the owner's retest; fixture review is not production
+source or signing qualification.
+
+Download follow-up verification: full browser suite 37 passed, one opt-in live
+test skipped; scoped code review found no blocking issues.

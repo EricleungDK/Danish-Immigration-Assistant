@@ -809,8 +809,8 @@ def create_app(
             update_record_lock.release()
         return RedirectResponse("/", status_code=303)
 
-    @app.post("/knowledge-updates/download")
-    async def download_knowledge_update(request: Request) -> RedirectResponse:
+    @app.post("/knowledge-updates/download", response_model=None)
+    async def download_knowledge_update(request: Request) -> HTMLResponse | RedirectResponse:
         _validate_state_changing_request(request)
         if use_local_release_catalog or resolved_github_release_client is None:
             raise HTTPException(
@@ -858,6 +858,10 @@ def create_app(
             ) from exc
         finally:
             update_record_lock.release()
+        if _is_htmx_request(request):
+            return render_knowledge_updates(
+                manual_check_message="Download verified. Review the signed release details before installing."
+            )
         return RedirectResponse("/", status_code=303)
 
     @app.post("/knowledge-updates/install")

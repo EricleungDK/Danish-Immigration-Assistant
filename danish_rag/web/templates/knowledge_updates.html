@@ -73,7 +73,9 @@
       </div>
     </dl>
     <div class="update-actions">
-      <form method="post" action="/knowledge-updates/download">
+      <form class="update-download-form" method="post" action="/knowledge-updates/download"
+            hx-post="/knowledge-updates/download" hx-target="#knowledge-update-content"
+            hx-select="#knowledge-update-content" hx-swap="outerHTML" hx-sync="this:drop">
         <input
           type="hidden"
           name="release_id"
@@ -100,7 +102,7 @@
   {% if pending_update %}
   <section class="update-review" aria-labelledby="knowledge-update-title">
     {% if pending_update.distribution and pending_update.distribution.channel == "github-releases" %}
-    <h3 id="knowledge-update-title">Signed knowledge update ready to review</h3>
+    <h3 id="knowledge-update-title" tabindex="-1">Signed knowledge update ready to review</h3>
     <p>
       Signed manifest verified with trust root
       <strong>{{ pending_update.signed_manifest.trust_root_id }}</strong>.

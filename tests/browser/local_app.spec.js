@@ -264,9 +264,12 @@ test("GitHub knowledge update requires separate download review and install acti
   await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading", { name: "Knowledge update metadata available" })).toBeVisible();
 
+  await page.evaluate(() => { window.downloadReviewPageMarker = true; });
   await page.getByRole("button", { name: "Download and verify signed release" }).click();
   await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading", { name: "Signed knowledge update ready to review" })).toBeVisible();
+  expect(await page.evaluate(() => window.downloadReviewPageMarker)).toBe(true);
+  await expect(page.getByRole("heading", { name: "Signed knowledge update ready to review" })).toBeFocused();
   await expect(page.getByText("Signed manifest verified")).toBeVisible();
   await expect(corpusSection.locator(".runtime-list").first()).toContainText("kr-2026-07-06.1");
 

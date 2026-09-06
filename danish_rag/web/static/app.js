@@ -78,6 +78,12 @@ document.body.addEventListener("htmx:beforeRequest", (event) => {
     return;
   }
 
+  if (source.classList.contains("update-download-form")) {
+    document.getElementById("knowledge-check-announcement").textContent = "Downloading and verifying the signed release.";
+    source.setAttribute("aria-busy", "true");
+    return;
+  }
+
   if (source.classList.contains("update-check-form")) {
     document.getElementById("knowledge-check-announcement").textContent = "Checking for knowledge updates.";
     source.setAttribute("aria-busy", "true");
@@ -110,6 +116,9 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
     const result = document.getElementById("manual-update-result");
     if (result) {
       document.getElementById("knowledge-check-announcement").textContent = result.textContent.trim();
+      if (event.detail?.requestConfig?.elt?.classList.contains("update-download-form")) {
+        document.getElementById("knowledge-update-title")?.focus();
+      }
     }
   }
 
@@ -120,6 +129,20 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
 });
 
 document.body.addEventListener("htmx:afterRequest", (event) => {
+  const source = event.detail?.requestConfig?.elt ?? event.target;
+  if (source instanceof HTMLElement && source.classList.contains("update-download-form")) {
+    source.removeAttribute("aria-busy");
+    if (event.detail?.failed || event.detail?.xhr?.status === 0) {
+      let message = "Knowledge update download failed. Check the local app connection and retry.";
+      try {
+        const detail = JSON.parse(event.detail.xhr.responseText).detail;
+        if (typeof detail === "string") message = detail;
+      } catch {}
+      document.getElementById("knowledge-check-announcement").textContent = message;
+    }
+    return;
+  }
+
   if (event.target instanceof HTMLElement && event.target.classList.contains("update-check-form")) {
     event.target.removeAttribute("aria-busy");
     if (event.detail?.failed || event.detail?.xhr?.status === 0) {
@@ -130,6 +153,6 @@ document.body.addEventListener("htmx:afterRequest", (event) => {
 });
 
 document.body.addEventListener("htmx:responseError", (event) => {
-  if (event.target instanceof HTMLElement && event.target.classList.contains("update-check-form")) return;
+  if (event.target instanceof HTMLElement && (event.target.classList.contains("update-check-form") || event.target.classList.contains("update-download-form"))) return;
   announceStatus("Request failed. Review the visible error and retry.");
 });
