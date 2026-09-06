@@ -1,6 +1,6 @@
 # Current Project Context
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-06
 
 ## Current Project State
 
@@ -16,24 +16,20 @@ semantic-chunk release builder. The signing key has been reset to v2, and
 installed locally with 52 chunks. The private key is held outside Git in the
 owner's Ubuntu account; an off-device backup is pending before publication.
 The final issue-51 candidate capture completed all 20 surfaces with zero
-execution errors and no failed machine gates. Exact final-answer executions
-still require independent human adjudication; certificate equivalence is an
-explicit partial answer whose required-fact coverage remains for human review.
+execution errors and no failed machine gates. Independent human review is
+accepted for all ten answer cases. Exact candidate replay passes every evaluation gate: 59/60 required facts, 47/47 supported citation
+relationships, and zero unsupported claims. The failed fact judgment remains
+recorded within the approved 95% coverage threshold.
 Fresh strict real-process/browser evidence now passes for the supported
 environment; the manual assistive-technology gate has not been run.
 
 ## Active Tasks
 
-- Complete independent human review of the exact packet named in
-  `docs/progress/issue-51-engineering-remediation.md`, then replay it with the
-  accepted private adjudications and all six machine workflow records. Retrieval,
-  live monitors, workflows, and final answer machine gates now pass. Earlier
-  failed captures remain historical evidence; canonical packet G is unchanged.
 - Back up the v2 private signing key off-device before public publication; see
   `docs/progress/issue-50-signing-key-reset.json` for its custody path. The reviewed
   issue-50 candidate is now signed and locally installed.
-- Obtain independent human final-answer adjudication and final release-owner
-  approval.
+- Obtain final release-owner approval. Human answer adjudication is complete;
+  see `docs/progress/issue-51-reviewed-candidate-replay.json`.
 - Run and record the required manual assistive-technology check.
 
 ## Recent Implementations
@@ -54,8 +50,8 @@ environment; the manual assistive-technology gate has not been run.
 
 - The reviewed candidate is locally installed; public publication and independent
   off-device signing-key backup are not yet recorded.
-- Independent human answer adjudication, manual assistive-technology evidence,
-  and production release-owner approval are not recorded.
+- Manual assistive-technology evidence and production release-owner approval
+  are not recorded.
 - Current strict real-process/browser evidence is recorded in
   `docs/progress/issue-51-remediation-monitors.json`; historical failed reports
   remain preserved.

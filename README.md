@@ -169,8 +169,10 @@ First run the strict live release monitors:
 
 The original [issue #51 qualification run](docs/progress/issue-51-live-qualification.md)
 failed. The [engineering remediation and current review handoff](docs/progress/issue-51-engineering-remediation.md)
-now record passing machine gates and the exact new private packet for independent
-human review. Semantic qualification remains pending; packet G is unchanged.
+now record passing machine gates and accepted independent human review. The
+[reviewed candidate replay](docs/progress/issue-51-reviewed-candidate-replay.json)
+passes every evaluation threshold; production release approval remains separate.
+Packet G is unchanged.
 
 Canonical private packet G was generated directly with the approved local
 runtime, model, and corpus. Both outputs are private mode-`0600` evidence. Do

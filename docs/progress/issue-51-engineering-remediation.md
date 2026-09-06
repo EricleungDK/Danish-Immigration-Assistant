@@ -1,9 +1,10 @@
 # Issue #51 engineering remediation
 
 The final candidate execution completed all 20 evaluation surfaces with zero
-execution errors. Every machine-checkable gate passes. Five semantic/privacy
-metrics remain not evaluable pending independent human adjudication; this is
-not production release qualification.
+execution errors. Independent human review was accepted on 2026-09-06. Exact
+candidate replay passes every evaluation gate, including all five previously unevaluated
+semantic/privacy metrics. This is candidate evaluation, not production release
+approval. See the [reviewed replay aggregate](issue-51-reviewed-candidate-replay.json).
 
 ## Changes
 
@@ -57,14 +58,33 @@ Evidence: [retrieval](issue-51-retrieval-remediation.json),
 
 The final certificate-equivalence answer is explicitly partial: five verified
 facts retained and three unsupported statements omitted. It passed the machine
-behavior gate, but required-fact coverage still needs human review. Registration
+behavior gate, and the subsequent human review is recorded below. Registration
 logistics and the general exam-term answer are complete. Code hashes and the
 local generation-model digest remained unchanged during final capture.
 
+## Completed independent review
+
+All ten human answer-case reviews and the independent-review attestation were
+accepted alongside the six existing automated workflow records. Strict replay
+validated the exact packet, original companion report, and candidate bindings,
+with no threshold failures or new provider calls. Original answers, judgments,
+dataset, and thresholds were preserved.
+
+Required-fact coverage is 59/60 (98.3%), above the approved 95% threshold. The
+single failed required-fact judgment remains recorded. Citation correctness is
+47/47, unsupported claims are zero, and forbidden-claim and privacy gates pass.
+No evaluation metric remains unevaluated.
+
+The accepted export and full replay report remain in the Git-ignored Windows
+project folder `review/private-evaluation/`, named
+`danish-rag-final-answer-adjudications-v1.json` and
+`issue-51-reviewed-replay-report.json`. Their hashes are recorded in the public
+[aggregate](issue-51-reviewed-candidate-replay.json), which contains no private
+answers or individual judgments. Pre-review evidence above remains historical.
+
 ## Exact human-review packet
 
-Open [the review page](../../review/semantic-adjudication-review.html), or use the
-running loopback page at `http://127.0.0.1:8924/semantic-adjudication-review.html`.
+Open [the review page](../../review/semantic-adjudication-review.html) locally.
 Load this file from the private evaluation directory in the owner's Ubuntu
 account:
 
@@ -77,8 +97,9 @@ In the Windows file picker, the directory is:
 ```
 
 Its exact companion report is `issue-51-remediated-20260905T202503Z-report.json`. Both files are mode `0600`, outside
-Git. The browser loads the selected packet locally; the loopback server serves
-only the review page, not the private files.
+Git. A byte-identical copy is available in the Windows project
+folder `review/private-evaluation/`. The browser loads the selected packet
+locally. The directory server was stopped before copying private evidence.
 
 Candidate replay uses the original signed package at
 `data/knowledge_releases/kr-2026-09-05.1` with
@@ -108,9 +129,9 @@ decisions, an unchecked attestation, and accepted export disabled.
    provider reports with `--generate-automated-evidence` to merge their machine
    adjudications alongside the human export. Do not regenerate the answer packet.
 
-The five remaining gates are required-fact coverage, forbidden claims, privacy
-requirements, citation correctness, and unsupported-claim rate. Any failed or
-unevaluated gate continues to block qualification. Manual assistive-technology
+The five previously pending gates were required-fact coverage, forbidden claims,
+privacy requirements, citation correctness, and unsupported-claim rate. All now
+pass for the reviewed candidate. Any failed or unevaluated gate continues to block qualification. Manual assistive-technology
 verification, off-device signing-key backup, and release-owner approval remain
 separate release requirements.
 

@@ -1,7 +1,7 @@
 # Danish Immigration RAG — Agent Documentation
 
-**Last updated:** 2026-09-05
-**Status:** MVP implementation candidate; release remains blocked by recorded human-evidence gates.
+**Last updated:** 2026-09-06
+**Status:** MVP candidate evaluation passes with accepted human review; manual accessibility evidence and release approval remain pending.
 
 Start with [`CONTEXT.md`](../../CONTEXT.md), the GitHub issue named in the task,
 and the authoritative contracts under [`docs/`](../). GitHub issue #1 is the
