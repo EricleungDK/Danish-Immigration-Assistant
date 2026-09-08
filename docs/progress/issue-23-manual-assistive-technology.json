@@ -1,0 +1,60 @@
+{
+  "schema_version": "manual-assistive-technology-v1",
+  "status": "passed",
+  "reviewer_id": "ericleungDK",
+  "assistive_technology": "Windows Narrator 10.0.26100.8972",
+  "browser": "Google Chrome 152.0.7977.77",
+  "operating_system": "Windows 11 version 25H2 (OS build 26200.9278)",
+  "tested_at_utc": "2026-09-06T15:50:11Z",
+  "journeys": [
+    {
+      "id": "provider-setup",
+      "status": "passed",
+      "observation": "User confirmed Narrator reads provider/model fields and connection-test button, and announces the result after keyboard activation."
+    },
+    {
+      "id": "question-submission",
+      "status": "passed",
+      "observation": "User confirmed reaching the composer, entering a test question, and submitting using only the keyboard."
+    },
+    {
+      "id": "answer-status-announcements",
+      "status": "passed",
+      "observation": "User confirmed Narrator announces working/loading and answer readiness. Earlier confirmed answer text and citations can be read with scan mode."
+    },
+    {
+      "id": "inline-citation-navigation",
+      "status": "passed",
+      "observation": "User confirmed reaching an answer citation with Tab and opening it with Enter using Narrator."
+    },
+    {
+      "id": "evidence-drawer-focus-close",
+      "status": "passed",
+      "observation": "User confirmed Narrator reads the evidence and Escape returns focus to the citation."
+    },
+    {
+      "id": "history-navigation",
+      "status": "passed",
+      "observation": "User confirmed keyboard navigation to saved conversations, opening the test conversation with Enter, and Narrator reading conversation names and the reopened conversation."
+    },
+    {
+      "id": "update-review",
+      "status": "passed",
+      "observation": "Owner confirmed no-update announcements in the production app and available-release metadata, corrected download transition, signed-release details, source changes, indexing information, and keyboard access to the separate Install reviewed release control in the isolated sample app on port 8925. Installation was not requested in this manual check."
+    },
+    {
+      "id": "error-recovery",
+      "status": "passed",
+      "observation": "User confirmed Narrator announced the failed endpoint test and subsequently read Provider verified. Agent reproduced restoring the original endpoint: capability test completed successfully after 28.06 seconds, with visible pending state and disabled submit while running."
+    }
+  ],
+  "review_notes": [
+    "Owner confirmed all eight journeys. Production app used for ordinary workflows; isolated synthetic release app on port 8925 used for available-update review. Windows and Chrome versions supplied by owner; Narrator file version read locally. Timestamp records completion of the guided review session."
+  ],
+  "application_commit": "75deec9",
+  "automated_browser_verification": {
+    "passed": 37,
+    "skipped_opt_in_live": 1,
+    "command": "npx playwright test"
+  }
+}

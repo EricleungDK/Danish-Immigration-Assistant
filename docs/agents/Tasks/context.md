@@ -1,6 +1,6 @@
 # Current Project Context
 
-**Last updated:** 2026-09-06
+**Last updated:** 2026-09-08
 
 ## Current Project State
 
@@ -14,23 +14,21 @@ official-source reviews now have a machine-tested production-registry and
 semantic-chunk release builder. The signing key has been reset to v2, and
 `kr-2026-09-05.1` is signed, live-qualified with zero retrieval violations, and
 installed locally with 52 chunks. The private key is held outside Git in the
-owner's Ubuntu account; an off-device backup is pending before publication.
+owner's Ubuntu account; an encrypted Google Drive backup is owner-confirmed,
+with a matching successful download/recovery receipt on 2026-09-06.
 The final issue-51 candidate capture completed all 20 surfaces with zero
 execution errors and no failed machine gates. Independent human review is
 accepted for all ten answer cases. Exact candidate replay passes every evaluation gate: 59/60 required facts, 47/47 supported citation
 relationships, and zero unsupported claims. The failed fact judgment remains
 recorded within the approved 95% coverage threshold.
 Fresh strict real-process/browser evidence now passes for the supported
-environment; the manual assistive-technology gate has not been run.
+environment; all eight manual assistive-technology journeys passed.
 
 ## Active Tasks
 
-- Back up the v2 private signing key off-device before public publication; see
-  `docs/progress/issue-50-signing-key-reset.json` for its custody path. The reviewed
-  issue-50 candidate is now signed and locally installed.
 - Obtain final release-owner approval. Human answer adjudication is complete;
   see `docs/progress/issue-51-reviewed-candidate-replay.json`.
-- Run and record the required manual assistive-technology check.
+- Production and fixture retrieval qualification now pass under the owner-approved 2026-09-08 plan; manual assistive-technology evidence is complete.
 
 ## Recent Implementations
 
@@ -48,10 +46,11 @@ environment; the manual assistive-technology gate has not been run.
 
 ## Known Issues
 
-- The reviewed candidate is locally installed; public publication and independent
-  off-device signing-key backup are not yet recorded.
-- Manual assistive-technology evidence and production release-owner approval
-  are not recorded.
+- The reviewed candidate is locally installed; public publication is not recorded.
+  Signing-key backup and recovery verification are recorded in
+  `docs/progress/issue-50-signing-key-reset.json`.
+- Manual assistive-technology evidence is recorded in `docs/progress/issue-23-manual-assistive-technology.json`. Production release-owner approval remains pending.
+- The owner-approved production benchmark passes 15/15 critical cases. All nine original fixture cases remain mandatory, with 7/7 eligible required-evidence hits and zero safety violations. The historical 2/7 candidate/fixture diagnostic is preserved. Approval and live evidence are in `docs/progress/issue-51-production-retrieval-approval.json` and `issue-51-approved-retrieval.json`. Final release approval is not inferred from benchmark approval.
 - Current strict real-process/browser evidence is recorded in
   `docs/progress/issue-51-remediation-monitors.json`; historical failed reports
   remain preserved.

@@ -1,0 +1,363 @@
+{
+  "approval_sha256": "b715f8ae8f89c0840ab7083987335b84f7357833b0bdb16c3a70d666b166c60a",
+  "execution_error_count": 0,
+  "fixture_dataset_sha256": {
+    "data/retrieval_benchmark/corpus-fixtures.json": "51f5c891fd742c1f67f076ccd13d5381bdd7ec9d46b3fb436acf6eb4ad143679",
+    "data/retrieval_benchmark/dense-evaluation-queries.json": "94954c6fffee47172ece993b027f94bf28cd296817369e9afa9c350649868393",
+    "data/retrieval_benchmark/evaluation-queries.json": "402a28f1b3386b0d7fd2271c4533bf658e5aeeaadaf2941120842df727217217"
+  },
+  "fixture_index": {
+    "corpus_fixture_identity": {
+      "corpus_path": "/mnt/c/users/ericl/documents/ai-projects/danish-immigration-assistant/data/retrieval_benchmark/corpus-fixtures.json",
+      "corpus_sha256": "51f5c891fd742c1f67f076ccd13d5381bdd7ec9d46b3fb436acf6eb4ad143679",
+      "document_ids": [
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-terse-danish-exam",
+        "di-rag-doc-permanent-residence-fees",
+        "di-rag-doc-overdue-policy-usable-exam",
+        "di-rag-doc-evidence-boundary",
+        "di-rag-doc-citizenship-language",
+        "di-rag-doc-changed-unreviewed-language-rule",
+        "di-rag-doc-broken-extraction-exam",
+        "di-rag-doc-unapproved-community-summary"
+      ]
+    },
+    "document_count": 9,
+    "embedding_model": "embeddinggemma",
+    "embedding_model_identity": {
+      "capabilities": [
+        "embedding"
+      ],
+      "details": {
+        "families": [
+          "gemma3"
+        ],
+        "family": "gemma3",
+        "format": "gguf",
+        "parameter_size": "307.58M",
+        "parent_model": "embeddinggemma:300m-bf16",
+        "quantization_level": "BF16"
+      },
+      "digest": "85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1",
+      "identity_fingerprint_sha256": "8a443f6ccccb2419c10579a5939ac62d508325362b136a0c55dc0a85ac0c2bb5",
+      "model": "embeddinggemma:latest",
+      "model_info": {
+        "gemma3.attention.causal": false,
+        "gemma3.attention.head_count": 3,
+        "gemma3.attention.head_count_kv": 1,
+        "gemma3.attention.key_length": 256,
+        "gemma3.attention.layer_norm_rms_epsilon": 1e-06,
+        "gemma3.attention.sliding_window": 512,
+        "gemma3.attention.sliding_window_pattern": null,
+        "gemma3.attention.value_length": 256,
+        "gemma3.block_count": 24,
+        "gemma3.context_length": 2048,
+        "gemma3.embedding_length": 768,
+        "gemma3.feed_forward_length": 1152,
+        "gemma3.pooling_type": 1,
+        "gemma3.rope.freq_base": 1000000,
+        "general.architecture": "gemma3",
+        "general.basename": "embeddinggemma",
+        "general.file_type": 32,
+        "general.license": "gemma",
+        "general.parameter_count": 307581696,
+        "general.quantization_version": 2,
+        "general.size_label": "300M",
+        "general.tags": null,
+        "general.type": "model",
+        "tokenizer.ggml.add_bos_token": true,
+        "tokenizer.ggml.add_eos_token": true,
+        "tokenizer.ggml.add_sep_token": false,
+        "tokenizer.ggml.add_space_prefix": false,
+        "tokenizer.ggml.bos_token_id": 2,
+        "tokenizer.ggml.eos_token_id": 1,
+        "tokenizer.ggml.model": "llama",
+        "tokenizer.ggml.padding_token_id": 0,
+        "tokenizer.ggml.pre": "default",
+        "tokenizer.ggml.scores": null,
+        "tokenizer.ggml.token_type": null,
+        "tokenizer.ggml.tokens": null,
+        "tokenizer.ggml.unknown_token_id": 3
+      },
+      "modified_at": "2026-07-19T20:11:08.649236761+02:00"
+    },
+    "embedding_provider": "ollama",
+    "engine": "local-dense-json",
+    "schema_version": "dense-retrieval-index-v1",
+    "vector_dimensions": 768
+  },
+  "fixture_queries": [
+    {
+      "id": "di-rag-query-exact-danish-terminology",
+      "returned_document_ids": [
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-terse-danish-exam"
+      ]
+    },
+    {
+      "id": "di-rag-query-terse-phrasing",
+      "returned_document_ids": [
+        "di-rag-doc-terse-danish-exam",
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-permanent-residence-fees"
+      ]
+    },
+    {
+      "id": "di-rag-query-metadata-filtering",
+      "returned_document_ids": [
+        "di-rag-doc-permanent-residence-fees"
+      ]
+    },
+    {
+      "id": "di-rag-query-stale-policy-usable",
+      "returned_document_ids": [
+        "di-rag-doc-overdue-policy-usable-exam",
+        "di-rag-doc-terse-danish-exam"
+      ]
+    },
+    {
+      "id": "di-rag-query-blocked-source-exclusion",
+      "returned_document_ids": [
+        "di-rag-doc-terse-danish-exam",
+        "di-rag-doc-permanent-residence-language"
+      ]
+    },
+    {
+      "id": "di-rag-query-forbidden-result-safety-boundary",
+      "returned_document_ids": [
+        "di-rag-doc-evidence-boundary"
+      ]
+    },
+    {
+      "id": "di-rag-query-dense-english-paraphrase",
+      "returned_document_ids": [
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-terse-danish-exam"
+      ]
+    },
+    {
+      "id": "di-rag-query-dense-realistic-typo",
+      "returned_document_ids": [
+        "di-rag-doc-terse-danish-exam",
+        "di-rag-doc-permanent-residence-language",
+        "di-rag-doc-permanent-residence-fees"
+      ]
+    },
+    {
+      "id": "di-rag-query-dense-blocked-source-exclusion",
+      "returned_document_ids": [
+        "di-rag-doc-terse-danish-exam",
+        "di-rag-doc-permanent-residence-language"
+      ]
+    }
+  ],
+  "generated_at_utc": "2026-09-08T14:10:48Z",
+  "implementation_sha256": {
+    "danish_rag/approved_retrieval_evidence.py": "f1a2f8a274590fb0471f7d7c6c005d5c356d97346d5678cbffbc94c81ea7d85f",
+    "danish_rag/candidate_retrieval_evidence.py": "4e50ec2951a703fd8935d96d11432574400ab5f447c8c3a53d6a6445b6932180",
+    "danish_rag/retrieval.py": "1f555749cc315a0895d02a731a51a992fb71a266e2a23a4fe2adae62023b75f3",
+    "danish_rag/retrieval_benchmark.py": "f9cc707ea79ccfba7e312033803c0dc6043478130a868615d23fc9b235d88ba8",
+    "danish_rag/source_freshness.py": "8d89d95892420b0a5cf365729c79b3b5e7068c25145d5b3c0c7931d8481a2269"
+  },
+  "mode": "live-local-embedding",
+  "production_queries": [
+    {
+      "id": "gf-pr-language-01",
+      "returned_chunk_ids": [
+        "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::b088681d1d5458c98674bb82",
+        "nyidanmark-permanent-residence-language-requirements::chunk::b05826818bafe82b904131bb"
+      ]
+    },
+    {
+      "id": "gf-pr-language-02",
+      "returned_chunk_ids": [
+        "nyidanmark-equivalent-tests-language-test-3::chunk::78cd77db10c78420339c3608",
+        "nyidanmark-permanent-residence-language-requirements::chunk::4d380d401432d0ce70c07a9d",
+        "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7"
+      ]
+    },
+    {
+      "id": "gf-pr-language-03",
+      "returned_chunk_ids": [
+        "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::5f9913e91f6590521504e21d",
+        "nyidanmark-permanent-residence-language-requirements::chunk::4d380d401432d0ce70c07a9d"
+      ]
+    },
+    {
+      "id": "gf-pd3-registration-01",
+      "returned_chunk_ids": [
+        "danskogproever-registration-deadlines-2026::chunk::04fd2e1d73d31cee6bb5da84",
+        "danskogproever-registration-deadlines-2026::chunk::df44edfcc20fb925cc9a3257",
+        "danskogproever-registration-deadlines-2026::chunk::3ceda157051e27f6738f7d2f"
+      ]
+    },
+    {
+      "id": "gf-pd3-registration-02",
+      "returned_chunk_ids": [
+        "danskogproever-registration-deadlines-2026::chunk::04fd2e1d73d31cee6bb5da84",
+        "danskogproever-registration-deadlines-2026::chunk::df44edfcc20fb925cc9a3257",
+        "danskogproever-registration-deadlines-2026::chunk::3ceda157051e27f6738f7d2f"
+      ]
+    },
+    {
+      "id": "gf-pd3-registration-03",
+      "returned_chunk_ids": [
+        "danskogproever-registration-deadlines-2026::chunk::04fd2e1d73d31cee6bb5da84",
+        "danskogproever-registration-deadlines-2026::chunk::df44edfcc20fb925cc9a3257",
+        "danskogproever-registration-deadlines-2026::chunk::3ceda157051e27f6738f7d2f"
+      ]
+    },
+    {
+      "id": "gf-composite-01",
+      "returned_chunk_ids": [
+        "nyidanmark-permanent-residence-language-requirements::chunk::b05826818bafe82b904131bb",
+        "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+        "danskogproever-registration-deadlines-2026::chunk::3ceda157051e27f6738f7d2f"
+      ]
+    },
+    {
+      "id": "gf-composite-02",
+      "returned_chunk_ids": [
+        "nyidanmark-permanent-residence-language-requirements::chunk::b05826818bafe82b904131bb",
+        "danskogproever-registration-deadlines-2026::chunk::3ceda157051e27f6738f7d2f",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::5f9913e91f6590521504e21d"
+      ]
+    },
+    {
+      "id": "gf-supported-with-refusal-01",
+      "returned_chunk_ids": [
+        "nyidanmark-permanent-residence-language-requirements::chunk::b05826818bafe82b904131bb",
+        "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::78cd77db10c78420339c3608"
+      ]
+    },
+    {
+      "id": "pr-danish-exact",
+      "returned_chunk_ids": [
+        "nyidanmark-permanent-residence-language-requirements::chunk::b05826818bafe82b904131bb",
+        "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::5f9913e91f6590521504e21d"
+      ]
+    },
+    {
+      "id": "pr-terse",
+      "returned_chunk_ids": [
+        "nyidanmark-permanent-residence-language-requirements::chunk::9eb5cf6237307beb1effdc23",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::5f9913e91f6590521504e21d",
+        "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7"
+      ]
+    },
+    {
+      "id": "pr-typo",
+      "returned_chunk_ids": [
+        "nyidanmark-permanent-residence-language-requirements::chunk::d263b7fa25fd1a992edb53b1",
+        "nyidanmark-permanent-residence-language-requirements::chunk::9eb5cf6237307beb1effdc23",
+        "nyidanmark-permanent-residence-language-requirements::chunk::6f8fd578ee18655ff7ded515"
+      ]
+    },
+    {
+      "id": "exam-overview",
+      "returned_chunk_ids": [
+        "danskogproever-danish-exam-overview::chunk::1e5d203d4211f238cdc84977",
+        "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::b088681d1d5458c98674bb82"
+      ]
+    },
+    {
+      "id": "pd2-equivalents",
+      "returned_chunk_ids": [
+        "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::78cd77db10c78420339c3608",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::b088681d1d5458c98674bb82"
+      ]
+    },
+    {
+      "id": "pd3-equivalents",
+      "returned_chunk_ids": [
+        "nyidanmark-equivalent-tests-language-test-2::chunk::23bf002b3d505803151864c7",
+        "nyidanmark-equivalent-tests-language-test-3::chunk::b088681d1d5458c98674bb82",
+        "nyidanmark-permanent-residence-language-requirements::chunk::b05826818bafe82b904131bb"
+      ]
+    }
+  ],
+  "proposal_sha256": "db0494f73cc623917d793cba5a2e1a3714bdc48ae86c3cb9c9dd57837e0f8f26",
+  "provenance": {
+    "index_metadata": {
+      "content_unit_schema_version": "semantic-chunk-v1",
+      "corpus_identity": "kr-2026-09-05.1",
+      "corpus_schema_version": "2.0",
+      "dense_engine": "local-dense-json",
+      "embedding_model": "embeddinggemma",
+      "embedding_model_identity": {
+        "capabilities": [
+          "embedding"
+        ],
+        "details": {
+          "families": [
+            "gemma3"
+          ],
+          "family": "gemma3",
+          "format": "gguf",
+          "parameter_size": "307.58M",
+          "parent_model": "embeddinggemma:300m-bf16",
+          "quantization_level": "BF16"
+        },
+        "digest": "85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1",
+        "identity_fingerprint_sha256": "8a443f6ccccb2419c10579a5939ac62d508325362b136a0c55dc0a85ac0c2bb5",
+        "model": "embeddinggemma:latest",
+        "model_info": {
+          "gemma3.attention.causal": false,
+          "gemma3.attention.head_count": 3,
+          "gemma3.attention.head_count_kv": 1,
+          "gemma3.attention.key_length": 256,
+          "gemma3.attention.layer_norm_rms_epsilon": 1e-06,
+          "gemma3.attention.sliding_window": 512,
+          "gemma3.attention.sliding_window_pattern": null,
+          "gemma3.attention.value_length": 256,
+          "gemma3.block_count": 24,
+          "gemma3.context_length": 2048,
+          "gemma3.embedding_length": 768,
+          "gemma3.feed_forward_length": 1152,
+          "gemma3.pooling_type": 1,
+          "gemma3.rope.freq_base": 1000000,
+          "general.architecture": "gemma3",
+          "general.basename": "embeddinggemma",
+          "general.file_type": 32,
+          "general.license": "gemma",
+          "general.parameter_count": 307581696,
+          "general.quantization_version": 2,
+          "general.size_label": "300M",
+          "general.tags": null,
+          "general.type": "model",
+          "tokenizer.ggml.add_bos_token": true,
+          "tokenizer.ggml.add_eos_token": true,
+          "tokenizer.ggml.add_sep_token": false,
+          "tokenizer.ggml.add_space_prefix": false,
+          "tokenizer.ggml.bos_token_id": 2,
+          "tokenizer.ggml.eos_token_id": 1,
+          "tokenizer.ggml.model": "llama",
+          "tokenizer.ggml.padding_token_id": 0,
+          "tokenizer.ggml.pre": "default",
+          "tokenizer.ggml.scores": null,
+          "tokenizer.ggml.token_type": null,
+          "tokenizer.ggml.tokens": null,
+          "tokenizer.ggml.unknown_token_id": 3
+        },
+        "modified_at": "2026-07-19T20:11:08.649236761+02:00"
+      },
+      "embedding_provider": "ollama",
+      "indexed_unit": "semantic-chunk",
+      "knowledge_release_id": "kr-2026-09-05.1",
+      "lexical_engine": "sqlite-fts5",
+      "retrieval": "hybrid",
+      "rrf_k": 60,
+      "schema_version": "hybrid-chunk-index-v1",
+      "vector_dimensions": 768
+    },
+    "manifest_sha256": "b154ef00bd63a6a8b5eac526a5e5af7653e7754ac55e1e40fbc72b0d1234b0fb",
+    "retrieval_implementation_sha256": "1f555749cc315a0895d02a731a51a992fb71a266e2a23a4fe2adae62023b75f3"
+  },
+  "schema_version": "approved-production-retrieval-v1"
+}

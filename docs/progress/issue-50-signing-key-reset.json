@@ -2,20 +2,31 @@
   "active_trust_root_id": "project-release-key-v2",
   "authorization": "User requested a signing-key reset in the issue-50 implementation session on 2026-09-05.",
   "custody": {
-    "backup_status": "pending-owner-off-device-backup",
+    "backup_status": "owner-confirmed-off-device-backup-recovery-verified",
     "directory": "/home/ericl/.local/share/danish-immigration-rag-signing",
     "directory_mode": "0700",
     "environment": "Ubuntu user account ericl",
     "key_file_mode": "0600",
     "private_key_path": "/home/ericl/.local/share/danish-immigration-rag-signing/project-release-key-v2.pem",
-    "recovery_access": "Owner ericleungDK via the ericl Ubuntu account; independent backup not yet recorded."
+    "recovery_access": "Owner ericleungDK via the ericl Ubuntu account; password-encrypted backup uploaded to Google Drive and downloaded for a successful local recovery check, as confirmed by the owner.",
+    "backup_verification": {
+      "storage": "Google Drive",
+      "storage_confirmation": "Owner confirmed upload, removal of local encrypted copy, and successful recovery after requested download. Cloud account not inspected by agent.",
+      "checked_at_utc": "2026-09-06T09:58:49Z",
+      "trust_root_id": "project-release-key-v2",
+      "public_key_matches": true,
+      "encrypted_file_sha256": "82e7bdc8d09142324c906a21b417a6f74d923c29f7db0285ff509312dcea10b7",
+      "local_creation_receipt_sha256": "23a4839812f0fa53019ef6a10c7ee1af43fb991c4655f235ff35953eb78e867b",
+      "recovery_receipt_sha256": "0ac87db4327c2fc534d7c3594596255aa34bb516b5b8fbcf2a1763bc8c404404",
+      "original_key_retained": true
+    }
   },
   "owner_ids": [
     "ericleungDK"
   ],
   "private_key_committed": false,
   "public_key_sha256": "0e93524b92e03116f500958995946b8226a7a9f565d9cba420f80dad675ccb5c",
-  "publication_status": "No external publication performed; off-device key backup remains required before public release.",
+  "publication_status": "No external publication performed; owner-confirmed off-device backup and recovery check complete. Other release gates and release-owner approval remain separate.",
   "recorded_at_utc": "2026-09-05T15:14:10Z",
   "retired_keys": [
     {

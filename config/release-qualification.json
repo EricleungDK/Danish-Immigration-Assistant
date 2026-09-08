@@ -1,12 +1,12 @@
 {
   "qualification_id": "mvp-release-qualification-issue-25",
-  "version": "0.4.0-blocked",
+  "version": "0.5.0-blocked",
   "issue": "https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/25",
   "parent_prd_issue": "https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/1",
-  "evaluated_at_utc": "2026-07-14T18:06:02Z",
+  "evaluated_at_utc": "2026-09-06T15:56:38Z",
   "qualification_status": "blocked",
   "release_decision": "do-not-release",
-  "decision_summary": "The live final-answer run completes all 20 cases with zero execution errors and passes every machine-evaluable structural, source, behavior, trust, freshness, personal-eligibility, and workflow gate. Privacy and six-phase rollback evidence pass. MVP release remains blocked by missing independent-human adjudication for five semantic final-answer metrics, an unqualified production source registry, missing real-process/browser supported-environment evidence, a required current browser/accessibility rerun, an unperformed manual assistive-technology check, and final production release-owner approval.",
+  "decision_summary": "The exact owner-approved production benchmark and separate mandatory fixture checks pass, with unchanged numerical thresholds. Semantic answer review, source registry, manual accessibility, privacy, rollback and supported environment evidence pass. Final release-owner approval remains pending; do not publish. Historical candidate/fixture diagnostic remains 2/7.",
   "distribution": {
     "kind": "local-python-web-application",
     "release_candidate_version": "0.1.0-rc.1",
@@ -16,14 +16,16 @@
       "config/runtime-policy.json",
       "config/evaluation-quality-bar.json",
       "config/release-qualification.json",
-      "data/knowledge_releases/kr-2026-07-06.1/",
+      "data/knowledge_releases/kr-2026-09-05.1/",
       "docs/runtime-baseline.md",
       "docs/source-governance.md",
       "docs/evaluation-quality-bar.md",
       "docs/release-qualification.md",
       "requirements.txt",
       "package.json",
-      "package-lock.json"
+      "package-lock.json",
+      "config/trust_roots/project-release-key-v2.json",
+      "data/source_registry/sr-2026-09-05.1.json"
     ],
     "excluded_user_data": [
       ".venv/",
@@ -44,7 +46,7 @@
       "Node.js and npm",
       "Ollama 0.30.6 or newer for the approved local-provider baseline"
     ],
-    "launch_command": ".venv/bin/python -m uvicorn danish_rag.local_app:create_app --factory --host 127.0.0.1 --port 8000"
+    "launch_command": ".venv/bin/python -c 'import uvicorn; from danish_rag.local_app import create_app; uvicorn.run(create_app(trust_root_path=\"config/trust_roots/project-release-key-v2.json\"), host=\"127.0.0.1\", port=8000)'"
   },
   "runtime": {
     "policy_path": "config/runtime-policy.json",
@@ -123,10 +125,10 @@
     }
   },
   "active_corpus_requirements": {
-    "knowledge_release_id": "kr-2026-07-06.1",
-    "manifest_path": "data/knowledge_releases/kr-2026-07-06.1/manifest.json",
-    "source_registry_version": "sr-2026-07-06.1",
-    "corpus_schema_version": "1.0",
+    "knowledge_release_id": "kr-2026-09-05.1",
+    "manifest_path": "data/knowledge_releases/kr-2026-09-05.1/manifest.json",
+    "source_registry_version": "sr-2026-09-05.1",
+    "corpus_schema_version": "2.0",
     "manifest_schema_version": "1.0",
     "minimum_application_version": "0.1.0",
     "allowed_answer_supporting_source_states": [
@@ -156,7 +158,7 @@
   "supported_environment_matrix": [
     {
       "id": "windows-11-wsl2-ubuntu-x86_64",
-      "status": "mvp-supported-target-replacement-live-evidence-required",
+      "status": "mvp-supported-target-critical-journeys-passed",
       "required_journeys": [
         "setup",
         "supported-answer",
@@ -167,13 +169,9 @@
         "update-installation",
         "rollback"
       ],
-      "release_gate_status": "not_verified",
+      "release_gate_status": "passed",
       "evidence": [
-        "docs/progress/issue-26-runtime-probe.json",
-        "docs/progress/issue-29-hybrid-retrieval-comparison.json",
-        "docs/progress/release-monitors-live.json",
-        "docs/progress/issue-23-accessibility-responsive.md",
-        "docs/progress/issue-24-usability-validation.md"
+        "docs/progress/issue-51-remediation-monitors.json"
       ]
     },
     {
@@ -196,8 +194,9 @@
       "status": "passed",
       "observed": 1.0,
       "threshold": 0.95,
-      "summary": "The current issue #29 hybrid retrieval fixture baseline meets the candidate required-evidence Recall@3 threshold over 7 evaluable required-evidence queries while retaining zero blocked-source and forbidden-result violations.",
-      "release_blocking": true
+      "summary": "Owner-approved production benchmark: 15/15 required-evidence and critical cases; separate unchanged fixture corpus: 7/7 eligible cases across all nine queries. Zero blocked/forbidden violations. Historical candidate/fixture mismatch remains recorded at 2/7.",
+      "release_blocking": true,
+      "evidence": "docs/progress/issue-51-approved-retrieval.json"
     },
     {
       "id": "release-evaluation-runner-report",
@@ -209,16 +208,16 @@
     {
       "id": "final-answer-independent-human-adjudication",
       "metric_id": "official-fact-citation-coverage",
-      "status": "not_run",
-      "evidence": "docs/progress/final-answer-evaluation-live.json",
-      "summary": "The live Ollama evaluator completed all 20 cases with zero execution errors and passed every machine-evaluable gate. Strict qualification remains false only because independent-human adjudications are absent for required-fact coverage, forbidden claims, privacy prose, citation correctness, and unsupported-claim rate.",
+      "status": "passed",
+      "evidence": "docs/progress/issue-51-reviewed-candidate-replay.json",
+      "summary": "Exact-packet replay accepted 10 independent human reviews and 6 automated workflow adjudications. All 20 surfaces complete with zero errors or unevaluated gates; required facts 59/60, citations 47/47, unsupported claims zero. The one failed required-fact judgment is retained within the unchanged 95% threshold.",
       "release_blocking": true
     },
     {
       "id": "release-network-boundary-monitor",
       "metric_id": "privacy-network-boundary",
       "status": "passed",
-      "evidence": "docs/progress/release-monitors-live.json",
+      "evidence": "docs/progress/issue-51-remediation-monitors.json",
       "summary": "The live strict privacy monitor observed all nine required workflows with zero forbidden requests. Its instrumented in-memory GitHub boundary exercised default-client metadata discovery and approved artifact retrieval, proved content-free fields, and blocked unapproved artifact transport before any response; it did not contact or publish a production GitHub release.",
       "release_blocking": true
     },
@@ -226,16 +225,16 @@
       "id": "knowledge-release-rollback-fault-matrix",
       "metric_id": "update-rollback-success",
       "status": "passed",
-      "evidence": "docs/progress/release-monitors-live.json",
+      "evidence": "docs/progress/issue-51-remediation-monitors.json",
       "summary": "The live strict rollback matrix passed verification, extraction, embedding, indexing, activation, and late-activation fault phases while preserving a queryable prior corpus/index pair and never reporting false success.",
       "release_blocking": true
     },
     {
       "id": "supported-environment-critical-journeys",
       "metric_id": "environment-matrix-critical-journeys",
-      "status": "not_verified",
-      "evidence": "docs/progress/release-monitors-live.json",
-      "summary": "The previous monitor exercised the application in process and did not restart it or observe browser/environment identity, so it cannot qualify the required real-process/browser supported-environment matrix. Replacement evidence is required.",
+      "status": "passed",
+      "evidence": "docs/progress/issue-51-remediation-monitors.json",
+      "summary": "Live loopback-bound application processes and Playwright pass all eight journeys, observe an actual restart, and independently validate Windows 11/WSL2 Ubuntu, browser, architecture, Python, and Ollama identity. Update and rollback use isolated signed fixtures.",
       "release_blocking": true
     },
     {
@@ -257,30 +256,38 @@
     {
       "id": "production-source-registry-qualification",
       "metric_id": "approved-official-source-qualification",
-      "status": "blocked",
-      "evidence": "data/source_registry/sr-2026-07-06.1.json",
-      "summary": "The production source-registry assessment is blocked: the current project-authored fixtures have no recorded curator admissions, monitoring records, archived official snapshots, named human production reviews, or durable production signing-key custody record.",
+      "status": "passed",
+      "evidence": "data/source_registry/sr-2026-09-05.1.json",
+      "summary": "All five September candidate official sources have production human review and the registry assessment is eligible with no reason codes. Signing-key custody and owner-confirmed encrypted off-device backup recovery are recorded in docs/progress/issue-50-signing-key-reset.json.",
       "release_blocking": true
     },
     {
       "id": "automated-python-regression-suite",
       "metric_id": "implemented-slice-regressions",
       "status": "passed",
-      "summary": "The implemented unit-test suite is required for the release candidate but does not replace the full release matrix.",
+      "summary": "Full Python regression suite passed after the approved benchmark implementation on 2026-09-08: 502 tests, zero failures/errors, five opt-in skips. All 42 affected tests also passed.",
       "release_blocking": true
     },
     {
       "id": "browser-accessibility-suite",
       "metric_id": "accessibility-conformance",
-      "status": "not_verified",
+      "status": "passed",
       "observed": {
-        "automated_suite_status": "stale-reverification-required",
+        "automated_suite_status": "current",
         "automated_critical_or_serious_violations": 0,
         "keyboard_core_workflow_pass_rate": 1.0,
-        "manual_assistive_technology_check": "not_run"
+        "manual_assistive_technology_check": "passed"
       },
-      "summary": "The prior automated axe, keyboard, reflow, reduced-motion, and non-color run passed before later UI changes. A current browser/accessibility rerun and the required manual assistive-technology check have not been performed or recorded.",
-      "release_blocking": true
+      "summary": "Current browser automation and all eight owner-performed Narrator journeys pass. Available-update review used isolated synthetic release data; this does not approve a production release.",
+      "release_blocking": true,
+      "manual_assistive_technology_evidence": {
+        "reviewer_id": "ericleungDK",
+        "assistive_technology": "Windows Narrator 10.0.26100.8972",
+        "browser": "Google Chrome 152.0.7977.77",
+        "tested_at_utc": "2026-09-06T15:50:11Z",
+        "path": "docs/progress/issue-23-manual-assistive-technology.json",
+        "sha256": "9b3d29ced01f060591df5127f0303df548a06129d0f84bf94ddae0dc4bd59f84"
+      }
     },
     {
       "id": "privacy-boundary-fixture",
@@ -352,7 +359,7 @@
   "explicit_release_blockers": [],
   "documentation_contract": {
     "qualification_id": "mvp-release-qualification-issue-25",
-    "version": "0.4.0-blocked",
+    "version": "0.5.0-blocked",
     "qualification_status": "blocked",
     "release_decision": "do-not-release",
     "quality_bar_version": "0.1.0-candidate",
@@ -364,8 +371,65 @@
     "default_bind_host": "127.0.0.1",
     "generation_model": "gemma4:12b",
     "embedding_model": "embeddinggemma",
-    "active_knowledge_release_id": "kr-2026-07-06.1",
+    "active_knowledge_release_id": "kr-2026-09-05.1",
     "answer_path_allows_outbound_requests": false,
     "production_user_question_analytics_allowed": false
+  },
+  "candidate_evidence": {
+    "schema_version": "candidate-release-evidence-v1",
+    "release_dir": "data/knowledge_releases/kr-2026-09-05.1",
+    "manifest_sha256": "b154ef00bd63a6a8b5eac526a5e5af7653e7754ac55e1e40fbc72b0d1234b0fb",
+    "trust_root_path": "config/trust_roots/project-release-key-v2.json",
+    "artifacts": {
+      "retrieval": {
+        "path": "docs/progress/issue-51-retrieval-remediation.json",
+        "sha256": "626eccb5d9be204f2c2726e84a6c2b8c3d5f67ecff5bafa9976959ce1de3a039"
+      },
+      "retrieval_baseline": {
+        "path": "docs/progress/issue-51-candidate-retrieval-baseline.json",
+        "sha256": "d49438cd7b237668562c2f14b4de7d48c587a125f8c54f20edd5d6d63fe38d86"
+      },
+      "production_install": {
+        "path": "docs/progress/issue-50-production-install.json",
+        "sha256": "00896f834018150a519545800756a214b779938e0b286306198d2c673713be32"
+      },
+      "final_answer": {
+        "path": "docs/progress/issue-51-reviewed-candidate-replay.json",
+        "sha256": "b306d04b067876120a10a4f76e130593a8286ca7a1b83f377b29a3bc95703d46"
+      },
+      "final_answer_origin": {
+        "path": "docs/progress/issue-51-final-answer-remediation.json",
+        "sha256": "14ec7fe2520041dda2057dd21f121fd7d7ef34961dd1a8b12901496bbe7217c1"
+      },
+      "release_monitors": {
+        "path": "docs/progress/issue-51-remediation-monitors.json",
+        "sha256": "5a1d9c9d2e9bbab7adeeed8a73f2ee419329d6365e887a88bccbce43a102e381"
+      },
+      "candidate_browser": {
+        "path": "docs/progress/issue-51-candidate-browser-check.json",
+        "sha256": "d06852fdb7e2d291a298772003e5fe13537c356944147b7ff43447c401f2606e"
+      },
+      "signing_custody": {
+        "path": "docs/progress/issue-50-signing-key-reset.json",
+        "sha256": "d2e60b0c11ac175377fbb9eb149ee8d32a3c12e08646f0f1010a78da80562c8b"
+      },
+      "source_registry": {
+        "path": "data/source_registry/sr-2026-09-05.1.json",
+        "sha256": "3ae8fca19d46480106ad6f69531f569a81b9341ab4a7c2d35109d9504061e430"
+      },
+      "retrieval_proposal": {
+        "path": "data/evaluation/production-retrieval-v1.json",
+        "sha256": "db0494f73cc623917d793cba5a2e1a3714bdc48ae86c3cb9c9dd57837e0f8f26"
+      },
+      "retrieval_approval": {
+        "path": "docs/progress/issue-51-production-retrieval-approval.json",
+        "sha256": "b715f8ae8f89c0840ab7083987335b84f7357833b0bdb16c3a70d666b166c60a"
+      },
+      "approved_retrieval": {
+        "path": "docs/progress/issue-51-approved-retrieval.json",
+        "sha256": "179eff25113b1c458b9b73fa0f82a67ff3a80d2467e1c6a126d64b4b476cf74d"
+      }
+    },
+    "retrieval_contract": "owner-approved-production-and-fixture-v1"
   }
 }

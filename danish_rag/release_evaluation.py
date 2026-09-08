@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from danish_rag.evaluation_quality_bar import load_evaluation_quality_bar
+from danish_rag.candidate_release_evidence import validate_candidate_evidence
 from danish_rag.evidence_integrity import (
     is_utc_seconds,
     reject_duplicate_json_object,
@@ -123,16 +124,38 @@ def generate_release_evaluation(
         runtime_policy,
         quality_bar,
     )
+    candidate = qualification.get("candidate_evidence")
+    candidate_failures = validate_candidate_evidence(root, qualification)
+    source_validation_failures.extend(candidate_failures)
+    evidence_paths = dict(EVIDENCE_PATHS)
+    if isinstance(candidate, dict) and not candidate_failures:
+        for name, legacy_name in (("final_answer", "final_answer_evaluation"), ("release_monitors", "release_monitors"), ("retrieval", "hybrid_retrieval")):
+            reference = candidate.get("artifacts", {}).get(name, {})
+            if isinstance(reference, dict) and isinstance(reference.get("path"), str):
+                from danish_rag.candidate_release_evidence import safe_path
+                safe_path(root, reference["path"])
+                evidence_paths[legacy_name] = Path(reference["path"])
     evidence_inputs = {
         name: _evidence_ref(root, relative_path)
-        for name, relative_path in sorted(EVIDENCE_PATHS.items())
+        for name, relative_path in sorted(evidence_paths.items())
     }
 
     gate_results = [
-        _evaluate_gate(gate, root, quality_bar, runtime_policy)
+        ({"id": gate["id"], "metric_id": gate.get("metric_id"),
+          "status": "failed", "source_status": gate["status"], "evaluated_status": "failed",
+          "release_blocking": gate.get("release_blocking", False),
+          "summary": "Candidate evidence bindings could not be validated.",
+          "evidence": [], "observed": {}, "thresholds": {}, "failures": list(candidate_failures)}
+         if candidate_failures else
+         _evaluate_gate(gate, root, quality_bar, runtime_policy, candidate=candidate, evidence_paths=evidence_paths))
         for gate in qualification["gate_results"]
     ]
     derived_blockers = derive_release_blockers(qualification)
+    blocker_ids = {blocker["id"] for blocker in derived_blockers}
+    for gate in gate_results:
+        if gate["release_blocking"] and gate["status"] in BLOCKING_GATE_STATUSES and gate["id"] not in blocker_ids:
+            derived_blockers.append({"id": gate["id"], "source": "evaluated_evidence", "status": gate["status"], "reason": gate["summary"]})
+
     strict_release_passed = _strict_release_passed(
         qualification,
         gate_results,
@@ -154,6 +177,9 @@ def generate_release_evaluation(
         },
         "gate_results": gate_results,
         "derived_release_blockers": derived_blockers,
+        "technical_gates_passed": not source_validation_failures and all(
+            not gate["release_blocking"] or gate["status"] == "passed" for gate in gate_results
+        ),
         "evidence_inputs": evidence_inputs,
         "privacy_assertions": {
             "uses_production_user_questions": False,
@@ -227,7 +253,10 @@ def _evaluate_gate(
     root: Path,
     quality_bar: dict[str, Any],
     runtime_policy: dict[str, Any],
+    *, candidate: dict[str, Any] | None = None,
+    evidence_paths: dict[str, Path] | None = None,
 ) -> dict[str, Any]:
+    evidence_paths = evidence_paths or EVIDENCE_PATHS
     gate_id = gate["id"]
     source_status = gate["status"]
     evidence: list[dict[str, Any]] = []
@@ -239,9 +268,16 @@ def _evaluate_gate(
 
     if gate_id == "retrieval-required-evidence-baseline":
         try:
-            evaluated_status, summary, observed, thresholds, evidence, failures = (
-                _evaluate_retrieval_gate(root, quality_bar)
-            )
+            if candidate is not None:
+                if candidate.get("retrieval_contract") == "owner-approved-production-and-fixture-v1":
+                    from danish_rag.approved_retrieval_evidence import evaluate_approved_retrieval
+                    evaluator = evaluate_approved_retrieval
+                else:
+                    from danish_rag.candidate_retrieval_evidence import evaluate_candidate_retrieval
+                    evaluator = evaluate_candidate_retrieval
+                evaluated_status, summary, observed, thresholds, evidence, failures = evaluator(root, quality_bar, runtime_policy, candidate)
+            else:
+                evaluated_status, summary, observed, thresholds, evidence, failures = _evaluate_retrieval_gate(root, quality_bar)
         except ReleaseEvaluationError as exc:
             if "missing evidence file" not in str(exc):
                 raise
@@ -251,7 +287,7 @@ def _evaluate_gate(
             evidence = [_evidence_ref(root, EVIDENCE_PATHS["hybrid_retrieval"])]
     elif _is_final_answer_gate(gate):
         evaluated_status, summary, observed, thresholds, evidence, failures = (
-            _evaluate_final_answer_gate(root, quality_bar)
+            _evaluate_final_answer_gate(root, quality_bar, candidate=candidate, runtime_policy=runtime_policy, evidence_path=evidence_paths["final_answer_evaluation"])
         )
     elif _is_release_privacy_monitor_gate(gate):
         evaluated_status, summary, observed, thresholds, evidence, failures = (
@@ -259,15 +295,16 @@ def _evaluate_gate(
                 root,
                 quality_bar,
                 runtime_policy,
+                evidence_path=evidence_paths["release_monitors"],
             )
         )
     elif _is_release_rollback_matrix_gate(gate):
         evaluated_status, summary, observed, thresholds, evidence, failures = (
-            _evaluate_release_rollback_matrix_gate(root, quality_bar)
+            _evaluate_release_rollback_matrix_gate(root, quality_bar, evidence_path=evidence_paths["release_monitors"])
         )
     elif _is_supported_environment_gate(gate):
         evaluated_status, summary, observed, thresholds, evidence, failures = (
-            _evaluate_supported_environment_gate(root, quality_bar, runtime_policy)
+            _evaluate_supported_environment_gate(root, quality_bar, runtime_policy, evidence_path=evidence_paths["release_monitors"])
         )
     elif gate_id == "privacy-boundary-fixture":
         evaluated_status, summary, observed, evidence, failures = _evaluate_privacy_gate(
@@ -594,8 +631,11 @@ def _is_supported_environment_gate(gate: dict[str, Any]) -> bool:
 def _evaluate_final_answer_gate(
     root: Path,
     quality_bar: dict[str, Any],
+    *, candidate: dict[str, Any] | None = None,
+    runtime_policy: dict[str, Any] | None = None,
+    evidence_path: Path | None = None,
 ) -> tuple[str, str, dict[str, Any], dict[str, Any], list[dict[str, Any]], list[str]]:
-    evidence_path = EVIDENCE_PATHS["final_answer_evaluation"]
+    evidence_path = evidence_path or EVIDENCE_PATHS["final_answer_evaluation"]
     data, status, evidence, failures = _load_gate_evidence(root, evidence_path)
     thresholds = dict(quality_bar["thresholds"]["final_answer"])
     if data is None:
@@ -606,6 +646,9 @@ def _evaluate_final_answer_gate(
         )
         return status, summary, {}, thresholds, evidence, failures
 
+    if candidate is not None:
+        from danish_rag.candidate_answer_evidence import validate_candidate_answer
+        failures.extend(validate_candidate_answer(root, quality_bar, runtime_policy or {}, candidate))
     execution = data.get("execution")
     metrics = data.get("metrics")
     threshold_failures = data.get("threshold_failures")
@@ -639,9 +682,9 @@ def _evaluate_final_answer_gate(
     if not isinstance(execution, dict):
         failures.append("final-answer evidence is missing execution metadata")
         execution = {}
-    if execution.get("mode") != "live-ollama":
+    if candidate is None and execution.get("mode") != "live-ollama":
         failures.append("final-answer evidence was not produced in live-ollama mode")
-    if execution.get("live_provider_calls") is not True:
+    if candidate is None and execution.get("live_provider_calls") is not True:
         failures.append("final-answer evidence does not confirm live provider calls")
 
     case_count = execution.get("case_count")
@@ -654,7 +697,7 @@ def _evaluate_final_answer_gate(
         failures.append("final-answer evidence contains not-evaluable cases")
     if execution.get("error_count") != 0:
         failures.append("final-answer evidence contains execution errors")
-    if not isinstance(case_results, list) or len(case_results) != case_count:
+    if candidate is None and (not isinstance(case_results, list) or len(case_results) != case_count):
         failures.append("final-answer case results do not match the execution count")
 
     metric_statuses: dict[str, Any] = {}
@@ -686,7 +729,8 @@ def _evaluate_final_answer_gate(
         failures.append("final-answer evidence did not pass strict mode")
 
     observed = {
-        "mode": "live-ollama" if execution.get("mode") == "live-ollama" else "invalid",
+        "mode": execution.get("mode") if execution.get("mode") in {"live-ollama", "captured-live-ollama"} else "invalid",
+        "live_provider_calls": execution.get("live_provider_calls") is True,
         "case_count": case_count if _is_non_negative_int(case_count) else None,
         "completed_count": (
             completed_count if _is_non_negative_int(completed_count) else None
@@ -700,7 +744,7 @@ def _evaluate_final_answer_gate(
     }
     status = "failed" if failures else "passed"
     summary = (
-        "Live final-answer evaluation passed every required metric strictly over "
+        "Exact-bound final-answer evaluation passed every required metric strictly over "
         f"{case_count} cases."
         if not failures
         else "Live final-answer evaluation evidence did not satisfy the strict release contract."
@@ -712,8 +756,9 @@ def _evaluate_release_privacy_monitor_gate(
     root: Path,
     quality_bar: dict[str, Any],
     runtime_policy: dict[str, Any],
+    *, evidence_path: Path | None = None,
 ) -> tuple[str, str, dict[str, Any], dict[str, Any], list[dict[str, Any]], list[str]]:
-    data, status, evidence, failures = _load_release_monitor_evidence(root)
+    data, status, evidence, failures = _load_release_monitor_evidence(root, evidence_path=evidence_path)
     thresholds = {
         "answer_time_personal_data_egress_max": quality_bar["thresholds"][
             "privacy"
@@ -785,8 +830,9 @@ def _evaluate_release_privacy_monitor_gate(
 def _evaluate_release_rollback_matrix_gate(
     root: Path,
     quality_bar: dict[str, Any],
+    *, evidence_path: Path | None = None,
 ) -> tuple[str, str, dict[str, Any], dict[str, Any], list[dict[str, Any]], list[str]]:
-    data, status, evidence, failures = _load_release_monitor_evidence(root)
+    data, status, evidence, failures = _load_release_monitor_evidence(root, evidence_path=evidence_path)
     thresholds = {
         "atomic_update_rollback_success_min": quality_bar["thresholds"]["rollback"][
             "atomic_update_rollback_success_min"
@@ -871,8 +917,9 @@ def _evaluate_supported_environment_gate(
     root: Path,
     quality_bar: dict[str, Any],
     runtime_policy: dict[str, Any],
+    *, evidence_path: Path | None = None,
 ) -> tuple[str, str, dict[str, Any], dict[str, Any], list[dict[str, Any]], list[str]]:
-    data, status, evidence, failures = _load_release_monitor_evidence(root)
+    data, status, evidence, failures = _load_release_monitor_evidence(root, evidence_path=evidence_path)
     thresholds = {
         "environment_matrix_pass_rate_min": quality_bar["thresholds"]["reliability"][
             "environment_matrix_pass_rate_min"
@@ -1078,10 +1125,11 @@ def _evaluate_supported_environment_gate(
 
 def _load_release_monitor_evidence(
     root: Path,
+    *, evidence_path: Path | None = None,
 ) -> tuple[dict[str, Any] | None, str, list[dict[str, Any]], list[str]]:
     data, status, evidence, failures = _load_gate_evidence(
         root,
-        EVIDENCE_PATHS["release_monitors"],
+        evidence_path or EVIDENCE_PATHS["release_monitors"],
     )
     if data is None:
         return data, status, evidence, failures

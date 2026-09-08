@@ -37,7 +37,7 @@ class _SyntheticApprovedLiveRunner:
             "family": "gemma4",
             "quantization_level": "Q4_K_M",
         },
-        "corpus_id": "kr-2026-07-06.1",
+        "corpus_id": json.loads((ROOT / "config/release-qualification.json").read_text())["active_corpus_requirements"]["knowledge_release_id"],
     }
 
     def run(self, case):
@@ -71,7 +71,7 @@ class _SyntheticApprovedLiveRunner:
                     "model_identity": dict(self.public_identity["model_identity"]),
                     "capabilities": ["generation"],
                 },
-                corpus_identity="kr-2026-07-06.1",
+                corpus_identity=self.public_identity["corpus_id"],
             ),
             evidence=[],
         )

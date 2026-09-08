@@ -25,7 +25,7 @@ QUALIFICATION_PATH = ROOT / "config" / "release-qualification.json"
 DOC_PATH = ROOT / "docs" / "release-qualification.md"
 RUNTIME_POLICY_PATH = ROOT / "config" / "runtime-policy.json"
 QUALITY_BAR_PATH = ROOT / "config" / "evaluation-quality-bar.json"
-SOURCE_REGISTRY_PATH = ROOT / "data" / "source_registry" / "sr-2026-07-06.1.json"
+SOURCE_REGISTRY_PATH = ROOT / "data" / "source_registry" / "sr-2026-09-05.1.json"
 RUNTIME_PROBE_PATH = ROOT / "docs" / "progress" / "issue-26-runtime-probe.json"
 HYBRID_RETRIEVAL_PATH = (
     ROOT / "docs" / "progress" / "issue-29-hybrid-retrieval-comparison.json"
@@ -62,10 +62,6 @@ class Issue25ReleaseQualificationTests(unittest.TestCase):
         self.assertEqual(
             blocker_ids,
             {
-                "final-answer-independent-human-adjudication",
-                "production-source-registry-qualification",
-                "supported-environment-critical-journeys",
-                "browser-accessibility-suite",
                 "production-release-owner-approval-pending",
             },
             blocker_ids,
@@ -108,27 +104,27 @@ class Issue25ReleaseQualificationTests(unittest.TestCase):
             gate_statuses["knowledge-release-rollback-fault-matrix"], "passed"
         )
         self.assertEqual(
-            gate_statuses["supported-environment-critical-journeys"], "not_verified"
+            gate_statuses["supported-environment-critical-journeys"], "passed"
         )
         published_environment = next(
             environment
             for environment in qualification["supported_environment_matrix"]
             if "release_gate_status" in environment
         )
-        self.assertEqual(published_environment["release_gate_status"], "not_verified")
-        self.assertNotIn("passed", published_environment["status"])
+        self.assertEqual(published_environment["release_gate_status"], "passed")
+        self.assertIn("passed", published_environment["status"])
         self.assertEqual(
             gate_statuses["performance-measurement-completeness"], "passed"
         )
         self.assertEqual(
-            gate_statuses["browser-accessibility-suite"], "not_verified"
+            gate_statuses["browser-accessibility-suite"], "passed"
         )
         self.assertEqual(
             gate_statuses["final-answer-independent-human-adjudication"],
-            "not_run",
+            "passed",
         )
         self.assertEqual(
-            gate_statuses["production-source-registry-qualification"], "blocked"
+            gate_statuses["production-source-registry-qualification"], "passed"
         )
         self.assertIn("npm install", qualification["distribution"]["install_steps"])
         self.assertIn("Node.js and npm", qualification["distribution"]["prerequisites"])
@@ -142,6 +138,7 @@ class Issue25ReleaseQualificationTests(unittest.TestCase):
             for environment in drifted["supported_environment_matrix"]
             if "release_gate_status" in environment
         )
+        next(gate for gate in drifted["gate_results"] if gate["id"] == "supported-environment-critical-journeys")["status"] = "not_verified"
         published_environment["release_gate_status"] = "passed"
         published_environment["status"] = "critical-journeys-passed"
 
@@ -230,12 +227,12 @@ class Issue25ReleaseQualificationTests(unittest.TestCase):
         )
         self.assertEqual(gate["status"], expected_status)
         self.assertEqual(
-            registry["production_qualification"]["status"], expected_status
+            registry["production_qualification"]["status"], "qualified"
         )
         self.assertEqual(
             gate["evidence"], SOURCE_REGISTRY_PATH.relative_to(ROOT).as_posix()
         )
-        self.assertTrue(assessment["reason_codes"])
+        self.assertEqual(assessment["reason_codes"], [])
 
     def test_accessibility_gate_cannot_pass_without_manual_assistive_technology_evidence(self):
         qualification = load_release_qualification(QUALIFICATION_PATH)
@@ -248,6 +245,8 @@ class Issue25ReleaseQualificationTests(unittest.TestCase):
             if item["id"] == "browser-accessibility-suite"
         )
         gate["status"] = "passed"
+        gate["observed"]["manual_assistive_technology_check"] = "not_run"
+        gate.pop("manual_assistive_technology_evidence", None)
         gate["observed"]["automated_suite_status"] = "current"
 
         failures = validate_release_qualification_sources(

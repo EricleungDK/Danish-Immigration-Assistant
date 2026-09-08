@@ -58,7 +58,6 @@ REQUIRED_DOCUMENTATION_PHRASES = {
         "generation and embedding remain separate",
     ],
     "Corpus And Knowledge Releases": [
-        "kr-2026-07-06.1",
         "approved-current",
         "reviewed official source",
         "source registry",
@@ -523,6 +522,10 @@ def validate_release_documentation_prose(
         for phrase in phrases:
             if phrase.casefold() not in normalized_text:
                 failures.append(f"{section} documentation is missing {phrase!r}")
+
+    candidate_id = qualification.get("active_corpus_requirements", {}).get("knowledge_release_id")
+    if not isinstance(candidate_id, str) or candidate_id.casefold() not in normalized_text:
+        failures.append("Corpus And Knowledge Releases documentation is missing the configured candidate identity")
 
     contract_failures = validate_release_document_contract(
         qualification,

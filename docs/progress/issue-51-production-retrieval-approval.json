@@ -1,0 +1,161 @@
+{
+  "schema_version": "release-human-decisions-v1",
+  "reviewed_at_utc": "2026-09-08T14:03:44.109Z",
+  "reviewer_id": "EricLeung",
+  "decision": "approve-proposed-benchmark",
+  "notes": "",
+  "proposal_sha256": "db0494f73cc623917d793cba5a2e1a3714bdc48ae86c3cb9c9dd57837e0f8f26",
+  "proposal": {
+    "schema_version": "release-human-decisions-proposal-v1",
+    "status": "proposed-not-approved",
+    "candidate": "kr-2026-09-05.1",
+    "thresholds": {
+      "required_evidence_recall_at_3_min": 0.95,
+      "critical_case_recall_at_3_min": 1,
+      "blocked_source_violations_max": 0,
+      "forbidden_result_violations_max": 0
+    },
+    "recommendation": "Retain all nine frozen fixture cases as mandatory regression checks against their fixture corpus. Add these fifteen production-corpus cases as a separate mandatory release gate. Mark all fifteen critical. Preserve historical 2/7 result; do not reinterpret it as passing.",
+    "cases": [
+      {
+        "id": "gf-pr-language-01",
+        "prompt": "Which Danish language test is documented for permanent residence?",
+        "required_document_ids": [
+          "di-rag-doc-permanent-residence-language"
+        ],
+        "critical": true,
+        "origin": "Existing grounded-flexibility case"
+      },
+      {
+        "id": "gf-pr-language-02",
+        "prompt": "What proof of Danish ability does the long-term residence route ask for?",
+        "required_document_ids": [
+          "di-rag-doc-permanent-residence-language"
+        ],
+        "critical": true,
+        "origin": "Existing grounded-flexibility case"
+      },
+      {
+        "id": "gf-pr-language-03",
+        "prompt": "For an indefinite stay application, which official exam level is required?",
+        "required_document_ids": [
+          "di-rag-doc-permanent-residence-language"
+        ],
+        "critical": true,
+        "origin": "Existing grounded-flexibility case"
+      },
+      {
+        "id": "gf-pd3-registration-01",
+        "prompt": "Where do I register for Prøve i Dansk 3?",
+        "required_document_ids": [
+          "di-rag-doc-registration-deadlines-2026"
+        ],
+        "critical": true,
+        "origin": "Existing grounded-flexibility case"
+      },
+      {
+        "id": "gf-pd3-registration-02",
+        "prompt": "Which sprogcenter handles sign up for PD3?",
+        "required_document_ids": [
+          "di-rag-doc-registration-deadlines-2026"
+        ],
+        "critical": true,
+        "origin": "Existing grounded-flexibility case"
+      },
+      {
+        "id": "gf-pd3-registration-03",
+        "prompt": "How do candidates sign up for PD3, and which current details should they verify?",
+        "required_document_ids": [
+          "di-rag-doc-registration-deadlines-2026"
+        ],
+        "critical": true,
+        "origin": "Existing grounded-flexibility case"
+      },
+      {
+        "id": "gf-composite-01",
+        "prompt": "What does passing PD2 establish for permanent residence, and where do I register for PD3?",
+        "required_document_ids": [
+          "di-rag-doc-permanent-residence-language",
+          "di-rag-doc-registration-deadlines-2026"
+        ],
+        "critical": true,
+        "origin": "Existing grounded-flexibility case"
+      },
+      {
+        "id": "gf-composite-02",
+        "prompt": "Tell me the residence meaning of PD2, then point me to the place that accepts PD3 enrolment.",
+        "required_document_ids": [
+          "di-rag-doc-permanent-residence-language",
+          "di-rag-doc-registration-deadlines-2026"
+        ],
+        "critical": true,
+        "origin": "Existing grounded-flexibility case"
+      },
+      {
+        "id": "gf-supported-with-refusal-01",
+        "prompt": "What does PD2 establish for permanent residence; do I personally qualify?",
+        "required_document_ids": [
+          "di-rag-doc-permanent-residence-language"
+        ],
+        "critical": true,
+        "origin": "Existing grounded-flexibility case"
+      },
+      {
+        "id": "pr-danish-exact",
+        "prompt": "permanent opholdstilladelse Prøve i Dansk 2",
+        "required_document_ids": [
+          "di-rag-doc-permanent-residence-language"
+        ],
+        "critical": true,
+        "origin": "Proposed production source mapping"
+      },
+      {
+        "id": "pr-terse",
+        "prompt": "dansk prøve permanent ophold",
+        "required_document_ids": [
+          "di-rag-doc-permanent-residence-language"
+        ],
+        "critical": true,
+        "origin": "Proposed production source mapping"
+      },
+      {
+        "id": "pr-typo",
+        "prompt": "permanet ophold danskprove",
+        "required_document_ids": [
+          "di-rag-doc-permanent-residence-language"
+        ],
+        "critical": true,
+        "origin": "Proposed production source mapping"
+      },
+      {
+        "id": "exam-overview",
+        "prompt": "What are the Danish language examinations?",
+        "required_document_ids": [
+          "di-rag-doc-danish-exam-overview"
+        ],
+        "critical": true,
+        "origin": "Proposed production source mapping"
+      },
+      {
+        "id": "pd2-equivalents",
+        "prompt": "Which examinations are equivalent to or higher than Danish language test 2?",
+        "required_document_ids": [
+          "di-rag-doc-equivalent-tests-language-test-2"
+        ],
+        "critical": true,
+        "origin": "Proposed production source mapping"
+      },
+      {
+        "id": "pd3-equivalents",
+        "prompt": "Which examinations are equivalent to or higher than Danish language test 3?",
+        "required_document_ids": [
+          "di-rag-doc-equivalent-tests-language-test-3"
+        ],
+        "critical": true,
+        "origin": "Proposed production source mapping"
+      }
+    ],
+    "release_approval": "not-requested-until-technical-gates-pass"
+  },
+  "release_approval": false
+}

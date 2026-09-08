@@ -8,34 +8,13 @@ Status: `blocked`.
 
 Release decision: `do-not-release`.
 
-The local application has a documented release candidate package and live evidence for several release gates, but the MVP release is blocked. The blocking reasons are:
-
-- The exact captured-live-Ollama replay boundary is implemented. The original
-  packet E and companion report were lost from `/tmp` and cannot be recovered;
-  they must not be recreated or synthesized. A new live-Ollama execution using
-  the approved runtime, model, and corpus identity was captured directly as
-  canonical private packet G and its companion report. Independent-human
-  adjudications bound to packet G have not been supplied for required-fact
-  coverage, forbidden claims, privacy prose, citation correctness, and
-  unsupported-claim rate. The final-answer gate therefore remains non-strict.
-- The source registry is not production-qualified. It records no curator admissions, monitoring records, archived official-source snapshots, named human production reviews, or durable production signing-key custody record for the current project-authored fixtures.
-- The published supported-environment evidence used an in-process ASGI transport, did not restart the application for persistence, and copied rather than observed environment identity. It cannot qualify the required real-process/browser journey matrix and must be replaced.
-- The earlier automated accessibility run passed, but UI code changed afterward and the current Playwright suite has not been rerun. The quality bar also requires an actual manual assistive-technology check; no such check has been performed or recorded.
-- Final production release-owner approval is pending.
-
-The 2026-07-14 live final-answer run completed all 20 cases with zero execution errors and passed every machine-evaluable structural, source, behavior, trust, freshness, personal-eligibility, and workflow gate. The live privacy boundary and all six rollback fault phases pass. The previous eight-journey supported-environment claim is withdrawn pending replacement real-process/browser evidence. Performance measurement completeness also passes; no numeric latency SLA is configured, so no numeric speed threshold is invented.
-
-Product owner approval provided through the initiating GPT goal instruction on 2026-07-13 for the existing issue #7 dataset, metrics, configured thresholds, hardware target, supported-environment baseline, and issue #24 usability/comprehension sign-off. This removes those decision gates only and does not mark any implementation or test gate passed.
-
-Do not weaken thresholds, remove blocking gates, or use production-user questions to manufacture release success.
-
-## Policy Contract
+The owner approved the production/fixture benchmark separation on 2026-09-08. Fresh production retrieval passes 15/15 required-evidence and critical cases; the unchanged fixture benchmark passes 7/7 eligible cases across all nine queries. The historical 2/7 candidate/fixture mismatch remains recorded as a diagnostic. Exact-packet independent human semantic review, privacy, rollback, supported-environment journeys, and manual accessibility evidence pass. Production sources are qualified and the owner confirmed recovery of the encrypted off-device signing-key backup. Final production release-owner approval remains pending; release is blocked.
 
 <!-- release-qualification-contract:start -->
 ```json
 {
   "qualification_id": "mvp-release-qualification-issue-25",
-  "version": "0.4.0-blocked",
+  "version": "0.5.0-blocked",
   "qualification_status": "blocked",
   "release_decision": "do-not-release",
   "quality_bar_version": "0.1.0-candidate",
@@ -47,7 +26,7 @@ Do not weaken thresholds, remove blocking gates, or use production-user question
   "default_bind_host": "127.0.0.1",
   "generation_model": "gemma4:12b",
   "embedding_model": "embeddinggemma",
-  "active_knowledge_release_id": "kr-2026-07-06.1",
+  "active_knowledge_release_id": "kr-2026-09-05.1",
   "answer_path_allows_outbound_requests": false,
   "production_user_question_analytics_allowed": false
 }
@@ -64,7 +43,8 @@ Package identity:
 - Application shape: single local Python process serving FastAPI, Jinja2, HTMX, and handwritten CSS
 - Included application paths: `danish_rag/`, `requirements.txt`, `package.json`, `package-lock.json`
 - Included policy and release paths: `config/runtime-policy.json`, `config/evaluation-quality-bar.json`, `config/release-qualification.json`
-- Included corpus path: `data/knowledge_releases/kr-2026-07-06.1/`
+- Included verification material: `config/trust_roots/project-release-key-v2.json` (public key only) and `data/source_registry/sr-2026-09-05.1.json`
+- Included corpus path: `data/knowledge_releases/kr-2026-09-05.1/`
 - Included operating documents: `docs/runtime-baseline.md`, `docs/source-governance.md`, `docs/evaluation-quality-bar.md`, and this document
 - Excluded user data: `.venv/`, `__pycache__/`, local conversation stores, local provider configuration, derived local indexes, production-user questions, and production-user answers
 
@@ -73,7 +53,7 @@ Prerequisites are Python 3.11 or newer, Node.js with npm, OpenSSL with Ed25519 s
 The launch command for this package is:
 
 ```bash
-.venv/bin/python -m uvicorn danish_rag.local_app:create_app --factory --host 127.0.0.1 --port 8000
+.venv/bin/python -c 'import uvicorn; from danish_rag.local_app import create_app; uvicorn.run(create_app(trust_root_path="config/trust_roots/project-release-key-v2.json"), host="127.0.0.1", port=8000)'
 ```
 
 ## Operating Instructions
@@ -86,7 +66,7 @@ The documented setup path is:
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 npm install
-.venv/bin/python -m uvicorn danish_rag.local_app:create_app --factory --host 127.0.0.1 --port 8000
+.venv/bin/python -c 'import uvicorn; from danish_rag.local_app import create_app; uvicorn.run(create_app(trust_root_path="config/trust_roots/project-release-key-v2.json"), host="127.0.0.1", port=8000)'
 ```
 
 Open the local browser at `http://127.0.0.1:8000`. Configure a local generation provider manually, test the connection, and keep provider settings local.
@@ -119,9 +99,9 @@ Minimum hardware candidate:
 
 ## Corpus And Knowledge Releases
 
-The active corpus requirement for this release candidate is `kr-2026-07-06.1`, with manifest `data/knowledge_releases/kr-2026-07-06.1/manifest.json` and source registry `sr-2026-07-06.1`.
+The active corpus requirement for this release candidate is `kr-2026-09-05.1`, with manifest `data/knowledge_releases/kr-2026-09-05.1/manifest.json` and source registry `sr-2026-09-05.1`.
 
-That source registry is intentionally fail-closed for production qualification. Its machine-readable assessment reports `production_release_eligible: false`: the current documents are project-authored fixtures and the required official snapshots, curator and monitoring records, and human production reviews have not been recorded. A signed manifest does not substitute for source review.
+The source registry assessment is production-qualified: all five official sources have recorded human production review, with no qualification reason codes. The corpus schema is `2.0`. The signing-key custody record includes owner-confirmed Google Drive backup and successful local recovery verification; the cloud account itself was not inspected. Source qualification and backup verification do not substitute for final release-owner approval.
 
 Every material answer source must be a reviewed official source eligible under the source registry. An answer-supporting source may be `approved-current` or explicitly `overdue-policy-usable`. Changed, broken, redirected-pending-review, extraction-failed, overdue-blocked, withdrawn, superseded, and unapproved sources cannot support official facts.
 
@@ -143,7 +123,7 @@ Recovery guidance is published in [docs/runtime-baseline.md](runtime-baseline.md
 
 ## Support Boundary
 
-Windows 11 with WSL2 Ubuntu on x86-64 is the only published MVP supported-environment target. It is not yet release-qualified. The earlier 2026-07-14 monitor used in-process transport, did not observe a real application restart, and did not independently observe the browser/environment identity. A replacement live run must exercise the hardened two-process Playwright journey and pass the independent evidence checks before this environment can qualify.
+Windows 11 with WSL2 Ubuntu on x86-64 is the only published MVP supported-environment target. The September live monitor passes all eight critical journeys using real loopback-bound processes and Playwright, including a verified restart and independently observed environment identity. Signed synthetic releases exercise update and rollback mechanics; they are not production publication evidence.
 
 macOS and native Linux remain candidates. Native Windows is not supported for the MVP candidate. Desktop packaging, background services, non-loopback exposure, cloud inference, cloud history, user uploads, production-user analytics, and automatic application-code updates are outside the MVP support boundary.
 
@@ -179,16 +159,15 @@ Current performance baselines:
 
 Current evidence and limitations:
 
-- Hybrid retrieval required-evidence Recall@3 is `1.0` across 7 evaluable required-evidence queries in the 9-query issue #29 fixture set, with blocked-source violations `0` and forbidden-result violations `0`; the offline release evaluation runner records this as a passed retrieval gate.
-- The live strict network monitor observed all nine required workflows with zero forbidden requests. Through instrumented in-memory responses it observed default-client GitHub discovery and approved retrieval, confirmed content-free release fields, and blocked unapproved artifact transport before any response; no production release was contacted or published.
-- The live strict rollback matrix passed verification, extraction, embedding, indexing, activation, and late-activation fault injection while retaining the prior queryable corpus/index pair.
-- The previous supported-environment monitor exercised all eight journey checks, but it ran the application in process, did not restart it for persistence, and copied environment identity from policy. That report is retained as diagnostic evidence but does not qualify the real-process/browser environment gate.
-- The live final-answer evaluator completed 20 of 20 cases with zero errors. Behavior passed on all 14 applicable cases; structural/source-domain, official-fact citation coverage, trust, freshness, personal-eligibility, and automated workflow checks also pass.
-- The final-answer report has `strict_passed: false` only because required-fact coverage, forbidden claims, privacy prose, citation correctness, and unsupported-claim rate still require independent-human adjudication. No semantic pass was inferred.
-- The source registry has `production_release_eligible: false` because required production source-governance evidence, human reviews, and durable off-repository production signing-key custody are absent.
-- The prior automated axe, keyboard, reflow, reduced-motion, and non-color run passed before later UI changes. Current automation is `stale-reverification-required`, and the required actual assistive-technology check remains `not_verified`; both block release.
-- Issue #7 and issue #24 decision/sign-off records were approved through the initiating product-owner instruction on 2026-07-13; no participant details or new test results are implied.
-- Performance measurements are recorded. No numeric latency SLA is configured, so measurement completeness passes without asserting a speed guarantee or weakening another threshold.
-- Release remains blocked by missing independent-human final-answer adjudication, the unqualified production source registry, replacement real-process/browser supported-environment evidence, the required manual assistive-technology check, and final production release-owner approval.
+- Candidate retrieval evidence in `docs/progress/issue-51-retrieval-remediation.json` covers 6/6 residence and 5/5 registration requirements at limit 3 with no blocked sources. This intent-level coverage does not establish all-material Recall@3. The fresh candidate benchmark in `docs/progress/issue-51-candidate-retrieval-baseline.json` records 2/7 hits, five misses, zero blocked/forbidden results, and zero execution errors. Several frozen expectations reference fixture-only documents; they have not been excluded or remapped. This historical benchmark has no critical-case mapping; the newly approved production benchmark marks all fifteen cases critical. This historical diagnostic is preserved. It is superseded for qualification by the explicitly approved production/fixture contract below.
+- `docs/progress/issue-51-reviewed-candidate-replay.json` records the exact reviewed candidate: 20/20 completed surfaces, 10 independent human reviews, six automated workflows, and no unevaluated gates. Required facts are 59/60 (98.3% against 95%); citations are 47/47 supported and unsupported-claim rate is zero. The failed fact judgment is preserved. No answers were regenerated for review replay.
+- `docs/progress/issue-51-remediation-monitors.json` passes the strict privacy, six-phase rollback, and real-process supported-environment checks. Instrumented release transport and synthetic update fixtures do not imply a published production release.
+- The September source registry assessment reports `production_release_eligible: true`. `docs/progress/issue-50-signing-key-reset.json` records signing-key custody and the owner-confirmed encrypted off-device backup recovery.
+- The accessibility gate contains a hash-bound manual record for eight Narrator journeys on Chrome 152.0.7977.77 and Windows 11 25H2 build 26200.9278, alongside current automated browser evidence. Available-update review used an isolated synthetic release.
+- Issue #7 and issue #24 decision/sign-off records remain approved. The owner explicitly approved a separate production retrieval dataset and all-critical mapping. Numerical thresholds, generation model, privacy contract, original answer dataset and all nine frozen fixture cases remain unchanged. Retrieval source coverage does not replace the independently reviewed answer-level fact and citation gates.
+- Performance figures above are historical measurement baselines; they are not a new speed guarantee. No numeric latency SLA is configured.
+- The owner-approved test updates are applied. The full Python suite passed on 2026-09-08: 502 tests, zero failures/errors, five skips. All 42 affected contract/evaluator tests passed. The release report now evaluates the approved production/fixture retrieval contract.
+- The owner-approved 15-case production benchmark is `data/evaluation/production-retrieval-v1.json`; exact approval is recorded in `docs/progress/issue-51-production-retrieval-approval.json`. The proposal’s original `proposed-not-approved` field is retained verbatim for hash binding; approval comes from the separate decision record. All 15 cases are critical. Fresh `docs/progress/issue-51-approved-retrieval.json` records production Recall@3 15/15, critical Recall@3 15/15, and separate fixture Recall@3 7/7 across nine queries. Both scopes record zero blocked/forbidden violations. Results bind signed chunk IDs and the same inspected embedding identity. Safety checks cover the full fixture result list; only recall is limited to three. The historical 2/7 candidate/fixture diagnostic is unchanged.
+- Final production release-owner approval remains pending. The release decision remains `do-not-release` until that explicit decision is recorded and the evaluator confirms all gates.
 
 Any uncited official fact, personal eligibility conclusion, answer-path personal-data egress, failed atomic rollback, or mismatched active corpus/index pair blocks release.

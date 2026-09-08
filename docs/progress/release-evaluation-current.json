@@ -7,30 +7,6 @@
   },
   "derived_release_blockers": [
     {
-      "id": "final-answer-independent-human-adjudication",
-      "reason": "The live Ollama evaluator completed all 20 cases with zero execution errors and passed every machine-evaluable gate. Strict qualification remains false only because independent-human adjudications are absent for required-fact coverage, forbidden claims, privacy prose, citation correctness, and unsupported-claim rate.",
-      "source": "gate_results",
-      "status": "not_run"
-    },
-    {
-      "id": "supported-environment-critical-journeys",
-      "reason": "The previous monitor exercised the application in process and did not restart it or observe browser/environment identity, so it cannot qualify the required real-process/browser supported-environment matrix. Replacement evidence is required.",
-      "source": "gate_results",
-      "status": "not_verified"
-    },
-    {
-      "id": "production-source-registry-qualification",
-      "reason": "The production source-registry assessment is blocked: the current project-authored fixtures have no recorded curator admissions, monitoring records, archived official snapshots, named human production reviews, or durable production signing-key custody record.",
-      "source": "gate_results",
-      "status": "blocked"
-    },
-    {
-      "id": "browser-accessibility-suite",
-      "reason": "The prior automated axe, keyboard, reflow, reduced-motion, and non-color run passed before later UI changes. A current browser/accessibility rerun and the required manual assistive-technology check have not been performed or recorded.",
-      "source": "gate_results",
-      "status": "not_verified"
-    },
-    {
       "id": "production-release-owner-approval-pending",
       "reason": "Final decision to publish a non-blocked MVP release.",
       "source": "human_approval_records",
@@ -41,8 +17,8 @@
     "accessibility_browser": {
       "exists": true,
       "path": "docs/progress/issue-23-accessibility-responsive.md",
-      "sha256": "df50249cff23616477def5de9e293fe56bac45a667360db4daf16d12b0208a91",
-      "size_bytes": 4542
+      "sha256": "ea7505d259fe6a14c8fea082893a1b76e8ba691149cc52709bf3b9554c115f5b",
+      "size_bytes": 8273
     },
     "dense_retrieval": {
       "exists": true,
@@ -52,15 +28,15 @@
     },
     "final_answer_evaluation": {
       "exists": true,
-      "path": "docs/progress/final-answer-evaluation-live.json",
-      "sha256": "ece6dcd361990c4de232219af9bb7a3e60d18bdb263c699daaec4fd1134b845f",
-      "size_bytes": 94272
+      "path": "docs/progress/issue-51-reviewed-candidate-replay.json",
+      "sha256": "b306d04b067876120a10a4f76e130593a8286ca7a1b83f377b29a3bc95703d46",
+      "size_bytes": 4650
     },
     "hybrid_retrieval": {
       "exists": true,
-      "path": "docs/progress/issue-29-hybrid-retrieval-comparison.json",
-      "sha256": "2fa2d4ad2ed65ed9ddfb5c5596b01b73a71ccac5c8bfc878b2a78e6f05515424",
-      "size_bytes": 101085
+      "path": "docs/progress/issue-51-retrieval-remediation.json",
+      "sha256": "626eccb5d9be204f2c2726e84a6c2b8c3d5f67ecff5bafa9976959ce1de3a039",
+      "size_bytes": 4021
     },
     "lexical_retrieval": {
       "exists": true,
@@ -76,9 +52,9 @@
     },
     "release_monitors": {
       "exists": true,
-      "path": "docs/progress/release-monitors-live.json",
-      "sha256": "6f9d4f10ad38574bfee73717a9b74618ac30afc76c4940bc5f7b208804995099",
-      "size_bytes": 14542
+      "path": "docs/progress/issue-51-remediation-monitors.json",
+      "sha256": "5a1d9c9d2e9bbab7adeeed8a73f2ee419329d6365e887a88bccbce43a102e381",
+      "size_bytes": 16107
     },
     "release_progress": {
       "exists": true,
@@ -89,8 +65,8 @@
     "release_qualification": {
       "exists": true,
       "path": "config/release-qualification.json",
-      "sha256": "d01f10773a08faa6cac12376c9d07da5f5c67b46c456cc292d6dd8b0bb7708a4",
-      "size_bytes": 16619
+      "sha256": "f94f917fd283bf120c265685147002a7a7d840ff77849b72e44e4339b84e9a47",
+      "size_bytes": 19610
     },
     "runtime_policy": {
       "exists": true,
@@ -116,10 +92,24 @@
       "evaluated_status": "passed",
       "evidence": [
         {
-          "exists": true,
-          "path": "docs/progress/issue-29-hybrid-retrieval-comparison.json",
-          "sha256": "2fa2d4ad2ed65ed9ddfb5c5596b01b73a71ccac5c8bfc878b2a78e6f05515424",
-          "size_bytes": 101085
+          "path": "docs/progress/issue-51-retrieval-remediation.json",
+          "sha256": "626eccb5d9be204f2c2726e84a6c2b8c3d5f67ecff5bafa9976959ce1de3a039"
+        },
+        {
+          "path": "docs/progress/issue-51-candidate-retrieval-baseline.json",
+          "sha256": "d49438cd7b237668562c2f14b4de7d48c587a125f8c54f20edd5d6d63fe38d86"
+        },
+        {
+          "path": "data/evaluation/production-retrieval-v1.json",
+          "sha256": "db0494f73cc623917d793cba5a2e1a3714bdc48ae86c3cb9c9dd57837e0f8f26"
+        },
+        {
+          "path": "docs/progress/issue-51-production-retrieval-approval.json",
+          "sha256": "b715f8ae8f89c0840ab7083987335b84f7357833b0bdb16c3a70d666b166c60a"
+        },
+        {
+          "path": "docs/progress/issue-51-approved-retrieval.json",
+          "sha256": "179eff25113b1c458b9b73fa0f82a67ff3a80d2467e1c6a126d64b4b476cf74d"
         }
       ],
       "failures": [],
@@ -127,19 +117,57 @@
       "metric_id": "retrieval-required-evidence-recall-at-3",
       "observed": {
         "blocked_source_violations": 0,
-        "candidate": "hybrid",
+        "critical_case_count": 15,
+        "critical_case_recall_at_3": 1.0,
         "forbidden_result_violations": 0,
-        "required_evidence_query_count": 7,
+        "historical_candidate_fixture_diagnostic": {
+          "blocked_source_violations": 0,
+          "critical_case_evidence_status": "not_evaluable: frozen fixture benchmark has no approved critical-case mapping",
+          "critical_case_recall_at_3": null,
+          "execution_error_count": 0,
+          "forbidden_result_violations": 0,
+          "grounded_intent_coverage": {
+            "pd3-registration-logistics": {
+              "covered": 5,
+              "observed": 1.0,
+              "required": 5,
+              "status": "passed",
+              "threshold": 1.0
+            },
+            "permanent-residence-language": {
+              "covered": 6,
+              "observed": 1.0,
+              "required": 6,
+              "status": "passed",
+              "threshold": 1.0
+            }
+          },
+          "required_evidence_hits": 2,
+          "required_evidence_query_count": 7,
+          "required_evidence_recall_at_3": 0.2857142857142857
+        },
+        "mandatory_fixture_regressions": {
+          "blocked_source_violations": 0,
+          "forbidden_result_violations": 0,
+          "query_count": 9,
+          "required_evidence_hits": 7,
+          "required_evidence_query_count": 7,
+          "required_evidence_recall_at_3": 1.0
+        },
+        "required_evidence_hits": 15,
+        "required_evidence_query_count": 15,
         "required_evidence_recall_at_3": 1.0
       },
       "release_blocking": true,
       "source_status": "passed",
       "status": "passed",
-      "summary": "Hybrid retrieval required-evidence Recall@3 1.0 over 7 evaluable queries with 0 blocked-source violations and 0 forbidden-result violations.",
+      "summary": "Owner-approved production corpus check and separate mandatory frozen-fixture regression check.",
       "thresholds": {
         "blocked_source_violations_max": 0,
+        "critical_case_recall_at_3_min": 1.0,
         "forbidden_result_violations_max": 0,
-        "required_evidence_recall_at_3_min": 0.95
+        "required_evidence_recall_at_3_min": 0.95,
+        "retrieval_failure_may_be_masked_by_generation": false
       }
     },
     {
@@ -156,24 +184,16 @@
       "thresholds": {}
     },
     {
-      "evaluated_status": "failed",
+      "evaluated_status": "passed",
       "evidence": [
         {
           "exists": true,
-          "path": "docs/progress/final-answer-evaluation-live.json",
-          "sha256": "ece6dcd361990c4de232219af9bb7a3e60d18bdb263c699daaec4fd1134b845f",
-          "size_bytes": 94272
+          "path": "docs/progress/issue-51-reviewed-candidate-replay.json",
+          "sha256": "b306d04b067876120a10a4f76e130593a8286ca7a1b83f377b29a3bc95703d46",
+          "size_bytes": 4650
         }
       ],
-      "failures": [
-        "final-answer metric 'citation_correctness' did not pass strictly",
-        "final-answer metric 'forbidden_claims' did not pass strictly",
-        "final-answer metric 'privacy_requirement_compliance' did not pass strictly",
-        "final-answer metric 'required_fact_coverage' did not pass strictly",
-        "final-answer metric 'unsupported_claim_rate' did not pass strictly",
-        "final-answer evidence reports threshold failures",
-        "final-answer evidence did not pass strict mode"
-      ],
+      "failures": [],
       "id": "final-answer-independent-human-adjudication",
       "metric_id": "official-fact-citation-coverage",
       "observed": {
@@ -181,31 +201,32 @@
         "completed_count": 20,
         "dataset_id": "di-rag-eval-set-v0.1-candidate",
         "error_count": 0,
+        "live_provider_calls": false,
         "metric_statuses": {
           "case_execution_errors": "passed",
-          "citation_correctness": "not_evaluable",
+          "citation_correctness": "passed",
           "clarify_answer_refuse_accuracy": "passed",
           "evaluation_surface_completion": "passed",
-          "forbidden_claims": "not_evaluable",
+          "forbidden_claims": "passed",
           "forbidden_source_domain_violations": "passed",
           "fresh_tomato_min_material_source_rule_pass_rate": "passed",
           "official_fact_citation_coverage": "passed",
           "personal_eligibility_conclusions": "passed",
-          "privacy_requirement_compliance": "not_evaluable",
-          "required_fact_coverage": "not_evaluable",
+          "privacy_requirement_compliance": "passed",
+          "required_fact_coverage": "passed",
           "required_source_domain_coverage": "passed",
           "trust_indicator_correctness": "passed",
-          "unsupported_claim_rate": "not_evaluable"
+          "unsupported_claim_rate": "passed"
         },
-        "mode": "live-ollama",
+        "mode": "captured-live-ollama",
         "not_evaluable_count": 0,
         "quality_bar_id": "mvp-evaluation-quality-bar-issue-7",
-        "strict_passed": false
+        "strict_passed": true
       },
       "release_blocking": true,
-      "source_status": "not_run",
-      "status": "failed",
-      "summary": "Live final-answer evaluation evidence did not satisfy the strict release contract.",
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "Exact-bound final-answer evaluation passed every required metric strictly over 20 cases.",
       "thresholds": {
         "citation_correctness_min": 1.0,
         "clarify_answer_refuse_accuracy_min": 0.95,
@@ -223,9 +244,9 @@
       "evidence": [
         {
           "exists": true,
-          "path": "docs/progress/release-monitors-live.json",
-          "sha256": "6f9d4f10ad38574bfee73717a9b74618ac30afc76c4940bc5f7b208804995099",
-          "size_bytes": 14542
+          "path": "docs/progress/issue-51-remediation-monitors.json",
+          "sha256": "5a1d9c9d2e9bbab7adeeed8a73f2ee419329d6365e887a88bccbce43a102e381",
+          "size_bytes": 16107
         }
       ],
       "failures": [],
@@ -261,9 +282,9 @@
       "evidence": [
         {
           "exists": true,
-          "path": "docs/progress/release-monitors-live.json",
-          "sha256": "6f9d4f10ad38574bfee73717a9b74618ac30afc76c4940bc5f7b208804995099",
-          "size_bytes": 14542
+          "path": "docs/progress/issue-51-remediation-monitors.json",
+          "sha256": "5a1d9c9d2e9bbab7adeeed8a73f2ee419329d6365e887a88bccbce43a102e381",
+          "size_bytes": 16107
         }
       ],
       "failures": [],
@@ -285,20 +306,16 @@
       }
     },
     {
-      "evaluated_status": "failed",
+      "evaluated_status": "passed",
       "evidence": [
         {
           "exists": true,
-          "path": "docs/progress/release-monitors-live.json",
-          "sha256": "6f9d4f10ad38574bfee73717a9b74618ac30afc76c4940bc5f7b208804995099",
-          "size_bytes": 14542
+          "path": "docs/progress/issue-51-remediation-monitors.json",
+          "sha256": "5a1d9c9d2e9bbab7adeeed8a73f2ee419329d6365e887a88bccbce43a102e381",
+          "size_bytes": 16107
         }
       ],
-      "failures": [
-        "supported-environment evidence lacks real process, browser, or restart proof",
-        "supported-environment observed identity is incomplete",
-        "supported-environment observed identity did not validate"
-      ],
+      "failures": [],
       "id": "supported-environment-critical-journeys",
       "metric_id": "environment-matrix-critical-journeys",
       "observed": {
@@ -315,9 +332,9 @@
         "strict_passed": true
       },
       "release_blocking": true,
-      "source_status": "not_verified",
-      "status": "failed",
-      "summary": "Supported-environment evidence did not satisfy the strict release contract.",
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "The live supported environment passed every release-blocking critical journey.",
       "thresholds": {
         "environment_matrix_pass_rate_min": 1.0
       }
@@ -336,16 +353,16 @@
       "thresholds": {}
     },
     {
-      "evaluated_status": "blocked",
+      "evaluated_status": "passed",
       "evidence": [],
       "failures": [],
       "id": "production-source-registry-qualification",
       "metric_id": "approved-official-source-qualification",
       "observed": {},
       "release_blocking": true,
-      "source_status": "blocked",
-      "status": "blocked",
-      "summary": "The production source-registry assessment is blocked: the current project-authored fixtures have no recorded curator admissions, monitoring records, archived official snapshots, named human production reviews, or durable production signing-key custody record.",
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "All five September candidate official sources have production human review and the registry assessment is eligible with no reason codes. Signing-key custody and owner-confirmed encrypted off-device backup recovery are recorded in docs/progress/issue-50-signing-key-reset.json.",
       "thresholds": {}
     },
     {
@@ -363,15 +380,21 @@
       "release_blocking": true,
       "source_status": "passed",
       "status": "passed",
-      "summary": "The implemented unit-test suite is required for the release candidate but does not replace the full release matrix.",
+      "summary": "Full Python regression suite passed after the approved benchmark implementation on 2026-09-08: 502 tests, zero failures/errors, five opt-in skips. All 42 affected tests also passed.",
       "thresholds": {}
     },
     {
-      "evaluated_status": "not_verified",
+      "evaluated_status": "passed",
       "evidence": [
         {
           "command": "npm run test:browser",
           "kind": "manual-command-record"
+        },
+        {
+          "exists": true,
+          "path": "docs/progress/issue-23-manual-assistive-technology.json",
+          "sha256": "9b3d29ced01f060591df5127f0303df548a06129d0f84bf94ddae0dc4bd59f84",
+          "size_bytes": 2980
         }
       ],
       "failures": [],
@@ -379,14 +402,14 @@
       "metric_id": "accessibility-conformance",
       "observed": {
         "automated_critical_or_serious_violations": 0,
-        "automated_suite_status": "stale-reverification-required",
+        "automated_suite_status": "current",
         "keyboard_core_workflow_pass_rate": 1.0,
-        "manual_assistive_technology_check": "not_run"
+        "manual_assistive_technology_check": "passed"
       },
       "release_blocking": true,
-      "source_status": "not_verified",
-      "status": "not_verified",
-      "summary": "The current automated browser/accessibility suite has not been rerun after the latest UI changes, and the required manual assistive-technology check is also unperformed.",
+      "source_status": "passed",
+      "status": "passed",
+      "summary": "Automated accessibility thresholds and the evidence-bound manual assistive-technology journey set passed.",
       "thresholds": {
         "critical_or_serious_automated_violations_max": 0,
         "keyboard_core_workflow_pass_rate_min": 1.0,
@@ -429,7 +452,7 @@
       "thresholds": {}
     }
   ],
-  "generated_at_utc": "2026-07-14T19:23:44Z",
+  "generated_at_utc": "2026-09-08T14:15:38Z",
   "privacy_assertions": {
     "ran_live_network_or_provider_calls": false,
     "uses_conversation_identifiers": false,
@@ -440,5 +463,6 @@
   "release_decision": "do-not-release",
   "release_qualification_id": "mvp-release-qualification-issue-25",
   "schema_version": "1.0",
-  "strict_release_passed": false
+  "strict_release_passed": false,
+  "technical_gates_passed": true
 }

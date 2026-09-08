@@ -36,7 +36,7 @@ class CandidateReplayTests(unittest.TestCase):
         self.release = self.directory / "candidate"
         build_chunked_release_fixture(
             release_dir=self.release,
-            release_id="kr-2026-09-05.1",
+            release_id="kr-2026-09-04.1",
             source=source,
             document=document,
             release_trust=self.trust,
@@ -106,7 +106,7 @@ class CandidateReplayTests(unittest.TestCase):
         self.capture()
         policy_before = (ROOT / "config/release-qualification.json").read_bytes()
         runner = self.replay()
-        self.assertEqual(runner.public_identity["corpus_id"], "kr-2026-09-05.1")
+        self.assertEqual(runner.public_identity["corpus_id"], "kr-2026-09-04.1")
         self.assertEqual(runner.capture_provenance["qualification_scope"], "explicit-candidate-only")
         self.assertFalse(runner.capture_provenance["release_policy_changed"])
         self.assertEqual(policy_before, (ROOT / "config/release-qualification.json").read_bytes())
