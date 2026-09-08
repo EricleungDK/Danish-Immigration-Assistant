@@ -11,3 +11,16 @@ playwright-report/
 test-results/
 review/issue-46-official-source-review/
 review/private-evaluation/
+
+# Local release-review exports and discovery snapshots (canonical evidence lives in docs/progress).
+/review/release-*.html
+/review/release-*.json
+/review/release-*.md
+/review/release-test-updates.patch
+/review/missing-source-investigation.html
+/review/official-source-discovery-*/
+
+# Owner-specific signing backup launchers; these contain local paths, not key material.
+/review/Create signing backup.cmd
+/review/Verify signing backup.cmd
+/review/signing-key-backup.py
