@@ -1,6 +1,8 @@
 # Danish Immigration RAG Architecture
 
-This document records settled architecture plus project-level direction for Danish Immigration RAG. It is a decision summary, not an implementation plan; unresolved choices remain explicitly open.
+This document records settled architecture and current implementation status for
+Danish Immigration RAG. Historical direction is retained where useful, and
+remaining choices are explicitly separated from the release-qualified MVP.
 
 ## Scope And Traceability
 
@@ -8,8 +10,8 @@ This document records settled architecture plus project-level direction for Dani
 - Retrieval architecture decisions approved by issue #4 are limited to the MVP hybrid retrieval baseline, metadata eligibility boundary, index compatibility requirements, and initial supported embedding model. The traceable sources are [GitHub issue #4](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/4), [docs/progress/issue-29-hybrid-retrieval-comparison.md](progress/issue-29-hybrid-retrieval-comparison.md), [docs/progress/issue-29-hybrid-retrieval-recommendation.md](progress/issue-29-hybrid-retrieval-recommendation.md), and [docs/progress/issue-29-hybrid-retrieval-comparison.json](progress/issue-29-hybrid-retrieval-comparison.json).
 - Source-governance decisions approved by issue #6 are limited to the human-reviewed source registry lifecycle, release manifest contents, source-state eligibility rules, signed-manifest integrity baseline, project trust-root requirement, maintainer roles, separation of duties, and recovery procedures. The traceable sources are [GitHub issue #6](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/6), [GitHub issue #5](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/5), [docs/source-governance.md](source-governance.md), [docs/progress/issue-5-source-governance.md](progress/issue-5-source-governance.md), and [docs/progress/issue-6-source-governance-approval.md](progress/issue-6-source-governance-approval.md).
 - The issue #7 versioned evaluation package, existing metric definitions, configured release thresholds, hardware target, and supported-environment baseline were approved through the initiating product-owner instruction on 2026-07-13. The traceable sources are [GitHub issue #7](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/7), [docs/evaluation-quality-bar.md](evaluation-quality-bar.md), [config/evaluation-quality-bar.json](../config/evaluation-quality-bar.json), [data/evaluation/evaluation-set-v0.1-candidate.json](../data/evaluation/evaluation-set-v0.1-candidate.json), and [docs/progress/issue-7-evaluation-quality-bar.md](progress/issue-7-evaluation-quality-bar.md).
-- The interaction model, answer pipeline, and trust-indicator sections below preserve project-level context and pre-existing direction. They are not issue #26, issue #4, or issue #6 completion claims unless an item explicitly cites the approved runtime, retrieval, or source-governance baseline.
-- Approval does not implement citation validation, answer evaluation, trust-scoring improvements, release tooling, missing numeric performance thresholds, or the critical-journey matrix; those require executable evidence.
+- The interaction model, answer pipeline, and trust-indicator sections below preserve the original project direction while also describing the current implementation. Their acceptance evidence is maintained in [docs/release-qualification.md](release-qualification.md) and the linked issue-progress records.
+- The issue approvals did not themselves implement citation validation, answer evaluation, trust scoring, release tooling, or critical-journey checks; those implementation and qualification steps are now recorded separately in the current evidence documents.
 
 ## Product And Privacy Boundary
 
@@ -29,15 +31,17 @@ This document records settled architecture plus project-level direction for Dani
 
 ## Interaction Model
 
-These statements are project-level product direction. Issue #26 did not implement or approve production UI behavior.
+The following product direction is implemented in the current application. The
+original prototype remains design history, not a production implementation
+requirement.
 
-- The primary interface is expected to be a calm, conversation-first experience rather than a source browser or research workbench.
-- The desktop layout direction uses a narrow local-conversation sidebar and a flexible chat canvas. Official evidence is expected to open in a slide-over drawer instead of permanently competing with the answer for width.
-- The large product prompt is an empty-state direction only. Active conversations are expected to use a compact title and status line plus a persistent multiline composer.
-- The intended exchange rhythm is: user message, assistant identity and source status, natural-language answer, compact inline citations, optional support details, and suggested follow-up questions.
+- The primary interface is a calm, conversation-first experience rather than a source browser or research workbench.
+- The desktop layout uses a narrow local-conversation sidebar and a flexible chat canvas. Official evidence opens in a slide-over drawer instead of permanently competing with the answer for width.
+- The large product prompt is an empty-state surface. Active conversations use a compact title and status line plus a persistent multiline composer.
+- The exchange rhythm is: user message, assistant identity and source status, natural-language answer, compact inline citations, optional support details, and suggested follow-up questions.
 - Exact greetings are handled locally without retrieval or generation. Clearly non-domain conversation may use the configured local generation model in a separate fact-bounded social mode with no corpus evidence or trust indicators; factual answers remain limited to approved official evidence.
-- The intended answer surface keeps only essential provenance visible: material-source count, Evidence Confidence, and source check date. Fresh Tomato Score explanations, corpus identity, freshness methodology, model identity, and update controls are expected to live in the evidence drawer.
-- Official facts and interpretation should remain distinguishable through restrained margin labels. Colored callouts are reserved for warnings and explicit evidence-bounded refusals.
+- The answer surface keeps only essential provenance visible: material-source count, Evidence Confidence, and source check date. Fresh Tomato Score explanations, corpus identity, freshness methodology, model identity, and update controls live in the evidence drawer.
+- Official facts and interpretation remain distinguishable through restrained margin labels. Colored callouts are reserved for warnings and explicit evidence-bounded refusals.
 - The project direction was explored in the throwaway prototype at [`visualization/danish-rag-ui-prototype.html`](../visualization/danish-rag-ui-prototype.html). Prototype mechanics and styling are not production implementation requirements.
 
 ## Local Model Integration
@@ -59,7 +63,9 @@ These statements are project-level product direction. Issue #26 did not implemen
 
 ## Local Data And Retrieval
 
-Issue #4 approves the MVP retrieval baseline. Production release thresholds and broader evaluation targets remain deferred to the later evaluation decision ticket.
+Issue #4 approves the MVP retrieval baseline. The current implementation uses
+that baseline, and the issue #7 evaluation package plus issue #51 evidence now
+record the approved release thresholds and qualification results.
 
 - Conversation history persists on the user's local disk.
 - SQLite is the working store for conversations, messages, citations, model identity, corpus version, Evidence Confidence, and Fresh Tomato Score.
@@ -77,7 +83,10 @@ Issue #4 approves the MVP retrieval baseline. Production release thresholds and 
 
 ## Source Governance And Updates
 
-Issue #6 approves the source-governance operating model recommended by issue #5. Implementation tooling remains deferred, but the lifecycle, eligibility rules, manifest contents, signing baseline, maintainer roles, and recovery procedures are documented in [docs/source-governance.md](source-governance.md).
+Issue #6 approves the source-governance operating model recommended by issue #5.
+The implementation now applies the lifecycle, eligibility rules, manifest
+contents, signing baseline, maintainer roles, and recovery procedures documented
+in [docs/source-governance.md](source-governance.md).
 
 - Project maintainers own a human-reviewed source registry rather than allowing each installation to define trust independently.
 - Maintainer automation may fetch approved URLs and detect changes, but changed, fetch-failed, broken, redirected, extraction-failed, overdue-blocked, withdrawn, superseded, and unapproved sources cannot support answers until an allowed human-review transition restores eligibility.
@@ -91,7 +100,7 @@ Issue #6 approves the source-governance operating model recommended by issue #5.
 - Release integrity is verified before installation, and installation is atomic with rollback on failure. The accessible Corpus status region polls only local state and renders the installer's actual progress callback events; it declares completion only when the backend reports a terminal event and the approved release is active. A withdrawal notice must block or warn on installed releases whose material sources are no longer trusted.
 - Production-candidate retrieval qualification pins one copy of the release, installs and indexes it into an isolated local directory, and runs a fixed five-case suite. Required-source misses, blocked sources, forbidden source-document results, or a substituted qualification suite prevent activation in the target data directory. The final atomic install uses that same pinned copy and still protects the prior active release.
 - Source review, release approval, publication, and recovery are human responsibilities assigned to the maintainer roles in [docs/source-governance.md](source-governance.md). A production knowledge release must record the named human maintainer or maintainers acting in those roles; the MVP fallback allows one maintainer to hold multiple roles only with visible audit notes and post-release review.
-- The trust root is a project-controlled release-signing root distributed with the application or a separately verified project configuration. Key rotation, revoked key IDs, and emergency withdrawal handling must be documented before the first production knowledge release.
+- The active trust root is the project-controlled `project-release-key-v2` root distributed with the application. Key rotation, revoked key IDs, and emergency withdrawal handling are documented in [docs/source-governance.md](source-governance.md) and [the signing-key evidence](progress/issue-50-signing-key-reset.json).
 
 ## Evaluation Quality Bar
 
@@ -99,16 +108,19 @@ Issue #7 has an approved versioned evaluation package in [docs/evaluation-qualit
 
 - The candidate dataset is `di-rag-eval-set-v0.1-candidate`, version `0.1.0-candidate`, with 20 project-authored synthetic cases covering happy paths, edge cases, out-of-bounds requests, ambiguity, conflicts, stale sources, refusals, and robustness.
 - Retrieval evaluation and final-answer evaluation remain separate. A plausible generated answer cannot hide a retrieval miss.
-- Proposed release-blocking thresholds cover retrieval, citations, unsupported claims, clarify/answer/refuse behavior, Evidence Confidence, Fresh Tomato Score, local-only privacy, update rollback, accessibility, reliability, runtime identity, and supported-environment critical journeys.
+- Approved release-blocking thresholds cover retrieval, citations, unsupported claims, clarify/answer/refuse behavior, Evidence Confidence, Fresh Tomato Score, local-only privacy, update rollback, accessibility, reliability, runtime identity, and supported-environment critical journeys.
 - Threshold weakening requires a new quality-bar version and recorded human approval.
 - Baseline hardware evidence comes from issue #26 and issue #29: Windows 11 with WSL2 Ubuntu on x86-64, Python 3.12.3, Ollama 0.30.6, `gemma4:12b`, `embeddinggemma`, 16 CPU threads, and 15908 MB RAM.
-- The only verified supported-environment candidate is Windows 11 with WSL2 Ubuntu on x86-64. Native Linux and macOS remain candidates pending full matrix evidence; native Windows is not supported for the MVP candidate.
+- The documented and qualified MVP supported target is Windows 11 with WSL2 Ubuntu on x86-64. Native Linux and macOS remain candidates pending full matrix evidence; native Windows is not supported for the MVP candidate.
 
 ## Answer Pipeline
 
-This section is project-level answer-pipeline direction. Issue #26 proved only local structured output through the runtime provider; it did not implement production retrieval, prompting, answer validation, citation validation, or storage behavior.
+The current application implements this constrained answer pipeline. Issue #26
+proved the local structured-output runtime baseline; later implementation and
+qualification evidence covers retrieval, prompting, answer validation, citation
+validation, storage, and release behavior.
 
-- The MVP is expected to use a constrained RAG pipeline, not an autonomous agent loop.
+- The MVP uses a constrained RAG pipeline, not an autonomous agent loop.
 - The intended pipeline normalizes the question, identifies ambiguity, retrieves approved evidence, rejects unsupported claims, generates a structured answer, validates citations, and stores the answer with its provenance.
 - General examination-term questions can include documented relevance to
   permanent-residence language requirements as an explicitly displayed context.
@@ -118,8 +130,8 @@ This section is project-level answer-pipeline direction. Issue #26 proved only l
   consequential or unspecified application ambiguity still requires clarification.
 - A pre-retrieval conversation router keeps greetings and clearly non-domain turns out of hybrid retrieval. The separate social-generation schema prohibits external factual, immigration, legal, eligibility, and examination claims; it does not turn the generation model into a factual source.
 - The generation model must not browse, choose arbitrary tools, or supply unsupported facts from its pretrained knowledge.
-- When only part of a question is supported, the application should answer that portion and explicitly decline the unsupported portion.
-- Official facts and interpretation should remain visibly distinct.
+- When only part of a question is supported, the application answers that portion and explicitly declines the unsupported portion.
+- Official facts and interpretation remain visibly distinct.
 - Production local-provider answers use a separate local verification request to
   check the summary and every model-authored section against exact spans of the
   retrieved evidence. The displayed summary repeats the first official-fact section, or
@@ -197,20 +209,24 @@ This section is project-level answer-pipeline direction. Issue #26 proved only l
 
 ## Trust Indicators
 
-This section is project-level trust-indicator direction. Issue #26 did not define scoring algorithms or implement historical answer storage.
+The current implementation computes and persists these trust indicators with
+each historical answer. The issue #26 runtime decision did not define these
+algorithms; the later answer-pipeline, persistence, and release-evaluation
+evidence does.
 
 - **Evidence Confidence** measures how directly and consistently retrieved approved sources support the answer. It is computed from evidence and citation coverage, not model self-rating.
 - **Fresh Tomato Score** measures source recency and health independently of Evidence Confidence.
-- Each source retains its own Fresh Tomato Score. The answer-level score is expected to be the lowest score among material sources.
-- Trust indicators, their reasons, citations, model identity, and corpus version are expected to be stored with the historical answer rather than recalculated silently later.
+- Each source retains its own Fresh Tomato Score. The answer-level score is the lowest score among material sources.
+- Trust indicators, their reasons, citations, model identity, and corpus version are stored with the historical answer rather than recalculated silently later.
 
 ## Still Open
 
-- Final provider adapter contracts beyond the issue #26 Ollama baseline
-- Retrieval release thresholds beyond the issue #4 MVP baseline
-- Reranking beyond the issue #4 MVP baseline
-- Source-governance implementation tooling and exact signing command workflow
-- Detailed browser security and local process lifecycle
-- Application-code installation and update mechanism
-- Numeric performance thresholds and executable supported-environment critical-journey evidence
-- Production evaluation runner, answer evaluator, accessibility harness, network-boundary monitor, rollback fault injection, and supported-environment CI matrix
+The release-qualified MVP is implemented and verified for its documented scope.
+Remaining decisions and follow-up work are:
+
+- Additional local provider adapters and supported generation/embedding models beyond the Ollama baseline.
+- Retrieval or reranking changes that require a new evaluated baseline and compatible re-index.
+- Broader native Linux and macOS environment qualification.
+- Application-code packaging and update distribution, which remain separate from knowledge-release updates.
+- The post-publication second review required by the single-maintainer fallback.
+- Future product expansion beyond the current information-assistant boundary, including any personal-profile features.

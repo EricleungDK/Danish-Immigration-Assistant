@@ -13,14 +13,17 @@ content are never placed in update requests.
 | POST | `/setup` | Test and persist a loopback generation-provider configuration. |
 | POST | `/ask` | Retrieve eligible evidence, generate/validate an answer, and save one turn. |
 | GET | `/status` | Content-free provider/model/corpus/index identity and capability status. |
-| GET | `/conversations/{id}` | Reopen a local historical conversation. |
-| GET | `/conversations/{id}/export.json` | Export one local conversation record. |
+| GET | `/conversations/{conversation_id}` | Reopen a local historical conversation. |
+| GET | `/conversations/{conversation_id}/export.json` | Export one local conversation record. |
 | GET | `/conversations/export.json` | Export all non-deleted local records. |
-| POST | `/conversations/{id}/delete` | Soft-delete one local conversation. |
+| POST | `/conversations/{conversation_id}/delete` | Soft-delete one local conversation. |
 | POST | `/conversations/delete-all` | Confirmed soft deletion of all local records. |
 | POST | `/knowledge-updates/check` | Fetch bounded, content-free release metadata only. |
+| POST | `/knowledge-updates/automatic-check` | Start a throttled background check for bounded, content-free release metadata. |
+| GET | `/knowledge-updates/automatic-check-status` | Return the local status fragment for the automatic metadata check. |
 | POST | `/knowledge-updates/download` | Explicitly approve one tag/asset download and verify its signed contents. |
 | POST | `/knowledge-updates/install` | Separately install the reviewed staged release with atomic rollback. |
+| GET | `/knowledge-updates/install-status` | Return local installation progress and terminal status. |
 | POST | `/knowledge-updates/dismiss` | Discard available/staged update state. |
 | GET | `/vendor/htmx.min.js` | Serve the installed local HTMX asset. |
 
@@ -36,7 +39,9 @@ in a same-origin POST body; provider endpoint data is not placed in the URL.
 
 Conversation routes return server-rendered HTML (or HTMX fragments). `/ask`
 responses also refresh the Local History projection out of band after a saved
-turn. Export and status routes return JSON. Successful mutations normally
+turn. Automatic-check and installation-status routes return local status
+fragments; the installation itself runs in a background worker. Export and
+status routes return JSON. Successful mutations normally
 redirect with HTTP 303; validation errors preserve the relevant form state and
 return a categorized local recovery message. Invalid bulk-deletion confirmation
 returns the HTML application with an inline alert rather than FastAPI JSON.
@@ -51,4 +56,5 @@ requests, bounded downloads, signature verification, and local file permissions
 the relevant controls. Non-loopback exposure is unsupported.
 
 Implementation: [`danish_rag/local_app.py`](../../../danish_rag/local_app.py).
-Completion evidence: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).
+Current completion evidence: [`../../progress/issue-51-completion.md`](../../progress/issue-51-completion.md).
+Historical implementation report: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).

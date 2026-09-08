@@ -12,8 +12,13 @@ See [`context.md`](context.md) for implementation state and truthful blockers.
 Use [`config/release-qualification.json`](../../../config/release-qualification.json)
 and [`docs/progress/release-evaluation-current.json`](../../progress/release-evaluation-current.json)
 for machine-readable gate state rather than inferring completion from issue labels.
-The latest implementation and verification roll-up is
-[`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).
+The latest implementation and verification roll-up is the
+[`issue #51 acceptance handoff`](../../progress/issue-51-completion.md), with
+the active gate state in [`docs/release-qualification.md`](../../release-qualification.md).
+Issue #51 remains open in GitHub; this local handoff records completion of its
+evidence-production scope and does not change the issue state.
+The July candidate report remains preserved as historical implementation
+evidence: [`2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).
 
 ## Verification Entry Points
 

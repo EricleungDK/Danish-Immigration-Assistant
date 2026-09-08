@@ -10,7 +10,20 @@ Issue #6 approves this baseline for the MVP architecture gate:
 - Human review and publication authority are assigned to maintainer roles. A production knowledge release must name the human maintainer or maintainers acting as source curator, source reviewer, release operator, release approver, and recovery owner.
 - The selected integrity approach is a signed release manifest containing SHA-256 artifact hashes and a documented project trust root.
 - Source blocking, warning, withdrawal, and emergency recovery rules follow the state model and recovery procedures below.
-- Release implementation tooling, exact signing commands, final release thresholds, and Fresh Tomato Score algorithms remain separate implementation decisions.
+- The issue #6 approval intentionally left release implementation tooling, exact signing commands, final release thresholds, and Fresh Tomato Score algorithms as separate implementation decisions; their current status is summarized below.
+
+## Current Implementation Status (2026-09-08)
+
+The implementation now applies this governance model to the reviewed production
+candidate. Registry `sr-2026-09-05.1` records all five official sources as
+production-release eligible, and signed knowledge release `kr-2026-09-05.1`
+contains 52 deterministic semantic chunks. The candidate was verified, indexed,
+qualified, and installed locally; the build, installation, retrieval, and
+rollback evidence is linked in [issue #50 production release](progress/issue-50-production-knowledge-release.md)
+and [issue #51 retrieval qualification](progress/issue-51-approved-retrieval.json).
+The release-owner decision is recorded separately in
+[release-owner approval](progress/release-owner-approval-20260908.json).
+No external publication has been performed.
 
 ## Recommendation
 
@@ -223,12 +236,37 @@ unchanged. Retrieval indexes are local derived data and should record
 compatibility with this manifest rather than become the authoritative source of
 provenance.
 
-## Current MVP Fixture Registry Evidence
+## Current Production Registry Evidence
 
-The repository now records the governance status of the bundled
+The production registry
+[`data/source_registry/sr-2026-09-05.1.json`](../data/source_registry/sr-2026-09-05.1.json)
+records `production_release_eligible: true`, status `qualified`, and no
+qualification reason codes for the five reviewed official sources. It binds
+the named curator, source reviewer, monitoring owner, release operator, release
+approver, recovery owner, materiality, official snapshots, normalized
+extractions, and the single-maintainer fallback.
+
+The signed release
+[`kr-2026-09-05.1`](../data/knowledge_releases/kr-2026-09-05.1/manifest.json)
+uses corpus schema `2.0` and the deterministic semantic-chunk contract. Its
+candidate copy passed production retrieval qualification with zero blocked,
+forbidden, or required-source violations and passed the five-stage rollback
+matrix before local activation. The candidate is qualified for the documented
+MVP target, but no GitHub release has been published. The fallback's required
+post-publication second review therefore remains `pending-publication` rather
+than being represented as completed.
+
+See [the production install evidence](progress/issue-50-production-install.json),
+[the rollback evidence](progress/issue-50-production-rollback.json), and [the
+release qualification record](release-qualification.md).
+
+## Historical MVP Fixture Registry Evidence
+
+The repository retains the governance status of the historical bundled
 `kr-2026-07-06.1` corpus in the machine-readable source registry
 [`data/source_registry/sr-2026-07-06.1.json`](../data/source_registry/sr-2026-07-06.1.json).
-This record is deliberately release-blocking:
+This record remains deliberately release-blocking and is retained as a fixture
+control:
 
 - All five bundled documents declare `content_origin` as
   `project-authored-fixture`; they are summaries written for project testing,
@@ -249,11 +287,12 @@ This record is deliberately release-blocking:
 
 [`danish_rag/source_registry.py`](../danish_rag/source_registry.py) validates
 the registry, cross-checks it against the bundled manifest and corpus, and
-derives a machine-readable `blocked` production-qualification result. A
-mechanically valid signed fixture release is not thereby a production-reviewed
-knowledge release.
+derives the historical fixture's machine-readable `blocked`
+production-qualification result. A mechanically valid signed fixture release
+is not thereby a production-reviewed knowledge release.
 
-Production qualification still requires maintainers to:
+For traceability, the production qualification path that was completed for
+`sr-2026-09-05.1` required maintainers to:
 
 1. Admit each official URL through the curator transition and archive the
    retrieved official content with retrieval/final-URL metadata and SHA-256
@@ -297,11 +336,11 @@ Preferred baseline: publish a signed manifest with SHA-256 hashes for every arti
 
 The repository contains only the public trust root. A production private signing
 key must never be committed, included in a release artifact, or kept as an
-unmanaged transient build file. Before the first public knowledge release, the
-recovery owner must record durable off-repository custody, backup/recovery access,
-the active key ID, the revoked-key record, and the rotation/withdrawal procedure.
-The current signed project-authored fixture proves verification mechanics only;
-it does not prove production signing-key custody.
+unmanaged transient build file. The active key ID, durable off-repository
+custody, backup/recovery access, revoked-key record, and rotation/withdrawal
+procedure are recorded in the [signing-key reset evidence](progress/issue-50-signing-key-reset.json).
+The historical signed project-authored fixture proves verification mechanics
+only; the production key custody and recovery record are separate.
 
 ## Signing-key reset (2026-09-05)
 
@@ -311,8 +350,9 @@ trust root is distributed with the application; the private key is held outside
 Git in the owner's Ubuntu account with directory mode `0700` and file mode `0600`.
 The exact custody path and public-key fingerprint are recorded in
 [`issue-50-signing-key-reset.json`](progress/issue-50-signing-key-reset.json).
-An independent off-device backup is pending and remains required before public
-publication. Local candidate building and installation do not imply publication.
+The owner confirmed an encrypted off-device backup and successful local recovery
+verification on 2026-09-06. Local candidate building and installation do not
+imply publication; no external publication has been performed.
 
 `project-release-key-v1` is retired, not known compromised. Its verifier accepts
 only the exact SHA-256-pinned historical fixture manifest, with its original
@@ -375,7 +415,9 @@ Failed local installation:
 
 ## Preferred Baseline Summary
 
-Issue #5 should approve the governance model, not every future implementation detail. The baseline to carry forward is:
+The issue #5 recommendation, approved through issue #6, covers the governance
+model rather than every future implementation detail. The baseline to carry
+forward is:
 
 - Human-reviewed source registry owned by maintainers.
 - Explicit blocked states for unapproved, changed, fetch-failed, broken, redirected, extraction-failed, overdue-blocked, withdrawn, and superseded sources.

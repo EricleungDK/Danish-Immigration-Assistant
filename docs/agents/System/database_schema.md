@@ -63,4 +63,5 @@ distinct schema identities and are never mixed.
 
 Implementation: [`danish_rag/conversation_store.py`](../../../danish_rag/conversation_store.py)
 and [`danish_rag/retrieval.py`](../../../danish_rag/retrieval.py).
-Completion evidence: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).
+Current completion evidence: [`../../progress/issue-51-completion.md`](../../progress/issue-51-completion.md).
+Historical implementation report: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).

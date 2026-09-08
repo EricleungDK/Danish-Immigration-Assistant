@@ -10,4 +10,7 @@ Do not revive the superseded open decisions that previously lived in this file;
 the implemented provider, embedding, retrieval, trust-root, and update contracts
 are now explicit in code and machine-readable configuration.
 
-Completion evidence: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).
+Current completion evidence: [`../../progress/issue-51-completion.md`](../../progress/issue-51-completion.md)
+and [`../../release-qualification.md`](../../release-qualification.md). The
+July completion report remains preserved as historical evidence.
+Historical implementation report: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).

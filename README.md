@@ -13,12 +13,23 @@ Private, source-grounded local assistant for Danish permanent-residence language
 - [docs/agents/README.md](docs/agents/README.md) is the entry point for
   agent-facing system maps, procedures, task context, and historical reports.
 
+## Current Release Status
+
+As of 2026-09-08, the documented MVP release candidate is qualified for the
+Windows 11 with WSL2 Ubuntu on x86-64 target. The owner-approved application
+commit is `d3eeb2a`, and the active signed knowledge release is
+`kr-2026-09-05.1`. The exact qualification, gate results, and approval record
+are in [docs/release-qualification.md](docs/release-qualification.md),
+[docs/progress/release-evaluation-current.json](docs/progress/release-evaluation-current.json),
+and [docs/progress/release-owner-approval-20260908.json](docs/progress/release-owner-approval-20260908.json).
+The candidate is installed locally; no GitHub release has been published.
+
 ## Project Baselines
 
 - Runtime policy: [config/runtime-policy.json](config/runtime-policy.json)
 - Human-readable baseline: [docs/runtime-baseline.md](docs/runtime-baseline.md)
 - Source governance recommendation: [docs/source-governance.md](docs/source-governance.md)
-- Evaluation quality bar candidate: [docs/evaluation-quality-bar.md](docs/evaluation-quality-bar.md)
+- Evaluation quality bar: [docs/evaluation-quality-bar.md](docs/evaluation-quality-bar.md)
 - Issue #5 source governance progress: [docs/progress/issue-5-source-governance.md](docs/progress/issue-5-source-governance.md)
 - Issue #6 source governance approval: [docs/progress/issue-6-source-governance-approval.md](docs/progress/issue-6-source-governance-approval.md)
 - Issue #7 evaluation quality-bar progress: [docs/progress/issue-7-evaluation-quality-bar.md](docs/progress/issue-7-evaluation-quality-bar.md)
@@ -28,6 +39,7 @@ Private, source-grounded local assistant for Danish permanent-residence language
 - Issue #26 progress: [docs/progress/issue-26-runtime-baseline.md](docs/progress/issue-26-runtime-baseline.md)
 - Issue #28 dense benchmark progress: [docs/progress/issue-28-dense-retrieval-benchmark.md](docs/progress/issue-28-dense-retrieval-benchmark.md)
 - Issue #29 hybrid comparison progress: [docs/progress/issue-29-hybrid-retrieval-comparison.md](docs/progress/issue-29-hybrid-retrieval-comparison.md)
+- Issue #51 acceptance handoff: [docs/progress/issue-51-completion.md](docs/progress/issue-51-completion.md)
 - Evaluation quality-bar config: [config/evaluation-quality-bar.json](config/evaluation-quality-bar.json)
 - Evaluation set candidate: [data/evaluation/evaluation-set-v0.1-candidate.json](data/evaluation/evaluation-set-v0.1-candidate.json)
 - Retrieval benchmark fixtures: [data/retrieval_benchmark/corpus-fixtures.json](data/retrieval_benchmark/corpus-fixtures.json)
@@ -73,7 +85,7 @@ Private, source-grounded local assistant for Danish permanent-residence language
 
 ### Local Application
 
-Prerequisites for the published MVP environment:
+Prerequisites for the documented MVP supported environment:
 
 - Ubuntu under Windows 11 WSL2 on x86-64
 - Python 3.11 or newer
@@ -168,11 +180,13 @@ First run the strict live release monitors:
 ```
 
 The original [issue #51 qualification run](docs/progress/issue-51-live-qualification.md)
-failed. The [engineering remediation and current review handoff](docs/progress/issue-51-engineering-remediation.md)
-now record passing machine gates and accepted independent human review. The
-[reviewed candidate replay](docs/progress/issue-51-reviewed-candidate-replay.json)
-passes every evaluation threshold; production release approval remains separate.
-Packet G is unchanged.
+failed. The [engineering remediation](docs/progress/issue-51-engineering-remediation.md)
+records the subsequent fixes, and the [acceptance handoff](docs/progress/issue-51-completion.md)
+records the current strict replay. The [reviewed candidate replay](docs/progress/issue-51-reviewed-candidate-replay.json)
+passes every evaluation threshold. Production qualification and final owner
+approval are recorded separately in [docs/release-qualification.md](docs/release-qualification.md)
+and [docs/progress/release-owner-approval-20260908.json](docs/progress/release-owner-approval-20260908.json).
+Packet G is unchanged, and publication has not been performed.
 
 Canonical private packet G was generated directly with the approved local
 runtime, model, and corpus. Both outputs are private mode-`0600` evidence. Do
@@ -207,9 +221,13 @@ file hashes:
 ```
 
 Captured replay rejects any whole-file hash or validated internal binding
-mismatch. Its report records `live_provider_calls: false`. It remains
-non-strict until an independent reviewer supplies the exact-bound
-adjudications; none are supplied here.
+mismatch. The command above intentionally performs an unadjudicated diagnostic
+replay, records `live_provider_calls: false`, and remains non-strict; it is not
+the current qualification result. The current candidate's accepted strict
+replay is recorded in
+[`issue-51-reviewed-candidate-replay.json`](docs/progress/issue-51-reviewed-candidate-replay.json)
+and uses the private adjudication export described in the evaluation-quality-bar
+procedure.
 
 For a **new candidate** whose corpus differs from the release-policy corpus,
 keep the same exact packet/report hash arguments and additionally supply
@@ -222,19 +240,26 @@ The resulting report is scoped `explicit-candidate-only`; it does not promote
 release policy or replace canonical packet G.
 
 Open [the local semantic review page](review/semantic-adjudication-review.html)
-and load the **new packet named in the current review handoff**. Review each
-exact answer and its cited evidence. Mark unsupported claims as failed and use
+and load the exact packet named in the relevant review handoff. Review each
+answer and its cited evidence. Mark unsupported claims as failed and use
 not evaluable when the evidence is insufficient to decide. Only the independent
-human reviewer should complete the attestation
-and export the adjudication bundle. Supply that private export with
-`--adjudications /path/to/export.json` when replaying the same exact packet;
-workflow evidence is collected separately.
+human reviewer should complete the attestation and export the adjudication
+bundle. Supply that private export with `--adjudications /path/to/export.json`
+when replaying the same exact packet; workflow evidence is collected separately.
+
+The current candidate's independent review was accepted on 2026-09-06 and its
+strict replay passed all 20 surfaces with zero unevaluated metrics. The public
+aggregate retains counts and hashes but no private answers or adjudications;
+see [the reviewed replay](docs/progress/issue-51-reviewed-candidate-replay.json).
+
+### Historical pre-review evidence (2026-07-14)
 
 The live run generated at `2026-07-14T18:06:02Z` completed all 20 surfaces with
-zero execution errors.
-Behavior, structural, source-domain, citation-coverage, trust-indicator,
-freshness, personal-conclusion, and automated-workflow gates passed. Five
-semantic metrics remain `not_evaluable` because independent human adjudication
-has not been recorded; this evidence does not establish production
-qualification. See [the evaluation quality bar](docs/evaluation-quality-bar.md)
-and [the live machine-readable report](docs/progress/final-answer-evaluation-live.json).
+zero execution errors. Behavior, structural, source-domain, citation-coverage,
+trust-indicator, freshness, personal-conclusion, and automated-workflow gates
+passed. Five semantic metrics were `not_evaluable` because independent human
+adjudication had not yet been recorded. This historical report does not
+establish current production qualification; the accepted status is recorded in
+[the release qualification](docs/release-qualification.md) and
+[the current acceptance handoff](docs/progress/issue-51-completion.md).
+See also [the historical machine-readable report](docs/progress/final-answer-evaluation-live.json).

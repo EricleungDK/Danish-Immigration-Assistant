@@ -47,4 +47,5 @@ remove motion while preserving status and focus behavior.
 
 See [`docs/architecture.md`](../../architecture.md) and the browser tests in
 [`tests/browser/`](../../../tests/browser/) for the executable contract.
-Completion evidence: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).
+Current completion evidence: [`../../progress/issue-51-completion.md`](../../progress/issue-51-completion.md).
+Historical implementation report: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).

@@ -1,6 +1,6 @@
 # Development Workflow - Danish Immigration RAG
 
-**Last Updated**: 2026-07-07
+**Last Updated**: 2026-09-08
 
 This SOP is the default path for local development in this repository. It keeps work tied to the GitHub issue tracker, preserves the local-only product boundary, and makes completion claims traceable to tests or documented evidence.
 
@@ -115,6 +115,13 @@ DI_RAG_RUN_LIVE_DENSE_BENCHMARK=1 .venv/bin/python -m unittest tests.test_dense_
 ```
 
 If a verification command cannot be run, say exactly why and name the residual risk.
+
+For release qualification, use [`docs/release-qualification.md`](../../release-qualification.md)
+and the machine-readable evidence under [`docs/progress/`](../../progress/).
+The current candidate is qualified for the documented Windows 11/WSL2 Ubuntu
+target, but no GitHub publication has been performed. Historical reports under
+`docs/agents/Reports/` remain evidence of earlier states and must not be used to
+overwrite the current gate state.
 
 ## Evidence And Documentation
 

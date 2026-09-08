@@ -1,5 +1,7 @@
 # Danish Immigration RAG Project Architecture
 
+**Last updated:** 2026-09-08
+
 ## Overview
 
 Danish Immigration RAG is a local FastAPI web application for evidence-bounded
@@ -75,13 +77,20 @@ tests/                         unit, integration, live opt-in, and browser gates
 
 ## Current Release Boundary
 
-The reviewed-source build path is implemented and machine-tested from the five
-completed issue-46 reviews. The bundled active corpus remains the prior
-project-authored fixture because the matching production private signing key is
-not present in the repository and no production candidate has been signed or
-activated. Broader release publication also remains blocked by independent
-final-answer adjudication, replacement real-process/browser environment
-evidence, a manual assistive-technology check, and release-owner approval. See
-[`docs/progress/issue-50-production-knowledge-release.md`](../../progress/issue-50-production-knowledge-release.md) and
-[`docs/progress/source-registry-sr-2026-07-06.1.md`](../../progress/source-registry-sr-2026-07-06.1.md).
-Completion evidence: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).
+As of 2026-09-08, the five reviewed official sources are assembled in the
+production-qualified registry `sr-2026-09-05.1` and signed knowledge release
+`kr-2026-09-05.1`. The candidate is installed locally, and release qualification
+is recorded as `qualified` with decision `release`. The owner-approved
+application commit is `d3eeb2a`; the separate owner record and current gate
+state are authoritative for that decision.
+
+The exact candidate build and installation evidence is in
+[`issue-50-production-knowledge-release.md`](../../progress/issue-50-production-knowledge-release.md).
+The current issue #51 acceptance handoff records strict replay, retrieval,
+privacy, rollback, supported-environment, and accessibility evidence in
+[`issue-51-completion.md`](../../progress/issue-51-completion.md), and the
+qualification record is [`docs/release-qualification.md`](../../release-qualification.md).
+No GitHub release has been published. The single-maintainer post-publication
+second-review obligation remains pending until public publication occurs.
+
+Historical implementation report: [`../Reports/2026-07-14-mvp-completion-candidate.md`](../Reports/2026-07-14-mvp-completion-candidate.md).

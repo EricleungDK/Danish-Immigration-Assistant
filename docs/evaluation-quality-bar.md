@@ -10,6 +10,16 @@ Status: `approved`.
 
 Product owner approval provided through the initiating GPT goal instruction on 2026-07-13. The approval covers the existing dataset, metric definitions, configured release thresholds, hardware target, and supported-environment baseline. It removes the decision gate only: implementation, measurement, accessibility, security, privacy, performance, and release-test requirements still have to pass. No missing numeric performance threshold is inferred from this approval. Thresholds must not be weakened silently to pass a build; any weakening requires a new quality-bar version and recorded human approval.
 
+The current `0.1.0-rc.1` candidate has since passed the release gates against
+the unchanged quality-bar package. The exact reviewed replay, production and
+fixture retrieval evidence, and final owner approval are recorded in
+[`docs/release-qualification.md`](release-qualification.md),
+[`docs/progress/release-evaluation-current.json`](progress/release-evaluation-current.json),
+and [`docs/progress/release-owner-approval-20260908.json`](progress/release-owner-approval-20260908.json).
+Qualification is approved for the documented MVP target; no external
+publication has been performed. The July report below remains historical
+pre-review evidence.
+
 ## Policy Contract
 
 <!-- evaluation-quality-bar-contract:start -->
@@ -133,8 +143,9 @@ umask 077
 ```
 
 No `--config-path` or `--data-dir` override is present: the command uses the
-normal per-user XDG paths. Packet G contains blank review templates and no
-independent-human decisions.
+normal per-user XDG paths. The packet capture contains blank review templates;
+the accepted independent-human decisions are supplied through the separate
+private adjudication export and are not copied into public reports.
 
 When an exact live-Ollama execution has already been captured, score that
 execution without calling the provider again:
@@ -169,12 +180,15 @@ original execution remains identified separately as `live-ollama`. The private
 prompt, answer, and evidence content is never copied into the replay report.
 
 Open `review/semantic-adjudication-review.html` locally and load the exact
-private capture. The accepted export remains disabled until every assertion and
-claim-support decision is complete and the reviewer affirmatively attests that
-they are an independent human reviewer. Diagnostic product-owner exports remain
-separate and are not accepted by the semantic gate. The evaluator validates the
-attestation against the exact dataset, execution hashes, and review-payload
-hashes; changing only the per-case assessment-method label is not sufficient.
+private capture. For a new review, the accepted export remains disabled until
+every assertion and claim-support decision is complete and the reviewer
+affirmatively attests that they are an independent human reviewer. Diagnostic
+product-owner exports remain separate and are not accepted by the semantic gate.
+The evaluator validates the attestation against the exact dataset, execution
+hashes, and review-payload hashes; changing only the per-case assessment-method
+label is not sufficient. The current candidate's accepted adjudication and
+strict replay are recorded by hash in
+[`issue-51-reviewed-candidate-replay.json`](progress/issue-51-reviewed-candidate-replay.json).
 
 ## Release-Blocking Metrics
 
@@ -201,7 +215,9 @@ Any personal eligibility conclusion, unsupported legal claim, answer-time networ
 
 ## Baseline Results
 
-The approved configured thresholds are release thresholds, not a claim that the current fixture benchmark already satisfies every release gate.
+The approved configured thresholds are release thresholds. The current release
+result is recorded separately below through the September qualification evidence;
+the measurements in this section are historical baselines.
 
 Current evidence from the approved runtime and retrieval decisions:
 
@@ -212,11 +228,16 @@ Current evidence from the approved runtime and retrieval decisions:
 - The comparison recorded hybrid required-evidence Recall@3 1.0 and MRR 1.0 across 7 evaluable required-evidence queries, with blocked-source violations 0 and forbidden-result violations 0 on the reviewed 9-query benchmark fixture set.
 - Dense retrieval evidence in the comparison recorded mean query latency 146.602 ms, mean warm retrieval latency 64.659 ms, dense indexing wall time 1408.696 ms, index size 151360 bytes, and process peak resident memory 101.434 MB.
 
-The release-quality dataset is broader than the issue #29 retrieval fixture set. The current retrieval numbers are baselines that justify the hardware and environment candidate, not full release acceptance results.
+The release-quality dataset is broader than the issue #29 retrieval fixture set.
+The measurements in this section are historical baseline evidence; current
+release acceptance results are recorded in
+[docs/release-qualification.md](release-qualification.md) and the issue #51
+retrieval evidence.
 
-## Final-Answer Evidence, 2026-07-14
+## Historical Final-Answer Evidence, 2026-07-14
 
-The live report generated at `2026-07-14T18:06:02Z` is
+The following report predates the accepted September review and is retained as
+historical machine evidence. The live report generated at `2026-07-14T18:06:02Z` is
 [docs/progress/final-answer-evaluation-live.json](progress/final-answer-evaluation-live.json).
 It records:
 
@@ -231,14 +252,15 @@ It records:
   conclusions were detected; and
 - all six hash-bound automated workflows passed.
 
-Five release-blocking semantic metrics are `not_evaluable`, not failed or
+Five release-blocking semantic metrics were `not_evaluable`, not failed or
 passed: required-fact coverage, forbidden claims, privacy-requirement
 compliance, citation correctness for relationships needing review, and
 unsupported-claim rate. The machine run recorded no known unsupported or
 incorrect relationships, but independent human adjudication is absent, so the
 evaluator does not infer their absence. Consequently `strict_passed` is false.
 This report is comprehensive machine execution evidence, not a claim of human
-review or production qualification.
+review or current production qualification. Current qualification is recorded
+in [docs/release-qualification.md](release-qualification.md).
 
 ## Hardware Targets
 
@@ -264,7 +286,7 @@ CPU-only compatibility and latency are measured rather than guaranteed. Any envi
 
 | Environment | Status | Release gate |
 | --- | --- | --- |
-| Windows 11 with WSL2 Ubuntu on x86-64 | MVP supported verified candidate | Full issue #7 critical journey matrix before release |
+| Windows 11 with WSL2 Ubuntu on x86-64 | MVP supported target; critical journeys qualified | Re-run the matrix when the supported environment or release candidate changes |
 | Native Linux on x86-64 | Candidate, not verified | Runtime probe, retrieval benchmark, answer/refusal, history, evidence, accessibility, and rollback tests |
 | macOS Apple Silicon | Candidate, not verified | Provider/model setup, local indexing, browser, accessibility, and rollback tests |
 | Native Windows | Not supported for MVP candidate | Separate launch, storage, provider, and browser-security verification path |
