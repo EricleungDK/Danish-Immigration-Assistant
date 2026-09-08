@@ -50,6 +50,8 @@ does not override those sources.
   private packet custody, and the remaining independent-human review requirement.
 - [Issue #51 engineering remediation](../progress/issue-51-engineering-remediation.md)
   tracks the subsequent fixes, current verification, and fresh review handoff.
+- [Issue #51 acceptance handoff](../progress/issue-51-completion.md) maps all six
+  acceptance criteria to evidence and records the latest verification.
 
 ## Quick Verification
 

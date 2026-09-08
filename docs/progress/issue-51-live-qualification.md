@@ -1,6 +1,10 @@
 # Issue #51 — Production-candidate live qualification evidence
 
 Recorded 2026-09-05 for [issue #51](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/51).
+This is the preserved **original failed run**. For the successful follow-up and
+accepted independent review, see the [acceptance handoff](issue-51-completion.md).
+The blocking status below applies to this original run.
+
 Evidence collection is complete; qualification remains **blocked / do-not-release**.
 No thresholds, approved datasets, release policy, or application answer behavior changed.
 
