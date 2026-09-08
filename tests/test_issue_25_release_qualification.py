@@ -33,15 +33,15 @@ HYBRID_RETRIEVAL_PATH = (
 
 
 class Issue25ReleaseQualificationTests(unittest.TestCase):
-    def test_release_qualification_reports_blocked_release_without_weakening_gates(self):
+    def test_release_qualification_reports_approved_release_without_weakening_gates(self):
         qualification = load_release_qualification(QUALIFICATION_PATH)
 
         self.assertEqual(
             qualification["qualification_id"],
             "mvp-release-qualification-issue-25",
         )
-        self.assertEqual(qualification["qualification_status"], "blocked")
-        self.assertEqual(qualification["release_decision"], "do-not-release")
+        self.assertEqual(qualification["qualification_status"], "qualified")
+        self.assertEqual(qualification["release_decision"], "release")
         self.assertEqual(qualification["quality_bar"]["version"], "0.1.0-candidate")
         self.assertEqual(
             qualification["quality_bar"]["approval_status"],
@@ -61,9 +61,7 @@ class Issue25ReleaseQualificationTests(unittest.TestCase):
         blocker_ids = {blocker["id"] for blocker in derive_release_blockers(qualification)}
         self.assertEqual(
             blocker_ids,
-            {
-                "production-release-owner-approval-pending",
-            },
+            set(),
             blocker_ids,
         )
         self.assertNotIn("retrieval-required-evidence-baseline", blocker_ids)

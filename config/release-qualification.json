@@ -1,16 +1,16 @@
 {
   "qualification_id": "mvp-release-qualification-issue-25",
-  "version": "0.5.0-blocked",
+  "version": "0.6.0-qualified",
   "issue": "https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/25",
   "parent_prd_issue": "https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/1",
-  "evaluated_at_utc": "2026-09-06T15:56:38Z",
-  "qualification_status": "blocked",
-  "release_decision": "do-not-release",
-  "decision_summary": "The exact owner-approved production benchmark and separate mandatory fixture checks pass, with unchanged numerical thresholds. Semantic answer review, source registry, manual accessibility, privacy, rollback and supported environment evidence pass. Final release-owner approval remains pending; do not publish. Historical candidate/fixture diagnostic remains 2/7.",
+  "evaluated_at_utc": "2026-09-08T14:21:45.743854+00:00",
+  "qualification_status": "qualified",
+  "release_decision": "release",
+  "decision_summary": "All technical gates passed and the owner explicitly approved application candidate d3eeb2a with signed knowledge release kr-2026-09-05.1. Numerical thresholds and evidence remain unchanged. Qualification is approved; publication has not been performed.",
   "distribution": {
     "kind": "local-python-web-application",
     "release_candidate_version": "0.1.0-rc.1",
-    "package_status": "documented-blocked-release-candidate",
+    "package_status": "documented-qualified-release-candidate",
     "included_paths": [
       "danish_rag/",
       "config/runtime-policy.json",
@@ -352,16 +352,21 @@
     {
       "id": "production-release-owner-approval-pending",
       "required": true,
-      "status": "pending",
-      "required_for": "Final decision to publish a non-blocked MVP release."
+      "status": "approved",
+      "required_for": "Final decision to publish a non-blocked MVP release.",
+      "record": "I approve this release candidate",
+      "evidence": "docs/progress/release-owner-approval-20260908.json",
+      "evidence_sha256": "ed18aecbaa0df08b172c766269b72d4af8df05150f3a12d822b7f7a5909ad947",
+      "approved_application_commit": "d3eeb2a0600ed8b41029b1ba133b42513f674a78",
+      "approved_manifest_sha256": "b154ef00bd63a6a8b5eac526a5e5af7653e7754ac55e1e40fbc72b0d1234b0fb"
     }
   ],
   "explicit_release_blockers": [],
   "documentation_contract": {
     "qualification_id": "mvp-release-qualification-issue-25",
-    "version": "0.5.0-blocked",
-    "qualification_status": "blocked",
-    "release_decision": "do-not-release",
+    "version": "0.6.0-qualified",
+    "qualification_status": "qualified",
+    "release_decision": "release",
     "quality_bar_version": "0.1.0-candidate",
     "quality_bar_approval_status": "approved",
     "evaluation_dataset_id": "di-rag-eval-set-v0.1-candidate",

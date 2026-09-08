@@ -5,14 +5,7 @@
     "runtime_policy": [],
     "source_contract": []
   },
-  "derived_release_blockers": [
-    {
-      "id": "production-release-owner-approval-pending",
-      "reason": "Final decision to publish a non-blocked MVP release.",
-      "source": "human_approval_records",
-      "status": "pending"
-    }
-  ],
+  "derived_release_blockers": [],
   "evidence_inputs": {
     "accessibility_browser": {
       "exists": true,
@@ -65,8 +58,8 @@
     "release_qualification": {
       "exists": true,
       "path": "config/release-qualification.json",
-      "sha256": "f94f917fd283bf120c265685147002a7a7d840ff77849b72e44e4339b84e9a47",
-      "size_bytes": 19610
+      "sha256": "bc52a6f492ac34e140c2b77397dfe98ec4a3e0004b5c6aed689cfe53733a0a76",
+      "size_bytes": 19908
     },
     "runtime_policy": {
       "exists": true,
@@ -452,17 +445,17 @@
       "thresholds": {}
     }
   ],
-  "generated_at_utc": "2026-09-08T14:15:38Z",
+  "generated_at_utc": "2026-09-08T14:22:22Z",
   "privacy_assertions": {
     "ran_live_network_or_provider_calls": false,
     "uses_conversation_identifiers": false,
     "uses_production_answers": false,
     "uses_production_user_questions": false
   },
-  "qualification_status": "blocked",
-  "release_decision": "do-not-release",
+  "qualification_status": "qualified",
+  "release_decision": "release",
   "release_qualification_id": "mvp-release-qualification-issue-25",
   "schema_version": "1.0",
-  "strict_release_passed": false,
+  "strict_release_passed": true,
   "technical_gates_passed": true
 }

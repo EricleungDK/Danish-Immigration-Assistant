@@ -1,0 +1,14 @@
+{
+  "schema_version": "release-owner-approval-v1",
+  "recorded_at_utc": "2026-09-08T14:21:45.743854+00:00",
+  "reviewer_id": "EricLeung",
+  "approval_source": "Explicit project-owner message in this conversation",
+  "owner_statement": "I approve this release candidate",
+  "status": "approved",
+  "application_commit": "d3eeb2a0600ed8b41029b1ba133b42513f674a78",
+  "release_candidate_version": "0.1.0-rc.1",
+  "knowledge_release_id": "kr-2026-09-05.1",
+  "manifest_sha256": "b154ef00bd63a6a8b5eac526a5e5af7653e7754ac55e1e40fbc72b0d1234b0fb",
+  "reviewed_report_sha256": "a0b3c3a5c20618ea8b40cc56d196f51c545c1cf6e06e418a85210ecf019e29bf",
+  "publication_performed": false
+}

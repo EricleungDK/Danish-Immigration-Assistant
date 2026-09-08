@@ -263,7 +263,7 @@ def _write_live_release_evidence(target):
 
 
 class ReleaseEvaluationReportTests(unittest.TestCase):
-    def test_report_covers_current_release_gates_and_keeps_release_blocked(self):
+    def test_report_covers_current_release_gates_and_honors_explicit_release_approval(self):
         report = generate_release_evaluation(
             ROOT,
             generated_at_utc="2026-07-07T00:00:00Z",
@@ -280,9 +280,9 @@ class ReleaseEvaluationReportTests(unittest.TestCase):
             report["release_qualification_id"],
             qualification["qualification_id"],
         )
-        self.assertEqual(report["qualification_status"], "blocked")
-        self.assertEqual(report["release_decision"], "do-not-release")
-        self.assertFalse(report["strict_release_passed"])
+        self.assertEqual(report["qualification_status"], "qualified")
+        self.assertEqual(report["release_decision"], "release")
+        self.assertTrue(report["strict_release_passed"])
 
         configured_gate_ids = {gate["id"] for gate in qualification["gate_results"]}
         reported_gate_ids = {gate["id"] for gate in report["gate_results"]}
@@ -292,7 +292,7 @@ class ReleaseEvaluationReportTests(unittest.TestCase):
         self.assertNotIn("quality-bar-human-approval-pending", blocker_ids)
         self.assertNotIn("issue-24-human-validation-pending", blocker_ids)
         self.assertNotIn("retrieval-required-evidence-baseline", blocker_ids)
-        self.assertIn("production-release-owner-approval-pending", blocker_ids)
+        self.assertNotIn("production-release-owner-approval-pending", blocker_ids)
         for gate_id in ("supported-environment-critical-journeys", "final-answer-independent-human-adjudication", "production-source-registry-qualification", "browser-accessibility-suite"):
             self.assertNotIn(gate_id, blocker_ids)
             self.assertEqual(_gate(report, gate_id)["status"], "passed")
@@ -941,7 +941,7 @@ class ReleaseEvaluationReportTests(unittest.TestCase):
                 gate["failures"],
             )
 
-    def test_cli_writes_report_and_strict_mode_fails_for_blocked_release(self):
+    def test_cli_writes_report_and_strict_mode_passes_for_approved_release(self):
         from danish_rag.release_evaluation import main
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -970,7 +970,7 @@ class ReleaseEvaluationReportTests(unittest.TestCase):
             )
 
             self.assertEqual(default_status, 0)
-            self.assertEqual(strict_status, 1)
+            self.assertEqual(strict_status, 0)
             self.assertTrue(output_path.exists())
             written_report = json.loads(output_path.read_text(encoding="utf-8"))
             self.assertEqual(written_report["generated_at_utc"], "2026-07-07T00:00:00Z")

@@ -1,7 +1,7 @@
 # Danish Immigration RAG — Agent Documentation
 
 **Last updated:** 2026-09-08
-**Status:** Human answer and accessibility reviews are accepted; Python regressions pass. The owner-approved production and fixture retrieval checks now pass. Final release-owner approval remains pending. See `docs/progress/issue-51-approved-retrieval.json`.
+**Status:** Human answer and accessibility reviews are accepted; Python regressions pass. The owner-approved production and fixture retrieval checks now pass. Final release-owner approval is recorded on 2026-09-08. Publication has not been performed. See `docs/progress/issue-51-approved-retrieval.json`.
 
 Start with [`CONTEXT.md`](../../CONTEXT.md), the GitHub issue named in the task,
 and the authoritative contracts under [`docs/`](../). GitHub issue #1 is the

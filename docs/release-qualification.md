@@ -4,19 +4,21 @@ This document records the issue #25 release qualification for Danish Immigration
 
 ## Release Decision
 
-Status: `blocked`.
+Status: `qualified`.
 
-Release decision: `do-not-release`.
+Release decision: `release`.
 
-The owner approved the production/fixture benchmark separation on 2026-09-08. Fresh production retrieval passes 15/15 required-evidence and critical cases; the unchanged fixture benchmark passes 7/7 eligible cases across all nine queries. The historical 2/7 candidate/fixture mismatch remains recorded as a diagnostic. Exact-packet independent human semantic review, privacy, rollback, supported-environment journeys, and manual accessibility evidence pass. Production sources are qualified and the owner confirmed recovery of the encrypted off-device signing-key backup. Final production release-owner approval remains pending; release is blocked.
+Any subsequent gate failure must return qualification to `blocked` and the decision to `do-not-release`; owner approval does not override failed technical evidence.
+
+The owner approved the production/fixture benchmark separation on 2026-09-08. Fresh production retrieval passes 15/15 required-evidence and critical cases; the unchanged fixture benchmark passes 7/7 eligible cases across all nine queries. The historical 2/7 candidate/fixture mismatch remains recorded as a diagnostic. Exact-packet independent human semantic review, privacy, rollback, supported-environment journeys, and manual accessibility evidence pass. Production sources are qualified and the owner confirmed recovery of the encrypted off-device signing-key backup. The owner explicitly approved the reviewed candidate on 2026-09-08; see `docs/progress/release-owner-approval-20260908.json`. Qualification is approved; publication has not been performed.
 
 <!-- release-qualification-contract:start -->
 ```json
 {
   "qualification_id": "mvp-release-qualification-issue-25",
-  "version": "0.5.0-blocked",
-  "qualification_status": "blocked",
-  "release_decision": "do-not-release",
+  "version": "0.6.0-qualified",
+  "qualification_status": "qualified",
+  "release_decision": "release",
   "quality_bar_version": "0.1.0-candidate",
   "quality_bar_approval_status": "approved",
   "evaluation_dataset_id": "di-rag-eval-set-v0.1-candidate",
@@ -168,6 +170,6 @@ Current evidence and limitations:
 - Performance figures above are historical measurement baselines; they are not a new speed guarantee. No numeric latency SLA is configured.
 - The owner-approved test updates are applied. The full Python suite passed on 2026-09-08: 502 tests, zero failures/errors, five skips. All 42 affected contract/evaluator tests passed. The release report now evaluates the approved production/fixture retrieval contract.
 - The owner-approved 15-case production benchmark is `data/evaluation/production-retrieval-v1.json`; exact approval is recorded in `docs/progress/issue-51-production-retrieval-approval.json`. The proposal’s original `proposed-not-approved` field is retained verbatim for hash binding; approval comes from the separate decision record. All 15 cases are critical. Fresh `docs/progress/issue-51-approved-retrieval.json` records production Recall@3 15/15, critical Recall@3 15/15, and separate fixture Recall@3 7/7 across nine queries. Both scopes record zero blocked/forbidden violations. Results bind signed chunk IDs and the same inspected embedding identity. Safety checks cover the full fixture result list; only recall is limited to three. The historical 2/7 candidate/fixture diagnostic is unchanged.
-- Final production release-owner approval remains pending. The release decision remains `do-not-release` until that explicit decision is recorded and the evaluator confirms all gates.
+- Final production release-owner approval is recorded for application commit `d3eeb2a` and the exact signed September knowledge release. The strict evaluator must still pass every gate; approval does not override failures.
 
 Any uncited official fact, personal eligibility conclusion, answer-path personal-data egress, failed atomic rollback, or mismatched active corpus/index pair blocks release.

@@ -14,14 +14,22 @@ class CandidateReleaseEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.qualification = json.loads((ROOT / "config/release-qualification.json").read_text())
 
-    def test_current_binding_verifies_without_inventing_release_approval(self):
+    def test_current_binding_verifies_with_explicit_release_approval(self):
         self.assertEqual(validate_candidate_evidence(ROOT, self.qualification), [])
         report = generate_release_evaluation(ROOT)
-        self.assertFalse(report["strict_release_passed"])
+        self.assertTrue(report["strict_release_passed"])
         self.assertTrue(report["technical_gates_passed"])
         blockers = {item["id"] for item in report["derived_release_blockers"]}
         self.assertNotIn("retrieval-required-evidence-baseline", blockers)
-        self.assertIn("production-release-owner-approval-pending", blockers)
+        self.assertNotIn("production-release-owner-approval-pending", blockers)
+
+    def test_missing_owner_approval_still_blocks_release(self):
+        qualification = copy.deepcopy(self.qualification)
+        next(a for a in qualification['human_approval_records'] if a['id'] == 'production-release-owner-approval-pending')['status'] = 'pending'
+        with patch('danish_rag.release_evaluation.load_release_qualification', return_value=qualification):
+            report = generate_release_evaluation(ROOT)
+        self.assertFalse(report['strict_release_passed'])
+        self.assertIn('production-release-owner-approval-pending', {b['id'] for b in report['derived_release_blockers']})
 
     def test_malformed_or_escaping_bindings_produce_structured_failed_report(self):
         for bad in (None, [], {"final_answer": {"path": "../outside", "sha256": "0" * 64}}):
