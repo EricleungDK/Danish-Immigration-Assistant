@@ -1,6 +1,6 @@
 # Danish Immigration RAG — Agent Documentation
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-09-29
 **Status:** Human answer and accessibility reviews are accepted; the owner-run qualification suite records a clean Python regression pass. This documentation session's restricted sandbox run is recorded separately in the issue #51 handoff because two source-review tests could not bind local sockets. The owner-approved production and fixture retrieval checks now pass. Final release-owner approval is recorded on 2026-09-08. Qualification is approved for the documented MVP target, but publication has not been performed. See [`docs/release-qualification.md`](../release-qualification.md) and [`docs/progress/release-owner-approval-20260908.json`](../progress/release-owner-approval-20260908.json).
 
 Start with [`CONTEXT.md`](../../CONTEXT.md), the GitHub issue named in the task,
@@ -27,6 +27,8 @@ does not override those sources.
 
 - [Current context](Tasks/context.md) — current implementation state, pending
   evidence, and genuine external blockers.
+- [Docs index](../README.md) — all contracts and evidence.
+- [Live evaluation runbook](../live-evaluation.md) — release evidence commands.
 - [Task index](Tasks/README.md) — issue tracker and verification entry points.
 - GitHub Issues for `EricleungDK/Danish-Immigration-Assistant` are authoritative;
   see [`issue-tracker.md`](issue-tracker.md).
@@ -64,5 +66,5 @@ npm run test:browser
 ```
 
 Live Ollama, retrieval, monitor, and strict-evaluation commands are maintained in
-[`README.md`](../../README.md) and the release qualification docs. A fixture or unit
+[`live-evaluation.md`](../live-evaluation.md), [`README.md`](../../README.md), and the release qualification docs. A fixture or unit
 pass never substitutes for a required live or human gate.

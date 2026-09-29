@@ -1,265 +1,208 @@
+<div align="center">
+
 # Danish Immigration RAG
 
-Private, source-grounded local assistant for Danish permanent-residence language requirements and Danish language examinations.
+**A private, local, source-grounded assistant for Danish permanent-residence language requirements and Danish language exams.**
 
-## Project Documentation
+Every official fact is cited. Unsupported claims are blocked. Nothing about your question leaves your computer.
 
-- [GitHub issue #1](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/1)
-  is the canonical product PRD; all PRDs and work items are tracked in GitHub
-  Issues.
-- [CONTEXT.md](CONTEXT.md) defines the project vocabulary and product boundary.
-- [docs/architecture.md](docs/architecture.md) records the authoritative
-  architecture, with supporting contracts and evidence under [`docs/`](docs/).
-- [docs/agents/README.md](docs/agents/README.md) is the entry point for
-  agent-facing system maps, procedures, task context, and historical reports.
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-local%20web%20app-009688?logo=fastapi&logoColor=white)
+![Ollama](https://img.shields.io/badge/LLM-Ollama%20gemma4%3A12b-000000)
+![Not legal advice](https://img.shields.io/badge/not-legal%20advice-critical)
+![Privacy](https://img.shields.io/badge/answer%20path-100%25%20local-success)
 
-## Current Release Status
+[Demo](#demo) · [Quick start](#quick-start) · [How it works](#how-it-works) · [Trust & safety](#trust--safety) · [Evaluation](#evaluation) · [Docs](#documentation) · [Roadmap](#roadmap)
 
-As of 2026-09-08, the documented MVP release candidate is qualified for the
-Windows 11 with WSL2 Ubuntu on x86-64 target. The owner-approved application
-commit is `d3eeb2a`, and the active signed knowledge release is
-`kr-2026-09-05.1`. The exact qualification, gate results, and approval record
-are in [docs/release-qualification.md](docs/release-qualification.md),
-[docs/progress/release-evaluation-current.json](docs/progress/release-evaluation-current.json),
-and [docs/progress/release-owner-approval-20260908.json](docs/progress/release-owner-approval-20260908.json).
-The candidate is installed locally; no GitHub release has been published.
+</div>
 
-## Project Baselines
+<img src="docs/assets/demo.gif" alt="Demo: asking a question and inspecting the cited official source" width="880">
 
-- Runtime policy: [config/runtime-policy.json](config/runtime-policy.json)
-- Human-readable baseline: [docs/runtime-baseline.md](docs/runtime-baseline.md)
-- Source governance recommendation: [docs/source-governance.md](docs/source-governance.md)
-- Evaluation quality bar: [docs/evaluation-quality-bar.md](docs/evaluation-quality-bar.md)
-- Issue #5 source governance progress: [docs/progress/issue-5-source-governance.md](docs/progress/issue-5-source-governance.md)
-- Issue #6 source governance approval: [docs/progress/issue-6-source-governance-approval.md](docs/progress/issue-6-source-governance-approval.md)
-- Issue #7 evaluation quality-bar progress: [docs/progress/issue-7-evaluation-quality-bar.md](docs/progress/issue-7-evaluation-quality-bar.md)
-- Issue #8 local app setup progress: [docs/progress/issue-8-local-app-setup.md](docs/progress/issue-8-local-app-setup.md)
-- Issue #23 accessibility and responsive review: [docs/progress/issue-23-accessibility-responsive.md](docs/progress/issue-23-accessibility-responsive.md)
-- Issue #24 usability validation packet: [docs/progress/issue-24-usability-validation.md](docs/progress/issue-24-usability-validation.md)
-- Issue #26 progress: [docs/progress/issue-26-runtime-baseline.md](docs/progress/issue-26-runtime-baseline.md)
-- Issue #28 dense benchmark progress: [docs/progress/issue-28-dense-retrieval-benchmark.md](docs/progress/issue-28-dense-retrieval-benchmark.md)
-- Issue #29 hybrid comparison progress: [docs/progress/issue-29-hybrid-retrieval-comparison.md](docs/progress/issue-29-hybrid-retrieval-comparison.md)
-- Issue #51 acceptance handoff: [docs/progress/issue-51-completion.md](docs/progress/issue-51-completion.md)
-- Evaluation quality-bar config: [config/evaluation-quality-bar.json](config/evaluation-quality-bar.json)
-- Evaluation set candidate: [data/evaluation/evaluation-set-v0.1-candidate.json](data/evaluation/evaluation-set-v0.1-candidate.json)
-- Retrieval benchmark fixtures: [data/retrieval_benchmark/corpus-fixtures.json](data/retrieval_benchmark/corpus-fixtures.json)
-- Retrieval benchmark queries: [data/retrieval_benchmark/evaluation-queries.json](data/retrieval_benchmark/evaluation-queries.json)
-- Dense retrieval benchmark queries: [data/retrieval_benchmark/dense-evaluation-queries.json](data/retrieval_benchmark/dense-evaluation-queries.json)
+---
 
-## Portfolio Case Study
+## Why
 
-  ### Problem
-  Official Danish immigration websites are written for the general public, not for someone trying to understand how the
-  rules apply to their own situation. Immigration processes can also take months or years, so users need answers that stay
-  connected to current official sources.
+Official Danish immigration sites are written for the general public, not for someone working out how the rules apply to them. Processes take months or years, so answers must stay tied to *current* official sources. Generic chatbots hallucinate; in immigration, a confident wrong answer is costly.
 
-  ### User
-  People preparing for Danish permanent residence, especially applicants who need to understand Danish language and exam
-  requirements.
+Danish Immigration RAG answers only from a **human-reviewed, cryptographically signed knowledge release** of official sources, shows exactly which passages support each claim, and refuses when evidence is missing.
 
-  ### Architecture
-  The app runs locally as a private web assistant. It uses an approved knowledge release of official Danish immigration
-  sources, builds a local retrieval index, retrieves relevant source passages for a user question, and then asks a local
-  language model to generate an answer only from that evidence. The answer pipeline separates official facts,
-  interpretation, refusals, citations, source freshness, and conversation history.
+> **Not legal advice.** It explains official requirements. It does not decide personal eligibility, keep personal profiles, or act as a legal authority.
 
-  ### Safety/Evals
-  The project treats immigration guidance as a high-trust domain, so the app does not give legal advice or personal
-  eligibility decisions. It checks that official facts have citations, blocks unsupported claims, refuses unsafe questions,
-  and separates retrieval evaluation from final-answer evaluation. The test suite covers retrieval, citation validation,
-  privacy boundaries, source governance, rollback behavior, conversation history, accessibility, and browser workflows.
+## Demo
 
-  ### What I used AI for
-  I used AI coding agents to help draft implementation code, tests, documentation, architecture notes, and issue-based
-  development plans. I also plan to use AI-generated HTML explainers to study the system until I can explain the
-  architecture and evaluation design myself.
+<p align="center">
+  <img src="docs/assets/screenshot-answer.png" alt="Answer separating official fact from interpretation, each with a citation" width="880"><br>
+  <sub>Official facts and interpretation are separated; every claim carries a citation.</sub>
+</p>
 
-  ### What I personally reviewed/owned
-  I owned the project scope, user problem, issue tickets, acceptance criteria, product boundaries, documentation direction,
-  test runs, and final portfolio story. I also reviewed whether the app’s behavior matched the safety goal: source-backed
-  guidance, not legal authority.
+<p align="center">
+  <img src="docs/assets/screenshot-evidence.png" alt="Evidence drawer showing the official source, check date, Evidence Confidence and Fresh Tomato Score" width="880"><br>
+  <sub>The evidence drawer: official URL, check date, Evidence Confidence, Fresh Tomato Score, claim support.</sub>
+</p>
 
-  ### What I would improve next
-  Create a guided personal-profile layer only after the current source-backed assistant is stable. This would require
-  stronger privacy design, clearer consent, and stricter refusal behavior because personal memory increases safety risk.
+> Captured from the deterministic browser-test fixture server (`tests/browser_app_server.py`) with its bundled minimal knowledge release and a stub answer generator, so the content is illustrative, not live model output.
 
-### Local Application
+## Features
 
-Prerequisites for the documented MVP supported environment:
+| | |
+|---|---|
+| **Evidence-bounded answers** | Structured answers where every official fact needs eligible citations; the model is never treated as a source. |
+| **Hybrid retrieval** | SQLite FTS5 + local dense vectors (`embeddinggemma`), fused with reciprocal-rank fusion (`k=60`), Danish and English sources. |
+| **Trust indicators** | Evidence Confidence and Fresh Tomato Score (source freshness/health) on every answer; inspect evidence in a slide-over drawer. |
+| **Fully local** | Ollama on loopback, local SQLite conversations, no answer-time browsing, no remote fallback. |
+| **Signed knowledge updates** | Ed25519-signed releases from GitHub Releases; explicit download and install approval, atomic install, rollback. |
+| **Fail-closed evaluation** | Live and human-adjudicated release gates; absent or stale evidence blocks release. |
+| **Accessible UI** | Server-rendered HTMX UI verified with Playwright + axe-core: keyboard, reduced motion, narrow screens, 200% zoom. |
 
-- Ubuntu under Windows 11 WSL2 on x86-64
-- Python 3.11 or newer
-- Node.js and npm for browser tests
-- OpenSSL with Ed25519 support for knowledge-release verification
-- An evergreen local browser
-- For the live qualification baseline: Ollama 0.30.6 or newer with
-  `gemma4:12b` and `embeddinggemma` installed
+## How it works
 
-Install the local web application dependencies in a virtual environment:
+```mermaid
+flowchart LR
+    Q[Question] --> A{Ambiguity &<br/>safety check}
+    A -- unsafe / personal --> R[Refusal]
+    A --> H[Hybrid retrieval<br/>FTS5 + dense, RRF]
+    H --> E[Eligibility filter<br/>approved, fresh sources only]
+    E --> G[Local LLM<br/>structured answer]
+    G --> V[Claim → citation<br/>validation]
+    V -- unsupported --> R
+    V --> T[Answer + citations<br/>+ trust indicators]
+    K[(Signed knowledge<br/>release)] --> H
+```
+
+1. **Knowledge release** — five official sources (nyidanmark.dk, danskogproever.dk) are human-reviewed, chunked, signed, and installed locally.
+2. **Retrieve** — hybrid lexical + dense search; ineligible sources get no credit.
+3. **Generate** — a local model produces a structured answer separating *official fact* from *interpretation*.
+4. **Validate** — each claim must map to an eligible citation, otherwise it is declined.
+5. **Present** — compact citations, source check date, Evidence Confidence, Fresh Tomato Score.
+
+Full design: [docs/architecture.md](docs/architecture.md).
+
+## Quick start
+
+**Supported environment (MVP):** Ubuntu on Windows 11 WSL2, x86-64.
+
+**Prerequisites**
+
+- Python 3.11+
+- Node.js + npm (browser tests only)
+- OpenSSL with Ed25519 support
+- [Ollama](https://ollama.com) 0.30.6+ with the qualified models:
+
+```bash
+ollama pull gemma4:12b
+ollama pull embeddinggemma
+```
+
+**Install and run**
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-npm install
-```
+npm install                      # optional, for browser tests
 
-Launch the single local Python process:
-
-```bash
 .venv/bin/python -m danish_rag.local_app
 ```
 
-The default bind address is `127.0.0.1:8000`, from [config/runtime-policy.json](config/runtime-policy.json). The first-launch setup page stores validated provider configuration at the per-user config path. A compatible loopback provider may be configured manually; Ollama is the live release-qualification baseline.
+Open <http://127.0.0.1:8000>. First launch shows a setup page that validates and stores your provider config in a per-user path. Any compatible loopback provider works; Ollama is the qualification baseline.
 
-After the page loads, the browser sends a same-origin, loopback-only POST that starts
-a throttled check of bounded GitHub Release metadata. The ordinary page GET performs
-no release-network request, the manual check remains available, and neither check
-downloads or installs a release. Download and installation each require their own
-explicit action. During installation, the Corpus panel announces the backend's actual
-verification, extraction, embedding, indexing, compatibility, activation, and
-completion events; it reports success only after the approved release is active.
+**Knowledge updates.** After load, the page makes one throttled, loopback-initiated check of bounded GitHub Release *metadata* — never a download. Download and install each need their own explicit click, and the Corpus panel reports success only once the approved release is active.
 
-Run the complete unit suite:
+## Trust & safety
+
+- **Privacy boundary** — questions, evidence, inference, answers, indexes, and history stay on your machine. Network use is limited to release discovery and approved release download.
+- **Source governance** — human-reviewed registry, separation of duties, signed manifests, project trust root. See [docs/source-governance.md](docs/source-governance.md).
+- **Refusals** — personal-eligibility conclusions and unsupported claims are declined explicitly.
+- **Loopback only** — Host/Origin checks on all state-changing requests.
+- **Safe recovery** — atomic install with a five-stage rollback matrix.
+
+## Evaluation
+
+Retrieval quality and final-answer quality are measured separately, against a versioned quality bar ([docs/evaluation-quality-bar.md](docs/evaluation-quality-bar.md)).
+
+| Gate | Result (candidate `kr-2026-09-05.1`) |
+|---|---|
+| Live final-answer surfaces | 20 / 20, zero execution errors |
+| Required facts (human-adjudicated) | 59 / 60 (threshold 95%) |
+| Supported citation relationships | 47 / 47 |
+| Unsupported claims | 0 |
+| Production retrieval benchmark | 15 / 15 critical cases |
+| Python regression suite | 502 tests, 0 failures, 5 skips |
+| Manual assistive-technology journeys | 8 / 8 |
+
+Details and limitations: [docs/release-qualification.md](docs/release-qualification.md).
+
+### Run the tests
 
 ```bash
-.venv/bin/python -B -m unittest discover -v
+.venv/bin/python -B -m unittest discover -v     # unit + integration
+npm run test:browser                            # Playwright + axe-core
 ```
 
-Run browser-level setup tests:
+<details>
+<summary><b>Benchmarks and live gates</b></summary>
 
 ```bash
-npm run test:browser
-```
+# Live local provider gate
+.venv/bin/python -B -m danish_rag.runtime_probe \
+  --policy config/runtime-policy.json \
+  --evidence docs/progress/issue-26-runtime-probe.json
 
-Run the live local provider gate:
-
-```bash
-.venv/bin/python -B -m danish_rag.runtime_probe --policy config/runtime-policy.json --evidence docs/progress/issue-26-runtime-probe.json
-```
-
-Run the local lexical retrieval benchmark:
-
-```bash
-.venv/bin/python -B -m danish_rag.retrieval_benchmark --corpus data/retrieval_benchmark/corpus-fixtures.json --queries data/retrieval_benchmark/evaluation-queries.json --output docs/progress/issue-27-retrieval-benchmark.json
-```
-
-Run the local dense retrieval benchmark with the approved initial embedding model:
-
-```bash
+# Retrieval benchmarks
+.venv/bin/python -B -m danish_rag.retrieval_benchmark \
+  --corpus data/retrieval_benchmark/corpus-fixtures.json \
+  --queries data/retrieval_benchmark/evaluation-queries.json \
+  --output docs/progress/issue-27-retrieval-benchmark.json
 .venv/bin/python -B -m danish_rag.retrieval_benchmark --mode dense
-```
-
-Run the opt-in live dense benchmark gate:
-
-```bash
-DI_RAG_RUN_LIVE_DENSE_BENCHMARK=1 .venv/bin/python -B -m unittest tests.test_dense_retrieval_benchmark_live -v
-```
-
-Run the local hybrid retrieval comparison and recommendation:
-
-```bash
 .venv/bin/python -B -m danish_rag.retrieval_benchmark --mode compare
+
+# Opt-in live dense gate
+DI_RAG_RUN_LIVE_DENSE_BENCHMARK=1 \
+  .venv/bin/python -B -m unittest tests.test_dense_retrieval_benchmark_live -v
 ```
 
-### Live Release Evaluation
+Release-evidence collection (monitors, packet replay, human adjudication): [docs/live-evaluation.md](docs/live-evaluation.md).
 
-The live evaluator uses the same default per-user provider configuration and
-data directories as the application: `$XDG_CONFIG_HOME` and `$XDG_DATA_HOME`
-when set, otherwise `~/.config/danish-immigration-rag/provider-config.json` and
-`~/.local/share/danish-immigration-rag`. Do not set temporary XDG overrides
-when collecting release evidence.
+</details>
 
-First run the strict live release monitors:
+## Project status
 
-```bash
-.venv/bin/python -B -m danish_rag.release_monitors \
-  --mode live \
-  --output docs/progress/release-monitors-live.json \
-  --generated-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  --strict
+As of 2026-09-08 the MVP release candidate is **qualified** for Windows 11 + WSL2 Ubuntu (x86-64). Application commit `d3eeb2a`; active signed knowledge release `kr-2026-09-05.1`. It is installed locally; **no GitHub release has been published yet.** macOS and native Linux are unpublished candidates.
+
+Gate evidence: [release-qualification.md](docs/release-qualification.md) · [release-evaluation-current.json](docs/progress/release-evaluation-current.json) · [owner approval](docs/progress/release-owner-approval-20260908.json).
+
+## Repository layout
+
+```text
+danish_rag/            application + evaluation modules (retrieval, answer pipeline, release trust…)
+danish_rag/web/        Jinja templates, HTMX UI, static assets
+config/                runtime policy, quality bar, qualification, trust roots
+data/                  signed knowledge releases, source registry, evaluation sets
+docs/                  architecture, governance, qualification, progress evidence
+tests/                 unit, integration, opt-in live, Playwright browser tests
+CONTEXT.md             domain vocabulary and product boundary
 ```
 
-The original [issue #51 qualification run](docs/progress/issue-51-live-qualification.md)
-failed. The [engineering remediation](docs/progress/issue-51-engineering-remediation.md)
-records the subsequent fixes, and the [acceptance handoff](docs/progress/issue-51-completion.md)
-records the current strict replay. The [reviewed candidate replay](docs/progress/issue-51-reviewed-candidate-replay.json)
-passes every evaluation threshold. Production qualification and final owner
-approval are recorded separately in [docs/release-qualification.md](docs/release-qualification.md)
-and [docs/progress/release-owner-approval-20260908.json](docs/progress/release-owner-approval-20260908.json).
-Packet G is unchanged, and publication has not been performed.
+## Documentation
 
-Canonical private packet G was generated directly with the approved local
-runtime, model, and corpus. Both outputs are private mode-`0600` evidence. Do
-not rerun this command unless deliberately replacing the canonical execution:
+| Start here | Purpose |
+|---|---|
+| [docs/README.md](docs/README.md) | Full documentation index |
+| [CONTEXT.md](CONTEXT.md) | Project vocabulary, product boundary |
+| [docs/architecture.md](docs/architecture.md) | Authoritative architecture |
+| [docs/runtime-baseline.md](docs/runtime-baseline.md) | Provider/runtime contract |
+| [docs/source-governance.md](docs/source-governance.md) | Source lifecycle, signing, roles |
+| [docs/evaluation-quality-bar.md](docs/evaluation-quality-bar.md) | Metrics and release thresholds |
+| [docs/release-qualification.md](docs/release-qualification.md) | Current gate state |
+| [docs/agents/README.md](docs/agents/README.md) | Agent-facing system map and SOPs |
 
-```bash
-umask 077
-.venv/bin/python -B -m danish_rag.final_answer_evaluation \
-  --mode live-ollama \
-  --output "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-report-g.json" \
-  --human-review-packet "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-capture-g.json" \
-  --generated-at-utc 2026-07-24T17:16:25Z
-```
+Work items and the product PRD live in [GitHub Issues](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues) ([#1](https://github.com/EricleungDK/Danish-Immigration-Assistant/issues/1) is the canonical PRD).
 
-Packet E and its companion report were lost from `/tmp` and cannot be
-recovered; do not recreate, rename, or synthesize packet E. Do not substitute
-`docs/progress/final-answer-evaluation-live.json` for packet G's companion
-report.
+## Roadmap
 
-Replay canonical packet G without calling Ollama by pinning both exact private
-file hashes:
+- Publish the qualified release to GitHub Releases.
+- macOS and native Linux qualification.
+- A guided personal-profile layer — only after the source-backed assistant is stable, with stronger privacy design, explicit consent, and stricter refusal behavior.
 
-```bash
-.venv/bin/python -B -m danish_rag.final_answer_evaluation \
-  --mode captured-live-ollama \
-  --execution-capture "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-capture-g.json" \
-  --execution-capture-sha256 12e567732c0e5c0c12943f54db734c43bcefe1fa1f7185ccd21fb7caf2cfee29 \
-  --capture-report "$HOME/.local/share/danish-immigration-rag/private-evaluation/final-answer-report-g.json" \
-  --capture-report-sha256 37c46440ef7fd5f3ed2dff9f0c19226fe0d7f87401b8e583a3443e27b91fd0d8 \
-  --output /tmp/danish-rag-captured-replay-g.json \
-  --generated-at-utc "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-```
+## Built with AI, owned by a human
 
-Captured replay rejects any whole-file hash or validated internal binding
-mismatch. The command above intentionally performs an unadjudicated diagnostic
-replay, records `live_provider_calls: false`, and remains non-strict; it is not
-the current qualification result. The current candidate's accepted strict
-replay is recorded in
-[`issue-51-reviewed-candidate-replay.json`](docs/progress/issue-51-reviewed-candidate-replay.json)
-and uses the private adjudication export described in the evaluation-quality-bar
-procedure.
-
-For a **new candidate** whose corpus differs from the release-policy corpus,
-keep the same exact packet/report hash arguments and additionally supply
-`--candidate-release-dir /path/to/signed/release`,
-`--candidate-manifest-sha256 <exact-manifest-sha256>`, and
-`--trust-root-path /path/to/trusted/root.json`. Replay verifies the signature,
-artifact integrity, and every captured evidence field against that candidate.
-It still requires error-free executions and the approved runtime/model identity.
-The resulting report is scoped `explicit-candidate-only`; it does not promote
-release policy or replace canonical packet G.
-
-Open [the local semantic review page](review/semantic-adjudication-review.html)
-and load the exact packet named in the relevant review handoff. Review each
-answer and its cited evidence. Mark unsupported claims as failed and use
-not evaluable when the evidence is insufficient to decide. Only the independent
-human reviewer should complete the attestation and export the adjudication
-bundle. Supply that private export with `--adjudications /path/to/export.json`
-when replaying the same exact packet; workflow evidence is collected separately.
-
-The current candidate's independent review was accepted on 2026-09-06 and its
-strict replay passed all 20 surfaces with zero unevaluated metrics. The public
-aggregate retains counts and hashes but no private answers or adjudications;
-see [the reviewed replay](docs/progress/issue-51-reviewed-candidate-replay.json).
-
-### Historical pre-review evidence (2026-07-14)
-
-The live run generated at `2026-07-14T18:06:02Z` completed all 20 surfaces with
-zero execution errors. Behavior, structural, source-domain, citation-coverage,
-trust-indicator, freshness, personal-conclusion, and automated-workflow gates
-passed. Five semantic metrics were `not_evaluable` because independent human
-adjudication had not yet been recorded. This historical report does not
-establish current production qualification; the accepted status is recorded in
-[the release qualification](docs/release-qualification.md) and
-[the current acceptance handoff](docs/progress/issue-51-completion.md).
-See also [the historical machine-readable report](docs/progress/final-answer-evaluation-live.json).
+AI coding agents helped draft code, tests, docs, and issue-based plans. The owner defined scope, user problem, acceptance criteria, and product boundaries, ran the tests, and reviewed whether behavior met the safety goal: **source-backed guidance, not legal authority.**
