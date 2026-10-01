@@ -415,7 +415,8 @@ textarea:focus-visible,
   height: 100%;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   flex-direction: column;
   padding: clamp(1rem, 4vw, 3rem);
 }
@@ -467,7 +468,10 @@ h1 {
 }
 
 .empty-state {
-  min-height: 0;
+  /* Shrinks and scrolls above the pinned composer, but never below 8rem: the
+     heading and the start of the boundary text stay readable. When the column
+     cannot fit both, .conversation scrolls instead of clipping either. */
+  min-height: 8rem;
   max-width: 58rem;
   flex: 1 1 auto;
   overflow-y: auto;
@@ -1011,12 +1015,22 @@ button:hover {
   display: block;
 }
 
-@media (min-width: 1081px) {
-  /* The conversation column sits between the rail and setup panel, so the
-     viewport-wide h1 size wraps to many lines there and pushes the composer
-     out of the fixed-height column. Size it for the column instead. */
+@media (min-width: 681px) {
+  /* The fixed-height conversation column cannot afford the viewport-wide h1
+     size (it wraps to many lines in the three-column layout and pushes the
+     composer out). One rule for the whole 681px+ range keeps it continuous
+     across the 1080/1081px breakpoint. */
   .conversation-head h1:not(.conversation-title-active) {
     font-size: clamp(2.2rem, min(3.4vw, 7vh), 3.6rem);
+  }
+
+  /* Home view only: trim vertical chrome on short viewports. */
+  .conversation:has(> .empty-state) {
+    padding-block: clamp(1rem, 3vh, 3rem);
+  }
+
+  .conversation:has(> .empty-state) .conversation-head {
+    margin-bottom: clamp(1rem, 3.5vh, 3rem);
   }
 }
 
@@ -1037,13 +1051,9 @@ button:hover {
     padding-bottom: clamp(1rem, 4vw, 3rem);
   }
 
-  .turn-stack,
-  .empty-state {
+  .turn-stack {
     min-height: 0;
     overflow-y: auto;
-  }
-
-  .turn-stack {
     flex: 1 1 auto;
   }
 

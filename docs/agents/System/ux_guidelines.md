@@ -20,9 +20,13 @@ Tomato Score are separate named indicators with reasons.
   preserve provider/endpoint state when discovery fails.
 - Keep long active conversations inside an intentional message scroller, reveal
   the newest saved answer, and keep the composer visible without covering turns.
-- On the home page (no active conversation) the product-boundary empty state is a
-  focusable scroller above the composer; the composer stays inside the viewport on
-  desktop heights of 720px and up.
+- On the home page (no active conversation) the composer is pinned to the bottom of
+  the conversation column and the product-boundary intro scrolls above it, never
+  below 8rem (128px) tall. Plain home keeps the composer in view from 1280x720 up;
+  on shorter viewports, or with a composer error below ~800px tall, the column
+  itself scrolls so the composer and intro stay reachable (no clipped content down
+  to 540px tall). The intro is a keyboard stop (`tabindex` set by `app.js`) only
+  while it overflows.
 - Inline citations open a focused evidence drawer with publisher, URL, check date,
   corpus/model identity, claim support, and trust reasons.
 - Knowledge update discovery, signed download/review, and installation are three

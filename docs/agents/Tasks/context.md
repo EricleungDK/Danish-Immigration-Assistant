@@ -43,14 +43,21 @@ environment; all eight manual assistive-technology journeys passed.
 - Completed-review-to-production-registry/release authoring with semantic chunks,
   multilingual source retrieval, exact extraction provenance, isolated
   pre-activation retrieval qualification, and candidate rollback verification.
-- 2026-10-01 GH-59: desktop (>1080px) home composer no longer clipped. Cause: home
-  `h1` sized by viewport width wrapped to ~6 lines in the narrow centre column, and
-  `.empty-state` (min-height auto) could not shrink, so `.composer` fell outside the
-  `overflow: hidden` `.conversation`. Fix in `app.css`: `.empty-state` is now a
-  shrinkable scroller (`min-height: 0; flex: 1 1 auto; overflow-y: auto`, focusable
-  via `tabindex="0"` with focus ring), and home `h1` is column-sized above 1080px.
-  Browser tests cover 1280x720, 1280x800, 1440x900, 1600x1000. Below ~650px desktop
-  height the empty-state shrinks to zero height (composer still wins).
+- 2026-10-01 GH-59: home composer no longer clipped on desktop or 681-1080px.
+  Causes: home `h1` sized by viewport width wrapped to ~6 lines in the narrow centre
+  column, and `.empty-state` (min-height auto) could not shrink, so `.composer` fell
+  outside the `overflow: hidden` `.conversation`. Fix (`app.css`, `app.js`): composer
+  stays pinned; `.empty-state` shrinks/scrolls above it but keeps `min-height: 8rem`
+  (128px: h2 + start of boundary text); if column cannot fit both, `.conversation`
+  (now `overflow-y: auto`) scrolls, so nothing is clipped. Home `h1` is column-sized
+  (`clamp(2.2rem, min(3.4vw, 7vh), 3.6rem)`) for all widths >680px (continuous at
+  1080/1081); home padding/head margin shrink with height. `.empty-state` gets
+  `tabindex="0"` from `app.js` only while it overflows (ResizeObserver, re-run after
+  htmx swap); none at <=680px or when it fits. Measured floor: plain home keeps the
+  composer in view with intro >=128px from 1280x720 up (intro 133px there); shorter
+  (1366x650, 1280x600, 960x540) or with a composer error below ~800px tall the column
+  scrolls to reach the composer. Browser tests: pinned 1280x720..1920x1200, short
+  1366x650..700x540, no-JS real 422 error, heading continuity, Tab-stop behaviour.
 
 ## Known Issues
 

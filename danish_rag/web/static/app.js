@@ -38,6 +38,36 @@ function revealLatestTurn(conversation) {
   }
 }
 
+// The home intro is a scroller only when it overflows; make it a keyboard stop
+// exactly then (axe scrollable-region-focusable) and never when it cannot scroll.
+let introObserver;
+
+function syncIntroFocus(intro) {
+  if (intro.scrollHeight > intro.clientHeight) {
+    intro.setAttribute("tabindex", "0");
+  } else {
+    intro.removeAttribute("tabindex");
+  }
+}
+
+function watchIntroScroller() {
+  introObserver?.disconnect();
+  const intro = document.querySelector(".empty-state");
+  if (!(intro instanceof HTMLElement)) {
+    return;
+  }
+  introObserver ??= new ResizeObserver(() => {
+    const current = document.querySelector(".empty-state");
+    if (current instanceof HTMLElement) {
+      syncIntroFocus(current);
+    }
+  });
+  syncIntroFocus(intro);
+  introObserver.observe(intro);
+}
+
+watchIntroScroller();
+
 document.addEventListener("click", (event) => {
   const trigger = event.target.closest("[data-evidence-target]");
   if (!trigger) {
@@ -109,6 +139,7 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
     if (conversation instanceof HTMLElement) {
       focusConversationTitle(conversation, { preventScroll: true });
       revealLatestTurn(conversation);
+      watchIntroScroller();
     }
   }
 
