@@ -1,6 +1,6 @@
 # Current Project Context
 
-**Last updated:** 2026-09-29
+**Last updated:** 2026-10-01
 
 ## Current Project State
 
@@ -43,6 +43,10 @@ environment; all eight manual assistive-technology journeys passed.
 - Completed-review-to-production-registry/release authoring with semantic chunks,
   multilingual source retrieval, exact extraction provenance, isolated
   pre-activation retrieval qualification, and candidate rollback verification.
+- 2026-10-01 (#60): capability/runtime probe now sends `think: false` like the answer
+  path. Without it cold `gemma4:12b` on Ollama 0.34.0 burned the token budget on
+  thinking (empty content, `done_reason=length`, ~86 s) and failed setup. Live: cold
+  3/3 pass (~6-7 s), warm ~1 s. No threshold/schema/timeout changed.
 
 ## Known Issues
 
