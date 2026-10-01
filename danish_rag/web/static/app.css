@@ -44,6 +44,7 @@ a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
+.empty-state:focus-visible,
 #conversation-title:focus,
 .evidence-drawer [tabindex="-1"]:focus {
   outline: 3px solid var(--focus);
@@ -466,7 +467,10 @@ h1 {
 }
 
 .empty-state {
+  min-height: 0;
   max-width: 58rem;
+  flex: 1 1 auto;
+  overflow-y: auto;
 }
 
 .empty-state h2,
@@ -1005,6 +1009,15 @@ button:hover {
 
 .setup-progress.htmx-request {
   display: block;
+}
+
+@media (min-width: 1081px) {
+  /* The conversation column sits between the rail and setup panel, so the
+     viewport-wide h1 size wraps to many lines there and pushes the composer
+     out of the fixed-height column. Size it for the column instead. */
+  .conversation-head h1:not(.conversation-title-active) {
+    font-size: clamp(2.2rem, min(3.4vw, 7vh), 3.6rem);
+  }
 }
 
 @media (max-width: 1080px) {

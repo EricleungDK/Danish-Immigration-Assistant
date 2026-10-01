@@ -1,6 +1,6 @@
 # Current Project Context
 
-**Last updated:** 2026-09-29
+**Last updated:** 2026-10-01
 
 ## Current Project State
 
@@ -43,6 +43,14 @@ environment; all eight manual assistive-technology journeys passed.
 - Completed-review-to-production-registry/release authoring with semantic chunks,
   multilingual source retrieval, exact extraction provenance, isolated
   pre-activation retrieval qualification, and candidate rollback verification.
+- 2026-10-01 GH-59: desktop (>1080px) home composer no longer clipped. Cause: home
+  `h1` sized by viewport width wrapped to ~6 lines in the narrow centre column, and
+  `.empty-state` (min-height auto) could not shrink, so `.composer` fell outside the
+  `overflow: hidden` `.conversation`. Fix in `app.css`: `.empty-state` is now a
+  shrinkable scroller (`min-height: 0; flex: 1 1 auto; overflow-y: auto`, focusable
+  via `tabindex="0"` with focus ring), and home `h1` is column-sized above 1080px.
+  Browser tests cover 1280x720, 1280x800, 1440x900, 1600x1000. Below ~650px desktop
+  height the empty-state shrinks to zero height (composer still wins).
 
 ## Known Issues
 

@@ -20,6 +20,9 @@ Tomato Score are separate named indicators with reasons.
   preserve provider/endpoint state when discovery fails.
 - Keep long active conversations inside an intentional message scroller, reveal
   the newest saved answer, and keep the composer visible without covering turns.
+- On the home page (no active conversation) the product-boundary empty state is a
+  focusable scroller above the composer; the composer stays inside the viewport on
+  desktop heights of 720px and up.
 - Inline citations open a focused evidence drawer with publisher, URL, check date,
   corpus/model identity, claim support, and trust reasons.
 - Knowledge update discovery, signed download/review, and installation are three

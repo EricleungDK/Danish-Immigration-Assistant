@@ -172,6 +172,79 @@ test("composer does not overlap answer region from 681 through 1080 pixels", asy
   }
 });
 
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 1440, height: 900 },
+  { width: 1600, height: 1000 },
+  { width: 1280, height: 720 },
+]) {
+  test(`home composer is reachable by mouse at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+
+    const textarea = page.getByRole("textbox", { name: "Question" });
+    const send = page.getByRole("button", { name: "Send" });
+    for (const [name, locator] of [
+      ["textarea", textarea],
+      ["Send", send],
+    ]) {
+      const box = await locator.boundingBox();
+      expect(box, `${name} should render`).not.toBeNull();
+      expect(box.y, `${name} top inside viewport`).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height, `${name} bottom inside viewport`).toBeLessThanOrEqual(
+        viewport.height,
+      );
+    }
+
+    // Mouse hit-test: the element at the center of each control is the control itself.
+    for (const locator of [textarea, send]) {
+      const box = await locator.boundingBox();
+      const hit = await locator.evaluate(
+        (el, point) => {
+          const top = document.elementFromPoint(point.x, point.y);
+          return top === el || el.contains(top);
+        },
+        { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+      );
+      expect(hit, "control receives mouse hit").toBe(true);
+    }
+
+    await textarea.click();
+    await expect(textarea).toBeFocused();
+    await expect(send).toBeEnabled();
+
+    // Empty-state content scrolls above the composer rather than pushing it out.
+    const layout = await page.evaluate(() => {
+      const empty = document.querySelector(".empty-state");
+      const composer = document.querySelector(".composer");
+      if (!(empty instanceof HTMLElement) || !(composer instanceof HTMLElement)) return null;
+      return {
+        emptyBottom: empty.getBoundingClientRect().bottom,
+        composerTop: composer.getBoundingClientRect().top,
+      };
+    });
+    expect(layout).not.toBeNull();
+    expect(layout.emptyBottom).toBeLessThanOrEqual(layout.composerTop + 1);
+  });
+}
+
+test("home empty-state scroll region is keyboard focusable with the visible focus ring", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+
+  const region = page.getByRole("region", { name: /information assistant, not an authority/i });
+  await region.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(region).toBeFocused();
+  const outlineWidth = await region.evaluate((el) => getComputedStyle(el).outlineWidth);
+  expect(outlineWidth).toBe("3px");
+  expect(await region.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+});
+
 test("new conversation resets the composer without deleting saved history", async ({ page }) => {
   await page.goto("/");
 
