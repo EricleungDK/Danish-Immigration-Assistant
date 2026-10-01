@@ -16,7 +16,10 @@ Every official fact is cited. Unsupported claims are blocked. Nothing about your
 
 </div>
 
-<img src="docs/assets/demo.gif" alt="Demo: asking a question and inspecting the cited official source" width="880">
+<p align="center">
+  <img src="docs/assets/demo.gif" alt="Demo: typing “What is PD3?”, the local model’s cited answer, then the evidence drawer for its official source" width="880"><br>
+  <sub>Real run of commit <code>5d6e02b</code> with signed knowledge release <code>kr-2026-09-05.1</code> and local <code>gemma4:12b</code> (Ollama 0.34.0), fresh isolated workspace. The 18 s model wait is shortened to 3 s and labelled. <a href="docs/assets/demo.mp4">Video</a> · <a href="docs/assets/demo-recording.json">recording record</a> · re-record with <code>.venv/bin/python -m recording.record_demo --revision &lt;commit&gt;</code>.</sub>
+</p>
 
 ---
 
@@ -179,6 +182,7 @@ config/                runtime policy, quality bar, qualification, trust roots
 data/                  signed knowledge releases, source registry, evaluation sets
 docs/                  architecture, governance, qualification, progress evidence
 tests/                 unit, integration, opt-in live, Playwright browser tests
+recording/             reproducible README demo recording (isolated app, capture, encode)
 CONTEXT.md             domain vocabulary and product boundary
 ```
 
