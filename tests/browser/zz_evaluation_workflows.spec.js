@@ -68,11 +68,43 @@ function cssTimeInMilliseconds(value) {
   throw new Error(`Unsupported CSS time value: ${value}`);
 }
 
+// Models a page-load metadata check that is still running (polling the status endpoint)
+// while the journey starts, as seen on faster or slower hosts.
+async function simulateSlowAutomaticCheck(page, durationMs) {
+  const startedAt = Date.now();
+  const asRunning = (html) =>
+    html.replace(
+      /<div\s+id="knowledge-update-content"/,
+      '<div id="knowledge-update-content" hx-get="/knowledge-updates/automatic-check-status"' +
+        ' hx-trigger="every 50ms" hx-swap="outerHTML" aria-busy="true"',
+    );
+  const respond = async (route) => {
+    const response = await route.fetch();
+    if (Date.now() - startedAt < durationMs) {
+      await route.fulfill({ response, body: asRunning(await response.text()) });
+    } else {
+      await route.fulfill({ response });
+    }
+  };
+  await page.route("**/knowledge-updates/automatic-check", respond);
+  await page.route("**/knowledge-updates/automatic-check-status", respond);
+}
+
 test("eval-016-keyboard-evidence-drawer", async ({ page }) => {
+  await keyboardEvidenceDrawerJourney(page);
+});
+
+test("eval-016-keyboard-evidence-drawer with a slow page-load update check", async ({ page }) => {
+  await simulateSlowAutomaticCheck(page, 4000);
+  await keyboardEvidenceDrawerJourney(page);
+});
+
+async function keyboardEvidenceDrawerJourney(page) {
   await page.goto("/");
   await askSupportedQuestion(page);
   // Measure drawer requests after the independent page-load update check ends.
-  await expect(page.locator("#knowledge-updates")).not.toHaveAttribute("aria-busy", "true");
+  // aria-busy lives on the content region, not on its #knowledge-updates wrapper.
+  await expect(page.locator("#knowledge-update-content")).not.toHaveAttribute("aria-busy", "true");
 
   const observedRequests = [];
   page.on("request", (request) => observedRequests.push(request.url()));
@@ -115,7 +147,7 @@ test("eval-016-keyboard-evidence-drawer", async ({ page }) => {
   recordObservations("trust_has_text_labels");
   expect(observedRequests).toEqual([]);
   recordObservations("drawer_open_has_no_request");
-});
+}
 
 test("eval-017-responsive-reduced-motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });

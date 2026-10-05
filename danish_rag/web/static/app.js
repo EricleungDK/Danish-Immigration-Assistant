@@ -40,13 +40,21 @@ function revealLatestTurn(conversation) {
 
 // The home intro is a scroller only when it overflows; make it a keyboard stop
 // exactly then (axe scrollable-region-focusable) and never when it cannot scroll.
+// A focused intro keeps its tabindex until it loses focus so focus never drops to body.
 let introObserver;
 
 function syncIntroFocus(intro) {
   if (intro.scrollHeight > intro.clientHeight) {
     intro.setAttribute("tabindex", "0");
-  } else {
+  } else if (document.activeElement !== intro) {
     intro.removeAttribute("tabindex");
+  }
+}
+
+function syncCurrentIntro() {
+  const current = document.querySelector(".empty-state");
+  if (current instanceof HTMLElement) {
+    syncIntroFocus(current);
   }
 }
 
@@ -56,16 +64,18 @@ function watchIntroScroller() {
   if (!(intro instanceof HTMLElement)) {
     return;
   }
-  introObserver ??= new ResizeObserver(() => {
-    const current = document.querySelector(".empty-state");
-    if (current instanceof HTMLElement) {
-      syncIntroFocus(current);
-    }
-  });
+  introObserver ??= new ResizeObserver(syncCurrentIntro);
   syncIntroFocus(intro);
+  intro.addEventListener("blur", () => syncIntroFocus(intro));
+  // Observe the box and its content blocks: content can outgrow a box whose size
+  // is unchanged (late font load, minimum font size).
   introObserver.observe(intro);
+  for (const child of intro.children) {
+    introObserver.observe(child);
+  }
 }
 
+document.fonts?.ready.then(syncCurrentIntro);
 watchIntroScroller();
 
 document.addEventListener("click", (event) => {
