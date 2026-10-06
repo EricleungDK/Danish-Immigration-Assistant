@@ -42,6 +42,7 @@ function revealLatestTurn(conversation) {
 // exactly then (axe scrollable-region-focusable) and never when it cannot scroll.
 // A focused intro keeps its tabindex until it loses focus so focus never drops to body.
 let introObserver;
+const blurWatchedIntros = new WeakSet();
 
 function syncIntroFocus(intro) {
   if (intro.scrollHeight > intro.clientHeight) {
@@ -66,7 +67,10 @@ function watchIntroScroller() {
   }
   introObserver ??= new ResizeObserver(syncCurrentIntro);
   syncIntroFocus(intro);
-  intro.addEventListener("blur", () => syncIntroFocus(intro));
+  if (!blurWatchedIntros.has(intro)) {
+    blurWatchedIntros.add(intro);
+    intro.addEventListener("blur", () => syncIntroFocus(intro));
+  }
   // Observe the box and its content blocks: content can outgrow a box whose size
   // is unchanged (late font load, minimum font size).
   introObserver.observe(intro);
@@ -75,7 +79,6 @@ function watchIntroScroller() {
   }
 }
 
-document.fonts?.ready.then(syncCurrentIntro);
 watchIntroScroller();
 
 document.addEventListener("click", (event) => {

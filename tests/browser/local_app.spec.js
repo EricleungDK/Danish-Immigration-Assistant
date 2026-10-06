@@ -243,6 +243,8 @@ async function expectComposerUsable(page, { allowColumnScroll }) {
 // headless-Linux fallback fonts (DejaVu for Georgia/Segoe UI), so with real fonts it may
 // differ; it is covered by the scroll-allowed group below instead.
 for (const viewport of [
+  { width: 1024, height: 800 },
+  { width: 1081, height: 800 },
   { width: 1280, height: 800 },
   { width: 1366, height: 768 },
   { width: 1440, height: 900 },
@@ -267,7 +269,7 @@ for (const viewport of [
   { width: 960, height: 540 },
   { width: 700, height: 540 },
 ]) {
-  test(`short home keeps intro and scrolls to composer at ${viewport.width}x${viewport.height}`, async ({
+  test(`home keeps intro and reaches composer (scrolling if needed) at ${viewport.width}x${viewport.height}`, async ({
     page,
   }) => {
     await page.setViewportSize(viewport);
@@ -366,9 +368,11 @@ test("intro region is a Tab stop only where it scrolls", async ({ page }) => {
 });
 
 test("focused intro keeps its focus when it stops overflowing", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  // 600px tall pins the intro at its 128px minimum, so it overflows with any font metrics.
+  await page.setViewportSize({ width: 1280, height: 600 });
   await page.goto("/");
   await expect.poll(async () => (await homeLayout(page)).introScrolls).toBe(true);
+  expect((await homeLayout(page)).introHeight).toBe(MIN_INTRO_HEIGHT);
   await page.locator("#conversation-title").focus();
   await page.keyboard.press("Tab");
   await expect(page.locator(".empty-state")).toBeFocused();

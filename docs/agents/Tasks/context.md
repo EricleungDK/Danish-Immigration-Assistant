@@ -53,18 +53,19 @@ environment; all eight manual assistive-technology journeys passed.
   (`clamp(2.2rem, min(3.4vw, 7vh), 3.6rem)`) for all widths >680px (continuous at
   1080/1081); home padding/head margin shrink with height. `.empty-state` gets
   `tabindex="0"` from `app.js` only while it overflows (ResizeObserver on the intro
-  and its child blocks, `document.fonts.ready`, re-run after htmx swap; a focused
-  intro keeps tabindex until blur); none at <=680px or when it fits. Measured floor
+  and its child blocks, re-run after htmx swap; a focused intro keeps tabindex until
+  blur); none at <=680px or when it fits. Measured floor
   (headless Chromium on Linux, where Georgia/Aptos/Segoe UI fall back to DejaVu, so
   real fonts on Windows may differ): plain home keeps the composer pinned with intro
-  >=128px from 800px tall (hard test guarantee; 1280x720 fits by only ~5px, intro
+  >=128px from 800px tall at 1024-1920px wide (tested widths; hard test guarantee; 1280x720 fits by only ~5px, intro
   133px, so it is tested as scroll-allowed); shorter (1366x650, 1280x600, 960x540) or
   with a composer error below ~800px tall the column scrolls to reach the composer.
-  Browser tests: pinned 1280x800..1920x1200, short 1280x720..700x540, no-JS real 422
+  Browser tests: pinned 1024x800..1920x1200, short 1280x720..700x540, no-JS real 422
   error, heading continuity, Tab-stop/focus-retention/content-growth behaviour.
   Also fixed flaky eval-016 (guard waited on `#knowledge-updates` instead of
   `#knowledge-update-content`, so the page-load check poll could land in the
-  recorded window; added a slow-check variant that reproduces it).
+  recorded window; added a deterministic variant: after the answer, a simulated
+  metadata check keeps polling until it completes on its own clock).
 
 ## Known Issues
 
