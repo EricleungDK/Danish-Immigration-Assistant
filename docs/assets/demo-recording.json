@@ -1,0 +1,45 @@
+{
+  "source_revision": "5d6e02b95839ddc05f540305d712c03a3a0ea5e9",
+  "recorded_at_utc": "2026-09-30T21:05:48Z",
+  "knowledge_release": "kr-2026-09-05.1",
+  "model": "gemma4:12b",
+  "question": "What is PD3?",
+  "shortened_waits": [
+    {
+      "source_seconds": 16.8,
+      "shown_seconds": 1.4,
+      "label": "Local gemma4:12b wait shortened: 18 s → 3 s"
+    }
+  ],
+  "width": 1280,
+  "height": 800,
+  "fps": 25,
+  "duration_seconds": 18.32,
+  "outputs": {
+    "demo.gif": {
+      "bytes": 518239,
+      "sha256": "7801a1baa82f67177386a76f77b2566b1f52051ba3acdbb4be6a2327eab56b64"
+    },
+    "demo.mp4": {
+      "bytes": 1956304,
+      "sha256": "1568d3f293ccb1d2fe4c22722487de9dc7ed32f361c6b9846f4c617e4b256579"
+    },
+    "demo.webm": {
+      "bytes": 1575057,
+      "sha256": "493e2f8893ca99a5a9c0032f81d1b0ae359eca205779122e24bf8497f267d41b"
+    },
+    "demo-poster.png": {
+      "bytes": 349860,
+      "sha256": "c16d052096edc78fa53530f221468e7fb49cfacacaf27ae7822b397d2daf0622"
+    }
+  },
+  "gif": {
+    "fps": 15,
+    "width": 960,
+    "height": 600,
+    "camera": "cuts"
+  },
+  "ollama_version": "0.34.0",
+  "actual_model_wait_seconds": 18.3,
+  "answer_text": "TURN 1\n\nQUESTION\n\nWhat is PD3?\n\nProvider: ollama\nModel: gemma4:12b\nCorpus: kr-2026-09-05.1\nAnswered: 2026-09-30 21:06\nANSWER\n\nPassing Prøve i Dansk 3 (or a Danish test of an equivalent or higher level) can fulfill 1 of the 4 supplementary conditions for permanent residence.\n\nASSUMPTIONS\n\nI am explaining the examination term generally and, where the sources support it, its relevance to permanent-residence language requirements. This is not a personal eligibility decision.\n\nOFFICIAL FACT\n\nPassing Prøve i Dansk 3 (or a Danish test of an equivalent or higher level) can fulfill 1 of the 4 supplementary conditions for permanent residence.\n\nInspect evidence: Permanent residence requirements The Danish Immigration Service (Udlændingestyrelsen) Checked: 2026-07-26 Corpus: kr-2026-09-05.1\n\nOFFICIAL FACT\n\nTests equivalent to or higher than Prøve i Dansk 3 include: Prøve i Dansk 3 with a grade average of at least 6 on the 13-point scale (or 02 on the 7-point scale); the studieprøven with a grade average of at least 6 on the 13-point scale (or 02 on the 7-point scale) in each test; and 9th or 10th grade final exams with a grade average of at least 6 on the 13-point scale (or 02 on the 7-point scale) in Danish disciplines (excluding conduct).\n\nInspect evidence: Tests equivalent to or higher than Danish language test 3 The Danish Immigration Service (Udlændingestyrelsen) Checked: 2026-07-26 Corpus: kr-2026-09-05.1\nEvidence Confidence: High\nEvidence coverage is complete for 2 official fact(s); cited material sources are attached directly to the claims and no retrieved material source is marked as conflicting.\nFresh Tomato Score: High\nSource freshness is high because all material sources are current and healthy.\n\nSUGGESTED FOLLOW-UPS\n\nWhat does Prøve i Dansk 2 mean in this context?\nWhich cited source supports this answer?\nWhat does the cited source say about equivalent Danish tests?\nClose evidence drawer\n\nMATERIAL SOURCE\n\nPermanent residence requirements\nPUBLISHER\nThe Danish Immigration Service (Udlændingestyrelsen)\nOFFICIAL URL\nhttps://www.nyidanmark.dk/da/Du-vil-ans%C3%B8ge/Permanent-ophold/Permanent-ophold\nCHECKED\n2026-07-26\nCORPUS\nkr-2026-09-05.1\nMODEL\ngemma4:12b\nEVIDENCE CONFIDENCE\nHigh\nFRESH TOMATO SCORE: HIGH\nSource freshness is high: the material source is current, healthy, and within its scheduled review period.\nCLAIM SUPPORT\nOfficial fact\n\nPassing Prøve i Dansk 3 (or a Danish test of an equivalent or higher level) can fulfill 1 of the 4 supplementary conditions for permanent residence.\n\nTRUST REASONS\nEvidence Confidence: High\nEvidence coverage is complete for 2 official fact(s); cited material sources are attached directly to the claims and no retrieved material source is marked as conflicting.\nFresh Tomato Score: High\nSource freshness is high because all material sources are current and healthy."
+}

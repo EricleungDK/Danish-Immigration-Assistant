@@ -1,6 +1,6 @@
 # Current Project Context
 
-**Last updated:** 2026-09-29
+**Last updated:** 2026-09-30
 
 ## Current Project State
 
@@ -23,6 +23,21 @@ relationships, and zero unsupported claims. The failed fact judgment remains
 recorded within the approved 95% coverage threshold.
 Fresh strict real-process/browser evidence now passes for the supported
 environment; all eight manual assistive-technology journeys passed.
+
+## README demo recording — 2026-09-30
+
+`recording/` (portfolio GH-63) records the README demo reproducibly:
+`.venv/bin/python -m recording.record_demo --revision <commit>` checks the
+commit out in a temporary worktree, runs it with fresh XDG dirs, signed
+`kr-2026-09-05.1` and real local `gemma4:12b`, captures 1920x1200 @2x
+(CDP screencast, drawn cursor following real input), cuts and labels the model
+wait, and writes `docs/assets/demo.{gif,mp4,webm}`, `demo-poster.png`,
+`demo-recording.json`. Needs `recording/requirements.txt` (Pillow) and ffmpeg.
+Current assets: commit `5d6e02b`, Ollama 0.34.0, 18 s wait → 3 s.
+Findings (not fixed here): below ~1200px tall the desktop home clips the
+composer (`.conversation` overflow hidden, not scrollable); the setup probe
+omits `think: false`, so a cold `gemma4:12b` on Ollama 0.34 can return empty
+structured output (harness preloads the model and retries).
 
 ## Active Tasks
 
