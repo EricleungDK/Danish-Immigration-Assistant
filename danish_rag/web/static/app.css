@@ -10,7 +10,8 @@
   --tomato: #b8422f;
   --gold: #b98523;
   --focus: #d89417;
-  --snapshot-banner-height: 2.25rem;
+  /* Top bar + snapshot banner; app.js replaces this with their measured height. */
+  --chrome-height: 6.5rem;
 }
 
 * {
@@ -99,7 +100,6 @@ textarea:focus-visible,
   align-items: center;
   flex-wrap: wrap;
   gap: 0.25rem 0.6rem;
-  min-height: var(--snapshot-banner-height);
   margin: 0;
   padding: 0.3rem clamp(1rem, 4vw, 2rem);
   border-bottom: 1px solid var(--line);
@@ -191,8 +191,8 @@ textarea:focus-visible,
   display: grid;
   grid-template-areas: "rail conversation setup";
   grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr) minmax(18rem, 24rem);
-  height: calc(100dvh - 4.25rem - var(--snapshot-banner-height));
-  min-height: calc(100vh - 4.25rem - var(--snapshot-banner-height));
+  height: calc(100dvh - var(--chrome-height));
+  min-height: calc(100vh - var(--chrome-height));
 }
 
 .local-rail,
@@ -1039,7 +1039,7 @@ button:hover {
   }
 
   .conversation {
-    height: calc(100dvh - 4.25rem - var(--snapshot-banner-height));
+    height: calc(100dvh - var(--chrome-height));
     min-height: 0;
     padding-bottom: clamp(1rem, 4vw, 3rem);
   }

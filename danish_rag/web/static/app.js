@@ -38,6 +38,32 @@ function revealLatestTurn(conversation) {
   }
 }
 
+// The top bar and snapshot banner wrap at narrow widths; size the layout from their
+// real height instead of a fixed constant.
+function syncChromeHeight() {
+  let height = 0;
+  for (const selector of [".topbar", ".snapshot-banner"]) {
+    const element = document.querySelector(selector);
+    if (element instanceof HTMLElement) {
+      height += element.getBoundingClientRect().height;
+    }
+  }
+  document.documentElement.style.setProperty("--chrome-height", `${height}px`);
+}
+
+syncChromeHeight();
+if ("ResizeObserver" in window) {
+  const chromeObserver = new ResizeObserver(syncChromeHeight);
+  for (const selector of [".topbar", ".snapshot-banner"]) {
+    const element = document.querySelector(selector);
+    if (element) {
+      chromeObserver.observe(element);
+    }
+  }
+} else {
+  window.addEventListener("resize", syncChromeHeight);
+}
+
 document.addEventListener("click", (event) => {
   const trigger = event.target.closest("[data-evidence-target]");
   if (!trigger) {

@@ -197,6 +197,82 @@ test("composer does not overlap answer region from 681 through 1080 pixels", asy
   }
 });
 
+async function chromeLayout(page) {
+  return page.evaluate(() => {
+    const box = (selector) => document.querySelector(selector).getBoundingClientRect();
+    const composer = box(".composer");
+    return {
+      composerTop: composer.top,
+      composerBottom: composer.bottom,
+      composerLeft: composer.left,
+      composerRight: composer.right,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+      bannerHeight: box(".snapshot-banner").height,
+      chromeProperty: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--chrome-height")),
+      chromeActual: box(".topbar").height + box(".snapshot-banner").height,
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    };
+  });
+}
+
+for (const viewport of [
+  { width: 360, height: 740 },
+  { width: 390, height: 844 },
+]) {
+  test(`wrapped snapshot banner keeps the composer reachable at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await expect(page.getByRole("note", { name: "Knowledge snapshot notice" })).toBeVisible();
+
+    const layout = await chromeLayout(page);
+    // The banner really wraps at this width, so no fixed height could account for it.
+    expect(layout.bannerHeight).toBeGreaterThan(40);
+    expect(layout.chromeProperty).toBeCloseTo(layout.chromeActual, 0);
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+
+    // Narrow layouts stack the panels and scroll the page: the composer is reachable.
+    await page.locator(".composer").scrollIntoViewIfNeeded();
+    const reached = await chromeLayout(page);
+    expect(reached.composerTop).toBeGreaterThanOrEqual(0);
+    expect(reached.composerBottom).toBeLessThanOrEqual(reached.viewportHeight + 1);
+    expect(reached.composerLeft).toBeGreaterThanOrEqual(0);
+    expect(reached.composerRight).toBeLessThanOrEqual(reached.viewportWidth + 1);
+    await expect(page.getByRole("textbox", { name: "Question" })).toBeInViewport();
+    await expect(page.getByRole("button", { name: "Send" })).toBeInViewport();
+    expect((await chromeLayout(page)).scrollWidth).toBeLessThanOrEqual(reached.clientWidth);
+  });
+}
+
+for (const viewport of [
+  { width: 681, height: 800 },
+  { width: 820, height: 800 },
+  { width: 1080, height: 800 },
+]) {
+  test(`snapshot banner leaves the composer on the first screen at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await expect(page.getByRole("note", { name: "Knowledge snapshot notice" })).toBeVisible();
+
+    const layout = await chromeLayout(page);
+    expect(layout.chromeProperty).toBeCloseTo(layout.chromeActual, 0);
+    expect(layout.composerBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+  });
+}
+
+test("desktop layout height uses the measured banner height", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await expect(page.getByRole("note", { name: "Knowledge snapshot notice" })).toBeVisible();
+  const layout = await chromeLayout(page);
+  expect(layout.chromeProperty).toBeCloseTo(layout.chromeActual, 0);
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+  const shell = await page.locator(".app-shell").evaluate((el) => el.getBoundingClientRect().height);
+  expect(shell).toBeCloseTo(layout.viewportHeight - layout.chromeProperty, 0);
+});
+
 test("new conversation resets the composer without deleting saved history", async ({ page }) => {
   await page.goto("/");
 

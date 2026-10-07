@@ -65,43 +65,59 @@ Owner decision: the knowledge release is a demo snapshot, not kept current (no
 re-reviews, CI signing, or further GitHub releases). Built on #64 (PR #65), branch
 `feat/snapshot-mode`.
 
-- **Clock.** `danish_rag/snapshot_clock.py`: the running app evaluates source freshness
-  at the verified active release's manifest `created_at_utc`. It swaps
-  `source_freshness.datetime` once for a subclass whose `now()` returns the snapshot time
-  while a `snapshot_clock` scope is active (a `ContextVar`: per request, never
-  process-wide) and otherwise defers to the previous `datetime` (real, or the #64 pin).
-  `local_app._SnapshotClockMiddleware` opens the scope for every HTTP request; the time
-  is resolved lazily, once per request, from `load_active_release` (signature-verified),
-  so install and rollback apply on the next request with no stored state. Only
-  `source_freshness` is wrapped: it is the only freshness clock on the app path (answer
-  path, retrieval eligibility, trust indicators). `evidence_integrity` and
-  `grounded_flexibility_evaluation` feed evidence/qualification code only and keep the
-  wall clock, so evaluation CLIs are not rebased. Install-time indexing needs no scope:
-  eligibility is judged at retrieval time (a test pins that).
+- **Scope (D1, review round 1).** Only releases identical (ID and full signed manifest)
+  to one shipped in `data/knowledge_releases/*` are rebased. Any other release keeps
+  wall-clock freshness (real due/block-after dates fire) and shows no snapshot label.
+  No signed-manifest change.
+- **Clock.** `danish_rag/snapshot_clock.py` swaps `source_freshness.datetime` once for a
+  subclass whose `now()` returns the snapshot time while a `snapshot_clock(state)` scope
+  is active (`ContextVar`: per request, never process-wide) and otherwise defers to the
+  previous `datetime` (real, or the #64 pin). It mirrors `datetime.now()` (naive local
+  time without tz); the wrapper marker is checked with `vars()` so a subclass is
+  re-wrapped. Only `source_freshness` is wrapped (the only freshness clock on the app
+  path); `evidence_integrity` / `grounded_flexibility_evaluation` keep the wall clock, so
+  evaluation CLIs are not rebased. Install-time indexing needs no scope (eligibility is
+  judged at retrieval time; a test pins that).
+- **One resolution per request (D2).** `local_app._SnapshotClockMiddleware` reads the
+  active release once at request start (off the event loop, skipped for `/static/` and
+  `/vendor/`) into a `SnapshotState`; `now()` only reads that state. Handlers re-adopt
+  from what they loaded (`ensure_release()` result; the retriever's manifest in `ask`),
+  so the clock, the label and the stored turn agree even if an install lands mid-request.
+  Unreadable active release: wall clock, warning logged, banner says "Snapshot date
+  unavailable". No active release (fresh install): not an error, adopted after install.
 - **Pin interaction.** Inside app requests the snapshot clock wins over the #64 pin;
   outside requests (evidence tests, CLIs) the pin still governs. Both are fixed times
   before the due dates, so the suites stay deterministic; tests move the pin to
   2027-01-01 to prove requests ignore it. Fixtures, signatures, trust roots and the
   fingerprinted files are untouched.
-- **Label.** `home.html` banner and a template-level note beside every Fresh Tomato
-  Score (answer, evidence drawer) state the snapshot date, "Not kept current" and "not
-  legal advice". Fresh Tomato reason text comes from fingerprinted `answer_pipeline.py`
-  ("current and healthy"); the note scopes it to the snapshot.
-- **Fresh install.** `knowledge_release.newest_bundled_release_dir()` picks the newest
-  bundled signed release; `ensure_minimal_knowledge_release(release_dir=...)` installs it
-  with unchanged verification. The production `local_app.app` (`python -m
-  danish_rag.local_app`) passes it, so a new install gets `kr-2026-09-05.1`.
-  `create_app()` called directly (tests, browser fixture server) keeps the
-  `kr-2026-07-06.1` fixture default via `initial_release_dir`, because many tests depend
-  on that fixture's content; `BUNDLED_MINIMAL_RELEASE` is unchanged (evaluation modules
-  use it).
-- **Known limit.** A data dir indexed by an older build keeps its index; the clock only
+- **Label.** `home.html` banner (three states: snapshot / unavailable / none). Each turn
+  stores `knowledge_snapshot` {release_id, snapshot_date, kept_current: false} in its
+  answer JSON (so exports carry it per turn); the template note beside Fresh Tomato
+  Scores renders from the turn's own metadata, so older turns and non-bundled releases
+  show none. `/status` has top-level `knowledge_snapshot`. Fresh Tomato reason text comes
+  from fingerprinted `answer_pipeline.py` ("current and healthy"); the note scopes it.
+  Layout: `app.js` sets `--chrome-height` to the measured top bar + banner height
+  (replaces the fixed 4.25rem; banner wraps at narrow widths).
+- **Fresh install.** `knowledge_release.newest_bundled_release_dir(catalog, trust_root_path=,
+  application_version=)` returns the newest bundled release that passes
+  `verify_knowledge_release` (falls back to older verified ones, then
+  `BUNDLED_MINIMAL_RELEASE`; never raises on a missing catalogue).
+  `ensure_minimal_knowledge_release(release_dir=)` accepts a callable resolved only when a
+  fresh install is needed. The production `local_app.app` and the documented launch
+  command (`docs/release-qualification.md`) pass `initial_release_dir=
+  newest_bundled_release_dir`, so a new install gets `kr-2026-09-05.1`. `create_app()`
+  called directly (tests, browser fixture server) keeps the `kr-2026-07-06.1` fixture
+  default, because many tests depend on that fixture's content;
+  `BUNDLED_MINIMAL_RELEASE` is unchanged (evaluation modules use it).
+- **Known limits.** A data dir indexed by an older build keeps its index; the clock only
   changes evaluation. Existing installs of `kr-2026-07-06.1` keep working (snapshot
-  2026-07-06) and can still update to the September release.
+  2026-07-06) and can still update to the September release. The recovery write in
+  `load_active_release` can now also run from the middleware read (same as handlers).
 - Tests: `tests/test_snapshot_mode.py` (wall clock forced to 2027-01-01: both bundled
-  releases still cite; label, wording, fresh install, tamper refusal) and a Playwright
-  label test. Also run with the pin at 2027-01-01 in the browser server and with every
-  other `danish_rag` module's `datetime` forced to 2027-01-01: green.
+  releases still cite; label states, per-turn notes, race, gate, fresh install, tamper
+  refusal) and Playwright label/layout tests (360x740, 390x844, 681-1280). Also run with
+  the pin at 2027-01-01 in the browser server and with every other `danish_rag`
+  module's `datetime` forced to 2027-01-01: green.
 
 ## Active Tasks
 

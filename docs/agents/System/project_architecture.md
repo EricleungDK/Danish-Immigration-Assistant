@@ -55,9 +55,11 @@ tests/                         unit, integration, live opt-in, and browser gates
   languages, and prevents one chunk-heavy source from crowding out all others.
 - `answer_pipeline.py` separates ambiguity, safety, generation, claim support,
   citations, Evidence Confidence, and Fresh Tomato Score.
-- `snapshot_clock.py` scopes `source_freshness`'s clock (per request, `ContextVar`) to
-  the active release's `created_at_utc` in the running app only (#67 snapshot mode);
-  evaluation CLIs keep the wall clock. `local_app.py` adds it as middleware.
+- `snapshot_clock.py` (#67 snapshot mode) holds a per-request `SnapshotState` (one
+  active-release read at request start, re-adopted from the release the handler/retriever
+  actually loaded) and scopes `source_freshness`'s clock to it. It applies only to
+  releases identical to the bundled catalogue's; evaluation CLIs keep the wall clock.
+  `local_app.py` adds it as middleware and stores `knowledge_snapshot` per turn.
 - `conversation_store.py` persists immutable turn provenance locally.
 - `release_trust.py`, `github_release_client.py`, and `knowledge_release.py`
   separate discovery, explicit download approval, signed review, install, and

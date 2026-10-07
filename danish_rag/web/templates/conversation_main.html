@@ -100,7 +100,7 @@
           <div>
             <dt>Fresh Tomato Score: {{ turn.answer.trust.fresh_tomato_score }}</dt>
             <dd>{{ turn.answer.trust.fresh_tomato_reason }}</dd>
-            <dd class="snapshot-note">Freshness is judged as of the snapshot date{% if snapshot_date %} ({{ snapshot_date }}){% endif %}, not today.</dd>
+            {% if turn.answer.knowledge_snapshot %}<dd class="snapshot-note">Freshness is judged as of the snapshot date ({{ turn.answer.knowledge_snapshot.snapshot_date }}), not today.</dd>{% endif %}
           </div>
         </dl>
         {% endif %}
@@ -170,7 +170,7 @@
               <div>
                 <dt>Fresh Tomato Score: {{ citation.fresh_tomato_score }}</dt>
                 <dd>{{ citation.fresh_tomato_reason }}</dd>
-                <dd class="snapshot-note">Freshness is judged as of the snapshot date{% if snapshot_date %} ({{ snapshot_date }}){% endif %}, not today.</dd>
+                {% if turn.answer.knowledge_snapshot %}<dd class="snapshot-note">Freshness is judged as of the snapshot date ({{ turn.answer.knowledge_snapshot.snapshot_date }}), not today.</dd>{% endif %}
               </div>
             </dl>
 
@@ -196,7 +196,7 @@
                 <div>
                   <dt>Fresh Tomato Score: {{ turn.answer.trust.fresh_tomato_score }}</dt>
                   <dd>{{ turn.answer.trust.fresh_tomato_reason }}</dd>
-                  <dd class="snapshot-note">Freshness is judged as of the snapshot date{% if snapshot_date %} ({{ snapshot_date }}){% endif %}, not today.</dd>
+                  {% if turn.answer.knowledge_snapshot %}<dd class="snapshot-note">Freshness is judged as of the snapshot date ({{ turn.answer.knowledge_snapshot.snapshot_date }}), not today.</dd>{% endif %}
                 </div>
               </dl>
             </section>

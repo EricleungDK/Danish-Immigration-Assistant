@@ -218,7 +218,7 @@ evidence does.
 - **Fresh Tomato Score** measures source recency and health independently of Evidence Confidence.
 - Each source retains its own Fresh Tomato Score. The answer-level score is the lowest score among material sources.
 - Trust indicators, their reasons, citations, model identity, and corpus version are stored with the historical answer rather than recalculated silently later.
-- Snapshot mode (#67): the running app evaluates Fresh Tomato Score at the active release's snapshot time (`created_at_utc`), not the wall clock, and the UI states the snapshot date and that the knowledge is not kept current. See [source governance](source-governance.md#snapshot-mode-2026-10-07).
+- Snapshot mode (#67): for releases bundled in this repository, the running app evaluates Fresh Tomato Score at the release's snapshot time (`created_at_utc`), not the wall clock, and the UI, `/status` and exports state the snapshot date and that the knowledge is not kept current. Other releases keep wall-clock freshness. See [source governance](source-governance.md#snapshot-mode-2026-10-07).
 
 ## Still Open
 

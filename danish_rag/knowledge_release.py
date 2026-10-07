@@ -214,32 +214,60 @@ def install_knowledge_release(
 
 def newest_bundled_release_dir(
     catalog_dir: str | Path = DEFAULT_RELEASE_CATALOG_DIR,
+    *,
+    trust_root_path: str | Path | None = None,
+    application_version: str = APPLICATION_VERSION,
 ) -> Path:
-    """Newest bundled release directory (by release ID) in the catalogue.
+    """Newest bundled release (by release ID) that verifies and is compatible.
 
-    Installation still verifies the signed manifest against the trust root, so a fresh
-    install is never less verified than the fixture default.
+    Each candidate gets the full `verify_knowledge_release` check (signature, hashes,
+    schema, minimum application version), so a fresh install is never less verified than
+    the fixture default; a broken newer entry is skipped in favour of an older verified
+    one. With no usable entry (or no catalogue) it falls back to the bundled fixture
+    release, which installation verifies again.
     """
 
-    candidates = [
-        (tuple(int(part) for part in match.groups()), path)
-        for path in Path(catalog_dir).iterdir()
-        if path.is_dir()
-        and (match := GITHUB_KNOWLEDGE_RELEASE_PATTERN.fullmatch(path.name))
-    ]
-    if not candidates:
-        raise KnowledgeReleaseError("No bundled knowledge release is available.")
-    return max(candidates, key=lambda candidate: candidate[0])[1]
+    try:
+        entries = list(Path(catalog_dir).iterdir())
+    except OSError:
+        return BUNDLED_MINIMAL_RELEASE
+    candidates = sorted(
+        (
+            (tuple(int(part) for part in match.groups()), path)
+            for path in entries
+            if path.is_dir()
+            and (match := GITHUB_KNOWLEDGE_RELEASE_PATTERN.fullmatch(path.name))
+        ),
+        key=lambda candidate: candidate[0],
+        reverse=True,
+    )
+    for _, path in candidates:
+        try:
+            verify_knowledge_release(
+                path,
+                application_version=application_version,
+                trust_root_path=trust_root_path,
+            )
+        except Exception:
+            continue
+        return path
+    return BUNDLED_MINIMAL_RELEASE
 
 
 def ensure_minimal_knowledge_release(
     data_dir: str | Path,
     *,
-    release_dir: str | Path = BUNDLED_MINIMAL_RELEASE,
+    release_dir: str | Path | Callable[..., str | Path] = BUNDLED_MINIMAL_RELEASE,
     embedding_provider: EmbeddingProvider | None = None,
     embedding_endpoint: str | None = None,
     trust_root_path: str | Path | None = None,
 ) -> dict[str, Any]:
+    """Return the active release, installing `release_dir` first if none is installed.
+
+    `release_dir` may be a callable `(trust_root_path=...) -> path`, resolved only when a
+    fresh install is needed.
+    """
+
     try:
         with active_release_snapshot():
             active = load_active_release(
@@ -259,6 +287,8 @@ def ensure_minimal_knowledge_release(
                 "active": active,
             }
     except FileNotFoundError:
+        if callable(release_dir):
+            release_dir = release_dir(trust_root_path=trust_root_path)
         return install_minimal_knowledge_release(
             data_dir,
             release_dir=release_dir,

@@ -30,12 +30,15 @@
   </header>
 
   <p class="snapshot-banner" role="note" aria-label="Knowledge snapshot notice">
-    {% if snapshot_date %}
+    {% if snapshot_status == "snapshot" %}
     <strong>Knowledge snapshot from {{ snapshot_date }}.</strong>
-    {% else %}
-    <strong>Knowledge is a snapshot.</strong>
-    {% endif %}
     <span>Not kept current. Information only, not legal advice.</span>
+    {% elif snapshot_status == "unavailable" %}
+    <strong>Snapshot date unavailable.</strong>
+    <span>Source freshness is judged at today's date. Information only, not legal advice.</span>
+    {% else %}
+    <span>Information only, not legal advice.</span>
+    {% endif %}
   </p>
 
   <div id="interaction-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
