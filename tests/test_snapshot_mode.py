@@ -1,5 +1,6 @@
 """Snapshot mode (#67): the running app evaluates freshness at the release snapshot time."""
 
+import asyncio
 import json
 import shutil
 import sqlite3
@@ -15,6 +16,7 @@ from danish_rag.source_freshness import assess_source_freshness
 import httpx
 
 from danish_rag.conversation_store import ConversationStore
+from danish_rag.github_release_client import GitHubReleaseClient
 from danish_rag.knowledge_release import (
     BUNDLED_MINIMAL_RELEASE,
     DEFAULT_RELEASE_CATALOG_DIR,
@@ -299,27 +301,71 @@ class SnapshotResolutionTests(unittest.TestCase):
         self.assertFalse(hasattr(snapshot_clock, "SnapshotResolver"))
         self.assertFalse(hasattr(snapshot_clock.SnapshotState, "resolve_active"))
 
-    def test_bundled_manifest_digests_are_memoized_until_the_file_changes(self):
+    def test_bundled_manifest_is_parsed_once_per_distinct_file_content(self):
         from danish_rag import snapshot_clock
 
         catalog = self.root / "catalog"
         shutil.copytree(SEPTEMBER_RELEASE, catalog / "kr-2026-09-05.1")
         manifest = self.manifest(SEPTEMBER_RELEASE)
-        reads = []
-        real = Path.read_text
-        counting = lambda path, *a, **k: (reads.append(path.name), real(path, *a, **k))[1]
+        parses = []
+        real = json.loads
         with patch.object(snapshot_clock, "BUNDLED_CATALOG_DIR", catalog), patch.object(
-            Path, "read_text", counting
+            snapshot_clock.json, "loads", lambda *a, **k: (parses.append(1), real(*a, **k))[1]
         ):
-            self.assertIsNotNone(snapshot_clock.bundled_snapshot(manifest))
-            first = reads.count("manifest.json")
             for _ in range(5):
                 self.assertIsNotNone(snapshot_clock.bundled_snapshot(manifest))
-            self.assertEqual(reads.count("manifest.json"), first)  # dict lookups only
-            # The bundled file changing invalidates the memo.
+            self.assertEqual(len(parses), 1)
             path = catalog / "kr-2026-09-05.1" / "manifest.json"
             path.write_text(path.read_text(encoding="utf-8").replace("{", '{"probe": 1,', 1), encoding="utf-8")
             self.assertIsNone(snapshot_clock.bundled_snapshot(manifest))
+            self.assertEqual(len(parses), 2)
+
+    def test_a_same_size_replacement_that_preserves_mtime_is_still_detected(self):
+        import os
+
+        from danish_rag import snapshot_clock
+
+        catalog = self.root / "catalog"
+        shutil.copytree(SEPTEMBER_RELEASE, catalog / "kr-2026-09-05.1")
+        path = catalog / "kr-2026-09-05.1" / "manifest.json"
+        manifest = self.manifest(SEPTEMBER_RELEASE)
+        with patch.object(snapshot_clock, "BUNDLED_CATALOG_DIR", catalog):
+            self.assertIsNotNone(snapshot_clock.bundled_snapshot(manifest))
+            before = path.stat()
+            original = path.read_bytes()
+            replacement = original.replace(b"kr-2026-09-05.1", b"kr-2026-09-05.9", 1)
+            self.assertEqual(len(replacement), len(original))
+            path.write_bytes(replacement)  # same size...
+            os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))  # ...same mtime
+            self.assertIsNone(snapshot_clock.bundled_snapshot(manifest))
+
+    def test_adopting_an_equal_manifest_again_does_no_further_work(self):
+        from danish_rag import snapshot_clock
+        from danish_rag.snapshot_clock import SnapshotState
+
+        state = SnapshotState()
+        manifest = self.manifest(SEPTEMBER_RELEASE)
+        calls = []
+        real = snapshot_clock.bundled_snapshot
+        with patch.object(
+            snapshot_clock, "bundled_snapshot", lambda m: (calls.append(1), real(m))[1]
+        ):
+            state.adopt(manifest)
+            state.adopt(json.loads(json.dumps(manifest)))  # another load of the same release
+            self.assertEqual((len(calls), state.time), (1, SEPTEMBER_SNAPSHOT))
+            state.adopt(self.manifest(BUNDLED_MINIMAL_RELEASE))  # a different release
+            self.assertEqual((len(calls), state.time), (2, JULY_SNAPSHOT))
+
+    def test_a_frozen_state_ignores_later_loads_and_failures(self):
+        from danish_rag.snapshot_clock import SnapshotState
+
+        state = SnapshotState()
+        state.adopt(self.manifest(BUNDLED_MINIMAL_RELEASE))
+        state.freeze()
+        state.adopt(self.manifest(SEPTEMBER_RELEASE))
+        with self.assertNoLogs("danish_rag.snapshot_clock", "WARNING"):
+            state.mark_unavailable(OSError("later failure"))
+        self.assertEqual((state.time, state.status), (JULY_SNAPSHOT, "snapshot"))
 
     def test_manifest_identity_is_strict_about_json_types(self):
         from danish_rag import snapshot_clock
@@ -371,9 +417,12 @@ RELEASES = {"kr-2026-07-06.1": BUNDLED_MINIMAL_RELEASE, "kr-2026-09-05.1": SEPTE
 class FirstEvidenceAnswerGenerator:
     def __init__(self) -> None:
         self.clock_seen: list[datetime] = []
+        self.while_answering = None  # optional hook, e.g. a concurrent install
 
     def generate(self, *, evidence, **_):
         self.clock_seen.append(now_utc())  # the freshness clock while answering
+        if self.while_answering:
+            self.while_answering()
         return {
             "summary": "Reviewed official evidence found.",
             "sections": [
@@ -648,11 +697,11 @@ class SnapshotConsistencyTests(AppTestCase):
             for path in ("/static/app.css", "/vendor/htmx.min.js", "/conversations/export.json"):
                 await client.get(path)
             self.assertEqual(calls, [])
-            # /status does exactly the verification its own work needs (no extra read).
+            # /status does exactly one verified load (the corpus panel reuses it): no extra
+            # read for snapshot mode and no second verification for the panel.
             knowledge_release.ensure_minimal_knowledge_release(
                 self.data_dir, embedding_provider=self.provider
             )
-            knowledge_release.active_corpus_summary(self.data_dir)
             expected = list(calls)
             calls.clear()
             await client.get("/status")
@@ -743,6 +792,154 @@ class SnapshotConsistencyTests(AppTestCase):
         )
 
 
+HTMX = {"Origin": "http://testserver", "HX-Request": "true"}
+
+
+class SnapshotBasisConsistencyTests(AppTestCase):
+    """Banner, turn note, corpus panel and status describe one basis per request."""
+
+    async def ask_htmx(self, client):
+        return await client.post("/ask", data={"question": QUESTION}, headers=HTMX)
+
+    async def install_through_app(self, client, release_id="kr-2026-09-05.1") -> str:
+        origin = {"Origin": "http://testserver"}
+        await client.post("/knowledge-updates/check", headers=origin, follow_redirects=False)
+        await client.post(
+            "/knowledge-updates/install",
+            data={"release_id": release_id},
+            headers=origin,
+            follow_redirects=False,
+        )
+        for _ in range(600):
+            status = await client.get("/knowledge-updates/install-status")
+            if "Knowledge update installed" in status.text:
+                return status.text
+            await asyncio.sleep(0.05)
+        self.fail("installation did not complete")
+
+    def oob_banner(self, html: str) -> str:
+        self.assertEqual(html.count('id="snapshot-banner"'), 1, html[:300])
+        start = html.index('id="snapshot-banner"')
+        self.assertIn('hx-swap-oob="innerHTML"', html[start - 80 : start + 250])
+        return html[start : html.index("</p>", start)]
+
+    async def test_full_page_has_one_plain_banner(self):
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        page = (await self.make_client().get("/")).text
+        self.assertEqual(page.count('id="snapshot-banner"'), 1)
+        self.assertNotIn("hx-swap-oob", page)
+
+    async def test_htmx_answer_refreshes_the_banner_to_the_answered_release(self):
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        client = self.make_client()
+        self.assertIn("Knowledge snapshot from 2026-07-06", (await client.get("/")).text)
+        install_knowledge_release(
+            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+        )
+        with late_wall_clock():
+            fragment = await self.ask_htmx(client)
+        banner = self.oob_banner(fragment.text)
+        self.assertIn("Knowledge snapshot from 2026-09-05", banner)
+        self.assertEqual(fragment.text.count("Knowledge snapshot from"), 1)
+
+    async def test_htmx_failure_refreshes_the_banner_to_unavailable(self):
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        client = self.make_client()
+
+        def failing(cls, *args, **kwargs):
+            raise OSError("dense index unreadable")
+
+        with patch.object(HybridRetriever, "from_data_dir", classmethod(failing)), self.assertLogs(
+            "danish_rag.snapshot_clock", "WARNING"
+        ):
+            fragment = await self.ask_htmx(client)
+        banner = self.oob_banner(fragment.text)
+        self.assertIn("Snapshot date unavailable", banner)
+        self.assertNotIn("Knowledge snapshot from", banner)
+
+    async def test_install_completion_refreshes_the_banner_both_directions(self):
+        from danish_rag import snapshot_clock
+
+        none_catalog = Path(self.tempdir.name) / "no-bundled-releases"
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        client = self.make_client(release_catalog_dir=DEFAULT_RELEASE_CATALOG_DIR)
+        self.assertIn("Knowledge snapshot from 2026-07-06", (await client.get("/")).text)
+        # bundled -> a release that is not bundled: the banner must stop claiming a snapshot.
+        with patch.object(snapshot_clock, "BUNDLED_CATALOG_DIR", none_catalog):
+            banner = self.oob_banner(await self.install_through_app(client))
+        self.assertNotIn("Knowledge snapshot from", banner)
+        self.assertIn("Information only, not legal advice", banner)
+
+        # not bundled -> bundled.
+        self.data_dir = Path(self.tempdir.name) / "second"
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        client = self.make_client(release_catalog_dir=DEFAULT_RELEASE_CATALOG_DIR)
+        with patch.object(snapshot_clock, "BUNDLED_CATALOG_DIR", none_catalog):
+            self.assertNotIn("Knowledge snapshot from", (await client.get("/")).text)
+        banner = self.oob_banner(await self.install_through_app(client))
+        self.assertIn("Knowledge snapshot from 2026-09-05", banner)
+
+    async def test_banner_keeps_the_basis_the_answer_was_judged_on(self):
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        client = self.make_client()
+        # A concurrent install lands after the answer was generated, before the page renders.
+        self.generator.while_answering = lambda: install_knowledge_release(
+            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+        )
+        with late_wall_clock():
+            page = (await self.ask(client)).text
+        self.assertIn("Knowledge snapshot from 2026-07-06", page)
+        self.assertIn("as of the snapshot date (2026-07-06), not today", page)
+        self.assertNotIn("Knowledge snapshot from 2026-09-05", page)
+        self.assertNotIn("(2026-09-05), not today", page)
+
+    async def test_corpus_panel_and_status_come_from_the_release_that_was_verified(self):
+        from danish_rag import local_app
+
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        client = self.make_client()
+        real = local_app.ensure_minimal_knowledge_release
+
+        def then_install_september(*args, **kwargs):
+            release = real(*args, **kwargs)
+            install_knowledge_release(
+                self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+            )
+            return release
+
+        with patch.object(local_app, "ensure_minimal_knowledge_release", then_install_september):
+            status = (await client.get("/status")).json()
+        self.assertEqual(status["corpus"]["knowledge_release_id"], "kr-2026-07-06.1")
+        self.assertEqual(status["knowledge_snapshot"]["release_id"], "kr-2026-07-06.1")
+
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        with patch.object(local_app, "ensure_minimal_knowledge_release", then_install_september):
+            page = (await client.get("/")).text
+        self.assertIn("<dd>kr-2026-07-06.1</dd>", page)
+        self.assertIn("Knowledge snapshot from 2026-07-06", page)
+
+    async def test_background_metadata_check_makes_no_snapshot_claims(self):
+        class NoReleases(GitHubReleaseClient):
+            def list_published_releases(self):
+                return []
+
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        (self.data_dir / "active-release.json").write_text("{not json", encoding="utf-8")
+        client = self.make_client(github_release_client=NoReleases(application_version="0.1.0"))
+        app = client._transport.app
+        with self.assertNoLogs("danish_rag.snapshot_clock", "WARNING"):
+            await client.post(
+                "/knowledge-updates/automatic-check", headers={"Origin": "http://testserver"}
+            )
+            for _ in range(400):
+                if not app.state.automatic_check_state["running"]:
+                    break
+                await asyncio.sleep(0.05)
+            else:
+                self.fail("automatic check did not finish")
+        self.assertEqual(app.state.automatic_check_state["status"]["state"], "failed")
+
+
 class FreshInstallDefaultTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tempdir = tempfile.TemporaryDirectory()
@@ -809,6 +1006,27 @@ class FreshInstallDefaultTests(unittest.TestCase):
         with patch.object(knowledge_release, "verify_knowledge_release", side_effect=TypeError("bug")):
             with self.assertRaises(TypeError):
                 knowledge_release.newest_bundled_release_dir(catalog)
+
+    def test_an_unreadable_catalogue_entry_is_skipped_not_fatal(self):
+        from danish_rag.knowledge_release import newest_bundled_release_dir
+
+        catalog = self.make_catalog(
+            **{"kr-2026-07-06_1": BUNDLED_MINIMAL_RELEASE, "kr-2026-09-05_1": SEPTEMBER_RELEASE}
+        )
+        (catalog / "kr-2026-10-01.1").mkdir()
+        real = Path.is_dir
+
+        def is_dir(path):
+            if path.name == "kr-2026-10-01.1":
+                raise PermissionError(13, "denied", str(path))
+            return real(path)
+
+        with patch.object(Path, "is_dir", is_dir), self.assertLogs(
+            "danish_rag.knowledge_release", "WARNING"
+        ) as logs:
+            chosen = newest_bundled_release_dir(catalog)
+        self.assertEqual(chosen, catalog / "kr-2026-09-05.1")
+        self.assertIn("kr-2026-10-01.1", "\n".join(logs.output))
 
     def test_incompatible_releases_are_skipped(self):
         from danish_rag.knowledge_release import newest_bundled_release_dir

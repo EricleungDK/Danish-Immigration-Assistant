@@ -88,7 +88,22 @@ re-reviews, CI signing, or further GitHub releases). Built on #64 (PR #65), bran
   the rest of the request (sticky): wall clock, warning logged, banner "Snapshot date
   unavailable", `/status` `snapshot_status: "unavailable"`. Bundled identity is the
   sha256 of canonical JSON (type-strict: 1, 1.0 and true differ; NaN refused), memoized per
-  bundled release id and invalidated when the shipped manifest file changes.
+  bundled release id and the shipped file's bytes (the small file is read and hashed per
+  call, so a same-size, mtime-preserving replacement is seen; only the parse is memoized).
+  Adopting an equal manifest again in the same request does no work.
+- **Banner consistency (round 3).** The banner is `snapshot_banner.html`; htmx partials
+  refresh it out of band (`hx-swap-oob="innerHTML"` keeps the element, so the layout
+  ResizeObserver stays attached): the `/ask` fragment, and the terminal install-status
+  response (which re-verifies the now-active release via `ensure_release()` so a switch
+  bundled -> non-bundled, or back, is reflected). In `/ask`, the state is frozen right
+  after the retriever's manifest is adopted, so the page render's own `ensure_release()`
+  cannot replace the basis the answer was judged on (banner and turn note agree; a
+  render-time load error is reported only in the corpus panel). `/status` and the corpus
+  panel are built from the same verified release dict `ensure_release()` returned
+  (`knowledge_release.corpus_summary`), which also removes the second verification.
+  Background workers (automatic metadata check) use `ensure_release_unscoped` and never
+  touch snapshot state or log snapshot warnings. `newest_bundled_release_dir` skips (and
+  logs) catalogue entries whose `is_dir()` raises `OSError`.
 - **Pin interaction.** Inside app requests the snapshot clock wins over the #64 pin;
   outside requests (evidence tests, CLIs) the pin still governs. Both are fixed times
   before the due dates, so the suites stay deterministic; tests move the pin to

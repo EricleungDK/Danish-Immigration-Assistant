@@ -233,16 +233,19 @@ def newest_bundled_release_dir(
         entries = list(Path(catalog_dir).iterdir())
     except OSError:
         return BUNDLED_MINIMAL_RELEASE
-    candidates = sorted(
-        (
-            (tuple(int(part) for part in match.groups()), path)
-            for path in entries
-            if path.is_dir()
-            and (match := GITHUB_KNOWLEDGE_RELEASE_PATTERN.fullmatch(path.name))
-        ),
-        key=lambda candidate: candidate[0],
-        reverse=True,
-    )
+    found = []
+    for path in entries:
+        match = GITHUB_KNOWLEDGE_RELEASE_PATTERN.fullmatch(path.name)
+        if not match:
+            continue
+        try:
+            if not path.is_dir():
+                continue
+        except OSError as exc:  # e.g. PermissionError: skip this entry, keep the rest
+            LOGGER.warning("Skipping bundled release %s: %s", path.name, exc)
+            continue
+        found.append((tuple(int(part) for part in match.groups()), path))
+    candidates = sorted(found, key=lambda candidate: candidate[0], reverse=True)
     for _, path in candidates:
         try:
             verify_knowledge_release(
@@ -354,6 +357,22 @@ def active_release_snapshot():
         yield
 
 
+def corpus_summary(release: dict[str, Any]) -> dict[str, str]:
+    """Corpus panel fields from a loaded release (`manifest` and `index` keys)."""
+
+    manifest = release["manifest"]
+    index = release["index"]
+    return {
+        "knowledge_release_id": str(manifest["knowledge_release_id"]),
+        "corpus_id": str(manifest["corpus_id"]),
+        "source_registry_version": str(manifest["source_registry_version"]),
+        "created_at_utc": str(manifest["created_at_utc"]),
+        "embedding_model": str(index["embedding_model"]),
+        "embedding_vector_dimensions": str(index["vector_dimensions"]),
+        "index_schema_version": str(index["schema_version"]),
+    }
+
+
 def active_corpus_summary(
     data_dir: str | Path,
     *,
@@ -369,15 +388,7 @@ def active_corpus_summary(
             Path(data_dir),
             str(manifest["knowledge_release_id"]),
         )
-    return {
-        "knowledge_release_id": str(manifest["knowledge_release_id"]),
-        "corpus_id": str(manifest["corpus_id"]),
-        "source_registry_version": str(manifest["source_registry_version"]),
-        "created_at_utc": str(manifest["created_at_utc"]),
-        "embedding_model": str(index["embedding_model"]),
-        "embedding_vector_dimensions": str(index["vector_dimensions"]),
-        "index_schema_version": str(index["schema_version"]),
-    }
+    return corpus_summary({"manifest": manifest, "index": index})
 
 
 def discover_knowledge_update(

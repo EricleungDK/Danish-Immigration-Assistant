@@ -37,8 +37,9 @@ Tomato Score are separate named indicators with reasons.
   shows only "Information only, not legal advice." Each Fresh Tomato Score of a turn that
   stored `knowledge_snapshot` carries "Freshness is judged as of the snapshot date
   (<date>), not today." (template level, because the reason text is produced by
-  fingerprinted code); the date is the turn's own, not the current release's. The layout
-  height uses the measured top bar + banner height (`--chrome-height`, set by `app.js`).
+  fingerprinted code); the date is the turn's own, not the current release's. The banner is also refreshed out of band by the `/ask` fragment and the install-status
+  completion response. The layout height uses the measured top bar + banner height
+  (`--chrome-height`, set by `app.js`).
 - Knowledge update discovery, signed download/review, and installation are three
   distinct user actions; never auto-install.
 

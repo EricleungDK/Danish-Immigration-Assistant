@@ -44,7 +44,7 @@ import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -78,12 +78,16 @@ class Snapshot:
 
 @dataclass
 class SnapshotState:
-    """Per-request snapshot resolution shared by the clock, the label and stored turns."""
+    """Per-request snapshot basis shared by the clock, the label and stored turns."""
 
     snapshot: Snapshot | None = None
     # True when the request's release could not be loaded: freshness then uses the wall
     # clock and the UI must not claim a snapshot basis.
     unavailable: bool = False
+    # Once the basis a request's answer was judged on is settled, later loads in the same
+    # request (for example the page render) cannot replace it.
+    frozen: bool = False
+    _adopted: dict[str, Any] | None = field(default=None, repr=False, compare=False)
 
     @property
     def time(self) -> datetime | None:
@@ -103,23 +107,33 @@ class SnapshotState:
     def adopt(self, manifest: dict[str, Any]) -> None:
         """Take the snapshot (if any) of the verified manifest this request loaded.
 
-        A load failure earlier in the same request is sticky: the request stays on the
-        wall clock with no snapshot claim even if a later load succeeds.
+        Ignored once frozen. A load failure earlier in the request is sticky: the request
+        stays on the wall clock with no snapshot claim even if a later load succeeds. A
+        manifest equal to the one already adopted (another load of the same verified
+        release) is not re-evaluated.
         """
 
-        if self.unavailable:
+        if self.frozen or self.unavailable:
+            return
+        if self._adopted is not None and manifest == self._adopted:
             return
         self.snapshot = bundled_snapshot(manifest)
+        self._adopted = manifest
 
     def mark_unavailable(self, reason: BaseException) -> None:
         """The request's release could not be loaded: wall clock, no snapshot claim."""
 
+        if self.frozen:
+            return  # the answer's basis is settled; the page reports the error separately
         LOGGER.warning(
             "Release could not be loaded; freshness uses the wall clock and no snapshot "
             "is claimed: %s",
             reason,
         )
         self.snapshot, self.unavailable = None, True
+
+    def freeze(self) -> None:
+        self.frozen = True
 
 
 _STATE: ContextVar[SnapshotState | None] = ContextVar("snapshot_state", default=None)
@@ -149,21 +163,21 @@ def _manifest_digest(manifest: dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-# release id -> (stat of the bundled manifest file, its canonical digest)
-_BUNDLED_DIGESTS: dict[str, tuple[tuple[int, int], str]] = {}
+# manifest path -> (sha256 of the file bytes, canonical digest). The small file is read
+# and hashed on every call so a same-size, mtime-preserving replacement is still seen;
+# only the JSON parse and canonicalisation are memoized.
+_BUNDLED_DIGESTS: dict[str, tuple[str, str]] = {}
 
 
 def _bundled_digest(release_id: str) -> str:
-    """Digest of the shipped manifest; re-read only if its file changed."""
-
     path = Path(BUNDLED_CATALOG_DIR) / release_id / "manifest.json"
-    stat = path.stat()
-    key = (stat.st_mtime_ns, stat.st_size)
-    cached = _BUNDLED_DIGESTS.get(f"{path}")
-    if cached is not None and cached[0] == key:
+    raw = path.read_bytes()
+    content = hashlib.sha256(raw).hexdigest()
+    cached = _BUNDLED_DIGESTS.get(str(path))
+    if cached is not None and cached[0] == content:
         return cached[1]
-    digest = _manifest_digest(json.loads(path.read_text(encoding="utf-8")))
-    _BUNDLED_DIGESTS[f"{path}"] = (key, digest)
+    digest = _manifest_digest(json.loads(raw))
+    _BUNDLED_DIGESTS[str(path)] = (content, digest)
     return digest
 
 

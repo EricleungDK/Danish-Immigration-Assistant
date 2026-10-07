@@ -586,6 +586,8 @@ test("GitHub knowledge update requires separate download review and install acti
     has: page.getByRole("heading", { name: "Corpus" }),
   });
   await expect(corpusSection.locator(".runtime-list").first()).toContainText("kr-2026-07-06.1");
+  const snapshotBanner = page.getByRole("note", { name: "Knowledge snapshot notice" });
+  await expect(snapshotBanner).toContainText("Knowledge snapshot from 2026-07-06.");
 
   await expect(page.getByRole("heading", { name: "Knowledge update metadata available" })).toBeVisible();
   await expect(page.getByText("kr-2026-07-07.1", { exact: true })).toBeVisible();
@@ -614,6 +616,10 @@ test("GitHub knowledge update requires separate download review and install acti
   await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading", { name: "Knowledge update installed" })).toBeVisible();
   await expect(page.getByText("Active corpus: kr-2026-07-07.1")).toBeVisible();
+  // The installed release is not a bundled snapshot: the banner (refreshed out of band by
+  // the install status response) must stop claiming a snapshot basis.
+  await expect(snapshotBanner).toContainText("Information only, not legal advice.");
+  await expect(snapshotBanner).not.toContainText("Knowledge snapshot from");
   const installStatus = page.locator("#knowledge-installation-status");
   await expect(installStatus).toHaveAttribute("role", "status");
   await expect(installStatus.locator("progress")).toHaveAttribute("value", "100");

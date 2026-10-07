@@ -51,6 +51,12 @@ grace, so source freshness rules are unchanged.
   a release is verified in a request, and whenever loading fails, freshness uses the wall
   clock; on failure a warning is logged and the UI says "Snapshot date unavailable"
   instead of claiming a snapshot basis. Install and rollback apply on the next request.
+  When an answer is generated its basis is fixed for the rest of the request, so the
+  banner, the turn note and the stored metadata agree; htmx partial responses (answers,
+  install completion) refresh the banner out of band.
+  When an answer is generated its basis is fixed for the rest of the request, so the
+  banner, the turn note and the stored metadata agree; htmx partial responses (answers,
+  install completion) refresh the banner out of band.
 - **Not applied elsewhere.** Evaluation, qualification, and monitor commands keep
   evaluating at the wall clock (or the explicit time they pass), so evidence is not
   silently rebased onto the snapshot.
