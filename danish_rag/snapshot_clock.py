@@ -90,6 +90,8 @@ class SnapshotState:
     # Set when, after freezing, the page render loaded a different release or failed:
     # the page then says the active release changed after the answer was prepared.
     changed_after_freeze: bool = False
+    # Set when, after freezing, re-loading the release for the page render failed.
+    reload_failed_after_freeze: bool = False
     _adopted: dict[str, Any] | None = field(default=None, repr=False, compare=False)
     _adopted_digest: str | None = field(default=None, repr=False, compare=False)
 
@@ -124,9 +126,10 @@ class SnapshotState:
         if self.frozen:
             self.changed_after_freeze = True
             return
-        self.snapshot = bundled_snapshot(manifest)
+        digest = _safe_digest(manifest)
+        self.snapshot = bundled_snapshot(manifest, digest=digest)
         self._adopted = manifest
-        self._adopted_digest = _safe_digest(manifest)
+        self._adopted_digest = digest
 
     def _is_adopted(self, manifest: dict[str, Any]) -> bool:
         # Canonical digest, not ==: 1, 1.0 and true must not count as the same manifest.
@@ -135,14 +138,18 @@ class SnapshotState:
         if manifest is self._adopted:
             return True
         digest = _safe_digest(manifest)
-        return digest is not None and digest == self._adopted_digest
+        if digest is None or self._adopted_digest is None:
+            # Not canonically digestable (e.g. NaN): fall back to plain equality, which
+            # can only report "same" for the same values, never invent a change.
+            return digest is None and self._adopted_digest is None and manifest == self._adopted
+        return digest == self._adopted_digest
 
     def mark_unavailable(self, reason: BaseException) -> None:
         """The request's release could not be loaded: wall clock, no snapshot claim."""
 
         if self.frozen:
             # The answer's basis is settled; the page reports the error separately.
-            self.changed_after_freeze = True
+            self.reload_failed_after_freeze = True
             return
         LOGGER.warning(
             "Release could not be loaded; freshness uses the wall clock and no snapshot "
@@ -207,7 +214,7 @@ def _bundled_digest(release_id: str) -> str:
     return digest
 
 
-def bundled_snapshot(manifest: dict[str, Any]) -> Snapshot | None:
+def bundled_snapshot(manifest: dict[str, Any], *, digest: str | None = None) -> Snapshot | None:
     """Snapshot of a manifest identical to a bundled release's, else None.
 
     The manifest comes from a signature-verified release; identity of its canonical JSON
@@ -219,7 +226,7 @@ def bundled_snapshot(manifest: dict[str, Any]) -> Snapshot | None:
         release_id = manifest["knowledge_release_id"]
         if not isinstance(release_id, str) or not _RELEASE_ID.fullmatch(release_id):
             return None
-        if _manifest_digest(manifest) != _bundled_digest(release_id):
+        if (digest or _manifest_digest(manifest)) != _bundled_digest(release_id):
             return None
         return Snapshot(release_id, parse_snapshot_time(manifest["created_at_utc"]))
     except (KeyError, TypeError, ValueError, OSError):

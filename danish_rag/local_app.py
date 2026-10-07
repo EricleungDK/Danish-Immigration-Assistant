@@ -1462,6 +1462,7 @@ def _snapshot_banner_context() -> dict[str, Any]:
         "snapshot_status": state.status,
         "snapshot_date": state.snapshot.date if state.snapshot else "",
         "snapshot_changed": state.changed_after_freeze,
+        "snapshot_reload_failed": state.reload_failed_after_freeze,
     }
 
 

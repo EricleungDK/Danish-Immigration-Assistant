@@ -222,22 +222,24 @@ document.body.addEventListener("htmx:afterRequest", (event) => {
   }
 });
 
-// htmx drops 4xx/5xx responses by default. /ask answers errors with a conversation
-// fragment (composer error, out-of-band snapshot banner): swap it so the error and the
-// banner's truthful basis are shown. htmx:responseError still announces the failure.
-document.body.addEventListener("htmx:beforeSwap", (event) => {
-  const { target, xhr } = event.detail;
-  if (
-    target instanceof HTMLElement &&
-    target.id === "conversation-main" &&
-    xhr.status >= 400 &&
-    xhr.responseText.includes('id="conversation-main"')
-  ) {
-    event.detail.shouldSwap = true;
-  }
-});
+// htmx drops 4xx/5xx responses, so an /ask error never replaces the conversation.
+// Its response still carries the refreshed snapshot banner (e.g. "Snapshot date
+// unavailable" when the release could not be loaded): copy only that into the page.
+function refreshSnapshotBannerFrom(xhr) {
+  const banner = document.getElementById("snapshot-banner");
+  if (!banner || typeof xhr?.responseText !== "string") return;
+  if (!xhr.responseText.includes('id="snapshot-banner"')) return;
+  const fresh = new DOMParser()
+    .parseFromString(xhr.responseText, "text/html")
+    .getElementById("snapshot-banner");
+  if (fresh) banner.innerHTML = fresh.innerHTML;
+}
 
 document.body.addEventListener("htmx:responseError", (event) => {
+  const target = event.detail?.target;
+  if (target instanceof HTMLElement && target.id === "conversation-main") {
+    refreshSnapshotBannerFrom(event.detail.xhr);
+  }
   if (event.target instanceof HTMLElement && (event.target.classList.contains("update-check-form") || event.target.classList.contains("update-download-form"))) return;
   announceStatus("Request failed. Review the visible error and retry.");
 });

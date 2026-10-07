@@ -348,7 +348,7 @@ class SnapshotResolutionTests(unittest.TestCase):
         calls = []
         real = snapshot_clock.bundled_snapshot
         with patch.object(
-            snapshot_clock, "bundled_snapshot", lambda m: (calls.append(1), real(m))[1]
+            snapshot_clock, "bundled_snapshot", lambda m, **kw: (calls.append(1), real(m, **kw))[1]
         ):
             state.adopt(manifest)
             state.adopt(json.loads(json.dumps(manifest)))  # another load of the same release
@@ -387,8 +387,22 @@ class SnapshotResolutionTests(unittest.TestCase):
         failed.adopt(self.manifest(BUNDLED_MINIMAL_RELEASE))
         failed.freeze()
         failed.mark_unavailable(OSError("render-time failure"))
-        self.assertTrue(failed.changed_after_freeze)
+        self.assertFalse(failed.changed_after_freeze)  # nothing changed; the load failed
+        self.assertTrue(failed.reload_failed_after_freeze)
         self.assertEqual(failed.status, "snapshot")
+
+    def test_an_undigestable_manifest_reloaded_after_freezing_is_not_a_change(self):
+        from danish_rag.snapshot_clock import SnapshotState
+
+        manifest = self.manifest(BUNDLED_MINIMAL_RELEASE)
+        manifest["_probe"] = float("nan")  # json.loads accepts NaN; the digest refuses it
+        state = SnapshotState()
+        state.adopt(manifest)
+        state.freeze()
+        reloaded = json.loads(json.dumps(manifest))
+        reloaded["_probe"] = manifest["_probe"]  # same object: NaN is not equal to itself
+        state.adopt(reloaded)
+        self.assertFalse(state.changed_after_freeze)
 
     def test_dedupe_of_repeated_adopts_is_strict_about_json_types(self):
         from danish_rag.snapshot_clock import SnapshotState
@@ -929,6 +943,36 @@ class SnapshotBasisConsistencyTests(AppTestCase):
         self.assertNotIn("Knowledge snapshot from 2026-09-05", page)
         self.assertNotIn("(2026-09-05), not today", page)
         self.assertIn("The active knowledge release changed while this answer was prepared", page)
+
+    async def test_normal_pages_never_claim_a_release_change(self):
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        client = self.make_client()
+        notice = "changed while this answer was prepared"
+        self.assertNotIn(notice, (await client.get("/")).text)
+        with late_wall_clock():
+            self.assertNotIn(notice, (await self.ask(client)).text)
+            self.assertNotIn(notice, (await self.ask_htmx(client)).text)
+        self.assertNotIn("could not be re-checked", (await client.get("/")).text)
+
+    async def test_render_failure_after_the_answer_is_reported_without_claiming_a_change(self):
+        from danish_rag import local_app
+
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        client = self.make_client()
+        answered = {"done": False}
+        self.generator.while_answering = lambda: answered.update(done=True)
+        real = local_app.ensure_minimal_knowledge_release
+
+        def ensure_then_fail(*args, **kwargs):
+            if answered["done"]:
+                raise OSError("index unreadable during render")
+            return real(*args, **kwargs)
+
+        with patch.object(local_app, "ensure_minimal_knowledge_release", ensure_then_fail), late_wall_clock():
+            page = (await self.ask(client)).text
+        self.assertIn("Knowledge snapshot from 2026-07-06", page)
+        self.assertNotIn("changed while this answer was prepared", page)
+        self.assertIn("could not be re-checked while showing this answer", page)
 
     async def test_corpus_panel_and_status_come_from_the_release_that_was_verified(self):
         from danish_rag import local_app

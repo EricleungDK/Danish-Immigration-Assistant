@@ -104,13 +104,15 @@ re-reviews, CI signing, or further GitHub releases). Built on #64 (PR #65), bran
   Background workers (automatic metadata check) use `ensure_release_unscoped` and never
   touch snapshot state or log snapshot warnings. `newest_bundled_release_dir` skips (and
   logs) catalogue entries whose `is_dir()` raises `OSError`.
-- **Final review follow-ups (2026-10-07).** If, after the freeze, the render loads a
-  different release or fails, `SnapshotState.changed_after_freeze` is set and the banner
-  adds "The active knowledge release changed while this answer was prepared; reload to
-  see it." Repeated-adopt dedupe compares the canonical digest, not `==` (1/1.0/true
-  differ). `app.js` swaps `/ask` 4xx/5xx responses that carry the conversation fragment
-  (htmx drops error responses by default), so the composer error and the refreshed
-  banner are shown; `htmx:responseError` still announces the failure.
+- **Final review follow-ups (2026-10-07).** After the freeze, a render that loads a
+  different release sets `changed_after_freeze` (banner: "The active knowledge release
+  changed while this answer was prepared; reload to see it."); a render whose load fails
+  sets `reload_failed_after_freeze` (banner: "could not be re-checked while showing this
+  answer; see the corpus panel"). Repeated-adopt dedupe compares the canonical digest
+  (1/1.0/true differ), falling back to plain equality only when neither manifest can be
+  digested; the digest is computed once per adopt. htmx still drops `/ask` 4xx/5xx
+  responses (the conversation stays as it was); `app.js` copies only the error
+  response's `#snapshot-banner` into the page, so an "unavailable" basis is shown.
 - **Pin interaction.** Inside app requests the snapshot clock wins over the #64 pin;
   outside requests (evidence tests, CLIs) the pin still governs. Both are fixed times
   before the due dates, so the suites stay deterministic; tests move the pin to

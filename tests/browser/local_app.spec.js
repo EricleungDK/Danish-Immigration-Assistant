@@ -49,19 +49,36 @@ test("first launch shows product boundary, setup, htmx, and composer", async ({ 
   await expect(page.getByRole("button", { name: "Install reviewed release" })).toHaveCount(0);
 });
 
-test("an htmx ask error shows its message and refreshes the snapshot banner", async ({ page }) => {
+test("an htmx ask error refreshes only the snapshot banner and keeps the conversation", async ({ page }) => {
   await page.goto("/");
   await ensureBrowserProvider(page);
+  const question = page.getByRole("textbox", { name: "Question" });
+  await question.fill("What Danish test do I need for permanent residence?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("heading", { name: "Current Conversation" })).toBeVisible();
+  const turns = await page.locator(".turn").count();
   const banner = page.getByRole("note", { name: "Knowledge snapshot notice" });
   await expect(banner).toContainText("Knowledge snapshot from 2026-07-06.");
-  // Send with an empty question: the server answers 422 with the conversation fragment.
-  await page.getByRole("textbox", { name: "Question" }).fill("");
-  const response = page.waitForResponse((r) => r.url().endsWith("/ask") && r.status() === 422);
+
+  // A failing ask whose error response carries the refreshed (unavailable) banner.
+  await page.route("**/ask", (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: "text/html",
+      body:
+        '<div id="conversation-main">replaced</div>' +
+        '<p id="snapshot-banner" hx-swap-oob="innerHTML"><strong>Snapshot date unavailable.</strong>' +
+        "<span>Source freshness is judged at today's date. Information only, not legal advice.</span></p>",
+    }),
+  );
+  await question.fill("Another question");
   await page.getByRole("button", { name: /^(Send|Retry)$/ }).click();
-  await response;
-  await expect(page.getByRole("alert")).toContainText("Enter a question before sending.");
-  await expect(banner).toHaveCount(1);
-  await expect(banner).toContainText("Knowledge snapshot from 2026-07-06.");
+
+  await expect(banner).toContainText("Snapshot date unavailable.");
+  await expect(banner).not.toContainText("Knowledge snapshot from");
+  await expect(page.locator(".turn")).toHaveCount(turns);
+  await expect(page.getByText("replaced")).toHaveCount(0);
+  await expect(page.locator('.composer input[name="conversation_id"]')).toHaveCount(1);
 });
 
 test("snapshot label states the release date, not kept current, and not legal advice", async ({ page }) => {
