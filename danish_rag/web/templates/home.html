@@ -29,6 +29,15 @@
     </div>
   </header>
 
+  <p class="snapshot-banner" role="note" aria-label="Knowledge snapshot notice">
+    {% if snapshot_date %}
+    <strong>Knowledge snapshot from {{ snapshot_date }}.</strong>
+    {% else %}
+    <strong>Knowledge is a snapshot.</strong>
+    {% endif %}
+    <span>Not kept current. Information only, not legal advice.</span>
+  </p>
+
   <div id="interaction-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <main class="app-shell">

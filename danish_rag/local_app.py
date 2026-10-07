@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import threading
 import time
 from pathlib import Path
@@ -26,6 +27,7 @@ from .embedding_provider import EmbeddingProvider
 from .github_release_client import ArtifactDownloadApproval, GitHubReleaseClient
 from .knowledge_release import (
     APPLICATION_VERSION,
+    BUNDLED_MINIMAL_RELEASE,
     DEFAULT_RELEASE_CATALOG_DIR,
     KnowledgeReleaseError,
     active_corpus_summary,
@@ -37,6 +39,7 @@ from .knowledge_release import (
     install_knowledge_release,
     load_available_github_knowledge_update,
     load_pending_knowledge_update,
+    newest_bundled_release_dir,
     prepare_github_knowledge_update,
     prepared_github_knowledge_release_dir,
     save_available_github_knowledge_update,
@@ -59,6 +62,7 @@ from .provider_setup import (
 )
 from .retrieval import HybridRetriever, RetrievalError
 from .runtime_policy import load_runtime_policy
+from .snapshot_clock import active_snapshot_time, snapshot_clock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -90,6 +94,7 @@ def create_app(
         AUTOMATIC_UPDATE_CHECK_INTERVAL_SECONDS
     ),
     update_check_clock: Callable[[], float] = time.monotonic,
+    initial_release_dir: str | Path = BUNDLED_MINIMAL_RELEASE,
 ) -> FastAPI:
     app = FastAPI(title="Danish Immigration RAG")
     app.mount("/static", StaticFiles(directory=WEB_ROOT / "static"), name="static")
@@ -111,6 +116,28 @@ def create_app(
         or GitHubReleaseClient(application_version=APPLICATION_VERSION)
     )
     resolved_trust_root_path = Path(trust_root_path) if trust_root_path else None
+    resolved_initial_release_dir = Path(initial_release_dir)
+    app.state.initial_release_dir = resolved_initial_release_dir
+
+    def app_snapshot_clock():
+        """Evaluate source freshness at the active release's snapshot time (#67)."""
+
+        return snapshot_clock(
+            lambda: active_snapshot_time(
+                resolved_data_dir, trust_root_path=resolved_trust_root_path
+            )
+        )
+
+    app.add_middleware(_SnapshotClockMiddleware, scope_factory=app_snapshot_clock)
+
+    def ensure_release() -> dict[str, Any]:
+        return ensure_minimal_knowledge_release(
+            resolved_data_dir,
+            release_dir=resolved_initial_release_dir,
+            embedding_provider=embedding_provider,
+            trust_root_path=resolved_trust_root_path,
+        )
+
     if (
         isinstance(automatic_update_check_interval_seconds, bool)
         or not isinstance(automatic_update_check_interval_seconds, int | float)
@@ -163,9 +190,9 @@ def create_app(
                 else:
                     deferred_for_installation = False
                     _check_github_update_metadata(
+                        ensure_release=ensure_release,
                         data_dir=resolved_data_dir,
                         client=resolved_github_release_client,
-                        embedding_provider=embedding_provider,
                         trust_root_path=resolved_trust_root_path,
                     )
         except Exception:
@@ -479,11 +506,7 @@ def create_app(
     ) -> dict[str, Any]:
         corpus_error = ""
         try:
-            ensure_minimal_knowledge_release(
-                resolved_data_dir,
-                embedding_provider=embedding_provider,
-                trust_root_path=resolved_trust_root_path,
-            )
+            ensure_release()
             corpus = active_corpus_summary(
                 resolved_data_dir,
                 trust_root_path=resolved_trust_root_path,
@@ -529,6 +552,7 @@ def create_app(
             "reveal_latest_turn": reveal_latest_turn,
             "corpus": corpus,
             "corpus_error": corpus_error,
+            "snapshot_date": _snapshot_date(corpus),
             "pending_update": pending_update,
             "available_github_update": available_github_update,
             "update_status": update_status,
@@ -662,11 +686,7 @@ def create_app(
                         "before checking for another update."
                     ),
                 )
-            ensure_minimal_knowledge_release(
-                resolved_data_dir,
-                embedding_provider=embedding_provider,
-                trust_root_path=resolved_trust_root_path,
-            )
+            ensure_release()
             if use_local_release_catalog:
                 update = discover_knowledge_update(
                     resolved_data_dir,
@@ -1064,11 +1084,7 @@ def create_app(
                     ),
                 )
         try:
-            ensure_minimal_knowledge_release(
-                resolved_data_dir,
-                embedding_provider=embedding_provider,
-                trust_root_path=resolved_trust_root_path,
-            )
+            ensure_release()
             retriever = HybridRetriever.from_data_dir(
                 resolved_data_dir,
                 embedding_provider=embedding_provider,
@@ -1160,11 +1176,7 @@ def create_app(
         configuration = _load_configuration_or_none(resolved_config_path)
         corpus_error = ""
         try:
-            ensure_minimal_knowledge_release(
-                resolved_data_dir,
-                embedding_provider=embedding_provider,
-                trust_root_path=resolved_trust_root_path,
-            )
+            ensure_release()
             corpus = active_corpus_summary(
                 resolved_data_dir,
                 trust_root_path=resolved_trust_root_path,
@@ -1182,7 +1194,22 @@ def create_app(
     return app
 
 
-app = create_app()
+class _SnapshotClockMiddleware:
+    """Run every HTTP request inside the app's snapshot-clock scope (#67)."""
+
+    def __init__(self, app: Any, *, scope_factory: Callable[[], Any]) -> None:
+        self.app = app
+        self.scope_factory = scope_factory
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        with self.scope_factory():
+            await self.app(scope, receive, send)
+
+
+app = create_app(initial_release_dir=newest_bundled_release_dir())
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1295,18 +1322,14 @@ def _knowledge_update_failure_message(action: str, exc: BaseException) -> str:
 
 def _check_github_update_metadata(
     *,
+    ensure_release: Callable[[], Any],
     data_dir: Path,
     client: GitHubReleaseClient,
-    embedding_provider: EmbeddingProvider | None,
     trust_root_path: Path | None,
 ) -> None:
     """Check content-free GitHub metadata without downloading or installing a release."""
 
-    ensure_minimal_knowledge_release(
-        data_dir,
-        embedding_provider=embedding_provider,
-        trust_root_path=trust_root_path,
-    )
+    ensure_release()
     prepared = load_pending_knowledge_update(data_dir)
     prepared_distribution = (
         prepared.get("distribution") if isinstance(prepared, dict) else None
@@ -1392,6 +1415,13 @@ def _active_release_id(
         )["knowledge_release_id"]
     except Exception:
         return ""
+
+
+def _snapshot_date(corpus: dict[str, str]) -> str:
+    """Release date (YYYY-MM-DD) shown in the snapshot label; empty if unavailable."""
+
+    match = re.match(r"\d{4}-\d{2}-\d{2}\Z", str(corpus.get("created_at_utc", ""))[:10])
+    return match.group(0) if match else ""
 
 
 def _unavailable_corpus_summary() -> dict[str, str]:

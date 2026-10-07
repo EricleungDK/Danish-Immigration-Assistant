@@ -49,6 +49,31 @@ test("first launch shows product boundary, setup, htmx, and composer", async ({ 
   await expect(page.getByRole("button", { name: "Install reviewed release" })).toHaveCount(0);
 });
 
+test("snapshot label states the release date, not kept current, and not legal advice", async ({ page }) => {
+  await page.goto("/");
+
+  const banner = page.getByRole("note", { name: "Knowledge snapshot notice" });
+  await expect(banner).toBeVisible();
+  await expect(banner).toContainText("Knowledge snapshot from 2026-07-06.");
+  await expect(banner).toContainText("Not kept current.");
+  await expect(banner).toContainText("not legal advice");
+
+  await ensureBrowserProvider(page);
+  await page.getByRole("textbox", { name: "Question" }).fill("What Danish test do I need for permanent residence?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("heading", { name: "Current Conversation" })).toBeVisible();
+
+  await expect(banner).toContainText("Knowledge snapshot from 2026-07-06.");
+  const compactTrust = page.locator(".answer > .trust-list").first();
+  await expect(compactTrust.getByText("Fresh Tomato Score: High")).toBeVisible();
+  await expect(compactTrust).toContainText(
+    "Freshness is judged as of the snapshot date (2026-07-06), not today.",
+  );
+  await page.getByRole("button", { name: /Inspect evidence: Permanent residence language requirements/i }).first().click();
+  const drawer = page.getByRole("dialog", { name: "Permanent residence language requirements" });
+  await expect(drawer).toContainText("Freshness is judged as of the snapshot date (2026-07-06), not today.");
+});
+
 test("failed provider setup preserves non-secret values in the targeted setup panel", async ({ page }) => {
   await page.goto("/");
 

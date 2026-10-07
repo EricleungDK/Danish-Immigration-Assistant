@@ -212,9 +212,30 @@ def install_knowledge_release(
             shutil.rmtree(staging_dir, ignore_errors=True)
 
 
+def newest_bundled_release_dir(
+    catalog_dir: str | Path = DEFAULT_RELEASE_CATALOG_DIR,
+) -> Path:
+    """Newest bundled release directory (by release ID) in the catalogue.
+
+    Installation still verifies the signed manifest against the trust root, so a fresh
+    install is never less verified than the fixture default.
+    """
+
+    candidates = [
+        (tuple(int(part) for part in match.groups()), path)
+        for path in Path(catalog_dir).iterdir()
+        if path.is_dir()
+        and (match := GITHUB_KNOWLEDGE_RELEASE_PATTERN.fullmatch(path.name))
+    ]
+    if not candidates:
+        raise KnowledgeReleaseError("No bundled knowledge release is available.")
+    return max(candidates, key=lambda candidate: candidate[0])[1]
+
+
 def ensure_minimal_knowledge_release(
     data_dir: str | Path,
     *,
+    release_dir: str | Path = BUNDLED_MINIMAL_RELEASE,
     embedding_provider: EmbeddingProvider | None = None,
     embedding_endpoint: str | None = None,
     trust_root_path: str | Path | None = None,
@@ -240,6 +261,7 @@ def ensure_minimal_knowledge_release(
     except FileNotFoundError:
         return install_minimal_knowledge_release(
             data_dir,
+            release_dir=release_dir,
             embedding_provider=embedding_provider,
             embedding_endpoint=embedding_endpoint,
             trust_root_path=trust_root_path,

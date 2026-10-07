@@ -10,6 +10,7 @@
   --tomato: #b8422f;
   --gold: #b98523;
   --focus: #d89417;
+  --snapshot-banner-height: 2.25rem;
 }
 
 * {
@@ -93,6 +94,25 @@ textarea:focus-visible,
   backdrop-filter: blur(12px);
 }
 
+.snapshot-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.6rem;
+  min-height: var(--snapshot-banner-height);
+  margin: 0;
+  padding: 0.3rem clamp(1rem, 4vw, 2rem);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-quiet);
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.snapshot-note {
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -171,8 +191,8 @@ textarea:focus-visible,
   display: grid;
   grid-template-areas: "rail conversation setup";
   grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr) minmax(18rem, 24rem);
-  height: calc(100dvh - 4.25rem);
-  min-height: calc(100vh - 4.25rem);
+  height: calc(100dvh - 4.25rem - var(--snapshot-banner-height));
+  min-height: calc(100vh - 4.25rem - var(--snapshot-banner-height));
 }
 
 .local-rail,
@@ -1019,7 +1039,7 @@ button:hover {
   }
 
   .conversation {
-    height: calc(100dvh - 4.25rem);
+    height: calc(100dvh - 4.25rem - var(--snapshot-banner-height));
     min-height: 0;
     padding-bottom: clamp(1rem, 4vw, 3rem);
   }

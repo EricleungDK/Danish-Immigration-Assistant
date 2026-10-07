@@ -22,6 +22,11 @@ Tomato Score are separate named indicators with reasons.
   the newest saved answer, and keep the composer visible without covering turns.
 - Inline citations open a focused evidence drawer with publisher, URL, check date,
   corpus/model identity, claim support, and trust reasons.
+- Snapshot notice (#67): every page shows "Knowledge snapshot from <release date>.
+  Not kept current. Information only, not legal advice." under the top bar, and each
+  Fresh Tomato Score carries "Freshness is judged as of the snapshot date (<date>),
+  not today." (template level, because the reason text is produced by fingerprinted
+  code). The date comes from the active release's `created_at_utc`.
 - Knowledge update discovery, signed download/review, and installation are three
   distinct user actions; never auto-install.
 

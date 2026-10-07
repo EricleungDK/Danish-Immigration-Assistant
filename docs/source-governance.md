@@ -25,6 +25,35 @@ The release-owner decision is recorded separately in
 [release-owner approval](progress/release-owner-approval-20260908.json).
 No external publication has been performed.
 
+## Snapshot mode (2026-10-07)
+
+Owner decision (#67): the knowledge release is a **demo snapshot and is not kept
+current**. There are no recurring source re-reviews, no CI signing, and no further
+GitHub releases. Review due dates are not extended: manifests still grant no overdue
+grace, so source freshness rules are unchanged.
+
+- **Evaluation time.** The running local app evaluates source freshness at the active
+  release's snapshot time (its signed manifest `created_at_utc`) instead of the wall
+  clock, for the answer path, retrieval eligibility, and trust indicators. A source is
+  still blocked if its review was already overdue at the snapshot time. The time is
+  resolved per request from the verified active release, so install and rollback take
+  effect on the next request. Mechanism: `danish_rag/snapshot_clock.py` scopes the
+  `source_freshness` clock per request with a `ContextVar`; files fingerprinted by
+  release-qualification evidence are untouched.
+- **Not applied elsewhere.** Evaluation, qualification, and monitor commands keep
+  evaluating at the wall clock (or the explicit time they pass), so evidence is not
+  silently rebased onto the snapshot.
+- **Labelling.** Every page states "Knowledge snapshot from YYYY-MM-DD. Not kept
+  current. Information only, not legal advice.", and each Fresh Tomato Score carries
+  "Freshness is judged as of the snapshot date (YYYY-MM-DD), not today." (the stored
+  reason text says "current" relative to the snapshot, not to today).
+- **Fresh install.** The app (`python -m danish_rag.local_app`) installs the newest
+  bundled signed release (`kr-2026-09-05.1`) instead of the `kr-2026-07-06.1` fixture;
+  signature, trust-root, and hash verification are unchanged. `create_app()` called
+  directly still defaults to the fixture release.
+- **Consequence.** The snapshot answers as of its release date only; anything that
+  changed in the official sources since then is not reflected.
+
 ## Recommendation
 
 Use a maintainer-owned source registry with explicit source states, two-person review for material changes, signed release manifests, and atomic user-approved installation.

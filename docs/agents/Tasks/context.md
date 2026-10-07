@@ -54,10 +54,54 @@ importing the `tests` package. Checked: with every other `danish_rag` module's c
 set to 2027-01-01 the full suite still passes. Production code is unchanged on
 purpose: its hash is bound by approved release evidence (editing it fails "approved retrieval
 implementation changed"). Fixtures and signatures unchanged.
-Not fixed here (owner decision): on a fresh install the app still installs the
-bundled `kr-2026-07-06.1`, whose sources have been overdue since 2026-10-06, so new
-users get answers without citations; `kr-2026-09-05.1` sources fall due
-2026-10-26T20:55:12Z.
+Not fixed by #64 (owner decision, resolved by snapshot mode below): on a fresh install
+the app installed the bundled `kr-2026-07-06.1`, whose sources have been overdue since
+2026-10-06, so new users got answers without citations; `kr-2026-09-05.1` sources fall
+due 2026-10-26T20:55:12Z.
+
+## Snapshot mode — 2026-10-07 (#67)
+
+Owner decision: the knowledge release is a demo snapshot, not kept current (no
+re-reviews, CI signing, or further GitHub releases). Built on #64 (PR #65), branch
+`feat/snapshot-mode`.
+
+- **Clock.** `danish_rag/snapshot_clock.py`: the running app evaluates source freshness
+  at the verified active release's manifest `created_at_utc`. It swaps
+  `source_freshness.datetime` once for a subclass whose `now()` returns the snapshot time
+  while a `snapshot_clock` scope is active (a `ContextVar`: per request, never
+  process-wide) and otherwise defers to the previous `datetime` (real, or the #64 pin).
+  `local_app._SnapshotClockMiddleware` opens the scope for every HTTP request; the time
+  is resolved lazily, once per request, from `load_active_release` (signature-verified),
+  so install and rollback apply on the next request with no stored state. Only
+  `source_freshness` is wrapped: it is the only freshness clock on the app path (answer
+  path, retrieval eligibility, trust indicators). `evidence_integrity` and
+  `grounded_flexibility_evaluation` feed evidence/qualification code only and keep the
+  wall clock, so evaluation CLIs are not rebased. Install-time indexing needs no scope:
+  eligibility is judged at retrieval time (a test pins that).
+- **Pin interaction.** Inside app requests the snapshot clock wins over the #64 pin;
+  outside requests (evidence tests, CLIs) the pin still governs. Both are fixed times
+  before the due dates, so the suites stay deterministic; tests move the pin to
+  2027-01-01 to prove requests ignore it. Fixtures, signatures, trust roots and the
+  fingerprinted files are untouched.
+- **Label.** `home.html` banner and a template-level note beside every Fresh Tomato
+  Score (answer, evidence drawer) state the snapshot date, "Not kept current" and "not
+  legal advice". Fresh Tomato reason text comes from fingerprinted `answer_pipeline.py`
+  ("current and healthy"); the note scopes it to the snapshot.
+- **Fresh install.** `knowledge_release.newest_bundled_release_dir()` picks the newest
+  bundled signed release; `ensure_minimal_knowledge_release(release_dir=...)` installs it
+  with unchanged verification. The production `local_app.app` (`python -m
+  danish_rag.local_app`) passes it, so a new install gets `kr-2026-09-05.1`.
+  `create_app()` called directly (tests, browser fixture server) keeps the
+  `kr-2026-07-06.1` fixture default via `initial_release_dir`, because many tests depend
+  on that fixture's content; `BUNDLED_MINIMAL_RELEASE` is unchanged (evaluation modules
+  use it).
+- **Known limit.** A data dir indexed by an older build keeps its index; the clock only
+  changes evaluation. Existing installs of `kr-2026-07-06.1` keep working (snapshot
+  2026-07-06) and can still update to the September release.
+- Tests: `tests/test_snapshot_mode.py` (wall clock forced to 2027-01-01: both bundled
+  releases still cite; label, wording, fresh install, tamper refusal) and a Playwright
+  label test. Also run with the pin at 2027-01-01 in the browser server and with every
+  other `danish_rag` module's `datetime` forced to 2027-01-01: green.
 
 ## Active Tasks
 
