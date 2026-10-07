@@ -197,6 +197,242 @@ test("composer does not overlap answer region from 681 through 1080 pixels", asy
   }
 });
 
+const MIN_INTRO_HEIGHT = 128; // 8rem: h2 plus the start of the boundary text stay readable
+
+async function homeLayout(page) {
+  return page.evaluate(() => {
+    const rect = (selector) => {
+      const element = document.querySelector(selector);
+      if (!(element instanceof HTMLElement)) return null;
+      const box = element.getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom };
+    };
+    const intro = document.querySelector(".empty-state");
+    const conversation = document.querySelector(".conversation");
+    return {
+      introHeight: intro.clientHeight,
+      introScrolls: intro.scrollHeight > intro.clientHeight,
+      columnScrolls: conversation.scrollHeight > conversation.clientHeight,
+      textarea: rect(".composer textarea"),
+      send: rect(".composer button[type=submit]"),
+      viewportHeight: window.innerHeight,
+    };
+  });
+}
+
+async function expectComposerUsable(page, { allowColumnScroll }) {
+  let layout = await homeLayout(page);
+  expect(layout.introHeight, "intro keeps a guaranteed visible height").toBeGreaterThanOrEqual(
+    MIN_INTRO_HEIGHT,
+  );
+  const inView = (box) => box.top >= 0 && box.bottom <= layout.viewportHeight;
+  if (!allowColumnScroll) {
+    expect(layout.columnScrolls, "column should not need scrolling").toBe(false);
+  }
+  if (!(inView(layout.textarea) && inView(layout.send))) {
+    expect(allowColumnScroll, "composer clipped outside the viewport").toBe(true);
+    expect(layout.columnScrolls, "clipped composer must be reachable by scrolling").toBe(true);
+    // Wheel over the heading: a wheel over the intro would scroll the intro instead.
+    const head = await page.locator(".conversation-head").boundingBox();
+    await page.mouse.move(head.x + 20, head.y + 10);
+    // The column scrolls first; once it is at its end the wheel chains to the page
+    // (the <=1080px layout can also extend below the fold when the top bar wraps).
+    await expect
+      .poll(async () => {
+        await page.mouse.wheel(0, 120);
+        await page.waitForTimeout(50);
+        layout = await homeLayout(page);
+        return inView(layout.textarea) && inView(layout.send);
+      })
+      .toBe(true);
+  }
+  const textarea = page.getByRole("textbox", { name: "Question" });
+  const send = page.getByRole("button", { name: /^(Send|Retry)$/ });
+  for (const locator of [textarea, send]) {
+    const box = await locator.boundingBox();
+    const hit = await locator.evaluate(
+      (el, point) => {
+        const top = document.elementFromPoint(point.x, point.y);
+        return top === el || el.contains(top);
+      },
+      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+    );
+    expect(hit, "control receives the mouse hit").toBe(true);
+  }
+  await textarea.click();
+  await expect(textarea).toBeFocused();
+  await expect(send).toBeEnabled();
+}
+
+// Hard pinned guarantee starts at 800px tall. 1280x720 sits ~5px from fitting with the
+// headless-Linux fallback fonts (DejaVu for Georgia/Segoe UI), so with real fonts it may
+// differ; it is covered by the scroll-allowed group below instead.
+for (const viewport of [
+  { width: 1024, height: 800 },
+  { width: 1081, height: 800 },
+  { width: 1280, height: 800 },
+  { width: 1366, height: 768 },
+  { width: 1440, height: 900 },
+  { width: 1600, height: 1000 },
+  { width: 1920, height: 1200 },
+]) {
+  test(`home composer stays pinned in view at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await expectComposerUsable(page, { allowColumnScroll: false });
+  });
+}
+
+for (const viewport of [
+  { width: 1280, height: 720 },
+  { width: 1366, height: 650 },
+  { width: 1280, height: 600 },
+  { width: 1081, height: 700 },
+  { width: 1024, height: 600 },
+  { width: 960, height: 540 },
+  { width: 700, height: 540 },
+]) {
+  test(`home keeps intro and reaches composer (scrolling if needed) at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await expectComposerUsable(page, { allowColumnScroll: true });
+  });
+}
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1280, height: 720 },
+  { width: 1366, height: 650 },
+  { width: 960, height: 540 },
+]) {
+  test(`home error state keeps Retry reachable at ${viewport.width}x${viewport.height}`, async ({
+    browser,
+  }) => {
+    // Without JS the form posts natively, so the server renders its real 422 composer error.
+    const context = await browser.newContext({ javaScriptEnabled: false, viewport });
+    try {
+      const page = await context.newPage();
+      await page.goto("/");
+      await page.getByRole("button", { name: "Send" }).click();
+      await expect(page.getByRole("alert")).toContainText("Enter a question before sending.");
+      await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+      await expectComposerUsable(page, { allowColumnScroll: viewport.height < 800 });
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test("home heading size is continuous across the 1080/1081px breakpoint", async ({ page }) => {
+  const sizes = [];
+  for (const width of [681, 1080, 1081]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    sizes.push(
+      await page
+        .locator("#conversation-title")
+        .evaluate((el) => Number.parseFloat(getComputedStyle(el).fontSize)),
+    );
+  }
+  expect(Math.abs(sizes[1] - sizes[2]), "no jump at the breakpoint").toBeLessThan(1);
+  for (const size of sizes) expect(size).toBeLessThan(60);
+});
+
+test("intro region is a Tab stop only where it scrolls", async ({ page }) => {
+  const stopAfterTitle = async () => {
+    // Leave the intro first: a focused intro keeps its tabindex until it blurs.
+    await page.locator("#conversation-title").focus();
+    // tabindex follows overflow once the layout settles after a resize
+    await expect
+      .poll(() =>
+        page.locator(".empty-state").evaluate(
+          (el) => el.hasAttribute("tabindex") === el.scrollHeight > el.clientHeight,
+        ),
+      )
+      .toBe(true);
+    await page.keyboard.press("Tab");
+    return page.evaluate(() => ({
+      onIntro: document.activeElement?.classList.contains("empty-state") ?? false,
+      outline: document.activeElement
+        ? getComputedStyle(document.activeElement).outlineWidth
+        : "",
+    }));
+  };
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  expect((await homeLayout(page)).introScrolls).toBe(true);
+  const scroller = await stopAfterTitle();
+  expect(scroller.onIntro, "Tab reaches the scrolling intro").toBe(true);
+  expect(scroller.outline).toBe("3px");
+  await page.keyboard.press("ArrowDown");
+  await expect
+    .poll(() => page.locator(".empty-state").evaluate((el) => el.scrollTop), {
+      message: "arrow keys scroll the focused intro",
+    })
+    .toBeGreaterThan(0);
+
+  await page.setViewportSize({ width: 1280, height: 620 });
+  const short = await stopAfterTitle();
+  expect(short.onIntro).toBe(true);
+  expect((await homeLayout(page)).introHeight).toBeGreaterThanOrEqual(MIN_INTRO_HEIGHT);
+
+  await page.setViewportSize({ width: 2560, height: 1600 });
+  await expect.poll(async () => (await homeLayout(page)).introScrolls).toBe(false);
+  expect((await stopAfterTitle()).onIntro, "no stop when nothing scrolls").toBe(false);
+
+  await page.setViewportSize({ width: 640, height: 900 });
+  expect(await page.locator(".empty-state").evaluate((el) => getComputedStyle(el).overflowY)).toBe(
+    "visible",
+  );
+  expect((await stopAfterTitle()).onIntro, "no stop at <=680px").toBe(false);
+});
+
+test("focused intro keeps its focus when it stops overflowing", async ({ page }) => {
+  // 600px tall pins the intro at its 128px minimum, so it overflows with any font metrics.
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await page.goto("/");
+  await expect.poll(async () => (await homeLayout(page)).introScrolls).toBe(true);
+  expect((await homeLayout(page)).introHeight).toBe(MIN_INTRO_HEIGHT);
+  await page.locator("#conversation-title").focus();
+  await page.keyboard.press("Tab");
+  await expect(page.locator(".empty-state")).toBeFocused();
+
+  await page.setViewportSize({ width: 2560, height: 1600 });
+  await expect.poll(async () => (await homeLayout(page)).introScrolls).toBe(false);
+  await expect(page.locator(".empty-state"), "focus must not drop to body").toBeFocused();
+
+  await page.locator("#question").focus();
+  await expect
+    .poll(() => page.locator(".empty-state").evaluate((el) => el.hasAttribute("tabindex")))
+    .toBe(false);
+});
+
+test("intro becomes a Tab stop when its content grows inside an unchanged box", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1200 });
+  await page.goto("/");
+  await page.addStyleTag({
+    content: ".empty-state { flex: 0 0 auto !important; height: 640px !important; }",
+  });
+  const intro = page.locator(".empty-state");
+  await expect.poll(() => intro.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(false);
+  await expect(intro).not.toHaveAttribute("tabindex", /.*/);
+
+  // Late font load / min-font-size style growth: box stays 640px, content outgrows it.
+  const boxBefore = await intro.evaluate((el) => el.getBoundingClientRect().height);
+  await intro.locator("p").first().evaluate((el) => {
+    el.style.fontSize = "4rem";
+  });
+  expect(await intro.evaluate((el) => el.getBoundingClientRect().height)).toBe(boxBefore);
+  await expect(intro).toHaveAttribute("tabindex", "0");
+});
+
 async function chromeLayout(page) {
   return page.evaluate(() => {
     const box = (selector) => document.querySelector(selector).getBoundingClientRect();

@@ -68,11 +68,79 @@ function cssTimeInMilliseconds(value) {
   throw new Error(`Unsupported CSS time value: ${value}`);
 }
 
+// Models a metadata check that is still running (the page polls the status endpoint)
+// right after the question is answered, as on hosts where the page-load check is slow.
+// The simulation starts only after provider setup and the answer, so it cannot stall
+// `networkidle` or be outlasted by a slow host, and the check "completes" a fixed time
+// after the page first sees it running, independent of what the test does next.
+function slowAutomaticCheck(page) {
+  const state = { running: false, clockStarted: false, completesAfterMs: 0 };
+  const asRunning = (html) =>
+    html.replace(
+      /<div\s+id="knowledge-update-content"/,
+      '<div id="knowledge-update-content" hx-get="/knowledge-updates/automatic-check-status"' +
+        ' hx-trigger="every 50ms" hx-swap="outerHTML" aria-busy="true"',
+    );
+  const respond = async (route) => {
+    const response = await route.fetch();
+    if (state.running) {
+      if (!state.clockStarted) {
+        // The check completes a fixed time after the page first sees it running.
+        state.clockStarted = true;
+        setTimeout(() => {
+          state.running = false;
+        }, state.completesAfterMs);
+      }
+      await route.fulfill({ response, body: asRunning(await response.text()) });
+    } else {
+      await route.fulfill({ response });
+    }
+  };
+  return {
+    async start(completesAfterMs) {
+      // Let the real page-load check settle first so its in-flight poll cannot swap
+      // over the simulated running state.
+      await expect(page.locator("#knowledge-update-content")).not.toHaveAttribute(
+        "aria-busy",
+        "true",
+      );
+      await page.route("**/knowledge-updates/automatic-check", respond);
+      await page.route("**/knowledge-updates/automatic-check-status", respond);
+      state.completesAfterMs = completesAfterMs;
+      state.running = true;
+      await page.evaluate(() =>
+        window.htmx.ajax("POST", "/knowledge-updates/automatic-check", {
+          target: "#knowledge-update-content",
+          swap: "outerHTML",
+          select: "#knowledge-update-content",
+        }),
+      );
+      await expect(page.locator("#knowledge-update-content")).toHaveAttribute(
+        "aria-busy",
+        "true",
+      );
+    },
+  };
+}
+
 test("eval-016-keyboard-evidence-drawer", async ({ page }) => {
+  await keyboardEvidenceDrawerJourney(page);
+});
+
+test("eval-016-keyboard-evidence-drawer while a metadata check is still polling", async ({
+  page,
+}) => {
+  const check = slowAutomaticCheck(page);
+  await keyboardEvidenceDrawerJourney(page, { afterAnswer: () => check.start(600) });
+});
+
+async function keyboardEvidenceDrawerJourney(page, { afterAnswer } = {}) {
   await page.goto("/");
   await askSupportedQuestion(page);
+  await afterAnswer?.();
   // Measure drawer requests after the independent page-load update check ends.
-  await expect(page.locator("#knowledge-updates")).not.toHaveAttribute("aria-busy", "true");
+  // aria-busy lives on the content region, not on its #knowledge-updates wrapper.
+  await expect(page.locator("#knowledge-update-content")).not.toHaveAttribute("aria-busy", "true");
 
   const observedRequests = [];
   page.on("request", (request) => observedRequests.push(request.url()));
@@ -115,7 +183,7 @@ test("eval-016-keyboard-evidence-drawer", async ({ page }) => {
   recordObservations("trust_has_text_labels");
   expect(observedRequests).toEqual([]);
   recordObservations("drawer_open_has_no_request");
-});
+}
 
 test("eval-017-responsive-reduced-motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });

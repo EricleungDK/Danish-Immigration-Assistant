@@ -143,6 +143,33 @@ re-reviews, CI signing, or further GitHub releases). Built on #64 (PR #65), bran
 - Completed-review-to-production-registry/release authoring with semantic chunks,
   multilingual source retrieval, exact extraction provenance, isolated
   pre-activation retrieval qualification, and candidate rollback verification.
+- 2026-10-01 GH-59: home composer no longer clipped on desktop or 681-1080px.
+  Causes: home `h1` sized by viewport width wrapped to ~6 lines in the narrow centre
+  column, and `.empty-state` (min-height auto) could not shrink, so `.composer` fell
+  outside the `overflow: hidden` `.conversation`. Fix (`app.css`, `app.js`): composer
+  stays pinned; `.empty-state` shrinks/scrolls above it but keeps `min-height: 8rem`
+  (128px: h2 + start of boundary text); if column cannot fit both, `.conversation`
+  (now `overflow-y: auto`) scrolls, so nothing is clipped. Home `h1` is column-sized
+  (`clamp(2.2rem, min(3.4vw, 7vh), 3.6rem)`) for all widths >680px (continuous at
+  1080/1081); home padding/head margin shrink with height. `.empty-state` gets
+  `tabindex="0"` from `app.js` only while it overflows (ResizeObserver on the intro
+  and its child blocks, re-run after htmx swap; a focused intro keeps tabindex until
+  blur); none at <=680px or when it fits. Measured floor
+  (headless Chromium on Linux, where Georgia/Aptos/Segoe UI fall back to DejaVu, so
+  real fonts on Windows may differ): plain home keeps the composer pinned with intro
+  >=128px from 800px tall at 1024-1920px wide (tested widths; hard test guarantee; 1280x720 fits by only ~5px, intro
+  133px, so it is tested as scroll-allowed); shorter (1366x650, 1280x600, 960x540) or
+  with a composer error below ~800px tall the column scrolls to reach the composer.
+  Browser tests: pinned 1024x800..1920x1200, short 1280x720..700x540, no-JS real 422
+  error, heading continuity, Tab-stop/focus-retention/content-growth behaviour.
+  Also fixed flaky eval-016 (guard waited on `#knowledge-updates` instead of
+  `#knowledge-update-content`, so the page-load check poll could land in the
+  recorded window; added a deterministic variant: after the answer, a simulated
+  metadata check keeps polling until it completes on its own clock).
+- 2026-10-01 (#60): capability/runtime probe now sends `think: false` like the answer
+  path. Without it cold `gemma4:12b` on Ollama 0.34.0 burned the token budget on
+  thinking (empty content, `done_reason=length`, ~86 s) and failed setup. Live: cold
+  3/3 pass (~6-7 s), warm ~1 s. No threshold/schema/timeout changed.
 
 ## Known Issues
 

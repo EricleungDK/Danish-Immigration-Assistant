@@ -46,6 +46,7 @@ a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
+.empty-state:focus-visible,
 #conversation-title:focus,
 .evidence-drawer [tabindex="-1"]:focus {
   outline: 3px solid var(--focus);
@@ -434,7 +435,8 @@ textarea:focus-visible,
   height: 100%;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   flex-direction: column;
   padding: clamp(1rem, 4vw, 3rem);
 }
@@ -486,7 +488,13 @@ h1 {
 }
 
 .empty-state {
+  /* Shrinks and scrolls above the pinned composer, but never below 8rem: the
+     heading and the start of the boundary text stay readable. When the column
+     cannot fit both, .conversation scrolls instead of clipping either. */
+  min-height: 8rem;
   max-width: 58rem;
+  flex: 1 1 auto;
+  overflow-y: auto;
 }
 
 .empty-state h2,
@@ -1027,6 +1035,25 @@ button:hover {
   display: block;
 }
 
+@media (min-width: 681px) {
+  /* The fixed-height conversation column cannot afford the viewport-wide h1
+     size (it wraps to many lines in the three-column layout and pushes the
+     composer out). One rule for the whole 681px+ range keeps it continuous
+     across the 1080/1081px breakpoint. */
+  .conversation-head h1:not(.conversation-title-active) {
+    font-size: clamp(2.2rem, min(3.4vw, 7vh), 3.6rem);
+  }
+
+  /* Home view only: trim vertical chrome on short viewports. */
+  .conversation:has(> .empty-state) {
+    padding-block: clamp(1rem, 3vh, 3rem);
+  }
+
+  .conversation:has(> .empty-state) .conversation-head {
+    margin-bottom: clamp(1rem, 3.5vh, 3rem);
+  }
+}
+
 @media (max-width: 1080px) {
   .app-shell {
     grid-template-areas:
@@ -1044,13 +1071,9 @@ button:hover {
     padding-bottom: clamp(1rem, 4vw, 3rem);
   }
 
-  .turn-stack,
-  .empty-state {
+  .turn-stack {
     min-height: 0;
     overflow-y: auto;
-  }
-
-  .turn-stack {
     flex: 1 1 auto;
   }
 

@@ -117,6 +117,7 @@ class OllamaClient:
                 "messages": messages,
                 "stream": False,
                 "format": schema,
+                "think": False,
                 "options": dict(OLLAMA_DETERMINISTIC_CHAT_OPTIONS),
             },
         )

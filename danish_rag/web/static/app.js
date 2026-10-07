@@ -64,6 +64,49 @@ if ("ResizeObserver" in window) {
   window.addEventListener("resize", syncChromeHeight);
 }
 
+// The home intro is a scroller only when it overflows; make it a keyboard stop
+// exactly then (axe scrollable-region-focusable) and never when it cannot scroll.
+// A focused intro keeps its tabindex until it loses focus so focus never drops to body.
+let introObserver;
+const blurWatchedIntros = new WeakSet();
+
+function syncIntroFocus(intro) {
+  if (intro.scrollHeight > intro.clientHeight) {
+    intro.setAttribute("tabindex", "0");
+  } else if (document.activeElement !== intro) {
+    intro.removeAttribute("tabindex");
+  }
+}
+
+function syncCurrentIntro() {
+  const current = document.querySelector(".empty-state");
+  if (current instanceof HTMLElement) {
+    syncIntroFocus(current);
+  }
+}
+
+function watchIntroScroller() {
+  introObserver?.disconnect();
+  const intro = document.querySelector(".empty-state");
+  if (!(intro instanceof HTMLElement)) {
+    return;
+  }
+  introObserver ??= new ResizeObserver(syncCurrentIntro);
+  syncIntroFocus(intro);
+  if (!blurWatchedIntros.has(intro)) {
+    blurWatchedIntros.add(intro);
+    intro.addEventListener("blur", () => syncIntroFocus(intro));
+  }
+  // Observe the box and its content blocks: content can outgrow a box whose size
+  // is unchanged (late font load, minimum font size).
+  introObserver.observe(intro);
+  for (const child of intro.children) {
+    introObserver.observe(child);
+  }
+}
+
+watchIntroScroller();
+
 document.addEventListener("click", (event) => {
   const trigger = event.target.closest("[data-evidence-target]");
   if (!trigger) {
@@ -135,6 +178,7 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
     if (conversation instanceof HTMLElement) {
       focusConversationTitle(conversation, { preventScroll: true });
       revealLatestTurn(conversation);
+      watchIntroScroller();
     }
   }
 
