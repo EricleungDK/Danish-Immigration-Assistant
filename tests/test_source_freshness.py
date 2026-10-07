@@ -1,9 +1,16 @@
 import unittest
+from datetime import datetime, timezone
 import tempfile
 
 from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.retrieval import HybridRetriever
+import danish_rag.source_freshness as source_freshness_module
 from danish_rag.source_freshness import assess_source_freshness
+from tests.fixture_clock import (
+    FIXTURE_EVALUATION_TIME_UTC,
+    pin_freshness_clock,
+    unpin_freshness_clock,
+)
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 
 
@@ -24,6 +31,29 @@ def source_evidence(
         "approval_state": "approved",
         "fresh_tomato_inputs": inputs,
     }
+
+
+class FreshnessClockTests(unittest.TestCase):
+    """#64: fixture freshness must not expire with the wall clock."""
+
+    def test_suite_evaluates_freshness_at_the_pinned_fixture_time(self) -> None:
+        self.assertEqual(
+            source_freshness_module.datetime.now(timezone.utc), FIXTURE_EVALUATION_TIME_UTC
+        )
+        # The bundled fixture release's sources are due 2026-10-06T12:00:00Z.
+        self.assertTrue(
+            assess_source_freshness(source_evidence(due="2026-10-06T12:00:00Z")).answer_eligible
+        )
+
+    def test_unpinned_freshness_uses_the_wall_clock(self) -> None:
+        unpin_freshness_clock()
+        try:
+            self.assertIs(source_freshness_module.datetime, datetime)
+            self.assertFalse(
+                assess_source_freshness(source_evidence(due="2000-01-01T00:00:00Z")).answer_eligible
+            )
+        finally:
+            pin_freshness_clock()
 
 
 class SourceFreshnessTests(unittest.TestCase):
