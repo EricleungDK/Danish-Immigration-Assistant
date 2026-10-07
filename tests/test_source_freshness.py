@@ -1,4 +1,6 @@
+import json
 import unittest
+from pathlib import Path
 from datetime import datetime, timezone
 import tempfile
 
@@ -45,13 +47,41 @@ class FreshnessClockTests(unittest.TestCase):
             assess_source_freshness(source_evidence(due="2026-10-06T12:00:00Z")).answer_eligible
         )
 
+    def test_every_wall_clock_freshness_input_is_pinned(self) -> None:
+        # Callers that pass evaluated_at_utc get it from these clocks.
+        import danish_rag.evidence_integrity as evidence_integrity
+        import danish_rag.grounded_flexibility_evaluation as grounded_evaluation
+
+        pinned = FIXTURE_EVALUATION_TIME_UTC.isoformat().replace("+00:00", "Z")
+        self.assertEqual(evidence_integrity.utc_now_seconds(), pinned)
+        self.assertEqual(grounded_evaluation._utc_now(), pinned)
+
+    def test_pinned_time_precedes_every_fixture_release_review_due_date(self) -> None:
+        releases = Path(__file__).resolve().parents[1] / "data" / "knowledge_releases"
+        for manifest_path in releases.glob("*/manifest.json"):
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            created = datetime.fromisoformat(manifest["created_at_utc"].replace("Z", "+00:00"))
+            self.assertLessEqual(created, FIXTURE_EVALUATION_TIME_UTC, manifest_path.parent.name)
+            for source in manifest["sources"]:
+                due = (source.get("fresh_tomato_inputs") or {}).get("next_review_due_utc")
+                if due and due > "2026-10-01":  # earlier dues are deliberately overdue fixtures
+                    self.assertLess(
+                        FIXTURE_EVALUATION_TIME_UTC,
+                        datetime.fromisoformat(due.replace("Z", "+00:00")),
+                        manifest_path.parent.name,
+                    )
+
+    def test_pinned_clock_keeps_real_datetimes_recognised(self) -> None:
+        self.assertIsInstance(datetime(2026, 10, 7, tzinfo=timezone.utc), source_freshness_module.datetime)
+
     def test_unpinned_freshness_uses_the_wall_clock(self) -> None:
+        # Due between the pinned time and today: eligible when pinned, overdue on the wall clock.
+        evidence = source_evidence(due="2026-10-03T00:00:00Z")
+        self.assertTrue(assess_source_freshness(evidence).answer_eligible)
         unpin_freshness_clock()
         try:
             self.assertIs(source_freshness_module.datetime, datetime)
-            self.assertFalse(
-                assess_source_freshness(source_evidence(due="2000-01-01T00:00:00Z")).answer_eligible
-            )
+            self.assertFalse(assess_source_freshness(evidence).answer_eligible)
         finally:
             pin_freshness_clock()
 
