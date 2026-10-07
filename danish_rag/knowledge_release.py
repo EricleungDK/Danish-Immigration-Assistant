@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -35,6 +36,7 @@ from .release_trust import ReleaseTrustError, verify_manifest_signature
 from .semantic_chunks import is_valid_stable_identity, stable_chunk_id
 
 
+LOGGER = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLED_MINIMAL_RELEASE = ROOT / "data" / "knowledge_releases" / "kr-2026-07-06.1"
 DEFAULT_RELEASE_CATALOG_DIR = ROOT / "data" / "knowledge_releases"
@@ -248,7 +250,10 @@ def newest_bundled_release_dir(
                 application_version=application_version,
                 trust_root_path=trust_root_path,
             )
-        except Exception:
+        except (ValueError, OSError) as exc:
+            # Verification failures only (KnowledgeReleaseError / ReleaseTrustError / bad
+            # JSON are ValueErrors); anything else is a bug and surfaces.
+            LOGGER.warning("Skipping bundled release %s: %s", path.name, exc)
             continue
         return path
     return BUNDLED_MINIMAL_RELEASE

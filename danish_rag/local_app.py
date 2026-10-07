@@ -13,7 +13,6 @@ from urllib.parse import urlparse
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
-from starlette.concurrency import run_in_threadpool
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from .answer_pipeline import (
@@ -63,7 +62,6 @@ from .provider_setup import (
 from .retrieval import HybridRetriever, RetrievalError
 from .runtime_policy import load_runtime_policy
 from .snapshot_clock import (
-    SnapshotResolver,
     SnapshotState,
     current_snapshot_state,
     snapshot_clock,
@@ -126,20 +124,23 @@ def create_app(
         initial_release_dir if callable(initial_release_dir) else Path(initial_release_dir)
     )
 
-    app.add_middleware(
-        _SnapshotClockMiddleware,
-        resolve=SnapshotResolver(resolved_data_dir, trust_root_path=resolved_trust_root_path),
-    )
+    app.add_middleware(_SnapshotClockMiddleware)
 
     def ensure_release() -> dict[str, Any]:
-        release = ensure_minimal_knowledge_release(
-            resolved_data_dir,
-            release_dir=app.state.initial_release_dir,
-            embedding_provider=embedding_provider,
-            trust_root_path=resolved_trust_root_path,
-        )
-        # The release this request actually uses (also right after a fresh install).
-        current_snapshot_state().adopt(release["manifest"])
+        state = current_snapshot_state()
+        try:
+            release = ensure_minimal_knowledge_release(
+                resolved_data_dir,
+                release_dir=app.state.initial_release_dir,
+                embedding_provider=embedding_provider,
+                trust_root_path=resolved_trust_root_path,
+            )
+        except Exception as exc:
+            state.mark_unavailable(exc)
+            raise
+        # Snapshot state comes only from the verified release this request uses (also
+        # right after a fresh install).
+        state.adopt(release["manifest"])
         return release
 
     if (
@@ -556,7 +557,7 @@ def create_app(
             "reveal_latest_turn": reveal_latest_turn,
             "corpus": corpus,
             "corpus_error": corpus_error,
-            "snapshot_status": _snapshot_status(current_snapshot_state()),
+            "snapshot_status": current_snapshot_state().status,
             "snapshot_date": (
                 current_snapshot_state().snapshot.date
                 if current_snapshot_state().snapshot
@@ -1094,13 +1095,18 @@ def create_app(
                 )
         try:
             ensure_release()
-            retriever = HybridRetriever.from_data_dir(
-                resolved_data_dir,
-                embedding_provider=embedding_provider,
-                trust_root_path=resolved_trust_root_path,
-            )
-            # Judge freshness at the snapshot of the release the retriever loaded.
             snapshot_state = current_snapshot_state()
+            try:
+                retriever = HybridRetriever.from_data_dir(
+                    resolved_data_dir,
+                    embedding_provider=embedding_provider,
+                    trust_root_path=resolved_trust_root_path,
+                )
+            except Exception as exc:
+                snapshot_state.mark_unavailable(exc)
+                raise
+            # The data judged is the data loaded: follow the retriever's verified release
+            # if it differs from the one ensure_release() returned (a concurrent install).
             snapshot_state.adopt(retriever.manifest)
             result = AnswerService(
                 retriever=retriever,
@@ -1206,6 +1212,7 @@ def create_app(
             "corpus": corpus,
             "corpus_error": corpus_error,
             # Explicit qualifier: freshness is judged at this snapshot, not today.
+            "snapshot_status": current_snapshot_state().status,
             "knowledge_snapshot": current_snapshot_state().metadata(),
         }
 
@@ -1213,26 +1220,21 @@ def create_app(
 
 
 class _SnapshotClockMiddleware:
-    """Give every HTTP request one snapshot resolution and its clock scope (#67).
+    """Give every HTTP request its own `SnapshotState` and clock scope (#67).
 
-    The active release is read at most once (verified again only when the active pointer
-    changes), at request start and off the event loop, into a
-    `SnapshotState` that the freshness clock, the UI label and stored turns all share.
-    Static assets skip the read.
+    The state starts empty (wall clock). It is filled only from the verified release the
+    handler actually loads (`ensure_release()`, the retriever's manifest); this middleware
+    does no release I/O.
     """
 
-    def __init__(self, app: Any, *, resolve: Callable[[SnapshotState], None]) -> None:
+    def __init__(self, app: Any) -> None:
         self.app = app
-        self.resolve = resolve
 
     async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        state = SnapshotState()
-        if not str(scope.get("path", "")).startswith(("/static/", "/vendor/")):
-            await run_in_threadpool(self.resolve, state)
-        with snapshot_clock(state):
+        with snapshot_clock(SnapshotState()):
             await self.app(scope, receive, send)
 
 
@@ -1442,15 +1444,6 @@ def _active_release_id(
         )["knowledge_release_id"]
     except Exception:
         return ""
-
-
-def _snapshot_status(state: SnapshotState) -> str:
-    """Label state: "snapshot" (bundled release judged at its date), "unavailable"
-    (active release unreadable, wall clock in use) or "none" (not snapshot mode)."""
-
-    if state.snapshot:
-        return "snapshot"
-    return "unavailable" if state.unavailable else "none"
 
 
 def _unavailable_corpus_summary() -> dict[str, str]:

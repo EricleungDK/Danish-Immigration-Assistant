@@ -78,13 +78,17 @@ re-reviews, CI signing, or further GitHub releases). Built on #64 (PR #65), bran
   path); `evidence_integrity` / `grounded_flexibility_evaluation` keep the wall clock, so
   evaluation CLIs are not rebased. Install-time indexing needs no scope (eligibility is
   judged at retrieval time; a test pins that).
-- **One resolution per request (D2).** `local_app._SnapshotClockMiddleware` reads the
-  active release once at request start (off the event loop, skipped for `/static/` and
-  `/vendor/`) into a `SnapshotState`; `now()` only reads that state. Handlers re-adopt
-  from what they loaded (`ensure_release()` result; the retriever's manifest in `ask`),
-  so the clock, the label and the stored turn agree even if an install lands mid-request.
-  Unreadable active release: wall clock, warning logged, banner says "Snapshot date
-  unavailable". No active release (fresh install): not an error, adopted after install.
+- **State from the verified release only (D2, revised).** `local_app._SnapshotClockMiddleware`
+  gives each request an empty `SnapshotState` (wall clock) and does no release I/O; the
+  earlier request-start read and stat-keyed cache were removed (the extra verification
+  slowed requests and could not see corpus/index/trust-root changes). The state is filled
+  only by `ensure_release()`'s verified result and, in `/ask`, by the retriever's manifest
+  (the data judged is the data loaded, so label and stored turn follow it if a concurrent
+  install changed the release). If either load fails the state becomes "unavailable" for
+  the rest of the request (sticky): wall clock, warning logged, banner "Snapshot date
+  unavailable", `/status` `snapshot_status: "unavailable"`. Bundled identity is the
+  sha256 of canonical JSON (type-strict: 1, 1.0 and true differ; NaN refused), memoized per
+  bundled release id and invalidated when the shipped manifest file changes.
 - **Pin interaction.** Inside app requests the snapshot clock wins over the #64 pin;
   outside requests (evidence tests, CLIs) the pin still governs. Both are fixed times
   before the due dates, so the suites stay deterministic; tests move the pin to
@@ -94,14 +98,16 @@ re-reviews, CI signing, or further GitHub releases). Built on #64 (PR #65), bran
   stores `knowledge_snapshot` {release_id, snapshot_date, kept_current: false} in its
   answer JSON (so exports carry it per turn); the template note beside Fresh Tomato
   Scores renders from the turn's own metadata, so older turns and non-bundled releases
-  show none. `/status` has top-level `knowledge_snapshot`. Fresh Tomato reason text comes
+  show none. `/status` has top-level `snapshot_status` (`snapshot`/`unavailable`/`none`) and `knowledge_snapshot`. Fresh Tomato reason text comes
   from fingerprinted `answer_pipeline.py` ("current and healthy"); the note scopes it.
   Layout: `app.js` sets `--chrome-height` to the measured top bar + banner height
   (replaces the fixed 4.25rem; banner wraps at narrow widths).
 - **Fresh install.** `knowledge_release.newest_bundled_release_dir(catalog, trust_root_path=,
   application_version=)` returns the newest bundled release that passes
   `verify_knowledge_release` (falls back to older verified ones, then
-  `BUNDLED_MINIMAL_RELEASE`; never raises on a missing catalogue).
+  `BUNDLED_MINIMAL_RELEASE`; never raises on a missing catalogue). Skips only verification
+  failures (`ValueError`/`OSError`) and logs a WARNING naming the release and reason;
+  unexpected errors surface.
   `ensure_minimal_knowledge_release(release_dir=)` accepts a callable resolved only when a
   fresh install is needed. The production `local_app.app` and the documented launch
   command (`docs/release-qualification.md`) pass `initial_release_dir=
@@ -111,8 +117,7 @@ re-reviews, CI signing, or further GitHub releases). Built on #64 (PR #65), bran
   `BUNDLED_MINIMAL_RELEASE` is unchanged (evaluation modules use it).
 - **Known limits.** A data dir indexed by an older build keeps its index; the clock only
   changes evaluation. Existing installs of `kr-2026-07-06.1` keep working (snapshot
-  2026-07-06) and can still update to the September release. The recovery write in
-  `load_active_release` can now also run from the middleware read (same as handlers).
+  2026-07-06) and can still update to the September release.
 - Tests: `tests/test_snapshot_mode.py` (wall clock forced to 2027-01-01: both bundled
   releases still cite; label states, per-turn notes, race, gate, fresh install, tamper
   refusal) and Playwright label/layout tests (360x740, 390x844, 681-1280). Also run with

@@ -43,13 +43,14 @@ grace, so source freshness rules are unchanged.
   block-after dates still fire, and no snapshot label is shown for it.
 - **Mechanism.** `danish_rag/snapshot_clock.py` scopes the `source_freshness` clock per
   request with a `ContextVar`; files fingerprinted by release-qualification evidence are
-  untouched. The active release is read (signature-verified) once per request, at request
-  start; the same per-request state drives the clock, the label and the stored turn, and
-  the answer path re-binds it to the release the retriever actually loaded, so a
-  concurrent install cannot judge one release at another's time. Install and rollback
-  apply on the next request. If the active release cannot be read, freshness uses the
-  wall clock, a warning is logged, and the UI says "Snapshot date unavailable" instead of
-  claiming a snapshot basis.
+  untouched. The request's snapshot state is derived only from the signature-verified
+  release the request actually uses: the result of `ensure_release()` and, when
+  answering, the retriever's manifest. The data judged is the data loaded, so the clock,
+  the label and the stored turn agree, and a concurrent install cannot judge one release
+  at another's time. The mechanism adds no verification or release I/O of its own. Before
+  a release is verified in a request, and whenever loading fails, freshness uses the wall
+  clock; on failure a warning is logged and the UI says "Snapshot date unavailable"
+  instead of claiming a snapshot basis. Install and rollback apply on the next request.
 - **Not applied elsewhere.** Evaluation, qualification, and monitor commands keep
   evaluating at the wall clock (or the explicit time they pass), so evidence is not
   silently rebased onto the snapshot.
@@ -60,7 +61,9 @@ grace, so source freshness rules are unchanged.
   the snapshot date (YYYY-MM-DD), not today." beside the Fresh Tomato Score (the stored
   reason text says "current" relative to the snapshot, not to today). Older turns, and
   turns from non-bundled releases, show no such note. `GET /status` and the conversation
-  JSON exports carry the same `knowledge_snapshot` metadata (absent or null otherwise).
+  JSON exports carry the same `knowledge_snapshot` metadata (absent or null otherwise);
+  `/status` also has `snapshot_status` (`snapshot`, `unavailable` or `none`) so a failed
+  load is distinguishable from a release that is not in snapshot mode.
 - **Fresh install.** The app (`python -m danish_rag.local_app`, and the documented launch
   command, which passes `initial_release_dir=newest_bundled_release_dir`) installs the
   newest bundled release that fully verifies (signature, hashes, schema, minimum

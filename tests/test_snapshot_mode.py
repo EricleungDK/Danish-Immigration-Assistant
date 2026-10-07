@@ -264,87 +264,96 @@ class SnapshotResolutionTests(unittest.TestCase):
         with patch.object(snapshot_clock, "BUNDLED_CATALOG_DIR", self.root / "none"):
             self.assertIsNone(snapshot_clock.bundled_snapshot(self.manifest(SEPTEMBER_RELEASE)))
 
-    def test_resolve_active_follows_the_active_release_with_one_read(self):
-        from danish_rag import snapshot_clock
-        from danish_rag.snapshot_clock import SnapshotState
+    def test_state_starts_unresolved_so_the_wall_clock_applies(self):
+        from danish_rag.snapshot_clock import SnapshotState, snapshot_clock
 
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
         state = SnapshotState()
-        state.resolve_active(self.data_dir)
-        self.assertEqual(state.time, JULY_SNAPSHOT)
-        install_knowledge_release(
-            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
-        )
-        reads = []
-        real = snapshot_clock.load_active_release
-        with patch.object(
-            snapshot_clock,
-            "load_active_release",
-            lambda *a, **k: reads.append(1) or real(*a, **k),
-        ):
-            state.resolve_active(self.data_dir)
-            for _ in range(5):
-                state.time  # reading the time never touches the release
-        self.assertEqual((state.time, len(reads)), (SEPTEMBER_SNAPSHOT, 1))
+        self.assertEqual((state.snapshot, state.unavailable, state.time), (None, False, None))
+        with late_wall_clock(), snapshot_clock(state):
+            self.assertEqual(now_utc(), LATE_WALL_CLOCK)
 
-    def test_resolver_reuses_a_verified_resolution_until_the_pointer_changes(self):
-        from danish_rag import snapshot_clock
-        from danish_rag.snapshot_clock import SnapshotResolver, SnapshotState
-
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
-        resolver = SnapshotResolver(self.data_dir)
-        reads = []
-        real = snapshot_clock.load_active_release
-        with patch.object(
-            snapshot_clock, "load_active_release", lambda *a, **k: reads.append(1) or real(*a, **k)
-        ):
-            first, second = SnapshotState(), SnapshotState()
-            resolver(first)
-            resolver(second)
-            self.assertEqual((first.time, second.time, len(reads)), (JULY_SNAPSHOT, JULY_SNAPSHOT, 1))
-            install_knowledge_release(
-                self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
-            )
-            third = SnapshotState()
-            resolver(third)
-            self.assertEqual((third.time, len(reads)), (SEPTEMBER_SNAPSHOT, 2))
-            # Failures are never cached.
-            (self.data_dir / "active-release.json").write_text("{not json", encoding="utf-8")
-            with self.assertLogs("danish_rag.snapshot_clock", "WARNING"):
-                fourth = SnapshotState()
-                resolver(fourth)
-            self.assertTrue(fourth.unavailable)
-
-    def test_no_active_release_is_not_snapshot_mode_and_not_an_error(self):
+    def test_mark_unavailable_logs_a_warning_and_drops_any_snapshot(self):
         from danish_rag.snapshot_clock import SnapshotState
 
         state = SnapshotState()
-        with self.assertNoLogs("danish_rag.snapshot_clock", "WARNING"):
-            state.resolve_active(self.data_dir)
-        self.assertEqual((state.snapshot, state.unavailable), (None, False))
-
-    def test_unreadable_active_release_is_unavailable_and_logged(self):
-        from danish_rag.snapshot_clock import SnapshotState
-
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
-        (self.data_dir / "active-release.json").write_text("{not json", encoding="utf-8")
-        state = SnapshotState()
-        with self.assertLogs("danish_rag.snapshot_clock", "WARNING"):
-            state.resolve_active(self.data_dir)
+        state.adopt(self.manifest(BUNDLED_MINIMAL_RELEASE))
+        with self.assertLogs("danish_rag.snapshot_clock", "WARNING") as logs:
+            state.mark_unavailable(OSError("index unreadable"))
+        self.assertIn("index unreadable", "\n".join(logs.output))
         self.assertEqual((state.snapshot, state.unavailable), (None, True))
         self.assertIsNone(state.metadata())
+        self.assertEqual(state.status, "unavailable")
 
-    def test_adopt_replaces_a_previous_resolution_and_clears_unavailable(self):
+    def test_status_names_the_three_states(self):
         from danish_rag.snapshot_clock import SnapshotState
 
         state = SnapshotState()
-        state.unavailable = True
+        self.assertEqual(state.status, "none")
         state.adopt(self.manifest(BUNDLED_MINIMAL_RELEASE))
-        self.assertEqual((state.time, state.unavailable), (JULY_SNAPSHOT, False))
+        self.assertEqual(state.status, "snapshot")
+
+    def test_snapshot_module_does_no_release_io_of_its_own(self):
+        from danish_rag import snapshot_clock
+
+        self.assertFalse(hasattr(snapshot_clock, "load_active_release"))
+        self.assertFalse(hasattr(snapshot_clock, "SnapshotResolver"))
+        self.assertFalse(hasattr(snapshot_clock.SnapshotState, "resolve_active"))
+
+    def test_bundled_manifest_digests_are_memoized_until_the_file_changes(self):
+        from danish_rag import snapshot_clock
+
+        catalog = self.root / "catalog"
+        shutil.copytree(SEPTEMBER_RELEASE, catalog / "kr-2026-09-05.1")
+        manifest = self.manifest(SEPTEMBER_RELEASE)
+        reads = []
+        real = Path.read_text
+        counting = lambda path, *a, **k: (reads.append(path.name), real(path, *a, **k))[1]
+        with patch.object(snapshot_clock, "BUNDLED_CATALOG_DIR", catalog), patch.object(
+            Path, "read_text", counting
+        ):
+            self.assertIsNotNone(snapshot_clock.bundled_snapshot(manifest))
+            first = reads.count("manifest.json")
+            for _ in range(5):
+                self.assertIsNotNone(snapshot_clock.bundled_snapshot(manifest))
+            self.assertEqual(reads.count("manifest.json"), first)  # dict lookups only
+            # The bundled file changing invalidates the memo.
+            path = catalog / "kr-2026-09-05.1" / "manifest.json"
+            path.write_text(path.read_text(encoding="utf-8").replace("{", '{"probe": 1,', 1), encoding="utf-8")
+            self.assertIsNone(snapshot_clock.bundled_snapshot(manifest))
+
+    def test_manifest_identity_is_strict_about_json_types(self):
+        from danish_rag import snapshot_clock
+
+        catalog = self.root / "catalog"
+        shutil.copytree(SEPTEMBER_RELEASE, catalog / "kr-2026-09-05.1")
+        path = catalog / "kr-2026-09-05.1" / "manifest.json"
+        genuine = {**self.manifest(SEPTEMBER_RELEASE), "probe": 1}
+        path.write_text(json.dumps(genuine), encoding="utf-8")
+        with patch.object(snapshot_clock, "BUNDLED_CATALOG_DIR", catalog):
+            self.assertIsNotNone(snapshot_clock.bundled_snapshot(genuine))
+            for name, probe in {"float": 1.0, "bool": True, "nan": float("nan"), "string": "1"}.items():
+                with self.subTest(name):
+                    self.assertIsNone(snapshot_clock.bundled_snapshot({**genuine, "probe": probe}))
+
+    def test_adopt_replaces_a_previous_resolution(self):
+        from danish_rag.snapshot_clock import SnapshotState
+
+        state = SnapshotState()
+        state.adopt(self.manifest(BUNDLED_MINIMAL_RELEASE))
+        self.assertEqual(state.time, JULY_SNAPSHOT)
         state.adopt(self.manifest(SEPTEMBER_RELEASE))
         self.assertEqual(state.time, SEPTEMBER_SNAPSHOT)
         state.adopt({"knowledge_release_id": "kr-2030-01-01.1"})
         self.assertEqual((state.snapshot, state.unavailable), (None, False))
+
+    def test_a_load_failure_is_sticky_for_the_rest_of_the_request(self):
+        from danish_rag.snapshot_clock import SnapshotState
+
+        state = SnapshotState()
+        with self.assertLogs("danish_rag.snapshot_clock", "WARNING"):
+            state.mark_unavailable(OSError("boom"))
+        state.adopt(self.manifest(BUNDLED_MINIMAL_RELEASE))
+        self.assertEqual((state.snapshot, state.status), (None, "unavailable"))
 
     def test_offsetless_or_malformed_snapshot_times_are_rejected(self):
         from danish_rag.snapshot_clock import parse_snapshot_time
@@ -550,7 +559,8 @@ class SnapshotLabelTests(AppTestCase):
             self.assertNotIn("Knowledge snapshot from", page)
             self.assertNotIn("Snapshot date unavailable", page)
             self.assertIn("not legal advice", page)
-            self.assertIsNone((await client.get("/status")).json()["knowledge_snapshot"])
+            status = (await client.get("/status")).json()
+            self.assertEqual((status["snapshot_status"], status["knowledge_snapshot"]), ("none", None))
             # Real-time hard block still fires: past the due date, no sources.
             with late_wall_clock():
                 blocked = await self.ask(client)
@@ -589,7 +599,7 @@ class SnapshotLabelTests(AppTestCase):
 
 
 class SnapshotConsistencyTests(AppTestCase):
-    """One resolution per request drives the clock, the label and the stored turn."""
+    """The snapshot comes only from the verified release the request actually loaded."""
 
     async def test_snapshot_follows_the_release_the_retriever_loaded(self):
         install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
@@ -617,31 +627,77 @@ class SnapshotConsistencyTests(AppTestCase):
             "knowledge_snapshot"
         ]
 
-    async def test_active_release_is_read_at_most_once_per_request_and_not_for_static_files(self):
-        from danish_rag import snapshot_clock
+    async def test_snapshot_mode_adds_no_release_verification_to_a_request(self):
+        from danish_rag import knowledge_release, snapshot_clock
 
         install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
         client = self.make_client()
-        reads = []
-        real = snapshot_clock.load_active_release
+        calls = []
+        real_load = knowledge_release.load_active_release
+        real_verify = knowledge_release.verify_knowledge_release
+
+        def counting(real, name):
+            return lambda *a, **k: (calls.append(name), real(*a, **k))[1]
+
         with patch.object(
-            snapshot_clock, "load_active_release", lambda *a, **k: reads.append(1) or real(*a, **k)
-        ):
-            await client.get("/static/app.css")
-            self.assertEqual(len(reads), 0)
-            with late_wall_clock():
-                await self.ask(client)
-            self.assertEqual(len(reads), 1)
-            # Unchanged active release: the verified resolution is reused.
-            await client.get("/status")
-            self.assertEqual(len(reads), 1)
-            # An install/rollback changes the pointer, so the next request reads again.
-            install_knowledge_release(
-                self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+            knowledge_release, "load_active_release", counting(real_load, "load")
+        ), patch.object(
+            snapshot_clock, "load_active_release", counting(real_load, "load"), create=True
+        ), patch.object(knowledge_release, "verify_knowledge_release", counting(real_verify, "verify")):
+            # Routes that touch no release do no release I/O at all.
+            for path in ("/static/app.css", "/vendor/htmx.min.js", "/conversations/export.json"):
+                await client.get(path)
+            self.assertEqual(calls, [])
+            # /status does exactly the verification its own work needs (no extra read).
+            knowledge_release.ensure_minimal_knowledge_release(
+                self.data_dir, embedding_provider=self.provider
             )
-            status = (await client.get("/status")).json()
-            self.assertEqual(len(reads), 2)
-            self.assertEqual(status["knowledge_snapshot"]["release_id"], "kr-2026-09-05.1")
+            knowledge_release.active_corpus_summary(self.data_dir)
+            expected = list(calls)
+            calls.clear()
+            await client.get("/status")
+        self.assertEqual(calls, expected)
+
+    async def test_corrupt_release_artifacts_leave_no_snapshot_claim(self):
+        corruptions = {
+            "documents": lambda d: (d / "corpus/kr-2026-07-06.1/documents.json").write_text("[]", encoding="utf-8"),
+            "index metadata": lambda d: (d / "index/kr-2026-07-06.1/index-metadata.json").write_text("{not json", encoding="utf-8"),
+        }
+        for name, corrupt in corruptions.items():
+            with self.subTest(name):
+                self.data_dir = Path(self.tempdir.name) / f"corrupt-{name.replace(' ', '-')}"
+                install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+                client = self.make_client()
+                self.assertIn("Knowledge snapshot from 2026-07-06", (await client.get("/")).text)
+                corrupt(self.data_dir)  # the active-release pointer file is untouched
+                with self.assertLogs("danish_rag.snapshot_clock", "WARNING"):
+                    page = (await client.get("/")).text
+                self.assertIn("Snapshot date unavailable", page)
+                self.assertNotIn("Knowledge snapshot from", page)
+                with self.assertLogs("danish_rag.snapshot_clock", "WARNING"):
+                    status = (await client.get("/status")).json()
+                self.assertEqual(status["snapshot_status"], "unavailable")
+                self.assertIsNone(status["knowledge_snapshot"])
+                self.assertTrue(status["corpus_error"])
+                with late_wall_clock(), self.assertLogs("danish_rag.snapshot_clock", "WARNING"):
+                    response = await self.ask(client)
+                self.assertNotIn("Fresh Tomato Score: High", response.text)
+                self.assertEqual(self.generator.clock_seen, [])
+
+    async def test_a_failed_retriever_load_marks_the_request_unavailable(self):
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        client = self.make_client()
+
+        def failing(cls, *args, **kwargs):
+            raise OSError("dense index unreadable")
+
+        with late_wall_clock(), patch.object(
+            HybridRetriever, "from_data_dir", classmethod(failing)
+        ), self.assertLogs("danish_rag.snapshot_clock", "WARNING"):
+            response = await self.ask(client)
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("Snapshot date unavailable", response.text)
+        self.assertNotIn("Knowledge snapshot from", response.text)
 
     async def test_turns_carry_their_own_snapshot_and_old_turns_carry_none(self):
         install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
@@ -673,7 +729,8 @@ class SnapshotConsistencyTests(AppTestCase):
         )
         client = self.make_client()
         expected = {"release_id": "kr-2026-09-05.1", "snapshot_date": "2026-09-05", "kept_current": False}
-        self.assertEqual((await client.get("/status")).json()["knowledge_snapshot"], expected)
+        status = (await client.get("/status")).json()
+        self.assertEqual((status["snapshot_status"], status["knowledge_snapshot"]), ("snapshot", expected))
         await self.ask(client)
         store = ConversationStore(self.data_dir / "conversations.sqlite3")
         conversation_id = store.list_conversations()[0]["id"]
@@ -731,6 +788,27 @@ class FreshInstallDefaultTests(unittest.TestCase):
         )
         self.tamper(catalog / "kr-2026-10-01.1")
         self.assertEqual(newest_bundled_release_dir(catalog), catalog / "kr-2026-09-05.1")
+
+    def test_skipped_releases_are_logged_with_the_reason(self):
+        from danish_rag.knowledge_release import newest_bundled_release_dir
+
+        catalog = self.make_catalog(
+            **{"kr-2026-09-05_1": SEPTEMBER_RELEASE, "kr-2026-10-01_1": SEPTEMBER_RELEASE}
+        )
+        self.tamper(catalog / "kr-2026-10-01.1")
+        with self.assertLogs("danish_rag.knowledge_release", "WARNING") as logs:
+            newest_bundled_release_dir(catalog)
+        text = "\n".join(logs.output)
+        self.assertIn("kr-2026-10-01.1", text)
+        self.assertNotIn("kr-2026-09-05.1", text)
+
+    def test_unexpected_errors_are_not_swallowed(self):
+        from danish_rag import knowledge_release
+
+        catalog = self.make_catalog(**{"kr-2026-09-05_1": SEPTEMBER_RELEASE})
+        with patch.object(knowledge_release, "verify_knowledge_release", side_effect=TypeError("bug")):
+            with self.assertRaises(TypeError):
+                knowledge_release.newest_bundled_release_dir(catalog)
 
     def test_incompatible_releases_are_skipped(self):
         from danish_rag.knowledge_release import newest_bundled_release_dir

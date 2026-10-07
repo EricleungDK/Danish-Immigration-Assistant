@@ -17,10 +17,16 @@ swaps the module-level `datetime` of `source_freshness` once, for a subclass who
 `now()` returns the snapshot time while a `snapshot_clock` scope is active and otherwise
 defers to whatever `datetime` was there before (real, or the #64 test pin). The scope
 holds a per-request `SnapshotState` in a `ContextVar`: it applies per request/task or
-thread, never process-wide. The same state object supplies the clock, the UI label and
-the stored per-turn metadata, so they cannot disagree. `now()` only reads the state; the
-active release is read once per request (`SnapshotState.resolve_active`), never inside
-`now()`.
+thread, never process-wide.
+
+The state is derived ONLY from the signature-verified release the request actually uses
+(`SnapshotState.adopt(manifest)`): the result of the handler's `ensure_release()` and, in
+the answer path, the retriever's manifest. The data judged is the data loaded, so the
+clock, the UI label and the stored turn agree. This module does no release I/O and adds
+no verification. Until a release has been verified in the request the state is "none"
+(wall clock); if loading fails it becomes "unavailable" (wall clock, warning logged, UI
+says so). There is no path that rebases freshness without a verified release in the same
+request.
 
 Only `source_freshness` is wrapped: the answer path, retrieval eligibility and trust
 indicators all call it without an evaluation time. `evidence_integrity` and
@@ -31,6 +37,7 @@ eligibility is judged at retrieval time, not when documents are indexed.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -43,12 +50,7 @@ from pathlib import Path
 from typing import Any
 
 import danish_rag.source_freshness as source_freshness
-from .knowledge_release import (
-    ACTIVE_RELEASE_FILE,
-    ACTIVE_RELEASE_TRANSACTION_FILE,
-    DEFAULT_RELEASE_CATALOG_DIR,
-    load_active_release,
-)
+from .knowledge_release import DEFAULT_RELEASE_CATALOG_DIR
 
 LOGGER = logging.getLogger(__name__)
 
@@ -79,8 +81,8 @@ class SnapshotState:
     """Per-request snapshot resolution shared by the clock, the label and stored turns."""
 
     snapshot: Snapshot | None = None
-    # True when the active release could not be read: freshness then uses the wall clock
-    # and the UI must not claim a snapshot basis.
+    # True when the request's release could not be loaded: freshness then uses the wall
+    # clock and the UI must not claim a snapshot basis.
     unavailable: bool = False
 
     @property
@@ -90,69 +92,34 @@ class SnapshotState:
     def metadata(self) -> dict[str, Any] | None:
         return self.snapshot.metadata() if self.snapshot else None
 
+    @property
+    def status(self) -> str:
+        """"snapshot", "unavailable" (load failed, wall clock) or "none" (not snapshot mode)."""
+
+        if self.snapshot:
+            return "snapshot"
+        return "unavailable" if self.unavailable else "none"
+
     def adopt(self, manifest: dict[str, Any]) -> None:
-        """Take the snapshot (if any) of a manifest the request actually loaded."""
+        """Take the snapshot (if any) of the verified manifest this request loaded.
 
+        A load failure earlier in the same request is sticky: the request stays on the
+        wall clock with no snapshot claim even if a later load succeeds.
+        """
+
+        if self.unavailable:
+            return
         self.snapshot = bundled_snapshot(manifest)
-        self.unavailable = False
 
-    def resolve_active(
-        self, data_dir: str | Path, *, trust_root_path: str | Path | None = None
-    ) -> None:
-        """Resolve from one signature-verified read of the active release."""
+    def mark_unavailable(self, reason: BaseException) -> None:
+        """The request's release could not be loaded: wall clock, no snapshot claim."""
 
-        try:
-            active = load_active_release(data_dir, trust_root_path=trust_root_path)
-        except FileNotFoundError:
-            self.snapshot, self.unavailable = None, False  # nothing installed yet
-            return
-        except Exception as exc:
-            LOGGER.warning(
-                "Active release unreadable; freshness uses the wall clock and no "
-                "snapshot is claimed: %s",
-                exc,
-            )
-            self.snapshot, self.unavailable = None, True
-            return
-        self.adopt(active["manifest"])
-
-
-class SnapshotResolver:
-    """Resolve each request's state from the active release, verifying only on change.
-
-    A successful, signature-verified resolution is reused while `active-release.json` is
-    unchanged (same mtime, size and inode, and no activation transaction pending);
-    install and rollback replace that file, so the next request reads again. Failures are
-    never cached, so an unreadable release is retried and logged on every request.
-    """
-
-    def __init__(self, data_dir: str | Path, *, trust_root_path: str | Path | None = None):
-        self.data_dir = Path(data_dir)
-        self.trust_root_path = trust_root_path
-        # (pointer key, snapshot) replaced as one tuple: safe across worker threads.
-        self._cached: tuple[tuple[int, int, int], Snapshot | None] | None = None
-
-    def _pointer_key(self) -> tuple[int, int, int] | None:
-        try:
-            if (self.data_dir / ACTIVE_RELEASE_TRANSACTION_FILE).exists():
-                return None
-            stat = (self.data_dir / ACTIVE_RELEASE_FILE).stat()
-        except OSError:
-            return None
-        return (stat.st_mtime_ns, stat.st_size, stat.st_ino)
-
-    def __call__(self, state: SnapshotState) -> None:
-        key = self._pointer_key()
-        cached = self._cached
-        if key is not None and cached is not None and cached[0] == key:
-            state.snapshot, state.unavailable = cached[1], False
-            return
-        state.resolve_active(self.data_dir, trust_root_path=self.trust_root_path)
-        # Cache only if the pointer did not change while it was being read.
-        if not state.unavailable and key is not None and key == self._pointer_key():
-            self._cached = (key, state.snapshot)
-        else:
-            self._cached = None
+        LOGGER.warning(
+            "Release could not be loaded; freshness uses the wall clock and no snapshot "
+            "is claimed: %s",
+            reason,
+        )
+        self.snapshot, self.unavailable = None, True
 
 
 _STATE: ContextVar[SnapshotState | None] = ContextVar("snapshot_state", default=None)
@@ -173,22 +140,46 @@ def parse_snapshot_time(value: Any) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def _manifest_digest(manifest: dict[str, Any]) -> str:
+    """sha256 of the canonical JSON: unlike ==, 1, 1.0 and true differ and NaN is refused."""
+
+    canonical = json.dumps(
+        manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+# release id -> (stat of the bundled manifest file, its canonical digest)
+_BUNDLED_DIGESTS: dict[str, tuple[tuple[int, int], str]] = {}
+
+
+def _bundled_digest(release_id: str) -> str:
+    """Digest of the shipped manifest; re-read only if its file changed."""
+
+    path = Path(BUNDLED_CATALOG_DIR) / release_id / "manifest.json"
+    stat = path.stat()
+    key = (stat.st_mtime_ns, stat.st_size)
+    cached = _BUNDLED_DIGESTS.get(f"{path}")
+    if cached is not None and cached[0] == key:
+        return cached[1]
+    digest = _manifest_digest(json.loads(path.read_text(encoding="utf-8")))
+    _BUNDLED_DIGESTS[f"{path}"] = (key, digest)
+    return digest
+
+
 def bundled_snapshot(manifest: dict[str, Any]) -> Snapshot | None:
     """Snapshot of a manifest identical to a bundled release's, else None.
 
-    The manifest comes from a signature-verified active release; equality with the
-    repository's shipped manifest (integrity hashes and signature reference included)
-    ties it to the bundled release, not merely to its name.
+    The manifest comes from a signature-verified release; identity of its canonical JSON
+    digest with the repository's shipped manifest (integrity hashes and signature
+    reference included) ties it to the bundled release, not merely to its name.
     """
 
     try:
         release_id = manifest["knowledge_release_id"]
         if not isinstance(release_id, str) or not _RELEASE_ID.fullmatch(release_id):
             return None
-        bundled = json.loads(
-            (Path(BUNDLED_CATALOG_DIR) / release_id / "manifest.json").read_text(encoding="utf-8")
-        )
-        if bundled != manifest:
+        if _manifest_digest(manifest) != _bundled_digest(release_id):
             return None
         return Snapshot(release_id, parse_snapshot_time(manifest["created_at_utc"]))
     except (KeyError, TypeError, ValueError, OSError):
