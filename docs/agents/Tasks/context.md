@@ -104,6 +104,13 @@ re-reviews, CI signing, or further GitHub releases). Built on #64 (PR #65), bran
   Background workers (automatic metadata check) use `ensure_release_unscoped` and never
   touch snapshot state or log snapshot warnings. `newest_bundled_release_dir` skips (and
   logs) catalogue entries whose `is_dir()` raises `OSError`.
+- **Final review follow-ups (2026-10-07).** If, after the freeze, the render loads a
+  different release or fails, `SnapshotState.changed_after_freeze` is set and the banner
+  adds "The active knowledge release changed while this answer was prepared; reload to
+  see it." Repeated-adopt dedupe compares the canonical digest, not `==` (1/1.0/true
+  differ). `app.js` swaps `/ask` 4xx/5xx responses that carry the conversation fragment
+  (htmx drops error responses by default), so the composer error and the refreshed
+  banner are shown; `htmx:responseError` still announces the failure.
 - **Pin interaction.** Inside app requests the snapshot clock wins over the #64 pin;
   outside requests (evidence tests, CLIs) the pin still governs. Both are fixed times
   before the due dates, so the suites stay deterministic; tests move the pin to

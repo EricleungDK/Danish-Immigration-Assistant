@@ -367,6 +367,42 @@ class SnapshotResolutionTests(unittest.TestCase):
             state.mark_unavailable(OSError("later failure"))
         self.assertEqual((state.time, state.status), (JULY_SNAPSHOT, "snapshot"))
 
+    def test_a_different_release_or_failure_after_freezing_is_recorded(self):
+        from danish_rag.snapshot_clock import SnapshotState
+
+        same = SnapshotState()
+        same.adopt(self.manifest(BUNDLED_MINIMAL_RELEASE))
+        same.freeze()
+        same.adopt(self.manifest(BUNDLED_MINIMAL_RELEASE))
+        self.assertFalse(same.changed_after_freeze)
+
+        switched = SnapshotState()
+        switched.adopt(self.manifest(BUNDLED_MINIMAL_RELEASE))
+        switched.freeze()
+        switched.adopt(self.manifest(SEPTEMBER_RELEASE))
+        self.assertTrue(switched.changed_after_freeze)
+        self.assertEqual(switched.time, JULY_SNAPSHOT)
+
+        failed = SnapshotState()
+        failed.adopt(self.manifest(BUNDLED_MINIMAL_RELEASE))
+        failed.freeze()
+        failed.mark_unavailable(OSError("render-time failure"))
+        self.assertTrue(failed.changed_after_freeze)
+        self.assertEqual(failed.status, "snapshot")
+
+    def test_dedupe_of_repeated_adopts_is_strict_about_json_types(self):
+        from danish_rag.snapshot_clock import SnapshotState
+
+        manifest = self.manifest(SEPTEMBER_RELEASE)
+        variant = json.loads(json.dumps(manifest))
+        variant["artifacts"][0]["bytes"] = float(variant["artifacts"][0]["bytes"])
+        self.assertEqual(variant, manifest)  # equal under ==, canonically different
+        state = SnapshotState()
+        state.adopt(manifest)
+        self.assertEqual(state.status, "snapshot")
+        state.adopt(variant)
+        self.assertIsNone(state.snapshot)  # not the shipped manifest: no snapshot claim
+
     def test_manifest_identity_is_strict_about_json_types(self):
         from danish_rag import snapshot_clock
 
@@ -892,6 +928,7 @@ class SnapshotBasisConsistencyTests(AppTestCase):
         self.assertIn("as of the snapshot date (2026-07-06), not today", page)
         self.assertNotIn("Knowledge snapshot from 2026-09-05", page)
         self.assertNotIn("(2026-09-05), not today", page)
+        self.assertIn("The active knowledge release changed while this answer was prepared", page)
 
     async def test_corpus_panel_and_status_come_from_the_release_that_was_verified(self):
         from danish_rag import local_app

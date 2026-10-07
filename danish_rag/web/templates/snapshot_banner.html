@@ -8,4 +8,7 @@
     {% else %}
     <span>Information only, not legal advice.</span>
     {% endif %}
+    {% if snapshot_changed %}
+    <span>The active knowledge release changed while this answer was prepared; reload to see it.</span>
+    {% endif %}
   </p>

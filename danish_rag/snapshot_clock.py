@@ -87,7 +87,11 @@ class SnapshotState:
     # Once the basis a request's answer was judged on is settled, later loads in the same
     # request (for example the page render) cannot replace it.
     frozen: bool = False
+    # Set when, after freezing, the page render loaded a different release or failed:
+    # the page then says the active release changed after the answer was prepared.
+    changed_after_freeze: bool = False
     _adopted: dict[str, Any] | None = field(default=None, repr=False, compare=False)
+    _adopted_digest: str | None = field(default=None, repr=False, compare=False)
 
     @property
     def time(self) -> datetime | None:
@@ -113,18 +117,33 @@ class SnapshotState:
         release) is not re-evaluated.
         """
 
-        if self.frozen or self.unavailable:
+        if self.unavailable:
             return
-        if self._adopted is not None and manifest == self._adopted:
+        if self._is_adopted(manifest):
+            return
+        if self.frozen:
+            self.changed_after_freeze = True
             return
         self.snapshot = bundled_snapshot(manifest)
         self._adopted = manifest
+        self._adopted_digest = _safe_digest(manifest)
+
+    def _is_adopted(self, manifest: dict[str, Any]) -> bool:
+        # Canonical digest, not ==: 1, 1.0 and true must not count as the same manifest.
+        if self._adopted is None:
+            return False
+        if manifest is self._adopted:
+            return True
+        digest = _safe_digest(manifest)
+        return digest is not None and digest == self._adopted_digest
 
     def mark_unavailable(self, reason: BaseException) -> None:
         """The request's release could not be loaded: wall clock, no snapshot claim."""
 
         if self.frozen:
-            return  # the answer's basis is settled; the page reports the error separately
+            # The answer's basis is settled; the page reports the error separately.
+            self.changed_after_freeze = True
+            return
         LOGGER.warning(
             "Release could not be loaded; freshness uses the wall clock and no snapshot "
             "is claimed: %s",
@@ -161,6 +180,13 @@ def _manifest_digest(manifest: dict[str, Any]) -> str:
         manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _safe_digest(manifest: dict[str, Any]) -> str | None:
+    try:
+        return _manifest_digest(manifest)
+    except (TypeError, ValueError):
+        return None
 
 
 # manifest path -> (sha256 of the file bytes, canonical digest). The small file is read

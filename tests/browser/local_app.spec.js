@@ -49,6 +49,21 @@ test("first launch shows product boundary, setup, htmx, and composer", async ({ 
   await expect(page.getByRole("button", { name: "Install reviewed release" })).toHaveCount(0);
 });
 
+test("an htmx ask error shows its message and refreshes the snapshot banner", async ({ page }) => {
+  await page.goto("/");
+  await ensureBrowserProvider(page);
+  const banner = page.getByRole("note", { name: "Knowledge snapshot notice" });
+  await expect(banner).toContainText("Knowledge snapshot from 2026-07-06.");
+  // Send with an empty question: the server answers 422 with the conversation fragment.
+  await page.getByRole("textbox", { name: "Question" }).fill("");
+  const response = page.waitForResponse((r) => r.url().endsWith("/ask") && r.status() === 422);
+  await page.getByRole("button", { name: /^(Send|Retry)$/ }).click();
+  await response;
+  await expect(page.getByRole("alert")).toContainText("Enter a question before sending.");
+  await expect(banner).toHaveCount(1);
+  await expect(banner).toContainText("Knowledge snapshot from 2026-07-06.");
+});
+
 test("snapshot label states the release date, not kept current, and not legal advice", async ({ page }) => {
   await page.goto("/");
 

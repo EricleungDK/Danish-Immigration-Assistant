@@ -222,6 +222,21 @@ document.body.addEventListener("htmx:afterRequest", (event) => {
   }
 });
 
+// htmx drops 4xx/5xx responses by default. /ask answers errors with a conversation
+// fragment (composer error, out-of-band snapshot banner): swap it so the error and the
+// banner's truthful basis are shown. htmx:responseError still announces the failure.
+document.body.addEventListener("htmx:beforeSwap", (event) => {
+  const { target, xhr } = event.detail;
+  if (
+    target instanceof HTMLElement &&
+    target.id === "conversation-main" &&
+    xhr.status >= 400 &&
+    xhr.responseText.includes('id="conversation-main"')
+  ) {
+    event.detail.shouldSwap = true;
+  }
+});
+
 document.body.addEventListener("htmx:responseError", (event) => {
   if (event.target instanceof HTMLElement && (event.target.classList.contains("update-check-form") || event.target.classList.contains("update-download-form"))) return;
   announceStatus("Request failed. Review the visible error and retry.");

@@ -1456,11 +1456,12 @@ def _active_release_id(
         return ""
 
 
-def _snapshot_banner_context() -> dict[str, str]:
+def _snapshot_banner_context() -> dict[str, Any]:
     state = current_snapshot_state()
     return {
         "snapshot_status": state.status,
         "snapshot_date": state.snapshot.date if state.snapshot else "",
+        "snapshot_changed": state.changed_after_freeze,
     }
 
 
