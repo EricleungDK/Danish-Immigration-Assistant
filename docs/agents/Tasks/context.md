@@ -44,12 +44,20 @@ structured output (harness preloads the model and retries).
 Both suites expired on 2026-10-06 12:00 UTC: the bundled fixture release
 `kr-2026-07-06.1` gives its sources `next_review_due_utc` 2026-10-06T12:00:00Z and
 freshness used the wall clock, so answers lost citations (~42 Python, 10 browser
-failures on unmodified main). `tests/__init__.py` now pins freshness evaluation to
+failures on unmodified main). `tests/__init__.py` pins freshness evaluation to
 2026-10-01T00:00:00Z via `tests/fixture_clock.py`, which swaps the module-level
-`datetime` of `danish_rag/source_freshness.py`; the browser fixture server gets it by
-importing the `tests` package. Production code is unchanged on purpose: its hash is
-bound by approved release evidence (editing it fails "approved retrieval
+`datetime` of the three modules that supply freshness evaluation times
+(`source_freshness`, `evidence_integrity.utc_now_seconds`,
+`grounded_flexibility_evaluation._utc_now`); a test asserts the pin precedes every
+fixture release's review due date. The browser fixture server gets the pin by
+importing the `tests` package. Checked: with every other `danish_rag` module's clock
+set to 2027-01-01 the full suite still passes. Production code is unchanged on
+purpose: its hash is bound by approved release evidence (editing it fails "approved retrieval
 implementation changed"). Fixtures and signatures unchanged.
+Not fixed here (owner decision): on a fresh install the app still installs the
+bundled `kr-2026-07-06.1`, whose sources have been overdue since 2026-10-06, so new
+users get answers without citations; `kr-2026-09-05.1` sources fall due
+2026-10-26T20:55:12Z.
 
 ## Active Tasks
 
