@@ -55,7 +55,7 @@ Prerequisites are Python 3.11 or newer, Node.js with npm, OpenSSL with Ed25519 s
 The launch command for this package is:
 
 ```bash
-.venv/bin/python -c 'import uvicorn; from danish_rag.local_app import create_app; uvicorn.run(create_app(trust_root_path="config/trust_roots/project-release-key-v2.json"), host="127.0.0.1", port=8000)'
+.venv/bin/python -c 'import uvicorn; from danish_rag.knowledge_release import newest_bundled_release_dir; from danish_rag.local_app import create_app; uvicorn.run(create_app(trust_root_path="config/trust_roots/project-release-key-v2.json", initial_release_dir=newest_bundled_release_dir), host="127.0.0.1", port=8000)'
 ```
 
 ## Operating Instructions
@@ -68,7 +68,7 @@ The documented setup path is:
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 npm install
-.venv/bin/python -c 'import uvicorn; from danish_rag.local_app import create_app; uvicorn.run(create_app(trust_root_path="config/trust_roots/project-release-key-v2.json"), host="127.0.0.1", port=8000)'
+.venv/bin/python -c 'import uvicorn; from danish_rag.knowledge_release import newest_bundled_release_dir; from danish_rag.local_app import create_app; uvicorn.run(create_app(trust_root_path="config/trust_roots/project-release-key-v2.json", initial_release_dir=newest_bundled_release_dir), host="127.0.0.1", port=8000)'
 ```
 
 Open the local browser at `http://127.0.0.1:8000`. Configure a local generation provider manually, test the connection, and keep provider settings local.

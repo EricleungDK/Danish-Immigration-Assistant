@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -35,6 +36,7 @@ from .release_trust import ReleaseTrustError, verify_manifest_signature
 from .semantic_chunks import is_valid_stable_identity, stable_chunk_id
 
 
+LOGGER = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLED_MINIMAL_RELEASE = ROOT / "data" / "knowledge_releases" / "kr-2026-07-06.1"
 DEFAULT_RELEASE_CATALOG_DIR = ROOT / "data" / "knowledge_releases"
@@ -212,13 +214,68 @@ def install_knowledge_release(
             shutil.rmtree(staging_dir, ignore_errors=True)
 
 
+def newest_bundled_release_dir(
+    catalog_dir: str | Path = DEFAULT_RELEASE_CATALOG_DIR,
+    *,
+    trust_root_path: str | Path | None = None,
+    application_version: str = APPLICATION_VERSION,
+) -> Path:
+    """Newest bundled release (by release ID) that verifies and is compatible.
+
+    Each candidate gets the full `verify_knowledge_release` check (signature, hashes,
+    schema, minimum application version), so a fresh install is never less verified than
+    the fixture default; a broken newer entry is skipped in favour of an older verified
+    one. With no usable entry (or no catalogue) it falls back to the bundled fixture
+    release, which installation verifies again.
+    """
+
+    try:
+        entries = list(Path(catalog_dir).iterdir())
+    except OSError:
+        return BUNDLED_MINIMAL_RELEASE
+    found = []
+    for path in entries:
+        match = GITHUB_KNOWLEDGE_RELEASE_PATTERN.fullmatch(path.name)
+        if not match:
+            continue
+        try:
+            if not path.is_dir():
+                continue
+        except OSError as exc:  # e.g. PermissionError: skip this entry, keep the rest
+            LOGGER.warning("Skipping bundled release %s: %s", path.name, exc)
+            continue
+        found.append((tuple(int(part) for part in match.groups()), path))
+    candidates = sorted(found, key=lambda candidate: candidate[0], reverse=True)
+    for _, path in candidates:
+        try:
+            verify_knowledge_release(
+                path,
+                application_version=application_version,
+                trust_root_path=trust_root_path,
+            )
+        except (ValueError, OSError) as exc:
+            # Verification failures only (KnowledgeReleaseError / ReleaseTrustError / bad
+            # JSON are ValueErrors); anything else is a bug and surfaces.
+            LOGGER.warning("Skipping bundled release %s: %s", path.name, exc)
+            continue
+        return path
+    return BUNDLED_MINIMAL_RELEASE
+
+
 def ensure_minimal_knowledge_release(
     data_dir: str | Path,
     *,
+    release_dir: str | Path | Callable[..., str | Path] = BUNDLED_MINIMAL_RELEASE,
     embedding_provider: EmbeddingProvider | None = None,
     embedding_endpoint: str | None = None,
     trust_root_path: str | Path | None = None,
 ) -> dict[str, Any]:
+    """Return the active release, installing `release_dir` first if none is installed.
+
+    `release_dir` may be a callable `(trust_root_path=...) -> path`, resolved only when a
+    fresh install is needed.
+    """
+
     try:
         with active_release_snapshot():
             active = load_active_release(
@@ -238,8 +295,11 @@ def ensure_minimal_knowledge_release(
                 "active": active,
             }
     except FileNotFoundError:
+        if callable(release_dir):
+            release_dir = release_dir(trust_root_path=trust_root_path)
         return install_minimal_knowledge_release(
             data_dir,
+            release_dir=release_dir,
             embedding_provider=embedding_provider,
             embedding_endpoint=embedding_endpoint,
             trust_root_path=trust_root_path,
@@ -297,6 +357,22 @@ def active_release_snapshot():
         yield
 
 
+def corpus_summary(release: dict[str, Any]) -> dict[str, str]:
+    """Corpus panel fields from a loaded release (`manifest` and `index` keys)."""
+
+    manifest = release["manifest"]
+    index = release["index"]
+    return {
+        "knowledge_release_id": str(manifest["knowledge_release_id"]),
+        "corpus_id": str(manifest["corpus_id"]),
+        "source_registry_version": str(manifest["source_registry_version"]),
+        "created_at_utc": str(manifest["created_at_utc"]),
+        "embedding_model": str(index["embedding_model"]),
+        "embedding_vector_dimensions": str(index["vector_dimensions"]),
+        "index_schema_version": str(index["schema_version"]),
+    }
+
+
 def active_corpus_summary(
     data_dir: str | Path,
     *,
@@ -312,15 +388,7 @@ def active_corpus_summary(
             Path(data_dir),
             str(manifest["knowledge_release_id"]),
         )
-    return {
-        "knowledge_release_id": str(manifest["knowledge_release_id"]),
-        "corpus_id": str(manifest["corpus_id"]),
-        "source_registry_version": str(manifest["source_registry_version"]),
-        "created_at_utc": str(manifest["created_at_utc"]),
-        "embedding_model": str(index["embedding_model"]),
-        "embedding_vector_dimensions": str(index["vector_dimensions"]),
-        "index_schema_version": str(index["schema_version"]),
-    }
+    return corpus_summary({"manifest": manifest, "index": index})
 
 
 def discover_knowledge_update(

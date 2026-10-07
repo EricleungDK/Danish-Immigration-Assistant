@@ -26,9 +26,11 @@ from .embedding_provider import EmbeddingProvider
 from .github_release_client import ArtifactDownloadApproval, GitHubReleaseClient
 from .knowledge_release import (
     APPLICATION_VERSION,
+    BUNDLED_MINIMAL_RELEASE,
     DEFAULT_RELEASE_CATALOG_DIR,
     KnowledgeReleaseError,
     active_corpus_summary,
+    corpus_summary,
     default_data_dir,
     discover_knowledge_update,
     dismiss_available_github_knowledge_update,
@@ -37,6 +39,7 @@ from .knowledge_release import (
     install_knowledge_release,
     load_available_github_knowledge_update,
     load_pending_knowledge_update,
+    newest_bundled_release_dir,
     prepare_github_knowledge_update,
     prepared_github_knowledge_release_dir,
     save_available_github_knowledge_update,
@@ -59,6 +62,11 @@ from .provider_setup import (
 )
 from .retrieval import HybridRetriever, RetrievalError
 from .runtime_policy import load_runtime_policy
+from .snapshot_clock import (
+    SnapshotState,
+    current_snapshot_state,
+    snapshot_clock,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -90,6 +98,7 @@ def create_app(
         AUTOMATIC_UPDATE_CHECK_INTERVAL_SECONDS
     ),
     update_check_clock: Callable[[], float] = time.monotonic,
+    initial_release_dir: str | Path | Callable[..., str | Path] = BUNDLED_MINIMAL_RELEASE,
 ) -> FastAPI:
     app = FastAPI(title="Danish Immigration RAG")
     app.mount("/static", StaticFiles(directory=WEB_ROOT / "static"), name="static")
@@ -111,6 +120,37 @@ def create_app(
         or GitHubReleaseClient(application_version=APPLICATION_VERSION)
     )
     resolved_trust_root_path = Path(trust_root_path) if trust_root_path else None
+    # A callable is resolved lazily, only when a fresh install needs it.
+    app.state.initial_release_dir = (
+        initial_release_dir if callable(initial_release_dir) else Path(initial_release_dir)
+    )
+
+    app.add_middleware(_SnapshotClockMiddleware)
+
+    def ensure_release_unscoped() -> dict[str, Any]:
+        """Verified active release with no snapshot state (background workers)."""
+
+        return ensure_minimal_knowledge_release(
+            resolved_data_dir,
+            release_dir=app.state.initial_release_dir,
+            embedding_provider=embedding_provider,
+            trust_root_path=resolved_trust_root_path,
+        )
+
+    def ensure_release() -> dict[str, Any]:
+        """Verified active release for a request; its manifest sets the snapshot state."""
+
+        state = current_snapshot_state()
+        try:
+            release = ensure_release_unscoped()
+        except Exception as exc:
+            state.mark_unavailable(exc)
+            raise
+        # Snapshot state comes only from the verified release this request uses (also
+        # right after a fresh install).
+        state.adopt(release["manifest"])
+        return release
+
     if (
         isinstance(automatic_update_check_interval_seconds, bool)
         or not isinstance(automatic_update_check_interval_seconds, int | float)
@@ -163,9 +203,9 @@ def create_app(
                 else:
                     deferred_for_installation = False
                     _check_github_update_metadata(
+                        ensure_release=ensure_release_unscoped,
                         data_dir=resolved_data_dir,
                         client=resolved_github_release_client,
-                        embedding_provider=embedding_provider,
                         trust_root_path=resolved_trust_root_path,
                     )
         except Exception:
@@ -363,6 +403,8 @@ def create_app(
                     active_conversation=active_conversation,
                     history_oob=history_oob,
                     reveal_latest_turn=reveal_latest_turn,
+                    # htmx swaps only #conversation-main: refresh the banner out of band.
+                    banner_oob=True,
                 )
             ),
             status_code=status_code,
@@ -457,9 +499,17 @@ def create_app(
 
     def render_installation_status() -> HTMLResponse:
         template = TEMPLATES.get_template("installation_status.html")
-        return HTMLResponse(
-            template.render(installation_status=installation_status_snapshot())
-        )
+        status = installation_status_snapshot()
+        banner: dict[str, Any] = {}
+        if status is not None and status.get("state") != "running":
+            # The active release may have changed: refresh the banner from what is
+            # actually active now (verified), out of band.
+            try:
+                ensure_release()
+            except Exception:
+                pass  # the state is marked unavailable and logged
+            banner = {**_snapshot_banner_context(), "banner_oob": True}
+        return HTMLResponse(template.render(installation_status=status, **banner))
 
     def _page_context(
         *,
@@ -476,18 +526,12 @@ def create_app(
         delete_all_status: str = "",
         history_oob: bool = False,
         reveal_latest_turn: bool = False,
+        banner_oob: bool = False,
     ) -> dict[str, Any]:
         corpus_error = ""
         try:
-            ensure_minimal_knowledge_release(
-                resolved_data_dir,
-                embedding_provider=embedding_provider,
-                trust_root_path=resolved_trust_root_path,
-            )
-            corpus = active_corpus_summary(
-                resolved_data_dir,
-                trust_root_path=resolved_trust_root_path,
-            )
+            # The panel describes the same verified release the snapshot state came from.
+            corpus = corpus_summary(ensure_release())
         except Exception as exc:
             corpus_error = _retrieval_failure_message(exc)
             corpus = _unavailable_corpus_summary()
@@ -529,6 +573,8 @@ def create_app(
             "reveal_latest_turn": reveal_latest_turn,
             "corpus": corpus,
             "corpus_error": corpus_error,
+            **_snapshot_banner_context(),
+            "banner_oob": banner_oob,
             "pending_update": pending_update,
             "available_github_update": available_github_update,
             "update_status": update_status,
@@ -662,11 +708,7 @@ def create_app(
                         "before checking for another update."
                     ),
                 )
-            ensure_minimal_knowledge_release(
-                resolved_data_dir,
-                embedding_provider=embedding_provider,
-                trust_root_path=resolved_trust_root_path,
-            )
+            ensure_release()
             if use_local_release_catalog:
                 update = discover_knowledge_update(
                     resolved_data_dir,
@@ -1064,16 +1106,22 @@ def create_app(
                     ),
                 )
         try:
-            ensure_minimal_knowledge_release(
-                resolved_data_dir,
-                embedding_provider=embedding_provider,
-                trust_root_path=resolved_trust_root_path,
-            )
-            retriever = HybridRetriever.from_data_dir(
-                resolved_data_dir,
-                embedding_provider=embedding_provider,
-                trust_root_path=resolved_trust_root_path,
-            )
+            ensure_release()
+            snapshot_state = current_snapshot_state()
+            try:
+                retriever = HybridRetriever.from_data_dir(
+                    resolved_data_dir,
+                    embedding_provider=embedding_provider,
+                    trust_root_path=resolved_trust_root_path,
+                )
+            except Exception as exc:
+                snapshot_state.mark_unavailable(exc)
+                raise
+            # The data judged is the data loaded: follow the retriever's verified release
+            # if it differs from the one ensure_release() returned (a concurrent install).
+            snapshot_state.adopt(retriever.manifest)
+            # Settled: the page render below must not replace the basis this answer used.
+            snapshot_state.freeze()
             result = AnswerService(
                 retriever=retriever,
                 generator=generator,
@@ -1086,7 +1134,11 @@ def create_app(
                 record = store.save_answer(
                     question=result.question,
                     normalized_question=result.normalized_question,
-                    answer=result.answer,
+                    answer=(
+                        {**result.answer, "knowledge_snapshot": snapshot_state.metadata()}
+                        if snapshot_state.snapshot
+                        else result.answer
+                    ),
                     model_identity=result.model_identity,
                     corpus_identity=result.corpus_identity,
                     conversation_id=conversation_id,
@@ -1160,15 +1212,7 @@ def create_app(
         configuration = _load_configuration_or_none(resolved_config_path)
         corpus_error = ""
         try:
-            ensure_minimal_knowledge_release(
-                resolved_data_dir,
-                embedding_provider=embedding_provider,
-                trust_root_path=resolved_trust_root_path,
-            )
-            corpus = active_corpus_summary(
-                resolved_data_dir,
-                trust_root_path=resolved_trust_root_path,
-            )
+            corpus = corpus_summary(ensure_release())
         except Exception as exc:
             corpus_error = _retrieval_failure_message(exc)
             corpus = _unavailable_corpus_summary()
@@ -1177,12 +1221,34 @@ def create_app(
             "configuration": configuration.to_public_dict() if configuration else None,
             "corpus": corpus,
             "corpus_error": corpus_error,
+            # Explicit qualifier: freshness is judged at this snapshot, not today.
+            "snapshot_status": current_snapshot_state().status,
+            "knowledge_snapshot": current_snapshot_state().metadata(),
         }
 
     return app
 
 
-app = create_app()
+class _SnapshotClockMiddleware:
+    """Give every HTTP request its own `SnapshotState` and clock scope (#67).
+
+    The state starts empty (wall clock). It is filled only from the verified release the
+    handler actually loads (`ensure_release()`, the retriever's manifest); this middleware
+    does no release I/O.
+    """
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        with snapshot_clock(SnapshotState()):
+            await self.app(scope, receive, send)
+
+
+app = create_app(initial_release_dir=newest_bundled_release_dir)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1295,18 +1361,14 @@ def _knowledge_update_failure_message(action: str, exc: BaseException) -> str:
 
 def _check_github_update_metadata(
     *,
+    ensure_release: Callable[[], Any],
     data_dir: Path,
     client: GitHubReleaseClient,
-    embedding_provider: EmbeddingProvider | None,
     trust_root_path: Path | None,
 ) -> None:
     """Check content-free GitHub metadata without downloading or installing a release."""
 
-    ensure_minimal_knowledge_release(
-        data_dir,
-        embedding_provider=embedding_provider,
-        trust_root_path=trust_root_path,
-    )
+    ensure_release()
     prepared = load_pending_knowledge_update(data_dir)
     prepared_distribution = (
         prepared.get("distribution") if isinstance(prepared, dict) else None
@@ -1392,6 +1454,16 @@ def _active_release_id(
         )["knowledge_release_id"]
     except Exception:
         return ""
+
+
+def _snapshot_banner_context() -> dict[str, Any]:
+    state = current_snapshot_state()
+    return {
+        "snapshot_status": state.status,
+        "snapshot_date": state.snapshot.date if state.snapshot else "",
+        "snapshot_changed": state.changed_after_freeze,
+        "snapshot_reload_failed": state.reload_failed_after_freeze,
+    }
 
 
 def _unavailable_corpus_summary() -> dict[str, str]:

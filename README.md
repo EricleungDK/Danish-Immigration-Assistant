@@ -43,6 +43,8 @@ Danish Immigration RAG answers only from a **human-reviewed, cryptographically s
   <sub>The evidence drawer: official URL, check date, Evidence Confidence, Fresh Tomato Score, claim support.</sub>
 </p>
 
+> **Knowledge snapshot.** The signed knowledge release `kr-2026-09-05.1` is a **September 2026 demo snapshot and is not kept current**: no recurring source re-reviews or new releases are planned. The running app evaluates source freshness as of the release date (shown in the app), so the snapshot keeps citing its sources instead of expiring; always check the official source for current rules.
+
 > Captured from the deterministic browser-test fixture server (`tests/browser_app_server.py`) with its bundled minimal knowledge release and a stub answer generator, so the content is illustrative, not live model output.
 
 ## Features
@@ -170,6 +172,8 @@ Release-evidence collection (monitors, packet replay, human adjudication): [docs
 ## Project status
 
 As of 2026-09-08 the MVP release candidate is **qualified** for Windows 11 + WSL2 Ubuntu (x86-64). Application commit `d3eeb2a`; active signed knowledge release `kr-2026-09-05.1`. It is installed locally; **no GitHub release has been published yet.** macOS and native Linux are unpublished candidates.
+
+**Snapshot mode (2026-10-07).** The knowledge release is a September 2026 demo snapshot and is not kept current ([details](docs/source-governance.md#snapshot-mode-2026-10-07)). `python -m danish_rag.local_app` (and the launch command in [release-qualification.md](docs/release-qualification.md)) fresh-installs the newest bundled signed release that verifies (`kr-2026-09-05.1`); `create_app()` called directly without `initial_release_dir` still installs the `kr-2026-07-06.1` fixture. The UI states the snapshot date for bundled snapshot releases only; any other release keeps wall-clock freshness.
 
 Gate evidence: [release-qualification.md](docs/release-qualification.md) · [release-evaluation-current.json](docs/progress/release-evaluation-current.json) · [owner approval](docs/progress/release-owner-approval-20260908.json).
 

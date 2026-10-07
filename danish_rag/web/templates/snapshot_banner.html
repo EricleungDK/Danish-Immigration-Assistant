@@ -1,0 +1,17 @@
+<p id="snapshot-banner" class="snapshot-banner" role="note" aria-label="Knowledge snapshot notice"{% if banner_oob %} hx-swap-oob="innerHTML"{% endif %}>
+    {% if snapshot_status == "snapshot" %}
+    <strong>Knowledge snapshot from {{ snapshot_date }}.</strong>
+    <span>Not kept current. Information only, not legal advice.</span>
+    {% elif snapshot_status == "unavailable" %}
+    <strong>Snapshot date unavailable.</strong>
+    <span>Source freshness is judged at today's date. Information only, not legal advice.</span>
+    {% else %}
+    <span>Information only, not legal advice.</span>
+    {% endif %}
+    {% if snapshot_reload_failed %}
+    <span>The knowledge release could not be re-checked while showing this answer; see the corpus panel.</span>
+    {% endif %}
+    {% if snapshot_changed %}
+    <span>The active knowledge release changed while this answer was prepared; reload to see it.</span>
+    {% endif %}
+  </p>

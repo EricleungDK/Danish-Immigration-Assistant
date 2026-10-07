@@ -49,6 +49,63 @@ test("first launch shows product boundary, setup, htmx, and composer", async ({ 
   await expect(page.getByRole("button", { name: "Install reviewed release" })).toHaveCount(0);
 });
 
+test("an htmx ask error refreshes only the snapshot banner and keeps the conversation", async ({ page }) => {
+  await page.goto("/");
+  await ensureBrowserProvider(page);
+  const question = page.getByRole("textbox", { name: "Question" });
+  await question.fill("What Danish test do I need for permanent residence?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("heading", { name: "Current Conversation" })).toBeVisible();
+  const turns = await page.locator(".turn").count();
+  const banner = page.getByRole("note", { name: "Knowledge snapshot notice" });
+  await expect(banner).toContainText("Knowledge snapshot from 2026-07-06.");
+
+  // A failing ask whose error response carries the refreshed (unavailable) banner.
+  await page.route("**/ask", (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: "text/html",
+      body:
+        '<div id="conversation-main">replaced</div>' +
+        '<p id="snapshot-banner" hx-swap-oob="innerHTML"><strong>Snapshot date unavailable.</strong>' +
+        "<span>Source freshness is judged at today's date. Information only, not legal advice.</span></p>",
+    }),
+  );
+  await question.fill("Another question");
+  await page.getByRole("button", { name: /^(Send|Retry)$/ }).click();
+
+  await expect(banner).toContainText("Snapshot date unavailable.");
+  await expect(banner).not.toContainText("Knowledge snapshot from");
+  await expect(page.locator(".turn")).toHaveCount(turns);
+  await expect(page.getByText("replaced")).toHaveCount(0);
+  await expect(page.locator('.composer input[name="conversation_id"]')).toHaveCount(1);
+});
+
+test("snapshot label states the release date, not kept current, and not legal advice", async ({ page }) => {
+  await page.goto("/");
+
+  const banner = page.getByRole("note", { name: "Knowledge snapshot notice" });
+  await expect(banner).toBeVisible();
+  await expect(banner).toContainText("Knowledge snapshot from 2026-07-06.");
+  await expect(banner).toContainText("Not kept current.");
+  await expect(banner).toContainText("not legal advice");
+
+  await ensureBrowserProvider(page);
+  await page.getByRole("textbox", { name: "Question" }).fill("What Danish test do I need for permanent residence?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("heading", { name: "Current Conversation" })).toBeVisible();
+
+  await expect(banner).toContainText("Knowledge snapshot from 2026-07-06.");
+  const compactTrust = page.locator(".answer > .trust-list").first();
+  await expect(compactTrust.getByText("Fresh Tomato Score: High")).toBeVisible();
+  await expect(compactTrust).toContainText(
+    "Freshness is judged as of the snapshot date (2026-07-06), not today.",
+  );
+  await page.getByRole("button", { name: /Inspect evidence: Permanent residence language requirements/i }).first().click();
+  const drawer = page.getByRole("dialog", { name: "Permanent residence language requirements" });
+  await expect(drawer).toContainText("Freshness is judged as of the snapshot date (2026-07-06), not today.");
+});
+
 test("failed provider setup preserves non-secret values in the targeted setup panel", async ({ page }) => {
   await page.goto("/");
 
@@ -408,6 +465,82 @@ test("intro becomes a Tab stop when its content grows inside an unchanged box", 
   await expect(intro).toHaveAttribute("tabindex", "0");
 });
 
+async function chromeLayout(page) {
+  return page.evaluate(() => {
+    const box = (selector) => document.querySelector(selector).getBoundingClientRect();
+    const composer = box(".composer");
+    return {
+      composerTop: composer.top,
+      composerBottom: composer.bottom,
+      composerLeft: composer.left,
+      composerRight: composer.right,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+      bannerHeight: box(".snapshot-banner").height,
+      chromeProperty: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--chrome-height")),
+      chromeActual: box(".topbar").height + box(".snapshot-banner").height,
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    };
+  });
+}
+
+for (const viewport of [
+  { width: 360, height: 740 },
+  { width: 390, height: 844 },
+]) {
+  test(`wrapped snapshot banner keeps the composer reachable at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await expect(page.getByRole("note", { name: "Knowledge snapshot notice" })).toBeVisible();
+
+    const layout = await chromeLayout(page);
+    // The banner really wraps at this width, so no fixed height could account for it.
+    expect(layout.bannerHeight).toBeGreaterThan(40);
+    expect(layout.chromeProperty).toBeCloseTo(layout.chromeActual, 0);
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+
+    // Narrow layouts stack the panels and scroll the page: the composer is reachable.
+    await page.locator(".composer").scrollIntoViewIfNeeded();
+    const reached = await chromeLayout(page);
+    expect(reached.composerTop).toBeGreaterThanOrEqual(0);
+    expect(reached.composerBottom).toBeLessThanOrEqual(reached.viewportHeight + 1);
+    expect(reached.composerLeft).toBeGreaterThanOrEqual(0);
+    expect(reached.composerRight).toBeLessThanOrEqual(reached.viewportWidth + 1);
+    await expect(page.getByRole("textbox", { name: "Question" })).toBeInViewport();
+    await expect(page.getByRole("button", { name: "Send" })).toBeInViewport();
+    expect((await chromeLayout(page)).scrollWidth).toBeLessThanOrEqual(reached.clientWidth);
+  });
+}
+
+for (const viewport of [
+  { width: 681, height: 800 },
+  { width: 820, height: 800 },
+  { width: 1080, height: 800 },
+]) {
+  test(`snapshot banner leaves the composer on the first screen at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await expect(page.getByRole("note", { name: "Knowledge snapshot notice" })).toBeVisible();
+
+    const layout = await chromeLayout(page);
+    expect(layout.chromeProperty).toBeCloseTo(layout.chromeActual, 0);
+    expect(layout.composerBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+  });
+}
+
+test("desktop layout height uses the measured banner height", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await expect(page.getByRole("note", { name: "Knowledge snapshot notice" })).toBeVisible();
+  const layout = await chromeLayout(page);
+  expect(layout.chromeProperty).toBeCloseTo(layout.chromeActual, 0);
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+  const shell = await page.locator(".app-shell").evaluate((el) => el.getBoundingClientRect().height);
+  expect(shell).toBeCloseTo(layout.viewportHeight - layout.chromeProperty, 0);
+});
+
 test("new conversation resets the composer without deleting saved history", async ({ page }) => {
   await page.goto("/");
 
@@ -485,6 +618,8 @@ test("GitHub knowledge update requires separate download review and install acti
     has: page.getByRole("heading", { name: "Corpus" }),
   });
   await expect(corpusSection.locator(".runtime-list").first()).toContainText("kr-2026-07-06.1");
+  const snapshotBanner = page.getByRole("note", { name: "Knowledge snapshot notice" });
+  await expect(snapshotBanner).toContainText("Knowledge snapshot from 2026-07-06.");
 
   await expect(page.getByRole("heading", { name: "Knowledge update metadata available" })).toBeVisible();
   await expect(page.getByText("kr-2026-07-07.1", { exact: true })).toBeVisible();
@@ -513,6 +648,10 @@ test("GitHub knowledge update requires separate download review and install acti
   await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading", { name: "Knowledge update installed" })).toBeVisible();
   await expect(page.getByText("Active corpus: kr-2026-07-07.1")).toBeVisible();
+  // The installed release is not a bundled snapshot: the banner (refreshed out of band by
+  // the install status response) must stop claiming a snapshot basis.
+  await expect(snapshotBanner).toContainText("Information only, not legal advice.");
+  await expect(snapshotBanner).not.toContainText("Knowledge snapshot from");
   const installStatus = page.locator("#knowledge-installation-status");
   await expect(installStatus).toHaveAttribute("role", "status");
   await expect(installStatus.locator("progress")).toHaveAttribute("value", "100");

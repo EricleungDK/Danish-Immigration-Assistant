@@ -30,6 +30,16 @@ Tomato Score are separate named indicators with reasons.
   set by `app.js`) only while it overflows.
 - Inline citations open a focused evidence drawer with publisher, URL, check date,
   corpus/model identity, claim support, and trust reasons.
+- Snapshot notice (#67): for a bundled snapshot release every page shows "Knowledge
+  snapshot from <release date>. Not kept current. Information only, not legal advice."
+  under the top bar. If the active release cannot be read it says "Snapshot date
+  unavailable" and that freshness is judged at today's date; for any other release it
+  shows only "Information only, not legal advice." Each Fresh Tomato Score of a turn that
+  stored `knowledge_snapshot` carries "Freshness is judged as of the snapshot date
+  (<date>), not today." (template level, because the reason text is produced by
+  fingerprinted code); the date is the turn's own, not the current release's. The banner is also refreshed out of band by the `/ask` fragment and the install-status
+  completion response. The layout height uses the measured top bar + banner height
+  (`--chrome-height`, set by `app.js`).
 - Knowledge update discovery, signed download/review, and installation are three
   distinct user actions; never auto-install.
 

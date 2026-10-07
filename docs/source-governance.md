@@ -25,6 +25,61 @@ The release-owner decision is recorded separately in
 [release-owner approval](progress/release-owner-approval-20260908.json).
 No external publication has been performed.
 
+## Snapshot mode (2026-10-07)
+
+Owner decision (#67): the knowledge release is a **demo snapshot and is not kept
+current**. There are no recurring source re-reviews, no CI signing, and no further
+GitHub releases. Review due dates are not extended: manifests still grant no overdue
+grace, so source freshness rules are unchanged.
+
+- **Evaluation time.** For a release shipped in this repository's bundled catalogue
+  (`data/knowledge_releases/*`), the running local app evaluates source freshness at the
+  release's snapshot time (its signed manifest `created_at_utc`) instead of the wall
+  clock, for the answer path, retrieval eligibility, and trust indicators. A source is
+  still blocked if its review was already overdue at the snapshot time.
+- **Only bundled releases.** The release is matched by ID and by identity of its full
+  signed manifest with the shipped one, not by name. Any other release (for example one
+  installed from GitHub later) keeps wall-clock freshness, so its real due and
+  block-after dates still fire, and no snapshot label is shown for it.
+- **Mechanism.** `danish_rag/snapshot_clock.py` scopes the `source_freshness` clock per
+  request with a `ContextVar`; files fingerprinted by release-qualification evidence are
+  untouched. The request's snapshot state is derived only from the signature-verified
+  release the request actually uses: the result of `ensure_release()` and, when
+  answering, the retriever's manifest. The data judged is the data loaded, so the clock,
+  the label and the stored turn agree, and a concurrent install cannot judge one release
+  at another's time. The mechanism adds no verification or release I/O of its own. Before
+  a release is verified in a request, and whenever loading fails, freshness uses the wall
+  clock; on failure a warning is logged and the UI says "Snapshot date unavailable"
+  instead of claiming a snapshot basis. Install and rollback apply on the next request.
+  When an answer is generated its basis is fixed for the rest of the request, so the
+  banner, the turn note and the stored metadata agree; htmx partial responses (answers,
+  install completion) refresh the banner out of band.
+  When an answer is generated its basis is fixed for the rest of the request, so the
+  banner, the turn note and the stored metadata agree; htmx partial responses (answers,
+  install completion) refresh the banner out of band.
+- **Not applied elsewhere.** Evaluation, qualification, and monitor commands keep
+  evaluating at the wall clock (or the explicit time they pass), so evidence is not
+  silently rebased onto the snapshot.
+- **Labelling.** Pages of a bundled snapshot release state "Knowledge snapshot from
+  YYYY-MM-DD. Not kept current. Information only, not legal advice." Each answer turn
+  stores `knowledge_snapshot` (`release_id`, `snapshot_date`, `kept_current: false`) when
+  it was judged at a snapshot time, and only such turns show "Freshness is judged as of
+  the snapshot date (YYYY-MM-DD), not today." beside the Fresh Tomato Score (the stored
+  reason text says "current" relative to the snapshot, not to today). Older turns, and
+  turns from non-bundled releases, show no such note. `GET /status` and the conversation
+  JSON exports carry the same `knowledge_snapshot` metadata (absent or null otherwise);
+  `/status` also has `snapshot_status` (`snapshot`, `unavailable` or `none`) so a failed
+  load is distinguishable from a release that is not in snapshot mode.
+- **Fresh install.** The app (`python -m danish_rag.local_app`, and the documented launch
+  command, which passes `initial_release_dir=newest_bundled_release_dir`) installs the
+  newest bundled release that fully verifies (signature, hashes, schema, minimum
+  application version), resolved only when a fresh install needs it; a broken newer
+  entry falls back to an older verified one, and then to the `kr-2026-07-06.1` fixture.
+  Signature, trust-root, and hash verification are unchanged. `create_app()` called
+  directly keeps the `kr-2026-07-06.1` fixture default.
+- **Consequence.** The snapshot answers as of its release date only; anything that
+  changed in the official sources since then is not reflected.
+
 ## Recommendation
 
 Use a maintainer-owned source registry with explicit source states, two-person review for material changes, signed release manifests, and atomic user-approved installation.

@@ -38,6 +38,32 @@ function revealLatestTurn(conversation) {
   }
 }
 
+// The top bar and snapshot banner wrap at narrow widths; size the layout from their
+// real height instead of a fixed constant.
+function syncChromeHeight() {
+  let height = 0;
+  for (const selector of [".topbar", ".snapshot-banner"]) {
+    const element = document.querySelector(selector);
+    if (element instanceof HTMLElement) {
+      height += element.getBoundingClientRect().height;
+    }
+  }
+  document.documentElement.style.setProperty("--chrome-height", `${height}px`);
+}
+
+syncChromeHeight();
+if ("ResizeObserver" in window) {
+  const chromeObserver = new ResizeObserver(syncChromeHeight);
+  for (const selector of [".topbar", ".snapshot-banner"]) {
+    const element = document.querySelector(selector);
+    if (element) {
+      chromeObserver.observe(element);
+    }
+  }
+} else {
+  window.addEventListener("resize", syncChromeHeight);
+}
+
 // The home intro is a scroller only when it overflows; make it a keyboard stop
 // exactly then (axe scrollable-region-focusable) and never when it cannot scroll.
 // A focused intro keeps its tabindex until it loses focus so focus never drops to body.
@@ -196,7 +222,24 @@ document.body.addEventListener("htmx:afterRequest", (event) => {
   }
 });
 
+// htmx drops 4xx/5xx responses, so an /ask error never replaces the conversation.
+// Its response still carries the refreshed snapshot banner (e.g. "Snapshot date
+// unavailable" when the release could not be loaded): copy only that into the page.
+function refreshSnapshotBannerFrom(xhr) {
+  const banner = document.getElementById("snapshot-banner");
+  if (!banner || typeof xhr?.responseText !== "string") return;
+  if (!xhr.responseText.includes('id="snapshot-banner"')) return;
+  const fresh = new DOMParser()
+    .parseFromString(xhr.responseText, "text/html")
+    .getElementById("snapshot-banner");
+  if (fresh) banner.innerHTML = fresh.innerHTML;
+}
+
 document.body.addEventListener("htmx:responseError", (event) => {
+  const target = event.detail?.target;
+  if (target instanceof HTMLElement && target.id === "conversation-main") {
+    refreshSnapshotBannerFrom(event.detail.xhr);
+  }
   if (event.target instanceof HTMLElement && (event.target.classList.contains("update-check-form") || event.target.classList.contains("update-download-form"))) return;
   announceStatus("Request failed. Review the visible error and retry.");
 });

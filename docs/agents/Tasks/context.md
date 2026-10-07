@@ -54,10 +54,99 @@ importing the `tests` package. Checked: with every other `danish_rag` module's c
 set to 2027-01-01 the full suite still passes. Production code is unchanged on
 purpose: its hash is bound by approved release evidence (editing it fails "approved retrieval
 implementation changed"). Fixtures and signatures unchanged.
-Not fixed here (owner decision): on a fresh install the app still installs the
-bundled `kr-2026-07-06.1`, whose sources have been overdue since 2026-10-06, so new
-users get answers without citations; `kr-2026-09-05.1` sources fall due
-2026-10-26T20:55:12Z.
+Not fixed by #64 (owner decision, resolved by snapshot mode below): on a fresh install
+the app installed the bundled `kr-2026-07-06.1`, whose sources have been overdue since
+2026-10-06, so new users got answers without citations; `kr-2026-09-05.1` sources fall
+due 2026-10-26T20:55:12Z.
+
+## Snapshot mode — 2026-10-07 (#67)
+
+Owner decision: the knowledge release is a demo snapshot, not kept current (no
+re-reviews, CI signing, or further GitHub releases). Built on #64 (PR #65), branch
+`feat/snapshot-mode`.
+
+- **Scope (D1, review round 1).** Only releases identical (ID and full signed manifest)
+  to one shipped in `data/knowledge_releases/*` are rebased. Any other release keeps
+  wall-clock freshness (real due/block-after dates fire) and shows no snapshot label.
+  No signed-manifest change.
+- **Clock.** `danish_rag/snapshot_clock.py` swaps `source_freshness.datetime` once for a
+  subclass whose `now()` returns the snapshot time while a `snapshot_clock(state)` scope
+  is active (`ContextVar`: per request, never process-wide) and otherwise defers to the
+  previous `datetime` (real, or the #64 pin). It mirrors `datetime.now()` (naive local
+  time without tz); the wrapper marker is checked with `vars()` so a subclass is
+  re-wrapped. Only `source_freshness` is wrapped (the only freshness clock on the app
+  path); `evidence_integrity` / `grounded_flexibility_evaluation` keep the wall clock, so
+  evaluation CLIs are not rebased. Install-time indexing needs no scope (eligibility is
+  judged at retrieval time; a test pins that).
+- **State from the verified release only (D2, revised).** `local_app._SnapshotClockMiddleware`
+  gives each request an empty `SnapshotState` (wall clock) and does no release I/O; the
+  earlier request-start read and stat-keyed cache were removed (the extra verification
+  slowed requests and could not see corpus/index/trust-root changes). The state is filled
+  only by `ensure_release()`'s verified result and, in `/ask`, by the retriever's manifest
+  (the data judged is the data loaded, so label and stored turn follow it if a concurrent
+  install changed the release). If either load fails the state becomes "unavailable" for
+  the rest of the request (sticky): wall clock, warning logged, banner "Snapshot date
+  unavailable", `/status` `snapshot_status: "unavailable"`. Bundled identity is the
+  sha256 of canonical JSON (type-strict: 1, 1.0 and true differ; NaN refused), memoized per
+  bundled release id and the shipped file's bytes (the small file is read and hashed per
+  call, so a same-size, mtime-preserving replacement is seen; only the parse is memoized).
+  Adopting an equal manifest again in the same request does no work.
+- **Banner consistency (round 3).** The banner is `snapshot_banner.html`; htmx partials
+  refresh it out of band (`hx-swap-oob="innerHTML"` keeps the element, so the layout
+  ResizeObserver stays attached): the `/ask` fragment, and the terminal install-status
+  response (which re-verifies the now-active release via `ensure_release()` so a switch
+  bundled -> non-bundled, or back, is reflected). In `/ask`, the state is frozen right
+  after the retriever's manifest is adopted, so the page render's own `ensure_release()`
+  cannot replace the basis the answer was judged on (banner and turn note agree; a
+  render-time load error is reported only in the corpus panel). `/status` and the corpus
+  panel are built from the same verified release dict `ensure_release()` returned
+  (`knowledge_release.corpus_summary`), which also removes the second verification.
+  Background workers (automatic metadata check) use `ensure_release_unscoped` and never
+  touch snapshot state or log snapshot warnings. `newest_bundled_release_dir` skips (and
+  logs) catalogue entries whose `is_dir()` raises `OSError`.
+- **Final review follow-ups (2026-10-07).** After the freeze, a render that loads a
+  different release sets `changed_after_freeze` (banner: "The active knowledge release
+  changed while this answer was prepared; reload to see it."); a render whose load fails
+  sets `reload_failed_after_freeze` (banner: "could not be re-checked while showing this
+  answer; see the corpus panel"). Repeated-adopt dedupe compares the canonical digest
+  (1/1.0/true differ), falling back to plain equality only when neither manifest can be
+  digested; the digest is computed once per adopt. htmx still drops `/ask` 4xx/5xx
+  responses (the conversation stays as it was); `app.js` copies only the error
+  response's `#snapshot-banner` into the page, so an "unavailable" basis is shown.
+- **Pin interaction.** Inside app requests the snapshot clock wins over the #64 pin;
+  outside requests (evidence tests, CLIs) the pin still governs. Both are fixed times
+  before the due dates, so the suites stay deterministic; tests move the pin to
+  2027-01-01 to prove requests ignore it. Fixtures, signatures, trust roots and the
+  fingerprinted files are untouched.
+- **Label.** `home.html` banner (three states: snapshot / unavailable / none). Each turn
+  stores `knowledge_snapshot` {release_id, snapshot_date, kept_current: false} in its
+  answer JSON (so exports carry it per turn); the template note beside Fresh Tomato
+  Scores renders from the turn's own metadata, so older turns and non-bundled releases
+  show none. `/status` has top-level `snapshot_status` (`snapshot`/`unavailable`/`none`) and `knowledge_snapshot`. Fresh Tomato reason text comes
+  from fingerprinted `answer_pipeline.py` ("current and healthy"); the note scopes it.
+  Layout: `app.js` sets `--chrome-height` to the measured top bar + banner height
+  (replaces the fixed 4.25rem; banner wraps at narrow widths).
+- **Fresh install.** `knowledge_release.newest_bundled_release_dir(catalog, trust_root_path=,
+  application_version=)` returns the newest bundled release that passes
+  `verify_knowledge_release` (falls back to older verified ones, then
+  `BUNDLED_MINIMAL_RELEASE`; never raises on a missing catalogue). Skips only verification
+  failures (`ValueError`/`OSError`) and logs a WARNING naming the release and reason;
+  unexpected errors surface.
+  `ensure_minimal_knowledge_release(release_dir=)` accepts a callable resolved only when a
+  fresh install is needed. The production `local_app.app` and the documented launch
+  command (`docs/release-qualification.md`) pass `initial_release_dir=
+  newest_bundled_release_dir`, so a new install gets `kr-2026-09-05.1`. `create_app()`
+  called directly (tests, browser fixture server) keeps the `kr-2026-07-06.1` fixture
+  default, because many tests depend on that fixture's content;
+  `BUNDLED_MINIMAL_RELEASE` is unchanged (evaluation modules use it).
+- **Known limits.** A data dir indexed by an older build keeps its index; the clock only
+  changes evaluation. Existing installs of `kr-2026-07-06.1` keep working (snapshot
+  2026-07-06) and can still update to the September release.
+- Tests: `tests/test_snapshot_mode.py` (wall clock forced to 2027-01-01: both bundled
+  releases still cite; label states, per-turn notes, race, gate, fresh install, tamper
+  refusal) and Playwright label/layout tests (360x740, 390x844, 681-1280). Also run with
+  the pin at 2027-01-01 in the browser server and with every other `danish_rag`
+  module's `datetime` forced to 2027-01-01: green.
 
 ## Active Tasks
 
