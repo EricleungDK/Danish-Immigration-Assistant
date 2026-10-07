@@ -89,6 +89,28 @@ class RuntimeProbeTests(unittest.TestCase):
             {"temperature": 0, "seed": 0},
         )
 
+    def test_ollama_structured_chat_disables_thinking_like_answer_path(self):
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = json.dumps(
+            {"message": {"content": "{}"}}
+        ).encode("utf-8")
+        client = OllamaClient("http://127.0.0.1:11434")
+
+        with patch(
+            "danish_rag.runtime_probe.urllib.request.urlopen",
+            return_value=response,
+        ) as urlopen:
+            client.chat_structured(
+                model="gemma4:12b",
+                schema={"type": "object"},
+                messages=[{"role": "user", "content": "Return JSON."}],
+            )
+
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertIs(payload["think"], False)
+
     def test_probe_result_uses_named_environment_evidence_type(self):
         self.assertIs(
             get_type_hints(ProbeResult)["environment"],
