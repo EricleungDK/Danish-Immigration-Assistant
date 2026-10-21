@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from danish_rag import local_model_transport
 from danish_rag.local_model_transport import (
+    ChatResult,
     FakeTransport,
     FakeTransportScriptError,
     ModelMissingError,
@@ -119,6 +120,55 @@ class FakeTransportTests(unittest.TestCase):
     def test_fake_enforces_loopback(self):
         with self.assertRaises(PrivacyBoundaryError):
             FakeTransport(endpoint="http://example.com:11434")
+
+    def test_responder_serves_unlimited_replies_for_every_operation(self):
+        def responder(operation, params):
+            if operation == "chat":
+                return "reply to " + params["messages"][-1]["content"]
+            if operation == "embed":
+                return [[float(len(text))] for text in params["texts"]]
+            if operation == "list_models":
+                return [{"name": "m"}]
+            if operation == "version":
+                return "9.9"
+            return {"model": params["model"]}
+
+        fake = FakeTransport(responder=responder)
+
+        for turn in ("a", "b", "c"):
+            reply = fake.chat(model="m", messages=[{"role": "user", "content": turn}])
+            self.assertEqual(reply.content, "reply to " + turn)
+        self.assertEqual(fake.embed(model="e", texts=["ab", "c"]), [[2.0], [1.0]])
+        self.assertEqual(fake.list_models(), [{"name": "m"}])
+        self.assertEqual(fake.version(), "9.9")
+        self.assertEqual(fake.show_model("m"), {"model": "m"})
+        self.assertEqual(len(fake.requests), 7)
+        self.assertEqual(fake.remaining, 0)
+
+    def test_responder_accepts_typed_results_and_may_raise(self):
+        def responder(operation, params):
+            if operation == "chat":
+                return ChatResult(content="cut", done_reason="length")
+            raise ModelUnreachableError("down")
+
+        fake = FakeTransport(responder=responder)
+
+        self.assertEqual(
+            fake.chat(model="m", messages=[]).done_reason, "length")
+        with self.assertRaises(ModelUnreachableError):
+            fake.version()
+
+    def test_queued_script_runs_before_the_responder_and_stays_strict(self):
+        fake = FakeTransport(responder=lambda operation, params: "from responder")
+        fake.queue_error(ModelUnreachableError("first call fails"), operation="chat")
+        fake.queue_version("0.1")
+
+        with self.assertRaises(ModelUnreachableError):
+            fake.chat(model="m", messages=[])
+        with self.assertRaises(FakeTransportScriptError):
+            fake.chat(model="m", messages=[])  # script expects version next
+        self.assertEqual(fake.remaining, 0)
+        self.assertEqual(fake.chat(model="m", messages=[]).content, "from responder")
 
 
 class LoopbackEnforcementTests(unittest.TestCase):

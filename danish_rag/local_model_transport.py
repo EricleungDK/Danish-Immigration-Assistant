@@ -15,7 +15,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Any, Final, Mapping, Protocol, Sequence
+from typing import Any, Callable, Final, Mapping, Protocol, Sequence
 
 from .privacy_boundary import require_loopback_endpoint
 
@@ -351,15 +351,28 @@ class RecordedRequest:
 
 
 class FakeTransport:
-    """Scripted in-memory transport: records requests, replays queued results in order."""
+    """In-memory transport: records requests, replays queued results in order.
+
+    The queued script is strict (out of order or exhausted fails loudly). With a
+    `responder(operation, params) -> result`, a call made after the script has run out is
+    answered by the responder instead, so a deterministic stand-in model can serve any
+    number of requests; it returns the operation's natural result (a reply string, a list of
+    vectors, ...) or a typed result, and may raise a transport error.
+    """
 
     provider_name = "Fake"
 
-    def __init__(self, endpoint: str = DEFAULT_OLLAMA_ENDPOINT) -> None:
+    def __init__(
+        self,
+        endpoint: str = DEFAULT_OLLAMA_ENDPOINT,
+        *,
+        responder: Callable[[str, dict[str, Any]], Any] | None = None,
+    ) -> None:
         require_loopback_endpoint(endpoint, purpose="Local model transport")
         self.endpoint = endpoint
         self.requests: list[RecordedRequest] = []
         self._script: list[tuple[str | None, Any]] = []
+        self._responder = responder
 
     @property
     def remaining(self) -> int:
@@ -428,7 +441,9 @@ class FakeTransport:
     def _next(self, operation: str, params: dict[str, Any]) -> Any:
         self.requests.append(RecordedRequest(operation, params))
         if not self._script:
-            raise FakeTransportScriptError(f"script exhausted; unexpected {operation}")
+            if self._responder is None:
+                raise FakeTransportScriptError(f"script exhausted; unexpected {operation}")
+            return self._respond(operation, params)
         scripted_operation, result = self._script.pop(0)
         if scripted_operation is not None and scripted_operation != operation:
             raise FakeTransportScriptError(
@@ -436,4 +451,15 @@ class FakeTransport:
             )
         if isinstance(result, Exception):
             raise result
+        return result
+
+    def _respond(self, operation: str, params: dict[str, Any]) -> Any:
+        result = self._responder(operation, params)
+        if operation == "chat" and isinstance(result, str):
+            return ChatResult(content=result, done_reason=None)
+        if operation == "embed":
+            return result if isinstance(result, EmbedResult) else EmbedResult(
+                vectors=result, raw={})
+        if operation == "list_models" and not isinstance(result, ModelListing):
+            return ModelListing(models=result, raw={"object": "list"})
         return result
