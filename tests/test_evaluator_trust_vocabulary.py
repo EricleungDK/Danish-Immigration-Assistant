@@ -35,6 +35,14 @@ def _tree(name: str) -> ast.Module:
 
 
 def _is_review_state_use(node: ast.Constant, parents: dict[ast.AST, ast.AST]) -> bool:
+    ancestor = parents.get(node)
+    while ancestor is not None:
+        if isinstance(ancestor, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "_ORACLE_ELIGIBLE_REVIEW_STATES"
+            for target in ancestor.targets
+        ):
+            return True
+        ancestor = parents.get(ancestor)
     parent = parents.get(node)
     if isinstance(parent, ast.keyword) and parent.arg == "review_state":
         return True
@@ -88,7 +96,7 @@ class OracleIndependenceTests(unittest.TestCase):
                 imported |= {alias.name for alias in node.names}
         self.assertTrue(
             {"SourceHealth", "TrustLevel", "lowest_trust_level",
-             "CONFLICTING_AGREEMENT_STATES", "ELIGIBLE_REVIEW_STATES"} <= imported,
+             "CONFLICTING_AGREEMENT_STATES"} <= imported,
             imported,
         )
         self.assertEqual(imported & PRODUCTION_DERIVATIONS, set())
@@ -105,7 +113,25 @@ class OracleIndependenceTests(unittest.TestCase):
     def test_oracle_uses_shared_definitions(self):
         self.assertIs(fae.CONFLICTING_AGREEMENT_STATES, ti.CONFLICTING_AGREEMENT_STATES)
         self.assertIs(fae.lowest_trust_level, ti.lowest_trust_level)
-        self.assertIs(fae.ELIGIBLE_REVIEW_STATES, ti.ELIGIBLE_REVIEW_STATES)
+        self.assertIs(fae.SourceHealth, ti.SourceHealth)
+        self.assertIs(fae.TrustLevel, ti.TrustLevel)
+
+    def test_oracle_owns_eligibility_policy(self):
+        for name in ("ELIGIBLE_REVIEW_STATES", "ELIGIBLE_SOURCE_HEALTH"):
+            self.assertFalse(hasattr(fae, name), name)
+        imported = set()
+        for node in ast.walk(_tree("final_answer_evaluation.py")):
+            if isinstance(node, ast.ImportFrom) and (node.module or "").endswith("trust_indicators"):
+                imported |= {alias.name for alias in node.names}
+        self.assertEqual(
+            imported,
+            {"CONFLICTING_AGREEMENT_STATES", "SourceHealth", "TrustLevel", "lowest_trust_level"},
+        )
+
+    def test_drift_alarm_oracle_eligibility_matches_production_today(self):
+        # Not a dependency: if production policy changes, update the oracle deliberately.
+        self.assertEqual(fae._ORACLE_ELIGIBLE_REVIEW_STATES, ti.ELIGIBLE_REVIEW_STATES)
+        self.assertEqual(fae._ORACLE_ELIGIBLE_HEALTH, ti.ELIGIBLE_SOURCE_HEALTH)
 
 
 class BenchmarkVocabularyTests(unittest.TestCase):

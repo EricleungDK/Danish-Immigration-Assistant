@@ -50,7 +50,6 @@ from .provider_setup import (
 from .retrieval import HybridRetriever, _attach_source_metadata
 from .trust_indicators import (
     CONFLICTING_AGREEMENT_STATES,
-    ELIGIBLE_REVIEW_STATES,
     SourceHealth,
     TrustLevel,
     lowest_trust_level,
@@ -2675,7 +2674,7 @@ def _document_search_text(document: dict[str, Any]) -> str:
 
 def _eligible_material_source(evidence: dict[str, Any]) -> bool:
     return (
-        evidence.get("review_state") in ELIGIBLE_REVIEW_STATES
+        evidence.get("review_state") in _ORACLE_ELIGIBLE_REVIEW_STATES
         and evidence.get("source_health") in _ORACLE_ELIGIBLE_HEALTH
         and evidence.get("approval_state", "approved") == "approved"
     )
@@ -2734,6 +2733,9 @@ _ORACLE_HEALTH_LEVEL = {
     SourceHealth.OVERDUE_POLICY_USABLE: TrustLevel.MEDIUM,
 }
 _ORACLE_ELIGIBLE_HEALTH = frozenset(_ORACLE_HEALTH_LEVEL)
+# Eligibility policy is oracle-owned so a production policy change cannot silently move
+# the expected outcomes.
+_ORACLE_ELIGIBLE_REVIEW_STATES = {"approved-current", "overdue-policy-usable"}
 
 
 def _expected_fresh_tomato(material_evidence: list[dict[str, Any]]) -> str:

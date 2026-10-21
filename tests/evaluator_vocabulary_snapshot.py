@@ -72,6 +72,27 @@ def compute_snapshot() -> dict[str, Any]:
                 material_evidence=items,
             )
 
+    mixed_items = [
+        {},
+        {"agreement_state": "supports"},
+        {"agreement_state": "Conflicting"},
+        {"agreement_state": "contradicts"},
+        {"agreement_state": "supports", "conflicts_with_answer": True},
+        {"agreement_state": "conflicts", "conflicts_with_answer": False},
+        {"conflicts_with_answer": False},
+    ]
+    confidence_multi = {}
+    for size in (2, 3):
+        for combo in itertools.product(range(len(mixed_items)), repeat=size):
+            items = [mixed_items[index] for index in combo]
+            for facts, cited in ((0, 0), (2, 2), (2, 1)):
+                key = json.dumps([items, facts, cited])
+                confidence_multi[key] = fae._expected_evidence_confidence(
+                    official_fact_count=facts,
+                    cited_official_fact_count=cited,
+                    material_evidence=items,
+                )
+
     cases = {case["id"]: case for case in load_evaluation_cases(DATASET_PATH)["cases"]}
     scenarios = {
         case_id: run_source_policy_scenario(cases[case_id], clock=fixed_clock)
@@ -83,6 +104,7 @@ def compute_snapshot() -> dict[str, Any]:
                 "eligibility": eligibility,
                 "fresh_tomato": freshness,
                 "evidence_confidence": confidence,
+                "evidence_confidence_multi": confidence_multi,
                 "scenarios": scenarios,
             }
         )
