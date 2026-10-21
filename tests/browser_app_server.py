@@ -279,13 +279,7 @@ async def reset_browser_test_knowledge_release() -> dict[str, str]:
         release_dir=BUNDLED_MINIMAL_RELEASE,
         embedding_provider=EMBEDDING_PROVIDER, clock=fixed_clock,
     )
-    app.state.automatic_check_state.update(
-        {
-            "last_attempt": None,
-            "running": False,
-            "status": None,
-        }
-    )
+    app.state.update_controller.reset_automatic_check()
     return {
         "knowledge_release_id": str(
             installation["manifest"]["knowledge_release_id"]

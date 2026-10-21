@@ -68,6 +68,10 @@ tests/                         unit, integration, live opt-in, and browser gates
   pass a fixed time (`tests/evaluation_time.py`). Record and install timestamps stay on
   the real clock.
 - `conversation_store.py` persists immutable turn provenance locally.
+- `knowledge_update_controller.py` (#78) owns all knowledge-update state (check throttle,
+  update-record lock, installation state/progress, worker threads). `local_app.py`
+  builds one controller (`app.state.update_controller`) and only maps its
+  `KnowledgeUpdateConflict` (409) / `KnowledgeUpdateUnavailable` (503) to HTTP.
 - `release_trust.py`, `github_release_client.py`, and `knowledge_release.py`
   separate discovery, explicit download approval, signed review, install, and
   atomic rollback.

@@ -149,7 +149,7 @@ class Issue24UsabilityValidationTests(unittest.IsolatedAsyncioTestCase):
         await self.stage_pending_update(client)
 
         with patch(
-            "danish_rag.local_app.install_knowledge_release",
+            "danish_rag.knowledge_update_controller.install_knowledge_release",
             side_effect=RuntimeError("simulated indexing failure"),
         ):
             response = await client.post(
