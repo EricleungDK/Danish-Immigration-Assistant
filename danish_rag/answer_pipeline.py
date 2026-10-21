@@ -19,7 +19,8 @@ from .answer_verification import (
     evidence_group_keys, claim_anchor_deficits, partial_verified_answer,
 )
 from .local_model_transport import (
-    LocalModelTransport, LocalModelTransportError, ModelMissingError, ModelProtocolError,
+    LocalModelTransport, LocalModelTransportError, ModelEmptyReplyError, ModelMissingError,
+    ModelProtocolError,
     ModelTimeoutError, ModelUnreachableError,
 )
 from .privacy_boundary import PrivacyBoundaryError
@@ -351,12 +352,6 @@ def _provider_failure(exc: Exception, endpoint: str, model: str) -> AnswerPipeli
     return AnswerPipelineError(f"Local provider failed during answer generation: {exc}")
 
 
-# The adapters raise ModelProtocolError for a reply with no message.content. For a
-# structured exchange that is an invalid reply (re-asked once, then a validation
-# failure), not a provider outage.
-_NO_REPLY_CONTENT = "message.content"
-
-
 def _structured_chat(
     transports: TransportSource,
     configuration: ProviderConfiguration,
@@ -382,9 +377,9 @@ def _structured_chat(
                 schema=schema, context_tokens=context_tokens,
             )
             content, done_reason = reply.content, reply.done_reason
-        except ModelProtocolError as exc:
-            if _NO_REPLY_CONTENT not in str(exc):
-                raise _provider_failure(exc, configuration.endpoint, configuration.model) from exc
+        except ModelEmptyReplyError:
+            # An empty reply is an invalid structured reply: re-asked once, then a
+            # validation failure, not a provider outage.
             content, done_reason = None, None
         except (LocalModelTransportError, PrivacyBoundaryError) as exc:
             raise _provider_failure(exc, configuration.endpoint, configuration.model) from exc

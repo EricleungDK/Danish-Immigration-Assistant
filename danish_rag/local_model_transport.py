@@ -51,6 +51,10 @@ class ModelProtocolError(LocalModelTransportError):
     """The provider answered, but not with a usable response."""
 
 
+class ModelEmptyReplyError(ModelProtocolError):
+    """The provider answered a chat request with no (or empty) message content."""
+
+
 class UnsupportedOperationError(LocalModelTransportError):
     """The adapter's provider does not support this operation."""
 
@@ -198,8 +202,8 @@ class OllamaTransport(_HttpJsonTransport):
         body = self._request("POST", "/api/chat", payload, missing_statuses=(404,))
         message = body.get("message")
         content = message.get("content") if isinstance(message, dict) else None
-        if not isinstance(content, str):
-            raise ModelProtocolError("chat response did not include message.content")
+        if not isinstance(content, str) or not content:
+            raise ModelEmptyReplyError("chat response did not include message.content")
         done_reason = body.get("done_reason")
         return ChatResult(
             content=content,
@@ -292,8 +296,8 @@ class OpenAICompatibleTransport(_HttpJsonTransport):
         first = choices[0] if isinstance(choices, list) and choices else None
         message = first.get("message") if isinstance(first, dict) else None
         content = message.get("content") if isinstance(message, dict) else None
-        if not isinstance(content, str):
-            raise ModelProtocolError("chat response did not include message.content")
+        if not isinstance(content, str) or not content:
+            raise ModelEmptyReplyError("chat response did not include message.content")
         finish_reason = first.get("finish_reason") if isinstance(first, dict) else None
         return ChatResult(
             content=content,

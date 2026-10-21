@@ -13,6 +13,7 @@ from danish_rag.local_model_transport import (
     FakeTransport,
     FakeTransportScriptError,
     ModelMissingError,
+    ModelEmptyReplyError,
     ModelProtocolError,
     ModelTimeoutError,
     ModelUnreachableError,
@@ -214,6 +215,15 @@ class OllamaTransportTests(unittest.TestCase):
             with self.assertRaisesRegex(ModelProtocolError, "message.content"):
                 OllamaTransport(server.endpoint).chat(model="m", messages=[])
 
+    def test_chat_with_missing_or_empty_content_is_a_typed_empty_reply(self):
+        self.assertTrue(issubclass(ModelEmptyReplyError, ModelProtocolError))
+        for body in ({"message": {}}, {}, {"message": {"content": ""}}):
+            with self.subTest(body=body):
+                routes = {("POST", "/api/chat"): ok(body)}
+                with _StubServer(routes) as server:
+                    with self.assertRaises(ModelEmptyReplyError):
+                        OllamaTransport(server.endpoint).chat(model="m", messages=[])
+
     def test_embed_posts_texts_and_returns_vectors(self):
         routes = {("POST", "/api/embed"): ok({"embeddings": [[1, 2], [3, 4]]})}
         with _StubServer(routes) as server:
@@ -373,6 +383,15 @@ class OpenAICompatibleTransportTests(unittest.TestCase):
         with _StubServer(routes) as server:
             with self.assertRaises(ModelProtocolError):
                 OpenAICompatibleTransport(server.endpoint).chat(model="m", messages=[])
+
+    def test_chat_with_missing_or_empty_content_is_a_typed_empty_reply(self):
+        for body in ({"choices": []}, {"choices": [{"message": {}}]},
+                     {"choices": [{"message": {"content": ""}}]}):
+            with self.subTest(body=body):
+                routes = {("POST", "/v1/chat/completions"): ok(body)}
+                with _StubServer(routes) as server:
+                    with self.assertRaises(ModelEmptyReplyError):
+                        OpenAICompatibleTransport(server.endpoint).chat(model="m", messages=[])
 
     def test_list_models_normalizes_ids_to_names(self):
         routes = {("GET", "/v1/models"): ok({"data": [{"id": "a"}, {"id": "b"}]})}
