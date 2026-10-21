@@ -6,7 +6,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import httpx
+
 import danish_rag.release_monitors as release_monitors
+from danish_rag.knowledge_update_controller import KnowledgeUpdateController
 from danish_rag.release_monitors import (
     main,
     run_network_boundary_monitor,
@@ -88,6 +91,49 @@ class ReleaseNetworkBoundaryMonitorTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("permanent residence?", serialized)
         self.assertNotIn("supported by", serialized)
         self.assertTrue(evidence["passed"])
+
+
+class UpdateEvidenceUsesControllerTests(unittest.IsolatedAsyncioTestCase):
+    """Update and install evidence comes from the Knowledge update controller (#80)."""
+
+    async def test_network_monitor_update_review_calls_controller_not_http(self):
+        requested_paths: list[str] = []
+        original_send = httpx.AsyncClient.send
+
+        async def recording_send(client, request, **kwargs):
+            requested_paths.append(request.url.path)
+            return await original_send(client, request, **kwargs)
+
+        direct_checks: list[bool] = []
+        original_check = KnowledgeUpdateController.manual_check
+
+        def recording_check(controller, *args, **kwargs):
+            direct_checks.append(True)
+            return original_check(controller, *args, **kwargs)
+
+        with patch.object(httpx.AsyncClient, "send", recording_send), patch.object(
+            KnowledgeUpdateController, "manual_check", recording_check
+        ):
+            evidence = await run_network_boundary_monitor(mode="fixture", clock=fixed_clock)
+
+        self.assertTrue(evidence["passed"])
+        self.assertIn("/ask", requested_paths)
+        self.assertNotIn("/knowledge-updates/check", requested_paths)
+        self.assertEqual(len(direct_checks), 1)
+
+    def test_rollback_matrix_installs_through_controller(self):
+        started: list[str] = []
+        original_start = KnowledgeUpdateController.start_install
+
+        def recording_start(controller, release_id):
+            started.append(release_id)
+            return original_start(controller, release_id)
+
+        with patch.object(KnowledgeUpdateController, "start_install", recording_start):
+            evidence = run_rollback_fault_matrix(mode="fixture", clock=fixed_clock)
+
+        self.assertTrue(evidence["passed"])
+        self.assertEqual(len(started), 6)
 
 
 class ReleaseRollbackFaultMatrixTests(unittest.TestCase):

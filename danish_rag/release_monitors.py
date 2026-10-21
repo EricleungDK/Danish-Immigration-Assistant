@@ -38,8 +38,10 @@ from .knowledge_release import (
     BUNDLED_MINIMAL_RELEASE,
     active_corpus_summary,
     install_knowledge_release,
+    load_pending_knowledge_update,
     verify_knowledge_release,
 )
+from .knowledge_update_controller import KnowledgeUpdateController
 from .local_app import create_app
 from .local_model_transport import FakeTransport, LocalModelTransport
 from .privacy_boundary import (
@@ -563,6 +565,17 @@ async def _execute_network_observed_workflows(
         embedding_provider=embedding_provider,
         trust_root_path=trust_root_path, clock=clock,
     )
+    update_controller = KnowledgeUpdateController(
+        data_dir=data_dir,
+        release_catalog_dir=release_catalog,
+        github_release_client=None,
+        embedding_provider=embedding_provider,
+        trust_root_path=trust_root_path,
+        ensure_release=lambda: active_corpus_summary(
+            data_dir, trust_root_path=trust_root_path
+        ),
+        evaluation_clock=clock,
+    )
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="http://testserver",
@@ -605,18 +618,21 @@ async def _execute_network_observed_workflows(
         )
 
         with observer.workflow("knowledge_update_review"):
-            checked = await client.post(
-                "/knowledge-updates/check",
-                headers={"Origin": "http://testserver"},
-                follow_redirects=False,
-            )
-            reviewed = await client.get("/")
+            # Update evidence is collected from the Knowledge update controller directly.
+            update_review_passed = False
+            try:
+                update_controller.manual_check()
+                pending = load_pending_knowledge_update(data_dir)
+                update_review_passed = bool(
+                    isinstance(pending, dict)
+                    and pending.get("release", {}).get("knowledge_release_id")
+                )
+            except Exception:
+                update_review_passed = False
         workflow_results.append(
             {
                 "id": "knowledge_update_review",
-                "status": "passed"
-                if checked.status_code == 303 and "Knowledge update available" in reviewed.text
-                else "failed",
+                "status": "passed" if update_review_passed else "failed",
             }
         )
 
@@ -919,13 +935,6 @@ def run_rollback_fault_matrix(
             activation_calls = 0
             fault_injected = False
 
-            if phase == "verification" and signature_verification_passed:
-                signature_path = release_dir / "manifest.sig"
-                tampered_signature = bytearray(signature_path.read_bytes())
-                tampered_signature[0] ^= 1
-                signature_path.write_bytes(tampered_signature)
-                fault_injected = True
-
             def inject_fault(current_phase: str) -> None:
                 nonlocal activation_calls, fault_injected
                 if phase == "verification":
@@ -941,19 +950,48 @@ def run_rollback_fault_matrix(
                 fault_injected = True
                 raise ReleaseMonitorError(f"simulated-{phase}-fault")
 
+            update_controller = KnowledgeUpdateController(
+                data_dir=data_dir,
+                release_catalog_dir=workspace / "release-catalog",
+                github_release_client=None,
+                embedding_provider=embedding_provider,
+                trust_root_path=trust_root_path,
+                ensure_release=lambda: active_corpus_summary(
+                    data_dir, trust_root_path=trust_root_path
+                ),
+                install_fault_injector=inject_fault,
+                evaluation_clock=clock,
+            )
+            discovery_error: Exception | None = None
+            if signature_verification_passed:
+                # Update discovery runs before any signature tampering.
+                try:
+                    update_controller.manual_check()
+                except Exception as exc:
+                    discovery_error = exc
+
+            if phase == "verification" and signature_verification_passed:
+                signature_path = release_dir / "manifest.sig"
+                tampered_signature = bytearray(signature_path.read_bytes())
+                tampered_signature[0] ^= 1
+                signature_path.write_bytes(tampered_signature)
+                fault_injected = True
+
             failure_observed = False
             failure_type = ""
             installation_returned = False
             try:
-                install_knowledge_release(
-                    data_dir,
-                    release_dir=release_dir,
-                    embedding_provider=embedding_provider,
-                    trust_root_path=trust_root_path,
-                    progress_callback=progress.append,
-                    fault_injector=inject_fault, clock=clock,
-                )
-                installation_returned = True
+                if discovery_error is not None:
+                    raise discovery_error
+                update_controller.start_install(release_dir.name)
+                update_controller.wait_idle(120)
+                installation = update_controller.installation_status() or {}
+                progress = list(installation.get("events") or [])
+                if installation.get("state") == "completed":
+                    installation_returned = True
+                elif installation.get("state") == "failed":
+                    failure_observed = True
+                    failure_type = str(installation.get("error_type") or "")
             except Exception as exc:  # Evidence records the type, never request content.
                 failure_observed = True
                 failure_type = type(exc).__name__
