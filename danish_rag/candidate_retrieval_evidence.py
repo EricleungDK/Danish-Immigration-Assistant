@@ -160,7 +160,7 @@ def evaluate_candidate_retrieval(root: Path, quality_bar: dict, runtime_policy: 
 
 def collect_baseline(root: Path, retriever: Any,
                      *, clock: Callable[[], datetime] = system_utc_clock) -> dict:
-    from .source_freshness import assess_source_freshness
+    from .trust_indicators import assess_source_freshness
     queries, fixtures = _frozen(root)
     now = format_utc_seconds(clock())
     rows = []

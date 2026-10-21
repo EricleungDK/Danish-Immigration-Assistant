@@ -25,7 +25,14 @@ from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
 from .evidence_integrity import system_utc_clock
 from .provider_setup import ProviderConfiguration
 from .retrieval import normalize_question
-from .source_freshness import assess_source_freshness
+from .trust_indicators import (
+    assess_trust_indicators,
+    fresh_tomato_for_source,
+    is_answer_eligible,
+    is_conflicting_evidence,
+    is_overdue_policy_usable,
+    no_material_source_trust_indicators,
+)
 
 
 class AnswerPipelineError(RuntimeError):
@@ -46,13 +53,6 @@ class _RejectedVerifiedAnswer(AnswerValidationError):
         self.verification = deepcopy(verification)
 
 
-class TrustLevel(Enum):
-    LOW = "Low"
-    MEDIUM = "Medium"
-    HIGH = "High"
-
-
-CONFLICTING_AGREEMENT_STATES = {"conflict", "conflicts", "conflicting", "contradicts"}
 LOW_RISK_EXAM_TERM_ASSUMPTION = (
     "You are asking for a general explanation of the Danish examination term, not "
     "a personal eligibility decision."
@@ -977,7 +977,7 @@ def validate_answer(
         evidence_by_citation_id[citation_id]
         for citation_id in sorted(used_citation_ids)
     ]
-    trust = _trust_indicators(
+    trust = assess_trust_indicators(
         official_fact_count=official_fact_count,
         cited_official_fact_count=cited_official_fact_count,
         used_evidence=used_evidence,
@@ -1508,18 +1508,7 @@ def _unsupported_answer(
         "assumptions": [],
         "sections": sections,
         "citations": [],
-        "trust": {
-            "evidence_confidence": "Low",
-            "evidence_confidence_reason": (
-                "No eligible approved official material source could support a "
-                "substantive answer."
-            ),
-            "fresh_tomato_score": "Low",
-            "fresh_tomato_reason": (
-                "Source freshness is low because no current healthy material source "
-                "could be attached."
-            ),
-        },
+        "trust": no_material_source_trust_indicators(),
     }
 
 
@@ -1590,7 +1579,7 @@ def _has_refusal_section(sections: list[dict[str, Any]], refusal_text: str) -> b
 
 
 def _conflict_warning_section(evidence: list[dict[str, Any]]) -> dict[str, Any] | None:
-    if not any(_is_conflicting_evidence(item) for item in evidence):
+    if not any(is_conflicting_evidence(item) for item in evidence):
         return None
     return {
         "kind": "source_warning",
@@ -1607,7 +1596,7 @@ def _stale_warning_section(evidence: list[dict[str, Any]]) -> dict[str, Any] | N
     stale_ids = sorted(
         str(item["citation_id"])
         for item in evidence
-        if item.get("source_health") == "overdue-policy-usable"
+        if is_overdue_policy_usable(item)
     )
     if not stale_ids:
         return None
@@ -1663,7 +1652,7 @@ def _partition_evidence_by_policy(
 
 
 def _is_evidence_eligible(evidence: dict[str, Any], evaluated_at: datetime) -> bool:
-    return assess_source_freshness(evidence, evaluated_at_utc=evaluated_at).answer_eligible
+    return is_answer_eligible(evidence, evaluated_at_utc=evaluated_at)
 
 
 def _approved_corpus_capability_for_topic(
@@ -1957,8 +1946,8 @@ def _parse_provider_content(content: Any) -> dict[str, Any]:
 
 def _citation_from_evidence(evidence: dict[str, Any], evaluated_at: datetime) -> dict[str, Any]:
     checked_at = str(evidence["checked_at_utc"])
-    fresh_tomato_score, fresh_tomato_reason = _fresh_tomato_indicator(
-        evidence, evaluated_at
+    fresh_tomato_score, fresh_tomato_reason = fresh_tomato_for_source(
+        evidence, evaluated_at=evaluated_at
     )
     knowledge_release_id = str(evidence["knowledge_release_id"])
     citation: dict[str, Any] = {
@@ -2076,90 +2065,6 @@ def _safe_suggested_follow_ups(suggestions: list[str]) -> list[str]:
         if compact not in safe:
             safe.append(compact)
     return safe[:3]
-
-
-def _trust_indicators(
-    *,
-    official_fact_count: int,
-    cited_official_fact_count: int,
-    used_evidence: list[dict[str, Any]],
-    evaluated_at: datetime,
-) -> dict[str, str]:
-    source_scores = [_fresh_tomato_indicator(item, evaluated_at)[0] for item in used_evidence]
-    fresh_tomato_score = _lowest_indicator(source_scores)
-    fresh_reason = _fresh_tomato_reason(fresh_tomato_score)
-    conflicting_sources = [
-        str(item["citation_id"])
-        for item in used_evidence
-        if _is_conflicting_evidence(item)
-    ]
-    coverage_complete = (
-        bool(official_fact_count)
-        and cited_official_fact_count == official_fact_count
-    )
-    if official_fact_count == 0:
-        evidence_confidence = TrustLevel.LOW
-        evidence_reason = (
-            "No official fact was produced; the response is limited to an "
-            "evidence-bounded refusal or source warning."
-        )
-    elif coverage_complete and not conflicting_sources:
-        evidence_confidence = TrustLevel.HIGH
-        evidence_reason = (
-            f"Evidence coverage is complete for {official_fact_count} official fact(s); "
-            "cited material sources are attached directly to the claims and no retrieved "
-            "material source is marked as conflicting."
-        )
-    elif conflicting_sources:
-        evidence_confidence = TrustLevel.LOW
-        evidence_reason = (
-            "Evidence agreement is incomplete: conflicting material source(s) were retrieved "
-            f"for this answer ({', '.join(sorted(conflicting_sources))})."
-        )
-    else:
-        evidence_confidence = TrustLevel.LOW
-        evidence_reason = (
-            f"Evidence coverage is incomplete: {cited_official_fact_count} of "
-            f"{official_fact_count} official fact(s) have adjacent approved-source citations."
-        )
-    return {
-        "evidence_confidence": evidence_confidence.value,
-        "evidence_confidence_reason": evidence_reason,
-        "fresh_tomato_score": fresh_tomato_score.value,
-        "fresh_tomato_reason": fresh_reason,
-    }
-
-
-def _is_conflicting_evidence(evidence: dict[str, Any]) -> bool:
-    if evidence.get("conflicts_with_answer") is True:
-        return True
-    agreement_state = str(evidence.get("agreement_state", "supports")).casefold()
-    return agreement_state in CONFLICTING_AGREEMENT_STATES
-
-
-def _fresh_tomato_indicator(
-    evidence: dict[str, Any], evaluated_at: datetime
-) -> tuple[TrustLevel, str]:
-    assessment = assess_source_freshness(evidence, evaluated_at_utc=evaluated_at)
-    return TrustLevel(assessment.level), assessment.reason
-
-
-def _lowest_indicator(scores: list[TrustLevel]) -> TrustLevel:
-    if not scores:
-        return TrustLevel.LOW
-    order = {TrustLevel.LOW: 0, TrustLevel.MEDIUM: 1, TrustLevel.HIGH: 2}
-    return min(scores, key=lambda score: order.get(score, 0))
-
-
-def _fresh_tomato_reason(score: TrustLevel) -> str:
-    if score is TrustLevel.HIGH:
-        return "Source freshness is high because all material sources are current and healthy."
-    if score is TrustLevel.MEDIUM:
-        return (
-            "Source freshness is medium because the lowest material-source freshness score "
-            "is Medium."
-        )
-    return "Source freshness is low because no current healthy material source could be attached."
 
 
 def _section_label(kind: str) -> str:

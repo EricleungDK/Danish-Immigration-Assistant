@@ -484,6 +484,21 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         self.assertEqual(result.answer["citations"], [])
         self.assertIn("No approved official evidence", result.answer["summary"])
         self.assertNotIn("PD2 is enough", result.answer["summary"])
+        self.assertEqual(
+            result.answer["trust"],
+            {
+                "evidence_confidence": "Low",
+                "evidence_confidence_reason": (
+                    "No eligible approved official material source could support a "
+                    "substantive answer."
+                ),
+                "fresh_tomato_score": "Low",
+                "fresh_tomato_reason": (
+                    "Source freshness is low because no current healthy material source "
+                    "could be attached."
+                ),
+            },
+        )
 
     def test_conflicting_approved_sources_are_both_cited_with_warning(self):
         evidence = [

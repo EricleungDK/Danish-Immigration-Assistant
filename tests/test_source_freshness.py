@@ -6,7 +6,7 @@ import tempfile
 
 from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.retrieval import HybridRetriever
-from danish_rag.source_freshness import assess_source_freshness
+from danish_rag.trust_indicators import assess_source_freshness
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.evaluation_time import FIXED_TIME, fixed_clock
 

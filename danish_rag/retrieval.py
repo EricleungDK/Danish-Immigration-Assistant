@@ -33,7 +33,7 @@ from .knowledge_release import (
     load_active_release,
 )
 from .evidence_integrity import system_utc_clock
-from .source_freshness import assess_source_freshness
+from .trust_indicators import is_answer_eligible
 
 
 INDEX_SCHEMA_VERSION = WHOLE_DOCUMENT_CORPUS_SCHEMA.index_schema_version
@@ -928,7 +928,7 @@ def _index_metadata(
 
 
 def _is_release_eligible(document: dict[str, Any], evaluated_at: datetime) -> bool:
-    return assess_source_freshness(document, evaluated_at_utc=evaluated_at).answer_eligible
+    return is_answer_eligible(document, evaluated_at_utc=evaluated_at)
 
 
 def _attach_source_metadata(

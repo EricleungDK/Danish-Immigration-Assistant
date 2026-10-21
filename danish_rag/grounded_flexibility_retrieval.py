@@ -13,7 +13,7 @@ from .evidence_integrity import format_utc_seconds, sha256_file, system_utc_cloc
 from .grounded_flexibility_evaluation import load_grounded_flexibility_dataset
 from .knowledge_release import default_data_dir
 from .retrieval import HybridRetriever
-from .source_freshness import assess_source_freshness
+from .trust_indicators import assess_source_freshness
 
 
 DEFAULT_DATASET = "data/evaluation/grounded-flexibility-v0.1-candidate.json"

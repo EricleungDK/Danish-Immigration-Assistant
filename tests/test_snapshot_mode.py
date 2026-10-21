@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
-from danish_rag.source_freshness import assess_source_freshness
+from danish_rag.trust_indicators import assess_source_freshness
 import httpx
 
 from danish_rag.conversation_store import ConversationStore
@@ -156,11 +156,11 @@ class SnapshotClockTests(unittest.TestCase):
                 self.assertEqual(now_utc(), LATE_WALL_CLOCK)
 
     def test_no_module_global_datetime_is_swapped(self):
-        import danish_rag.source_freshness as source_freshness
+        import danish_rag.trust_indicators as trust_indicators
         from danish_rag.snapshot_clock import snapshot_clock
 
         with snapshot_clock(at(JULY_SNAPSHOT)):
-            self.assertIs(source_freshness.datetime, datetime)
+            self.assertIs(trust_indicators.datetime, datetime)
 
     def test_the_base_clock_is_used_unchanged_outside_a_scope(self):
         sentinel = datetime(2031, 5, 5, tzinfo=timezone.utc)
