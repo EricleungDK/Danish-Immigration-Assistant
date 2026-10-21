@@ -12,6 +12,7 @@ from danish_rag.evaluation_quality_bar import load_evaluation_cases
 from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
+from danish_rag.social_conversation import SocialConversation, classify_conversation_turn
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.evaluation_time import fixed_clock
 
@@ -59,6 +60,15 @@ class CountingRetriever:
                 ),
             }
         ]
+
+
+def social_reply(generator, question, turns=None):
+    """The application's routing for a non-domain turn: classify, then social conversation."""
+
+    kind = classify_conversation_turn(question, conversation_turns=turns)
+    assert kind in ("greeting", "social"), kind
+    return SocialConversation(generator).reply(
+        question, provider_configuration(), kind=kind, corpus_identity="fixture-corpus")
 
 
 class FixtureAnswerGenerator:
@@ -178,10 +188,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()
 
-        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
-            "hi",
-            provider_configuration(),
-        )
+        result = social_reply(generator, "hi")
 
         self.assertEqual(result.answer["response_kind"], "conversation")
         self.assertIs(result.answer["generation_used"], False)
@@ -195,10 +202,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()
 
-        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
-            "Tell me a short joke.",
-            provider_configuration(),
-        )
+        result = social_reply(generator, "Tell me a short joke.")
 
         self.assertEqual(result.answer["response_kind"], "conversation")
         self.assertIs(result.answer["generation_used"], True)
@@ -235,15 +239,10 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
             )
         )
 
-        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
+        result = social_reply(
+            generator,
             "What is the capital of France?",
-            provider_configuration(),
-            conversation_turns=[
-                {
-                    "question": "What is PD2?",
-                    "answer": {"response_kind": "answer"},
-                }
-            ],
+            [{"question": "What is PD2?", "answer": {"response_kind": "answer"}}],
         )
 
         self.assertEqual(result.answer["response_kind"], "conversation")

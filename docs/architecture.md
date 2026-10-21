@@ -39,7 +39,7 @@ requirement.
 - The desktop layout uses a narrow local-conversation sidebar and a flexible chat canvas. Official evidence opens in a slide-over drawer instead of permanently competing with the answer for width.
 - The large product prompt is an empty-state surface. Active conversations use a compact title and status line plus a persistent multiline composer.
 - The exchange rhythm is: user message, assistant identity and source status, natural-language answer, compact inline citations, optional support details, and suggested follow-up questions.
-- Exact greetings are handled locally without retrieval or generation. Clearly non-domain conversation may use the configured local generation model in a separate fact-bounded social mode with no corpus evidence or trust indicators; factual answers remain limited to approved official evidence.
+- Exact greetings are handled locally without retrieval or generation. Clearly non-domain conversation may use the configured local generation model over the Local model transport, in the separate `social_conversation.py` module (not the Evidence-bounded answer) with the fact-bounded social schema and no corpus evidence, verification, or trust indicators; factual answers remain limited to approved official evidence.
 - The answer surface keeps only essential provenance visible: material-source count, Evidence Confidence, and source check date. Fresh Tomato Score explanations, corpus identity, freshness methodology, model identity, and update controls live in the evidence drawer.
 - Official facts and interpretation remain distinguishable through restrained margin labels. Colored callouts are reserved for warnings and explicit evidence-bounded refusals.
 - The project direction was explored in the throwaway prototype at [`visualization/danish-rag-ui-prototype.html`](../visualization/danish-rag-ui-prototype.html). Prototype mechanics and styling are not production implementation requirements.
@@ -131,7 +131,7 @@ validation, storage, and release behavior.
   generation, while the original question remains in the conversation record.
   An explicit different purpose or logistics task does not gain that context;
   consequential or unspecified application ambiguity still requires clarification.
-- A pre-retrieval conversation router keeps greetings and clearly non-domain turns out of hybrid retrieval. The separate social-generation schema prohibits external factual, immigration, legal, eligibility, and examination claims; it does not turn the generation model into a factual source.
+- A pre-retrieval conversation router (`classify_conversation_turn` in `social_conversation.py`, called by `local_app.py` before the answer service) keeps greetings and clearly non-domain turns out of hybrid retrieval. The separate social-generation schema prohibits external factual, immigration, legal, eligibility, and examination claims; it does not turn the generation model into a factual source.
 - The generation model must not browse, choose arbitrary tools, or supply unsupported facts from its pretrained knowledge.
 - When only part of a question is supported, the application answers that portion and explicitly declines the unsupported portion.
 - Official facts and interpretation remain visibly distinct.

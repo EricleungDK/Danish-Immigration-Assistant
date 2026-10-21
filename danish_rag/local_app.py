@@ -31,6 +31,11 @@ from .retriever_cache import RetrieverCache, release_cache_key
 from .evidence_integrity import system_utc_clock
 from .github_release_client import GitHubReleaseClient
 from .local_model_transport import LocalModelTransport
+from .social_conversation import (
+    SocialConversation,
+    TransportSocialReplies,
+    classify_conversation_turn,
+)
 from .knowledge_release import (
     APPLICATION_VERSION,
     BUNDLED_MINIMAL_RELEASE,
@@ -177,12 +182,14 @@ def create_app(
         # protocol in #77): a controlled generator gets the deterministic lexical guard.
         # No production entry point passes answer_generator; live runs use a transport.
         generator, verifier = answer_generator, LexicalAnswerVerifier()
+        social = SocialConversation(answer_generator)
     else:
         # Production: the configured provider's transport (or the injected one) drafts,
         # verifies with a separate request, and repairs once.
         transports = fixed_transport(transport) if transport is not None else provider_transport()
         generator = TransportAnswerGenerator(transports)
         verifier = ModelAnswerVerifier(transports)
+        social = SocialConversation(TransportSocialReplies(transports))
     store = ConversationStore(resolved_data_dir / "conversations.sqlite3")
     update_controller = KnowledgeUpdateController(
         data_dir=resolved_data_dir,
@@ -792,16 +799,28 @@ def create_app(
             snapshot_state.adopt(retriever.manifest)
             # Settled: the page render below must not replace the basis this answer used.
             snapshot_state.freeze()
-            result = AnswerService(
-                retriever=retriever,
-                generator=generator,
-                verifier=verifier,
-                clock=request_clock,
-            ).answer(
-                question,
-                configuration,
-                conversation_turns=conversation_turns,
+            turn_kind = classify_conversation_turn(
+                question, conversation_turns=conversation_turns,
             )
+            if turn_kind == "answer":
+                result = AnswerService(
+                    retriever=retriever,
+                    generator=generator,
+                    verifier=verifier,
+                    clock=request_clock,
+                ).answer(
+                    question,
+                    configuration,
+                    conversation_turns=conversation_turns,
+                )
+            else:
+                # Greeting or non-domain turn: no retrieval, evidence, or verification.
+                result = social.reply(
+                    question,
+                    configuration,
+                    kind=turn_kind,
+                    corpus_identity=str(retriever.manifest["corpus_id"]),
+                )
             try:
                 record = store.save_answer(
                     question=result.question,

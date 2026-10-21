@@ -84,16 +84,6 @@ class AnswerGenerator(Protocol):
     ) -> dict[str, Any]:
         ...
 
-    def converse(
-        self,
-        *,
-        question: str,
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        ...
-
-
 @dataclass(frozen=True)
 class AnswerResult:
     question: str
@@ -165,17 +155,6 @@ def answer_schema(citation_ids: list[str] | None = None) -> dict[str, Any]:
             },
         },
         "required": ["summary", "sections"],
-        "additionalProperties": False,
-    }
-
-
-def conversation_schema() -> dict[str, Any]:
-    return {
-        "type": "object",
-        "properties": {
-            "response": {"type": "string", "minLength": 1},
-        },
-        "required": ["response"],
         "additionalProperties": False,
     }
 
@@ -352,7 +331,7 @@ def _provider_failure(exc: Exception, endpoint: str, model: str) -> AnswerPipeli
     return AnswerPipelineError(f"Local provider failed during answer generation: {exc}")
 
 
-def _structured_chat(
+def structured_chat(
     transports: TransportSource,
     configuration: ProviderConfiguration,
     messages: list[dict[str, str]],
@@ -408,7 +387,7 @@ def _structured_chat(
 
 
 class TransportAnswerGenerator:
-    """Drafts (and repairs) structured answers, and social replies, over a local transport."""
+    """Drafts (and repairs) structured answers over a local transport."""
 
     def __init__(self, transports: TransportSource) -> None:
         self._transports = transports
@@ -427,7 +406,7 @@ class TransportAnswerGenerator:
             question, normalized_question, aliased_evidence,
             schema=aliased_schema, citation_packages=packages,
         )
-        payload = _structured_chat(self._transports, configuration, messages, aliased_schema)
+        payload = structured_chat(self._transports, configuration, messages, aliased_schema)
         return _map_generated_citations(payload, canonical_ids)
 
     def repair_answer(
@@ -456,22 +435,10 @@ class TransportAnswerGenerator:
             'citation_anchor_diagnostics': _repair_anchor_diagnostics(
                 previous_answer, evidence, canonical_ids, packages),
         }, ensure_ascii=False, separators=(',', ':'))})
-        payload = _structured_chat(
+        payload = structured_chat(
             self._transports, configuration, messages, aliased_schema,
             context_tokens=_REPAIR_CONTEXT_TOKENS)
         return _map_generated_citations(payload, canonical_ids)
-
-    def converse(
-        self,
-        *,
-        question: str,
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        return _structured_chat(
-            self._transports, configuration,
-            _conversation_messages(question, schema=schema), schema,
-        )
 
 
 # --- Evidence-bounded answer ------------------------------------------------------------
@@ -607,7 +574,7 @@ class ModelAnswerVerifier:
                 enforce_verification_message_bound(messages)
             except VerificationError as exc:
                 raise AnswerValidationError(str(exc)) from exc
-            verification = _structured_chat(
+            verification = structured_chat(
                 self._transports, configuration, messages, schema,
                 context_tokens=_VERIFICATION_CONTEXT_TOKENS, verification_request=True,
             )
@@ -710,38 +677,6 @@ class AnswerService:
         conversation_turns: list[dict[str, Any]] | None = None,
     ) -> AnswerResult:
         local_turns = conversation_turns or []
-        direct_normalized_question = normalize_question(question)
-        conversation_kind = classify_conversation_turn(
-            question,
-            conversation_turns=local_turns,
-        )
-        if conversation_kind == "greeting":
-            return AnswerResult(
-                question=question,
-                normalized_question=direct_normalized_question,
-                answer=_greeting_answer(),
-                model_identity=_model_identity(configuration),
-                corpus_identity=str(self.retriever.manifest["corpus_id"]),
-            )
-        if conversation_kind == "social":
-            converse = getattr(self.generator, "converse", None)
-            if not callable(converse):
-                raise AnswerPipelineError(
-                    "Configured generation provider does not support bounded social conversation."
-                )
-            generated_conversation = converse(
-                question=question,
-                configuration=configuration,
-                schema=conversation_schema(),
-            )
-            return AnswerResult(
-                question=question,
-                normalized_question=direct_normalized_question,
-                answer=_generated_conversation_answer(generated_conversation),
-                model_identity=_model_identity(configuration),
-                corpus_identity=str(self.retriever.manifest["corpus_id"]),
-            )
-
         effective_question = _question_with_local_conversation_context(
             question,
             local_turns,
@@ -753,7 +688,7 @@ class AnswerService:
                 question=question,
                 normalized_question=normalized_question,
                 answer=_clarification_answer(ambiguity),
-                model_identity=_model_identity(configuration),
+                model_identity=configuration_model_identity(configuration),
                 corpus_identity=str(self.retriever.manifest["corpus_id"]),
             )
 
@@ -806,7 +741,7 @@ class AnswerService:
                 question=question,
                 normalized_question=normalized_question,
                 answer=answer,
-                model_identity=_model_identity(configuration),
+                model_identity=configuration_model_identity(configuration),
                 corpus_identity=str(self.retriever.manifest["corpus_id"]),
             )
 
@@ -829,7 +764,7 @@ class AnswerService:
             question=question,
             normalized_question=normalized_question,
             answer=answer,
-            model_identity=_model_identity(configuration),
+            model_identity=configuration_model_identity(configuration),
             corpus_identity=str(self.retriever.manifest["corpus_id"]),
         )
 
@@ -1082,76 +1017,6 @@ def classify_question_safety(question: str) -> SafetyDecision:
     return SafetyDecision(response_kind="answer")
 
 
-def classify_conversation_turn(
-    question: str,
-    *,
-    conversation_turns: list[dict[str, Any]] | None = None,
-) -> str:
-    compact = " ".join(question.split()).casefold()
-    greeting_patterns = (
-        r"(?:hi|hello|hey)(?: there)?[!.?]*",
-        r"good (?:morning|afternoon|evening)[!.?]*",
-    )
-    if any(re.fullmatch(pattern, compact) for pattern in greeting_patterns):
-        return "greeting"
-
-    social_patterns = (
-        r"(?:thanks|thank you)(?: very much| a lot)?(?:,? that helps)?[!.?]*",
-        r"(?:how are you|how is it going|how's it going)[!.?]*",
-        r"(?:tell me (?:a|another) (?:short )?joke|make me laugh)[!.?]*",
-        r"(?:bye|goodbye|see you|talk to you later)[!.?]*",
-        r"(?:nice to meet you|can we chat|let's chat)[!.?]*",
-    )
-    if any(re.fullmatch(pattern, compact) for pattern in social_patterns):
-        return "social"
-    if _mentions_supported_domain(compact):
-        return "answer"
-    has_domain_context = any(
-        turn.get("answer", {}).get("response_kind") != "conversation"
-        for turn in conversation_turns or []
-    )
-    if has_domain_context and _needs_follow_up_context(question):
-        return "answer"
-    return "social"
-
-
-def _mentions_supported_domain(lookup: str) -> bool:
-    domain_terms = (
-        "danish",
-        "dansk",
-        "prøve",
-        "prove i dansk",
-        "pd1",
-        "pd2",
-        "pd3",
-        "studieprøven",
-        "studieproven",
-        "permanent residence",
-        "permanent ophold",
-        "opholdstilladelse",
-        "citizenship",
-        "statsborgerskab",
-        "siri",
-        "nyidanmark",
-        "sprogcenter",
-        "language requirement",
-        "language exam",
-        "language test",
-        "register",
-        "registration",
-        "certificate",
-        "diploma",
-        "knowledge release",
-        "corpus",
-        "evidence",
-        "official source",
-        "official page",
-    )
-    if any(term in lookup for term in domain_terms):
-        return True
-    return re.search(r"\b(?:exam|test)\b", lookup) is not None
-
-
 def classify_question_ambiguity(question: str) -> AmbiguityDecision:
     lookup = question.casefold().replace("permanent-residence", "permanent residence")
     if _asks_about_source_conflict(lookup):
@@ -1203,7 +1068,7 @@ def _question_with_local_conversation_context(
     latest_turn = conversation_turns[-1]
     latest_answer = latest_turn.get("answer", {})
     if latest_answer.get("response_kind") != "clarification":
-        if not _needs_follow_up_context(question):
+        if not needs_follow_up_context(question):
             return question
         prior_question = _latest_substantive_question(conversation_turns)
         if not prior_question:
@@ -1218,7 +1083,7 @@ def _question_with_local_conversation_context(
     return f"{prior_question}\nClarification: {question.strip()}"
 
 
-def _needs_follow_up_context(question: str) -> bool:
+def needs_follow_up_context(question: str) -> bool:
     compact = " ".join(question.split())
     if not compact:
         return False
@@ -1439,50 +1304,6 @@ def _asks_for_certificate_acceptance(lookup: str) -> bool:
     return any(term in lookup for term in certificate_terms) and any(
         term in lookup for term in acceptance_terms
     )
-
-
-def _greeting_answer() -> dict[str, Any]:
-    return _conversation_answer(
-        "Hello! I can chat briefly and help explain approved official information "
-        "about Danish permanent-residence language requirements and Danish language "
-        "examinations. What would you like to talk about?",
-        generation_used=False,
-    )
-
-
-def _generated_conversation_answer(payload: dict[str, Any]) -> dict[str, Any]:
-    if not isinstance(payload, dict) or set(payload) != {"response"}:
-        raise AnswerValidationError(
-            "Structured social response must contain exactly one response field."
-        )
-    response = payload.get("response")
-    if not isinstance(response, str) or not response.strip():
-        raise AnswerValidationError(
-            "Structured social response is missing non-empty response text."
-        )
-    return _conversation_answer(response.strip(), generation_used=True)
-
-
-def _conversation_answer(text: str, *, generation_used: bool) -> dict[str, Any]:
-    return {
-        "summary": text,
-        "response_kind": "conversation",
-        "generation_used": generation_used,
-        "assumptions": [],
-        "sections": [],
-        "citations": [],
-        "suggested_follow_ups": [],
-        "trust": {
-            "evidence_confidence": "Not applicable",
-            "evidence_confidence_reason": (
-                "This was a social conversation turn, not an official factual answer."
-            ),
-            "fresh_tomato_score": "Not applicable",
-            "fresh_tomato_reason": (
-                "No material source was needed for this social conversation turn."
-            ),
-        },
-    }
 
 
 def _clarification_answer(decision: AmbiguityDecision) -> dict[str, Any]:
@@ -1931,39 +1752,6 @@ def _answer_messages(
     ]
 
 
-def _conversation_messages(
-    question: str,
-    *,
-    schema: dict[str, Any],
-) -> list[dict[str, str]]:
-    return [
-        {
-            "role": "system",
-            "content": (
-                "Return only JSON matching required_output_schema. Respond naturally, "
-                "briefly, and in English to this non-factual social conversation turn. "
-                "Do not provide immigration, legal, eligibility, examination, current-event, "
-                "or other external factual claims. Do not imply that the generation model "
-                "is an approved official source. If the request requires factual information, "
-                "state that factual answers are limited to the installed corpus of approved "
-                "official sources and invite a supported Danish-language-requirement or "
-                "examination question."
-            ),
-        },
-        {
-            "role": "user",
-            "content": json.dumps(
-                {
-                    "conversation_turn": question,
-                    "required_output_schema": schema,
-                },
-                ensure_ascii=False,
-                sort_keys=True,
-            ),
-        },
-    ]
-
-
 def _parse_provider_content(content: Any) -> dict[str, Any]:
     if not isinstance(content, str):
         raise AnswerValidationError("Local provider response did not contain JSON text.")
@@ -2111,7 +1899,7 @@ def _section_label(kind: str) -> str:
     return labels[kind]
 
 
-def _model_identity(configuration: ProviderConfiguration) -> dict[str, Any]:
+def configuration_model_identity(configuration: ProviderConfiguration) -> dict[str, Any]:
     return {
         "provider_id": configuration.provider_id,
         "endpoint": configuration.endpoint,

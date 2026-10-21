@@ -10,8 +10,9 @@ from danish_rag.answer_pipeline import (
     AnswerValidationError,
     _answer_messages,
     answer_schema,
-    conversation_schema,
+    fixed_transport,
 )
+from danish_rag.social_conversation import TransportSocialReplies, conversation_schema
 from danish_rag.conversation_store import ConversationStore
 from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.local_app import create_app
@@ -126,7 +127,7 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
         schema = conversation_schema()
         generator = ScriptedGenerator({"response": "Here is a short, harmless joke."})
 
-        result = generator.converse(
+        result = TransportSocialReplies(fixed_transport(generator.transport)).converse(
             question="Tell me a short joke.",
             configuration=ProviderConfiguration(
                 provider_id="ollama",
