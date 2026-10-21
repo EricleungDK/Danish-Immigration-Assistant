@@ -21,7 +21,7 @@ from .knowledge_release import (
     load_active_release,
 )
 from .retrieval import HybridRetriever
-from .source_freshness import assess_source_freshness
+from .trust_indicators import assess_source_freshness
 from .source_maintenance import build_publishable_knowledge_release
 from .source_registry import (
     SourceRegistryError,

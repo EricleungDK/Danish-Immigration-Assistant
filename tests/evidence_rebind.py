@@ -30,7 +30,13 @@ _HEX = re.compile(r"^[0-9a-f]{64}$")
 _COLLECTORS = {
     "issue-51-candidate-retrieval-baseline.json": "danish_rag/candidate_retrieval_evidence.py",
 }
-_DEFAULT_COLLECTOR = "danish_rag/grounded_flexibility_retrieval.py"
+# Implementation files renamed since the evidence was committed (old path -> current path).
+# The rebind follows the rename, so the recorded inventory must still match the code's
+# current IMPLEMENTATIONS exactly; nothing is dropped or ignored.
+_RENAMED_IMPLEMENTATIONS = {
+    "danish_rag/source_freshness.py": "danish_rag/trust_indicators.py",  # #71
+}
+_DEFAULT_COLLECTOR ="danish_rag/grounded_flexibility_retrieval.py"
 
 # The only evidence files a full rebind may rewrite. A binding outside this set (for
 # example an approval record) changing means a new dependency on implementation hashes
@@ -120,8 +126,16 @@ def _implementation_replacements(base: Path, path: Path, text: str):
     for key, value in _walk(document):
         if key == "implementation_sha256" and isinstance(value, dict):
             for relative, recorded in value.items():
-                source = base / relative
-                if _is_hash(recorded) and source.is_file():
+                current = _RENAMED_IMPLEMENTATIONS.get(relative, relative)
+                source = base / current
+                if not (_is_hash(recorded) and source.is_file()):
+                    continue
+                if current != relative:
+                    yield (
+                        f'"{relative}": "{recorded}"',
+                        f'"{current}": "{_sha(source.read_bytes())}"',
+                    )
+                else:
                     yield recorded, _sha(source.read_bytes())
         elif key == "retrieval_implementation_sha256" and _is_hash(value):
             yield value, _sha((base / "danish_rag/retrieval.py").read_bytes())

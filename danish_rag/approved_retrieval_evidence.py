@@ -19,12 +19,12 @@ from .evidence_integrity import format_utc_seconds, sha256_file, system_utc_cloc
 from .knowledge_release import default_data_dir, verify_knowledge_release
 from .retrieval import HybridRetriever, _attach_source_metadata, inspect_embedding_model
 from .retrieval_benchmark import _is_eligible_for_query, run_hybrid_retrieval_comparison
-from .source_freshness import assess_source_freshness
+from .trust_indicators import assess_source_freshness
 
 IMPLEMENTATIONS = ('danish_rag/approved_retrieval_evidence.py',
                    'danish_rag/candidate_retrieval_evidence.py',
                    'danish_rag/retrieval.py', 'danish_rag/retrieval_benchmark.py',
-                   'danish_rag/source_freshness.py')
+                   'danish_rag/trust_indicators.py')
 HISTORICAL_FAILURES = {
     'candidate required-evidence Recall@3 below threshold',
     'candidate critical-case Recall@3 not evaluable: approved case mapping missing',

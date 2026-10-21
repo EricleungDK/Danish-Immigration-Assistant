@@ -13,7 +13,7 @@ from typing import Any
 
 from .evidence_integrity import format_utc_seconds, system_utc_clock
 from .final_answer_evaluation import evaluate_final_answer_case
-from .source_freshness import assess_source_freshness
+from .trust_indicators import assess_source_freshness
 
 
 SCHEMA_VERSION = "grounded-flexibility-evaluation-v1"

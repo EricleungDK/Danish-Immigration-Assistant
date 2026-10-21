@@ -1,7 +1,7 @@
 """Snapshot evaluation time for the running local app (#67).
 
 The knowledge releases bundled with this repository are demo snapshots that are not kept
-current. Source freshness (`source_freshness.assess_source_freshness` without
+current. Source freshness (`trust_indicators.assess_source_freshness` without
 `evaluated_at_utc`) would read the wall clock, so a bundled release stops citing once its
 review due dates pass. The running app instead evaluates freshness at the bundled
 release's snapshot time (its manifest `created_at_utc`).
