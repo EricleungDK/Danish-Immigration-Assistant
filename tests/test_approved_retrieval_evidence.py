@@ -1,25 +1,37 @@
 """Both approved retrieval scopes must pass independently and fail closed."""
 import copy
 import json
+import tempfile
 from pathlib import Path
 import unittest
 from unittest.mock import patch
 
 from danish_rag.approved_retrieval_evidence import evaluate_approved_retrieval, fixture_metrics
 from danish_rag.candidate_release_evidence import read_artifact
+from tests.evidence_rebind import copy_repository, rebind_implementation_hashes
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class ApprovedRetrievalEvidenceTests(unittest.TestCase):
+    # ADR 0001 (docs/adr/0001-requalify-per-release-not-per-commit.md): the committed
+    # evidence binds implementation hashes and is stale after refactors. These tests run
+    # against a copy whose bindings are recomputed from the current files.
+    @classmethod
+    def setUpClass(cls):
+        cls._directory = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls._directory.cleanup)
+        cls.root = copy_repository(cls._directory.name)
+        rebind_implementation_hashes(cls.root)
+
     def setUp(self):
-        self.qualification = json.loads((ROOT/'config/release-qualification.json').read_text())
+        self.qualification = json.loads((self.root/'config/release-qualification.json').read_text())
         self.candidate = self.qualification['candidate_evidence']
-        self.quality = json.loads((ROOT/'config/evaluation-quality-bar.json').read_text())
-        self.runtime = json.loads((ROOT/'config/runtime-policy.json').read_text())
+        self.quality = json.loads((self.root/'config/evaluation-quality-bar.json').read_text())
+        self.runtime = json.loads((self.root/'config/runtime-policy.json').read_text())
 
     def evaluate(self):
-        return evaluate_approved_retrieval(ROOT, self.quality, self.runtime, self.candidate)
+        return evaluate_approved_retrieval(self.root, self.quality, self.runtime, self.candidate)
 
     def altered(self, name, mutate):
         def read(root, candidate, key):
@@ -29,6 +41,14 @@ class ApprovedRetrievalEvidenceTests(unittest.TestCase):
             return result
         with patch('danish_rag.approved_retrieval_evidence.read_artifact', side_effect=read):
             return self.evaluate()
+
+    def test_committed_evidence_is_stale_after_implementation_changes(self):
+        # ADR 0001: committed hashes record the qualified candidate, not the current tree.
+        qualification = json.loads((ROOT/'config/release-qualification.json').read_text())
+        result = evaluate_approved_retrieval(
+            ROOT, self.quality, self.runtime, qualification['candidate_evidence'])
+        self.assertEqual(result[0], 'failed')
+        self.assertTrue(any('implementation changed' in item for item in result[5]), result[5])
 
     def test_approved_scopes_pass_without_rewriting_historical_misses(self):
         result = self.evaluate()
@@ -66,12 +86,12 @@ class ApprovedRetrievalEvidenceTests(unittest.TestCase):
                 self.assertEqual(self.altered('approved_retrieval', mutate)[0], 'failed')
 
     def test_fixture_forbidden_result_after_rank_three_is_still_a_violation(self):
-        report = read_artifact(ROOT, self.candidate, 'approved_retrieval')
+        report = read_artifact(self.root, self.candidate, 'approved_retrieval')
         rows = report['fixture_queries']
         rows[0]['returned_document_ids'] = [
             'di-rag-doc-permanent-residence-language', 'di-rag-doc-terse-danish-exam',
             'di-rag-doc-evidence-boundary', 'di-rag-doc-citizenship-language']
-        metrics = fixture_metrics(ROOT, rows)
+        metrics = fixture_metrics(self.root, rows)
         self.assertGreater(metrics['forbidden_result_violations'], 0)
 
     def test_changed_model_or_implementation_cannot_reuse_measurement(self):

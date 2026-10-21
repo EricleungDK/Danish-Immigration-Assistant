@@ -82,7 +82,11 @@ def evaluate_retrieval(
     }
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    clock: Callable[[], datetime] = system_utc_clock,
+) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", default=DEFAULT_DATASET)
     parser.add_argument("--data-dir", default=default_data_dir())
@@ -92,9 +96,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     retriever = HybridRetriever.from_data_dir(
         args.data_dir, trust_root_path=args.trust_root_path,
-        embedding_endpoint=args.embedding_endpoint,
+        embedding_endpoint=args.embedding_endpoint, clock=clock,
     )
-    report = evaluate_retrieval(args.dataset, retriever=retriever)
+    report = evaluate_retrieval(args.dataset, retriever=retriever, clock=clock)
     report["provenance"] = {
         "retrieval_implementation_sha256": sha256_file(
             Path(__file__).with_name("retrieval.py")

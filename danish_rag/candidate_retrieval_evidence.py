@@ -185,7 +185,7 @@ def collect_baseline(root: Path, retriever: Any,
                            'index_metadata': retriever.dense_index['metadata']}}
 
 
-def main() -> None:
+def main(*, clock: Callable[[], datetime] = system_utc_clock) -> None:
     from .retrieval import HybridRetriever
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', default='.')
@@ -193,8 +193,8 @@ def main() -> None:
     parser.add_argument('--trust-root-path', required=True)
     parser.add_argument('--output', required=True)
     args = parser.parse_args()
-    retriever = HybridRetriever.from_data_dir(args.data_dir, trust_root_path=args.trust_root_path)
-    report = collect_baseline(Path(args.root), retriever)
+    retriever = HybridRetriever.from_data_dir(args.data_dir, trust_root_path=args.trust_root_path, clock=clock)
+    report = collect_baseline(Path(args.root), retriever, clock=clock)
     Path(args.output).write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
     print(json.dumps(baseline_metrics(Path(args.root), report), sort_keys=True))
 

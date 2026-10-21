@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from danish_rag.candidate_answer_evidence import validate_candidate_answer
+from tests.evidence_rebind import rebind_implementation_hashes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -17,19 +18,40 @@ class CandidateAnswerEvidenceTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.quality = json.loads((ROOT / 'config/evaluation-quality-bar.json').read_text())
         self.runtime = json.loads((ROOT / 'config/runtime-policy.json').read_text())
-        self.candidate = {'release_dir': 'data/knowledge_releases/kr-2026-09-05.1', 'artifacts': {}}
+        # ADR 0001 (docs/adr/0001-requalify-per-release-not-per-commit.md): committed
+        # implementation hashes are stale after refactors, so the chain is verified with
+        # bindings recomputed from the current files.
+        self.candidate = self.prepare(self.root, rebind=True)
+
+    def prepare(self, root, *, rebind):
+        candidate = {'release_dir': 'data/knowledge_releases/kr-2026-09-05.1', 'artifacts': {}}
         paths = ['config/evaluation-quality-bar.json', self.quality['evaluation_set']['path'],
-                 self.candidate['release_dir'] + '/manifest.json']
+                 candidate['release_dir'] + '/manifest.json']
+        evidence = []
         for name, path in [('final_answer', 'docs/progress/issue-51-reviewed-candidate-replay.json'),
                            ('final_answer_origin', 'docs/progress/issue-51-final-answer-remediation.json')]:
             paths.append(path)
-            self.candidate['artifacts'][name] = {'path': path, 'sha256': hashlib.sha256((ROOT/path).read_bytes()).hexdigest()}
+            evidence.append(path)
+            candidate['artifacts'][name] = {'path': path}
         origin = json.loads((ROOT / paths[-1]).read_text())
         paths.extend(origin['implementation_sha256'])
         for path in paths:
-            target = self.root / path
+            target = root / path
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / path, target)
+        if rebind:
+            rebind_implementation_hashes(root, evidence)
+        for item in candidate['artifacts'].values():
+            item['sha256'] = hashlib.sha256((root / item['path']).read_bytes()).hexdigest()
+        return candidate
+
+    def test_committed_evidence_is_stale_after_implementation_changes(self):
+        # ADR 0001: the committed hashes record the qualified candidate, not the current tree.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            candidate = self.prepare(root, rebind=False)
+            failures = validate_candidate_answer(root, self.quality, self.runtime, candidate)
+            self.assertTrue(any('implementation changed' in item for item in failures), failures)
 
     def result(self):
         return validate_candidate_answer(self.root, self.quality, self.runtime, self.candidate)

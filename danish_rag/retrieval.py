@@ -574,10 +574,11 @@ class HybridRetriever:
                     "re-index required."
                 )
             vectors_by_document[document_id] = vector
+        evaluated_at = self._clock()
         eligible_documents = [
             document
             for document in self.release_documents
-            if _is_release_eligible(document, self._clock())
+            if _is_release_eligible(document, evaluated_at)
         ]
         expected_by_id = {
             str(document["document_id"]): document for document in eligible_documents

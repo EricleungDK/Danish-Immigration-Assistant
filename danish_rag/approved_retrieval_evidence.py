@@ -213,7 +213,7 @@ def collect(root: Path, candidate: dict, retriever: HybridRetriever,
                             'index_metadata':retriever.dense_index['metadata']})
 
 
-def main() -> None:
+def main(*, clock: Callable[[], datetime] = system_utc_clock) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', default='.')
     parser.add_argument('--data-dir', default=default_data_dir())
@@ -221,8 +221,8 @@ def main() -> None:
     args = parser.parse_args()
     root = Path(args.root)
     candidate = json.loads((root/'config/release-qualification.json').read_text())['candidate_evidence']
-    retriever = HybridRetriever.from_data_dir(args.data_dir, trust_root_path=safe_path(root, candidate['trust_root_path']))
-    report = collect(root, candidate, retriever)
+    retriever = HybridRetriever.from_data_dir(args.data_dir, trust_root_path=safe_path(root, candidate['trust_root_path']), clock=clock)
+    report = collect(root, candidate, retriever, clock=clock)
     Path(args.output).write_text(json.dumps(report, indent=2, sort_keys=True)+'\n')
 
 

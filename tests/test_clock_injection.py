@@ -136,3 +136,48 @@ class AnswerServiceClockTests(unittest.TestCase):
             retriever=FixtureRetriever([]), generator=SourceOnlyVerifier()
         )
         self.assertEqual(service.clock().utcoffset(), timedelta(0))
+
+
+class CollectorCliClockTests(unittest.TestCase):
+    """The collector CLIs build their retriever with the clock they evaluate at."""
+
+    def run_main(self, module, argv, collect_name):
+        from unittest import mock
+
+        sentinel = lambda: BEFORE_DUE  # noqa: E731
+        with mock.patch(
+            "danish_rag.retrieval.HybridRetriever.from_data_dir"
+        ) as from_data_dir, mock.patch.object(
+            module, collect_name, return_value={"strict_passed": True}
+        ) as collect, mock.patch("pathlib.Path.write_text"), mock.patch.object(
+            module, "baseline_metrics", return_value={}, create=True
+        ), mock.patch.object(module, "sha256_file", return_value="0" * 64
+        ), mock.patch("json.dumps", return_value="{}"):
+            module.main(*argv, clock=sentinel)
+        self.assertIs(from_data_dir.call_args.kwargs.get("clock"), sentinel)
+        self.assertIs(collect.call_args.kwargs.get("clock"), sentinel)
+
+    def test_grounded_flexibility_retrieval_main(self):
+        from danish_rag import grounded_flexibility_retrieval as module
+
+        self.run_main(
+            module, (["--trust-root-path", "t", "--output", "o"],), "evaluate_retrieval"
+        )
+
+    def test_candidate_retrieval_main(self):
+        import sys
+        from unittest import mock
+        from danish_rag import candidate_retrieval_evidence as module
+
+        with mock.patch.object(sys, "argv", ["x", "--trust-root-path", "t", "--output", "o"]):
+            self.run_main(module, (), "collect_baseline")
+
+    def test_approved_retrieval_main(self):
+        import sys
+        from unittest import mock
+        from danish_rag import approved_retrieval_evidence as module
+
+        with mock.patch.object(sys, "argv", ["x", "--output", "o"]), mock.patch.object(
+            module, "safe_path"
+        ):
+            self.run_main(module, (), "collect")
