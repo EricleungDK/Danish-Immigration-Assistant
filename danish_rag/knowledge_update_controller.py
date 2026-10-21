@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
 from .embedding_provider import EmbeddingProvider
+from .evidence_integrity import system_utc_clock
 from .github_release_client import ArtifactDownloadApproval, GitHubReleaseClient
 from .knowledge_release import (
     active_corpus_summary,
@@ -103,6 +105,7 @@ class KnowledgeUpdateController:
         ensure_release: Callable[[], Any],
         automatic_check_interval_seconds: float = AUTOMATIC_UPDATE_CHECK_INTERVAL_SECONDS,
         clock: Callable[[], float] = time.monotonic,
+        evaluation_clock: Callable[[], datetime] = system_utc_clock,
         install_fault_injector: Callable[[str], None] | None = None,
     ) -> None:
         """`github_release_client=None` selects the injected local release catalogue."""
@@ -121,6 +124,7 @@ class KnowledgeUpdateController:
         self._ensure_release = ensure_release
         self._interval = float(automatic_check_interval_seconds)
         self._clock = clock
+        self._evaluation_clock = evaluation_clock
         self._fault_injector = install_fault_injector
         self._automatic_check_state: dict[str, Any] = {
             "last_attempt": None,
@@ -515,6 +519,7 @@ class KnowledgeUpdateController:
                 expected_release_id=release_id,
                 progress_callback=self._record_installation_progress,
                 fault_injector=self._fault_injector,
+                clock=self._evaluation_clock,
             )
             active = active_release_id(self._data_dir, trust_root_path=self._trust_root_path)
             with self._installation_lock:

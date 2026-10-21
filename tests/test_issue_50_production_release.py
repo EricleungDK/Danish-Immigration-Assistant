@@ -31,6 +31,7 @@ from danish_rag.source_registry import (
 )
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.release_trust_fixture import create_test_release_trust_fixture
+from tests.evaluation_time import fixed_clock
 
 ROOT = Path(__file__).resolve().parents[1]
 REVIEW_DIR = ROOT / "data" / "source_reviews" / "issue-46"
@@ -115,13 +116,13 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
             data_dir,
             release_dir=candidate.release_dir,
             embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         provider.embedding_calls.clear()
         retriever = HybridRetriever.from_data_dir(
             data_dir,
             embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         self.assertEqual(provider.embedding_calls, [])
         self.assertTrue(retriever.retrieve("Prøve i Dansk 2", limit=3))
@@ -135,11 +136,11 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
             data_dir,
             release_dir=candidate.release_dir,
             embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         retriever = HybridRetriever.from_data_dir(
             data_dir, embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         by_source = {}
         for document in candidate.release["documents"]:
@@ -168,11 +169,11 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
         install_knowledge_release(
             data_dir, release_dir=candidate.release_dir,
             embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         retriever = HybridRetriever.from_data_dir(
             data_dir, embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         by_source = {}
         for document in candidate.release["documents"]:
@@ -210,11 +211,11 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
         install_knowledge_release(
             data_dir, release_dir=candidate.release_dir,
             embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         retriever = HybridRetriever.from_data_dir(
             data_dir, embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         for question in (
             "Which Danish language test is documented for permanent residence?",
@@ -241,11 +242,11 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
         install_knowledge_release(
             data_dir, release_dir=candidate.release_dir,
             embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         retriever = HybridRetriever.from_data_dir(
             data_dir, embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         cases = {case["case_id"]: case for case in self.load_json(
             ROOT / "data/evaluation/grounded-flexibility-v0.1-candidate.json"
@@ -278,11 +279,11 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
         install_knowledge_release(
             data_dir, release_dir=candidate.release_dir,
             embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         retriever = HybridRetriever.from_data_dir(
             data_dir, embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         results = retriever.retrieve(
             "Can you compare Prøve i Dansk 1, Prøve i Dansk 2, "
@@ -305,11 +306,11 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
         install_knowledge_release(
             data_dir, release_dir=candidate.release_dir,
             embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         retriever = HybridRetriever.from_data_dir(
             data_dir, embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         documents = candidate.release["documents"]
         checklist = next(d for d in documents
@@ -359,11 +360,11 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
         install_knowledge_release(
             data_dir, release_dir=candidate.release_dir,
             embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         retriever = HybridRetriever.from_data_dir(
             data_dir, embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         primary = "nyidanmark-permanent-residence-language-requirements"
         primary_ids = [
@@ -401,7 +402,7 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
             data_dir,
             release_dir=prior.release_dir,
             embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         for artifact in ("manifest.sig", "manifest.json", "corpus/documents.json"):
             with self.subTest(artifact=artifact):
@@ -422,7 +423,7 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
                         release_dir=candidate.release_dir,
                         embedding_provider=provider,
                         trust_root_path=self.release_trust.trust_root_path,
-                        fault_injector=mutate_after_verification,
+                        fault_injector=mutate_after_verification, clock=fixed_clock,
                     )
                 self.assertEqual(
                     load_active_release(
@@ -433,7 +434,7 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
                 self.assertTrue(HybridRetriever.from_data_dir(
                     data_dir,
                     embedding_provider=provider,
-                    trust_root_path=self.release_trust.trust_root_path,
+                    trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
                 ).retrieve("Prøve i Dansk 2", limit=3))
                 self.assertEqual(list((data_dir / ".installing").iterdir()), [])
 
@@ -595,9 +596,9 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
             retriever=HybridRetriever.from_data_dir(
                 self.root / "local-data",
                 embedding_provider=DeterministicEmbeddingProviderFixture(),
-                trust_root_path=self.release_trust.trust_root_path,
+                trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
             ),
-            generator=FirstChunkAnswerGenerator(),
+            generator=FirstChunkAnswerGenerator(), clock=fixed_clock,
         ).answer(
             "What Danish language test is required for permanent residence?",
             ProviderConfiguration(
@@ -829,7 +830,7 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
             data_dir,
             release_dir=prior.release_dir,
             embedding_provider=provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         with (

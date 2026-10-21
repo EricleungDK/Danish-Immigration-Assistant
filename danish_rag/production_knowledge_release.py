@@ -8,12 +8,13 @@ import json
 import os
 import shutil
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .evidence_integrity import is_utc_seconds
+from .evidence_integrity import is_utc_seconds, system_utc_clock
 from .knowledge_release import (
     KnowledgeReleaseError,
     install_knowledge_release,
@@ -461,6 +462,7 @@ def install_and_verify_candidate(
     queries: tuple[CandidateRetrievalQuery, ...] = (
         DEFAULT_CANDIDATE_RETRIEVAL_QUERIES
     ),
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     """Qualify retrieval in isolation, then install and index the candidate."""
 
@@ -483,6 +485,7 @@ def install_and_verify_candidate(
             "embedding_provider": embedding_provider,
             "embedding_endpoint": embedding_endpoint,
             "trust_root_path": trust_root_path,
+            "clock": clock,
         }
         qualification_installation = install_knowledge_release(
             qualification_dir,
@@ -496,6 +499,7 @@ def install_and_verify_candidate(
             embedding_endpoint=embedding_endpoint,
             trust_root_path=trust_root_path,
             queries=queries,
+            clock=clock,
         )
         summary = report["summary"]
         if any(
@@ -531,12 +535,14 @@ def _candidate_retrieval_report(
     embedding_endpoint: str | None,
     trust_root_path: str | Path,
     queries: tuple[CandidateRetrievalQuery, ...],
+    clock: Callable[[], datetime],
 ) -> dict[str, Any]:
     retriever = HybridRetriever.from_data_dir(
         data_dir,
         embedding_provider=embedding_provider,
         embedding_endpoint=embedding_endpoint,
         trust_root_path=trust_root_path,
+        clock=clock,
     )
     query_reports: list[dict[str, Any]] = []
     blocked_source_violations = 0
@@ -550,7 +556,9 @@ def _candidate_retrieval_report(
         blocked_results = [
             result
             for result in results
-            if not assess_source_freshness(result).answer_eligible
+            if not assess_source_freshness(
+                result, evaluated_at_utc=clock()
+            ).answer_eligible
         ]
         result_document_ids = {
             str(result.get("source_document_id", result["document_id"]))
@@ -599,6 +607,7 @@ def verify_candidate_rollback_matrix(
     candidate_release_dir: str | Path,
     embedding_provider: Any,
     trust_root_path: str | Path,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     """Inject every required install fault and prove the prior release survives."""
 
@@ -612,6 +621,7 @@ def verify_candidate_rollback_matrix(
             release_dir=prior_release_dir,
             embedding_provider=embedding_provider,
             trust_root_path=trust_root_path,
+            clock=clock,
         )
         prior_release_id = str(prior["manifest"]["knowledge_release_id"])
 
@@ -627,6 +637,7 @@ def verify_candidate_rollback_matrix(
                 embedding_provider=embedding_provider,
                 trust_root_path=trust_root_path,
                 fault_injector=inject,
+                clock=clock,
             )
         except RuntimeError as exc:
             fault_observed = str(exc) == f"simulated {phase} failure"
@@ -639,6 +650,7 @@ def verify_candidate_rollback_matrix(
             data_dir,
             embedding_provider=embedding_provider,
             trust_root_path=trust_root_path,
+            clock=clock,
         ).retrieve("What Danish language test is required for permanent residence?")
         prior_release_queryable = bool(results) and all(
             result["knowledge_release_id"] == prior_release_id for result in results

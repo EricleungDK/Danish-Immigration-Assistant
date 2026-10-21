@@ -41,9 +41,9 @@ grace, so source freshness rules are unchanged.
   signed manifest with the shipped one, not by name. Any other release (for example one
   installed from GitHub later) keeps wall-clock freshness, so its real due and
   block-after dates still fire, and no snapshot label is shown for it.
-- **Mechanism.** `danish_rag/snapshot_clock.py` scopes the `source_freshness` clock per
-  request with a `ContextVar`; files fingerprinted by release-qualification evidence are
-  untouched. The request's snapshot state is derived only from the signature-verified
+- **Mechanism.** `danish_rag/snapshot_clock.py` scopes the app's injected clock (`clock=` on
+  `create_app`) per request with a `ContextVar`: inside a request it returns the snapshot
+  time, otherwise the injected clock (#70). The request's snapshot state is derived only from the signature-verified
   release the request actually uses: the result of `ensure_release()` and, when
   answering, the retriever's manifest. The data judged is the data loaded, so the clock,
   the label and the stored turn agree, and a concurrent install cannot judge one release
@@ -58,7 +58,7 @@ grace, so source freshness rules are unchanged.
   banner, the turn note and the stored metadata agree; htmx partial responses (answers,
   install completion) refresh the banner out of band.
 - **Not applied elsewhere.** Evaluation, qualification, and monitor commands keep
-  evaluating at the wall clock (or the explicit time they pass), so evidence is not
+  evaluating at their injected `clock` (system UTC by default), so evidence is not
   silently rebased onto the snapshot.
 - **Labelling.** Pages of a bundled snapshot release state "Knowledge snapshot from
   YYYY-MM-DD. Not kept current. Information only, not legal advice." Each answer turn

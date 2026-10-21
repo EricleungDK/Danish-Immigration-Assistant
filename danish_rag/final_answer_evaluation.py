@@ -10,7 +10,9 @@ import argparse
 import json
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol, Sequence
 from urllib.parse import urlparse
@@ -19,8 +21,9 @@ from .answer_pipeline import AnswerResult, AnswerService, LocalProviderAnswerGen
 from .embedding_provider import EmbeddingProvider
 from .evidence_integrity import (
     canonical_json_sha256 as _sha256_json,
+    format_utc_seconds,
     sha256_file as _sha256_file,
-    utc_now_seconds as _utc_now,
+    system_utc_clock,
 )
 from .evaluation_machine_evidence import (
     MachineEvidenceError,
@@ -143,11 +146,13 @@ class AnswerServiceCaseRunner:
         retriever: Any,
         generator: Any,
         configuration: ProviderConfiguration,
+        clock: Callable[[], datetime] = system_utc_clock,
     ) -> None:
         self._retriever = _RecordingRetriever(retriever)
         self._service = AnswerService(
             retriever=self._retriever,
             generator=generator,
+            clock=clock,
         )
         self._configuration = configuration
 
@@ -224,6 +229,7 @@ def build_live_ollama_runner(
     embedding_endpoint: str | None = None,
     trust_root_path: str | Path | None = None,
     generation_timeout_seconds: float = 90.0,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> AnswerServiceCaseRunner:
     """Build the live evaluator over the installed production retrieval path.
 
@@ -241,6 +247,7 @@ def build_live_ollama_runner(
         embedding_provider=embedding_provider,
         embedding_endpoint=embedding_endpoint or configuration.endpoint,
         trust_root_path=trust_root_path,
+        clock=clock,
     )
     return AnswerServiceCaseRunner(
         retriever=retriever,
@@ -248,6 +255,7 @@ def build_live_ollama_runner(
             timeout_seconds=generation_timeout_seconds
         ),
         configuration=configuration,
+        clock=clock,
     )
 
 
@@ -1077,6 +1085,7 @@ def generate_final_answer_evaluation(
     generated_at_utc: str | None = None,
     adjudications: dict[str, Any] | None = None,
     human_review_packet_path: str | Path | None = None,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     """Run the final-answer harness and return a content-free evidence report."""
 
@@ -1105,7 +1114,7 @@ def generate_final_answer_evaluation(
         surface = str(case["evaluation_surface"])
         adjudication = adjudications_by_case.get(str(case["id"]))
         if surface == SOURCE_POLICY_SURFACE:
-            case_results.append(_evaluate_source_policy_case(case))
+            case_results.append(_evaluate_source_policy_case(case, clock=clock))
         elif surface in supported_surfaces:
             execution = runner.run(case)
             executed_answer_case_count += 1
@@ -1163,7 +1172,7 @@ def generate_final_answer_evaluation(
 
     report = {
         "schema_version": SCHEMA_VERSION,
-        "generated_at_utc": generated_at_utc or _utc_now(),
+        "generated_at_utc": generated_at_utc or format_utc_seconds(clock()),
         "dataset": {
             "dataset_id": dataset["dataset_id"],
             "version": dataset["version"],
@@ -1424,11 +1433,13 @@ def _merge_adjudication_bundles(
     return merged
 
 
-def _evaluate_source_policy_case(case: dict[str, Any]) -> dict[str, Any]:
+def _evaluate_source_policy_case(
+    case: dict[str, Any], *, clock: Callable[[], datetime]
+) -> dict[str, Any]:
     """Score a deterministic production-policy scenario without human semantics."""
 
     try:
-        scenario = run_source_policy_scenario(case)
+        scenario = run_source_policy_scenario(case, clock=clock)
     except MachineEvidenceError as exc:
         raise FinalAnswerEvaluationError(str(exc)) from exc
     expected_behavior = str(case["final_answer_expectations"]["expected_behavior"])

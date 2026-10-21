@@ -13,11 +13,12 @@ from danish_rag.release_monitors import (
     run_rollback_fault_matrix,
     run_supported_environment_critical_journeys,
 )
+from tests.evaluation_time import fixed_clock
 
 
 class ReleaseNetworkBoundaryMonitorTests(unittest.IsolatedAsyncioTestCase):
     async def test_fixture_monitor_observes_every_local_workflow_without_retaining_content(self):
-        evidence = await run_network_boundary_monitor(mode="fixture")
+        evidence = await run_network_boundary_monitor(mode="fixture", clock=fixed_clock)
 
         self.assertEqual(evidence["monitor_id"], "release-network-boundary-monitor")
         self.assertEqual(evidence["mode"], "fixture-non-live")
@@ -91,7 +92,7 @@ class ReleaseNetworkBoundaryMonitorTests(unittest.IsolatedAsyncioTestCase):
 
 class ReleaseRollbackFaultMatrixTests(unittest.TestCase):
     def test_fixture_matrix_proves_every_failed_phase_keeps_prior_pair_queryable(self):
-        evidence = run_rollback_fault_matrix(mode="fixture")
+        evidence = run_rollback_fault_matrix(mode="fixture", clock=fixed_clock)
 
         self.assertEqual(evidence["monitor_id"], "knowledge-release-rollback-fault-matrix")
         self.assertEqual(evidence["mode"], "fixture-non-live")
@@ -193,11 +194,11 @@ class SupportedEnvironmentCriticalJourneyTests(unittest.IsolatedAsyncioTestCase)
         }
 
     async def test_fixture_mode_is_explicit_and_cannot_be_mistaken_for_live_qualification(self):
-        rollback = run_rollback_fault_matrix(mode="fixture")
+        rollback = run_rollback_fault_matrix(mode="fixture", clock=fixed_clock)
 
         evidence = await run_supported_environment_critical_journeys(
             mode="fixture",
-            rollback_evidence=rollback,
+            rollback_evidence=rollback, clock=fixed_clock,
         )
 
         self.assertEqual(evidence["monitor_id"], "supported-environment-critical-journeys")
@@ -232,7 +233,7 @@ class SupportedEnvironmentCriticalJourneyTests(unittest.IsolatedAsyncioTestCase)
     async def test_invalid_rollback_evidence_has_a_content_free_diagnostic(self):
         evidence = await run_supported_environment_critical_journeys(
             mode="fixture",
-            rollback_evidence={},
+            rollback_evidence={}, clock=fixed_clock,
         )
 
         self.assertEqual(evidence["failures"], ["rollback"])
@@ -268,7 +269,7 @@ class SupportedEnvironmentCriticalJourneyTests(unittest.IsolatedAsyncioTestCase)
         ):
             evidence = await run_supported_environment_critical_journeys(
                 mode="live",
-                rollback_evidence=rollback,
+                rollback_evidence=rollback, clock=fixed_clock,
             )
 
         execute_live.assert_called_once()
@@ -317,7 +318,7 @@ class SupportedEnvironmentCriticalJourneyTests(unittest.IsolatedAsyncioTestCase)
         ):
             evidence = await run_supported_environment_critical_journeys(
                 mode="live",
-                rollback_evidence=rollback,
+                rollback_evidence=rollback, clock=fixed_clock,
             )
 
         self.assertFalse(evidence["passed"])
@@ -349,7 +350,7 @@ class SupportedEnvironmentCriticalJourneyTests(unittest.IsolatedAsyncioTestCase)
         ):
             evidence = await run_supported_environment_critical_journeys(
                 mode="live",
-                rollback_evidence=self._valid_live_rollback_evidence(),
+                rollback_evidence=self._valid_live_rollback_evidence(), clock=fixed_clock,
             )
 
         diagnostic = next(
@@ -376,7 +377,7 @@ class SupportedEnvironmentCriticalJourneyTests(unittest.IsolatedAsyncioTestCase)
         ):
             evidence = await run_supported_environment_critical_journeys(
                 mode="live",
-                rollback_evidence=self._valid_live_rollback_evidence(),
+                rollback_evidence=self._valid_live_rollback_evidence(), clock=fixed_clock,
             )
 
         self.assertFalse(evidence["passed"])
@@ -446,14 +447,14 @@ class SupportedEnvironmentCriticalJourneyTests(unittest.IsolatedAsyncioTestCase)
         class InjectedSetupFailure(RuntimeError):
             pass
 
-        rollback = run_rollback_fault_matrix(mode="fixture")
+        rollback = run_rollback_fault_matrix(mode="fixture", clock=fixed_clock)
         with patch(
             "danish_rag.release_monitors.httpx.AsyncClient.post",
             side_effect=InjectedSetupFailure("PRIVATE-CONTENT-SENTINEL /tmp/private"),
         ):
             evidence = await run_supported_environment_critical_journeys(
                 mode="fixture",
-                rollback_evidence=rollback,
+                rollback_evidence=rollback, clock=fixed_clock,
             )
 
         self.assertEqual(
@@ -492,7 +493,7 @@ class ReleaseMonitorCliTests(unittest.TestCase):
                     "--generated-at-utc",
                     "2026-07-14T00:00:00Z",
                     "--strict",
-                ]
+                ], clock=fixed_clock
             )
 
             report = json.loads(output_path.read_text(encoding="utf-8"))

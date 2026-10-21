@@ -38,11 +38,19 @@ def sha256_file(path: str | Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def utc_now_seconds() -> str:
-    """Return an RFC 3339 UTC timestamp with stable second precision."""
+def system_utc_clock() -> datetime:
+    """The default clock of every entry point: system time, timezone-aware UTC."""
 
-    return datetime.now(UTC).replace(microsecond=0).isoformat().replace(
-        "+00:00", "Z"
+    return datetime.now(UTC)
+
+
+def format_utc_seconds(at: datetime) -> str:
+    """Format an explicit, timezone-aware time as RFC 3339 UTC at second precision."""
+
+    if at.tzinfo is None:
+        raise ValueError("evidence timestamps need a timezone-aware time")
+    return (
+        at.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     )
 
 

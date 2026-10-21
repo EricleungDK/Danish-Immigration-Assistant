@@ -11,6 +11,7 @@ from danish_rag.answer_verification import claim_binding
 from tests.test_issue_13_evidence_safety import (
     FixtureRetriever, evidence_fixture, provider_configuration,
 )
+from tests.evaluation_time import fixed_clock
 
 
 CLAIM = 'Prøve i Dansk 2 is the basic Danish language requirement for permanent residence.'
@@ -63,7 +64,7 @@ class AnswerPolicyProvenanceTests(unittest.TestCase):
         source = evidence_fixture('source', content=CLAIM)
         if overdue:
             source['source_health'] = 'overdue-policy-usable'
-        return AnswerService(retriever=FixtureRetriever([source]), generator=generator).answer(
+        return AnswerService(retriever=FixtureRetriever([source]), generator=generator, clock=fixed_clock).answer(
             QUESTION, replace(provider_configuration(), provider_id='ollama'))
 
     def test_program_refusal_and_metadata_warning_are_added_after_source_verification(self):

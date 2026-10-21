@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from danish_rag.release_evaluation import generate_release_evaluation
+from tests.evidence_rebind import copy_repository, rebind_implementation_hashes
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -263,13 +264,34 @@ def _write_live_release_evidence(target):
 
 
 class ReleaseEvaluationReportTests(unittest.TestCase):
+    # ADR 0001 (docs/adr/0001-requalify-per-release-not-per-commit.md): the committed
+    # issue-51 evidence binds implementation hashes and is stale after refactors. The
+    # approved-release tests run against a copy whose bindings are recomputed from the
+    # current files; the committed evidence itself is asserted to be rejected.
+    @classmethod
+    def setUpClass(cls):
+        cls._rebound = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls._rebound.cleanup)
+        cls.rebound_root = copy_repository(cls._rebound.name)
+        rebind_implementation_hashes(cls.rebound_root)
+
+    def test_committed_evidence_is_stale_after_implementation_changes(self):
+        report = generate_release_evaluation(ROOT, generated_at_utc="2026-07-07T00:00:00Z")
+        self.assertFalse(report["strict_release_passed"])
+        gate = _gate(report, "retrieval-required-evidence-baseline")
+        self.assertEqual(gate["evaluated_status"], "failed")
+        self.assertTrue(
+            any("implementation changed" in failure for failure in gate["failures"]),
+            gate["failures"],
+        )
+
     def test_report_covers_current_release_gates_and_honors_explicit_release_approval(self):
         report = generate_release_evaluation(
-            ROOT,
+            self.rebound_root,
             generated_at_utc="2026-07-07T00:00:00Z",
         )
         qualification = json.loads(
-            (ROOT / "config" / "release-qualification.json").read_text(
+            (self.rebound_root / "config" / "release-qualification.json").read_text(
                 encoding="utf-8"
             )
         )
@@ -299,7 +321,7 @@ class ReleaseEvaluationReportTests(unittest.TestCase):
 
     def test_retrieval_gate_uses_hybrid_evidence_and_quality_bar_thresholds(self):
         report = generate_release_evaluation(
-            ROOT,
+            self.rebound_root,
             generated_at_utc="2026-07-07T00:00:00Z",
         )
 
@@ -950,7 +972,7 @@ class ReleaseEvaluationReportTests(unittest.TestCase):
             default_status = main(
                 [
                     "--repo-root",
-                    str(ROOT),
+                    str(self.rebound_root),
                     "--output",
                     str(output_path),
                     "--generated-at-utc",
@@ -960,7 +982,7 @@ class ReleaseEvaluationReportTests(unittest.TestCase):
             strict_status = main(
                 [
                     "--repo-root",
-                    str(ROOT),
+                    str(self.rebound_root),
                     "--output",
                     str(output_path),
                     "--strict",

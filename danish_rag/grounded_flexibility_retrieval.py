@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .evidence_integrity import sha256_file, utc_now_seconds
+from .evidence_integrity import format_utc_seconds, sha256_file, system_utc_clock
 from .grounded_flexibility_evaluation import load_grounded_flexibility_dataset
 from .knowledge_release import default_data_dir
 from .retrieval import HybridRetriever
@@ -17,7 +19,12 @@ from .source_freshness import assess_source_freshness
 DEFAULT_DATASET = "data/evaluation/grounded-flexibility-v0.1-candidate.json"
 
 
-def evaluate_retrieval(dataset_path: str | Path, *, retriever: Any) -> dict[str, Any]:
+def evaluate_retrieval(
+    dataset_path: str | Path,
+    *,
+    retriever: Any,
+    clock: Callable[[], datetime] = system_utc_clock,
+) -> dict[str, Any]:
     """Measure required source coverage at three without exporting query/results text.
 
     Dataset identities describe source documents; schema-2 results describe chunks.
@@ -25,7 +32,7 @@ def evaluate_retrieval(dataset_path: str | Path, *, retriever: Any) -> dict[str,
     never serialized, since provider exceptions may contain private input.
     """
     dataset = load_grounded_flexibility_dataset(dataset_path)
-    timestamp = utc_now_seconds()
+    timestamp = format_utc_seconds(clock())
     intents: dict[str, dict[str, int]] = {}
     errors = blocked = 0
     for case in dataset["cases"]:
@@ -75,7 +82,11 @@ def evaluate_retrieval(dataset_path: str | Path, *, retriever: Any) -> dict[str,
     }
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    clock: Callable[[], datetime] = system_utc_clock,
+) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", default=DEFAULT_DATASET)
     parser.add_argument("--data-dir", default=default_data_dir())
@@ -85,9 +96,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     retriever = HybridRetriever.from_data_dir(
         args.data_dir, trust_root_path=args.trust_root_path,
-        embedding_endpoint=args.embedding_endpoint,
+        embedding_endpoint=args.embedding_endpoint, clock=clock,
     )
-    report = evaluate_retrieval(args.dataset, retriever=retriever)
+    report = evaluate_retrieval(args.dataset, retriever=retriever, clock=clock)
     report["provenance"] = {
         "retrieval_implementation_sha256": sha256_file(
             Path(__file__).with_name("retrieval.py")

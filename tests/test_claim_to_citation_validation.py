@@ -1,6 +1,7 @@
 import unittest
 
 from danish_rag.answer_pipeline import AnswerValidationError, validate_answer
+from tests.evaluation_time import FIXED_TIME
 
 
 def evidence(content: str) -> dict[str, object]:
@@ -46,7 +47,7 @@ class ClaimToCitationValidationTests(unittest.TestCase):
                     "test 2 (Prøve i Dansk 2), or a Danish exam of an equivalent or "
                     "higher level, to satisfy the basic Danish-language requirement."
                 )
-            ],
+            ], evaluated_at=FIXED_TIME,
         )
 
         self.assertEqual(result["trust"]["evidence_confidence"], "High")
@@ -62,7 +63,7 @@ class ClaimToCitationValidationTests(unittest.TestCase):
                     evidence(
                         "Prøve i Dansk 2 consists of a written part and an oral part."
                     )
-                ],
+                ], evaluated_at=FIXED_TIME,
             )
 
     def test_number_must_appear_in_cited_evidence(self) -> None:
@@ -74,7 +75,7 @@ class ClaimToCitationValidationTests(unittest.TestCase):
                 payload("The registration deadline is 30 August 2026."),
                 evidence=[
                     evidence("The registration deadline is 31 August 2026.")
-                ],
+                ], evaluated_at=FIXED_TIME,
             )
 
 

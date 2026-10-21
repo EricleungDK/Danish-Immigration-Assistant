@@ -21,6 +21,7 @@ from danish_rag.final_answer_evaluation import (
 from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.provider_setup import ProviderConfiguration
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.evaluation_time import fixed_clock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -155,7 +156,7 @@ class FinalAnswerEvaluationPublicSeamTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             install_minimal_knowledge_release(
                 tmpdir,
-                embedding_provider=embedding_provider,
+                embedding_provider=embedding_provider, clock=fixed_clock,
             )
             runner = build_live_ollama_runner(
                 data_dir=tmpdir,
@@ -205,6 +206,7 @@ class FinalAnswerEvaluationPublicSeamTests(unittest.TestCase):
             embedding_provider=mock.ANY,
             embedding_endpoint=configuration.endpoint,
             trust_root_path=trust_root_path,
+            clock=mock.ANY,
         )
 
     def test_live_cli_forwards_trusted_custom_release_root(self):
