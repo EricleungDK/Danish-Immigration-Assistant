@@ -45,7 +45,7 @@ Danish Immigration RAG answers only from a **human-reviewed, cryptographically s
 
 > **Knowledge snapshot.** The signed knowledge release `kr-2026-09-05.1` is a **September 2026 demo snapshot and is not kept current**: no recurring source re-reviews or new releases are planned. The running app evaluates source freshness as of the release date (shown in the app), so the snapshot keeps citing its sources instead of expiring; always check the official source for current rules.
 
-> Captured from the deterministic browser-test fixture server (`tests/browser_app_server.py`) with its bundled minimal knowledge release and a stub answer generator, so the content is illustrative, not live model output.
+> Captured from the deterministic browser-test fixture server (`tests/browser_app_server.py`) with its bundled minimal knowledge release and a controlled local model, so the content is illustrative, not live model output.
 
 ## Features
 
