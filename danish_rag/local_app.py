@@ -23,6 +23,7 @@ from .answer_pipeline import (
 )
 from .conversation_store import ConversationStore
 from .embedding_provider import EmbeddingProvider
+from .retriever_cache import RetrieverCache, release_cache_key
 from .evidence_integrity import system_utc_clock
 from .github_release_client import GitHubReleaseClient
 from .knowledge_release import (
@@ -155,6 +156,7 @@ def create_app(
         state.adopt(release["manifest"])
         return release
 
+    retriever_cache: RetrieverCache[HybridRetriever] = RetrieverCache()
     tester = capability_tester or ProviderCapabilityTester()
     discover_models = model_discoverer or ProviderModelDiscoverer()
     generator = answer_generator or LocalProviderAnswerGenerator()
@@ -719,14 +721,22 @@ def create_app(
                     ),
                 )
         try:
-            ensure_release()
+            verified_release = ensure_release()
             snapshot_state = current_snapshot_state()
             try:
-                retriever = HybridRetriever.from_data_dir(
-                    resolved_data_dir,
-                    embedding_provider=embedding_provider,
-                    trust_root_path=resolved_trust_root_path,
-                    clock=request_clock,
+                # Keyed by the release this request just verified, so it never gets a
+                # retriever for another release; the clock is read per retrieve().
+                retriever = retriever_cache.get_or_build(
+                    release_cache_key(verified_release["active"], verified_release["index"]),
+                    lambda: HybridRetriever.from_data_dir(
+                        resolved_data_dir,
+                        embedding_provider=embedding_provider,
+                        trust_root_path=resolved_trust_root_path,
+                        clock=request_clock,
+                    ),
+                    lambda built: release_cache_key(
+                        built.active_release, built.dense_index["metadata"]
+                    ),
                 )
             except Exception as exc:
                 snapshot_state.mark_unavailable(exc)
