@@ -2,8 +2,12 @@
 
 import json
 import re
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+import httpx
 
 from danish_rag import answer_pipeline
 from danish_rag.answer_pipeline import (
@@ -13,7 +17,13 @@ from danish_rag.local_model_transport import FakeTransport, ModelUnreachableErro
 from danish_rag.social_conversation import (
     SocialConversation, TransportSocialReplies, classify_conversation_turn, conversation_schema,
 )
+from danish_rag.knowledge_release import install_minimal_knowledge_release
+from danish_rag.local_app import create_app
+from danish_rag.provider_setup import save_provider_configuration
+from danish_rag.retrieval import HybridRetriever
 from tests.answer_transport import requests, script
+from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.evaluation_time import fixed_clock
 from tests.test_issue_13_evidence_safety import provider_configuration
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -110,3 +120,46 @@ class AnswerModuleBoundaryTests(unittest.TestCase):
         self.assertIsNone(re.search(r'social|greeting|converse|conversation_schema', source, re.I))
         self.assertFalse(hasattr(TransportAnswerGenerator, 'converse'))
         self.assertFalse(hasattr(answer_pipeline, 'classify_conversation_turn'))
+
+
+class AppRoutingTests(unittest.IsolatedAsyncioTestCase):
+    """Through the application: social turns never reach retrieval or answer generation."""
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        root = Path(self.tempdir.name)
+        config = root / 'config' / 'provider-config.json'
+        data = root / 'data'
+        save_provider_configuration(config, provider_configuration())
+        provider = DeterministicEmbeddingProviderFixture()
+        install_minimal_knowledge_release(data, embedding_provider=provider, clock=fixed_clock)
+        self.transport = FakeTransport()
+        self.app = create_app(
+            config_path=config, data_dir=data, transport=self.transport,
+            embedding_provider=provider, clock=fixed_clock)
+
+    async def ask(self, question):
+        with patch.object(HybridRetriever, 'retrieve') as retrieve, \
+                patch.object(TransportAnswerGenerator, 'generate') as generate:
+            async with httpx.AsyncClient(
+                    transport=httpx.ASGITransport(app=self.app), base_url='http://testserver') as client:
+                response = await client.post('/ask', data={'question': question},
+                    headers={'Origin': 'http://testserver'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(retrieve.call_count, 0)
+        self.assertEqual(generate.call_count, 0)
+        return response
+
+    async def test_exact_greeting_makes_no_retrieval_generation_or_chat_request(self):
+        response = await self.ask('hi')
+        self.assertIn('Hello', response.text)
+        self.assertEqual(requests(self.transport), [])
+
+    async def test_social_turn_makes_one_social_chat_request_and_no_retrieval(self):
+        script(self.transport, {'response': 'Why did the tomato blush?'})
+        response = await self.ask('Tell me a short joke.')
+        self.assertIn('Why did the tomato blush?', response.text)
+        sent = requests(self.transport)
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0]['schema'], conversation_schema())

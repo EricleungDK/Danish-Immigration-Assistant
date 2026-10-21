@@ -184,8 +184,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
             },
         )
 
-    def test_greeting_bypasses_retrieval_and_generation(self):
-        retriever = CountingRetriever()
+    def test_greeting_is_answered_locally(self):
         generator = FixtureAnswerGenerator()
 
         result = social_reply(generator, "hi")
@@ -194,12 +193,9 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(result.answer["generation_used"], False)
         self.assertIn("Hello", result.answer["summary"])
         self.assertEqual(result.answer["citations"], [])
-        self.assertEqual(retriever.calls, [])
-        self.assertEqual(generator.calls, [])
         self.assertEqual(generator.conversation_calls, [])
 
-    def test_non_factual_social_turn_uses_local_model_without_retrieval(self):
-        retriever = CountingRetriever()
+    def test_non_factual_social_turn_uses_local_model(self):
         generator = FixtureAnswerGenerator()
 
         result = social_reply(generator, "Tell me a short joke.")
@@ -211,8 +207,6 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
             "Why did the tomato blush? It saw the salad dressing.",
         )
         self.assertEqual(result.answer["citations"], [])
-        self.assertEqual(retriever.calls, [])
-        self.assertEqual(generator.calls, [])
         self.assertEqual(
             generator.conversation_calls,
             [
@@ -230,8 +224,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
             ],
         )
 
-    def test_unrelated_factual_turn_uses_bounded_model_mode_without_retrieval(self):
-        retriever = CountingRetriever()
+    def test_unrelated_factual_turn_uses_bounded_model_mode(self):
         generator = FixtureAnswerGenerator(
             conversation_response=(
                 "I can chat briefly, but factual answers are limited to the installed "
@@ -249,8 +242,6 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(result.answer["generation_used"], True)
         self.assertIn("factual answers are limited", result.answer["summary"])
         self.assertEqual(result.answer["citations"], [])
-        self.assertEqual(retriever.calls, [])
-        self.assertEqual(generator.calls, [])
         self.assertEqual(len(generator.conversation_calls), 1)
 
     async def test_greeting_renders_as_conversation_without_evidence_indicators(self):
