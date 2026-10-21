@@ -192,7 +192,7 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
         )
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
             for error in (HTTPException(status_code=409, detail="Installation is in progress."), RuntimeError("unavailable")):
-                with patch("danish_rag.local_app.discover_knowledge_update", side_effect=error):
+                with patch("danish_rag.knowledge_update_controller.discover_knowledge_update", side_effect=error):
                     response = await client.post("/knowledge-updates/check", headers={"Origin": "http://testserver", "HX-Request": "true"})
                 self.assertEqual(response.status_code, 200)
                 self.assertIn('id="manual-update-result"', response.text)
