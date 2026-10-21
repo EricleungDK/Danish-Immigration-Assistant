@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from copy import deepcopy
 import re
-import urllib.error
-import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -20,10 +18,12 @@ from .answer_verification import (
     verification_rejects_claim,
     evidence_group_keys, claim_anchor_deficits, partial_verified_answer,
 )
-from .ollama_contract import OLLAMA_DETERMINISTIC_CHAT_OPTIONS
-from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
+from .local_model_transport import (
+    LocalModelTransport, LocalModelTransportError, ModelTimeoutError, ModelUnreachableError,
+)
+from .privacy_boundary import PrivacyBoundaryError
 from .evidence_integrity import system_utc_clock
-from .provider_setup import ProviderConfiguration
+from .provider_setup import ProviderConfiguration, TransportFactory, default_transport_factory
 from .retrieval import normalize_question
 from .trust_indicators import (
     assess_trust_indicators,
@@ -290,11 +290,111 @@ def _repair_anchor_diagnostics(
                        'preserve every qualifier and require each cited chunk to contribute.'}
 
 
-class LocalProviderAnswerGenerator:
-    """Structured answer generator for configured loopback providers."""
+# --- Local model access ----------------------------------------------------------------
 
-    def __init__(self, *, timeout_seconds: float = 90.0) -> None:
-        self.timeout_seconds = timeout_seconds
+TransportSource = Callable[[ProviderConfiguration], LocalModelTransport]
+
+_VERIFICATION_CONTEXT_TOKENS = 8192
+_REPAIR_CONTEXT_TOKENS = 8192
+_GENERATION_TIMEOUT_SECONDS = 90.0
+
+
+def fixed_transport(transport: LocalModelTransport) -> TransportSource:
+    """Always use this transport, whatever provider the configuration names."""
+
+    return lambda configuration: transport
+
+
+def provider_transport(
+    timeout_seconds: float = _GENERATION_TIMEOUT_SECONDS,
+    factory: TransportFactory = default_transport_factory,
+) -> TransportSource:
+    """Build the loopback adapter the configuration's provider calls for."""
+
+    def resolve(configuration: ProviderConfiguration) -> LocalModelTransport:
+        try:
+            return factory(configuration.provider_id, configuration.endpoint, timeout_seconds)
+        except PrivacyBoundaryError as exc:
+            raise AnswerPipelineError(str(exc)) from exc
+        except ValueError as exc:
+            raise AnswerPipelineError("Configured generation provider is unsupported.") from exc
+
+    return resolve
+
+
+def _provider_failure(exc: Exception, endpoint: str) -> AnswerPipelineError:
+    if isinstance(exc, PrivacyBoundaryError):
+        return AnswerPipelineError(str(exc))
+    if isinstance(exc, ModelTimeoutError):
+        return AnswerPipelineError(
+            "Local generation provider timed out while preparing the answer. "
+            "Keep the question in the composer, confirm the local provider is "
+            "running, and retry."
+        )
+    if isinstance(exc, ModelUnreachableError):
+        return AnswerPipelineError(
+            "Local generation provider is unavailable. Start the configured local "
+            f"provider at {endpoint.rstrip('/')}, confirm the selected model is "
+            "loaded, and retry."
+        )
+    return AnswerPipelineError(f"Local provider failed during answer generation: {exc}")
+
+
+def _structured_chat(
+    transports: TransportSource,
+    configuration: ProviderConfiguration,
+    messages: list[dict[str, str]],
+    schema: dict[str, Any],
+    *,
+    context_tokens: int | None = None,
+    verification_request: bool = False,
+) -> dict[str, Any]:
+    """One structured JSON exchange; a malformed reply is re-asked exactly once."""
+
+    transport = transports(configuration)
+    request_messages = messages
+    for attempt in range(2):
+        if verification_request:
+            try:
+                enforce_verification_message_bound(request_messages)
+            except VerificationError as exc:
+                raise AnswerValidationError(str(exc)) from exc
+        try:
+            reply = transport.chat(
+                model=configuration.model, messages=request_messages,
+                schema=schema, context_tokens=context_tokens,
+            )
+        except (LocalModelTransportError, PrivacyBoundaryError) as exc:
+            raise _provider_failure(exc, configuration.endpoint) from exc
+        if reply.done_reason == "length":
+            raise AnswerValidationError(
+                "Local provider exhausted the available context before completing "
+                "structured output."
+            )
+        try:
+            return _parse_provider_content(reply.content)
+        except AnswerValidationError:
+            if attempt == 1:
+                raise
+            request_messages = [
+                *messages,
+                {
+                    "role": "user",
+                    "content": (
+                        "The previous structured response was invalid. Return "
+                        "exactly one JSON object matching required_output_schema, "
+                        "with no second object, prose, or code fence."
+                    ),
+                },
+            ]
+    raise AssertionError("unreachable")
+
+
+class TransportAnswerGenerator:
+    """Drafts (and repairs) structured answers, and social replies, over a local transport."""
+
+    def __init__(self, transports: TransportSource) -> None:
+        self._transports = transports
 
     def generate(
         self,
@@ -306,64 +406,12 @@ class LocalProviderAnswerGenerator:
         schema: dict[str, Any],
     ) -> dict[str, Any]:
         aliased_evidence, aliased_schema, canonical_ids, packages = _generation_citation_namespace(evidence, schema)
-        arguments = dict(question=question, normalized_question=normalized_question,
-                         evidence=aliased_evidence, configuration=configuration, schema=aliased_schema, citation_packages=packages)
-        if configuration.provider_id == "ollama":
-            payload = self._generate_ollama(**arguments)
-        elif configuration.provider_id == "openai_compatible":
-            payload = self._generate_openai_compatible(**arguments)
-        else:
-            raise AnswerPipelineError("Configured generation provider is unsupported.")
+        messages = _answer_messages(
+            question, normalized_question, aliased_evidence,
+            schema=aliased_schema, citation_packages=packages,
+        )
+        payload = _structured_chat(self._transports, configuration, messages, aliased_schema)
         return _map_generated_citations(payload, canonical_ids)
-
-    def verify_answer(
-        self, payload: dict[str, Any], *, evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-    ) -> frozenset[str]:
-        try:
-            messages = verification_messages(payload, evidence)
-            schema = verification_schema(answer=payload, evidence=evidence)
-        except VerificationError as exc:
-            raise AnswerValidationError(str(exc)) from exc
-        for attempt in range(2):
-            try:
-                enforce_verification_message_bound(messages)
-            except VerificationError as exc:
-                raise AnswerValidationError(str(exc)) from exc
-            if configuration.provider_id == "ollama":
-                verification = self._generate_ollama_messages(
-                    messages=messages, configuration=configuration,
-                    schema=schema, context_tokens=8192, verification_request=True,
-                )
-            elif configuration.provider_id == "openai_compatible":
-                verification = self._generate_openai_compatible_messages(
-                    messages=messages, configuration=configuration,
-                    schema=schema, schema_name="danish_rag_verification",
-                )
-            else:
-                raise AnswerPipelineError("Configured verification provider is unsupported.")
-            try:
-                return validate_verification(payload, evidence, verification)
-            except VerificationError as exc:
-                rejected_claim = verification_rejects_claim(verification)
-                # Never ask a verifier to turn a negative semantic decision into
-                # approval. One correction is only for invalid witness/protocol
-                # output; an unsupported claim goes back to the answer writer.
-                if attempt == 1 or rejected_claim:
-                    raise _RejectedVerifiedAnswer(str(exc), payload, evidence, verification) from exc
-                messages = [
-                    *messages,
-                    {"role": "assistant", "content": json.dumps(verification, ensure_ascii=False)},
-                    {"role": "user", "content": (
-                        "Your verification failed an application constraint: " + str(exc) +
-                        " Recheck the unchanged proposed answer. Correct only witness "
-                        "selection or verdict structure. Select the source spans that "
-                        "actually support each exact claim and all its qualifications. "
-                        "Return verdict=unsupported whenever the claim lacks support; do "
-                        "not change the answer or manufacture support."
-                    )},
-                ]
-        raise AssertionError("unreachable")
 
     def repair_answer(
         self, *, question: str, normalized_question: str,
@@ -391,14 +439,9 @@ class LocalProviderAnswerGenerator:
             'citation_anchor_diagnostics': _repair_anchor_diagnostics(
                 previous_answer, evidence, canonical_ids, packages),
         }, ensure_ascii=False, separators=(',', ':'))})
-        if configuration.provider_id == "ollama":
-            payload = self._generate_ollama_messages(
-                messages=messages, configuration=configuration, schema=aliased_schema,
-                context_tokens=8192)
-        else:
-            payload = self._generate_openai_compatible_messages(
-                messages=messages, configuration=configuration, schema=aliased_schema,
-                schema_name="danish_rag_answer")
+        payload = _structured_chat(
+            self._transports, configuration, messages, aliased_schema,
+            context_tokens=_REPAIR_CONTEXT_TOKENS)
         return _map_generated_citations(payload, canonical_ids)
 
     def converse(
@@ -408,199 +451,216 @@ class LocalProviderAnswerGenerator:
         configuration: ProviderConfiguration,
         schema: dict[str, Any],
     ) -> dict[str, Any]:
-        messages = _conversation_messages(question, schema=schema)
-        if configuration.provider_id == "ollama":
-            return self._generate_ollama_messages(
-                messages=messages,
-                configuration=configuration,
-                schema=schema,
-            )
-        if configuration.provider_id == "openai_compatible":
-            return self._generate_openai_compatible_messages(
-                messages=messages,
-                configuration=configuration,
-                schema=schema,
-                schema_name="danish_rag_conversation",
-            )
-        raise AnswerPipelineError("Configured generation provider is unsupported.")
-
-    def _generate_ollama(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-        citation_packages: dict[str, list[str]] | None = None,
-    ) -> dict[str, Any]:
-        messages = _answer_messages(
-            question,
-            normalized_question,
-            evidence,
-            schema=schema,
-            citation_packages=citation_packages,
-        )
-        return self._generate_ollama_messages(
-            messages=messages,
-            configuration=configuration,
-            schema=schema,
+        return _structured_chat(
+            self._transports, configuration,
+            _conversation_messages(question, schema=schema), schema,
         )
 
-    def _generate_ollama_messages(
-        self,
-        *,
-        messages: list[dict[str, str]],
+
+# --- Evidence-bounded answer ------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class AnswerRequest:
+    """Everything the Evidence-bounded answer module needs besides its collaborators."""
+
+    question: str
+    normalized_question: str
+    evidence: list[dict[str, Any]]
+    blocked_evidence: list[dict[str, Any]]
+    safety: SafetyDecision
+    evaluated_at: datetime
+    configuration: ProviderConfiguration
+
+
+class AnswerVerifier(Protocol):
+    """How a drafted answer becomes a verified one.
+
+    Two adapters: `ModelAnswerVerifier` (a separate local verification request) and
+    `LexicalAnswerVerifier` (the deterministic claim-support guard). Which one an
+    answer service uses is decided once, when it is built.
+    """
+
+    #: Whether a rejected draft earns the writer one bounded repair attempt.
+    repairs_rejected_drafts: bool
+
+    def prepare(self, draft: dict[str, Any]) -> dict[str, Any]:
+        """The draft exactly as it will be verified (and, if rejected, repaired)."""
+
+    def verified_answer(self, draft: dict[str, Any], request: AnswerRequest) -> dict[str, Any]:
+        """The verified, complete answer; raises AnswerValidationError when unverifiable."""
+
+    def salvage(
+        self, rejection: AnswerValidationError, draft: dict[str, Any], request: AnswerRequest,
+    ) -> dict[str, Any] | None:
+        """A partial answer from a rejection that exhausted repair, or None to fail closed."""
+
+    def refusal_answer(self, draft: dict[str, Any], request: AnswerRequest) -> dict[str, Any]:
+        """The answer for an application-authored refusal that no model was asked to write."""
+
+
+def _lexically_validated_answer(
+    draft: dict[str, Any], request: AnswerRequest, *, assemble_summary: bool = False,
+) -> dict[str, Any]:
+    augmented = _augment_generated_payload(
+        draft, safety=request.safety, evidence=request.evidence,
+        blocked_evidence=request.blocked_evidence,
+    )
+    if assemble_summary:
+        augmented = _assemble_supported_summary(augmented)
+    _reject_prohibited_safety_claims(augmented, safety=request.safety)
+    return validate_answer(
+        augmented, evidence=request.evidence, evaluated_at=request.evaluated_at,
+    )
+
+
+class LexicalAnswerVerifier:
+    """Deterministic regime: the claim-support guard in `validate_answer`, no repair.
+
+    Used for controlled fixtures and direct validation.
+    """
+
+    repairs_rejected_drafts = False
+
+    def prepare(self, draft: dict[str, Any]) -> dict[str, Any]:
+        return draft
+
+    def verified_answer(self, draft: dict[str, Any], request: AnswerRequest) -> dict[str, Any]:
+        return _lexically_validated_answer(draft, request)
+
+    def salvage(self, rejection, draft, request):
+        return None
+
+    def refusal_answer(self, draft: dict[str, Any], request: AnswerRequest) -> dict[str, Any]:
+        return _lexically_validated_answer(draft, request)
+
+
+class ModelAnswerVerifier:
+    """Production regime: every claim is checked by a separate local verification request."""
+
+    repairs_rejected_drafts = True
+
+    def __init__(self, transports: TransportSource) -> None:
+        self._transports = transports
+
+    def prepare(self, draft: dict[str, Any]) -> dict[str, Any]:
+        return _assemble_supported_summary(draft)
+
+    def verified_answer(self, draft: dict[str, Any], request: AnswerRequest) -> dict[str, Any]:
+        verified = self.verified_claims(
+            draft, evidence=request.evidence, configuration=request.configuration)
+        return _complete_verified_answer(
+            draft, verified_claims=verified, safety=request.safety,
+            evidence=request.evidence, blocked_evidence=request.blocked_evidence,
+            evaluated_at=request.evaluated_at,
+        )
+
+    def salvage(self, rejection, draft, request):
+        if not (isinstance(rejection, _RejectedVerifiedAnswer)
+                and rejection.payload == draft and rejection.evidence == request.evidence):
+            return None
+        try:
+            partial, bindings, status = partial_verified_answer(
+                draft, request.evidence, rejection.verification)
+        except VerificationError:
+            return None
+        return _complete_verified_answer(
+            partial, verified_claims=bindings, safety=request.safety,
+            evidence=request.evidence, blocked_evidence=request.blocked_evidence,
+            verification_status=status, evaluated_at=request.evaluated_at,
+        )
+
+    def refusal_answer(self, draft: dict[str, Any], request: AnswerRequest) -> dict[str, Any]:
+        return _lexically_validated_answer(draft, request, assemble_summary=True)
+
+    def verified_claims(
+        self, draft: dict[str, Any], *, evidence: list[dict[str, Any]],
         configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-        context_tokens: int | None = None,
-        verification_request: bool = False,
-    ) -> dict[str, Any]:
-        payload = {
-            "model": configuration.model,
-            "messages": messages,
-            "stream": False,
-            "format": schema,
-            "think": False,
-            "options": dict(OLLAMA_DETERMINISTIC_CHAT_OPTIONS),
-        }
-        if context_tokens is not None:
-            payload["options"]["num_ctx"] = context_tokens
+    ) -> frozenset[str]:
+        """Ask the local model to verify `draft`; the bindings of the claims it supports."""
+
+        try:
+            messages = verification_messages(draft, evidence)
+            schema = verification_schema(answer=draft, evidence=evidence)
+        except VerificationError as exc:
+            raise AnswerValidationError(str(exc)) from exc
         for attempt in range(2):
-            if verification_request:
-                try:
-                    enforce_verification_message_bound(payload["messages"])
-                except VerificationError as exc:
-                    raise AnswerValidationError(str(exc)) from exc
-            response = self._request_json(
-                configuration.endpoint,
-                "POST",
-                "/api/chat",
-                payload,
-            )
-            if response.get("done_reason") == "length":
-                raise AnswerValidationError(
-                    "Local provider exhausted the available context before completing "
-                    "structured output."
-                )
-            content = response.get("message", {}).get("content")
             try:
-                return _parse_provider_content(content)
-            except AnswerValidationError:
-                if attempt == 1:
-                    raise
-                payload = {
-                    **payload,
-                    "messages": [
-                        *messages,
-                        {
-                            "role": "user",
-                            "content": (
-                                "The previous structured response was invalid. Return "
-                                "exactly one JSON object matching required_output_schema, "
-                                "with no second object, prose, or code fence."
-                            ),
-                        },
-                    ],
-                }
+                enforce_verification_message_bound(messages)
+            except VerificationError as exc:
+                raise AnswerValidationError(str(exc)) from exc
+            verification = _structured_chat(
+                self._transports, configuration, messages, schema,
+                context_tokens=_VERIFICATION_CONTEXT_TOKENS, verification_request=True,
+            )
+            try:
+                return validate_verification(draft, evidence, verification)
+            except VerificationError as exc:
+                rejected_claim = verification_rejects_claim(verification)
+                # Never ask a verifier to turn a negative semantic decision into
+                # approval. One correction is only for invalid witness/protocol
+                # output; an unsupported claim goes back to the answer writer.
+                if attempt == 1 or rejected_claim:
+                    raise _RejectedVerifiedAnswer(str(exc), draft, evidence, verification) from exc
+                messages = [
+                    *messages,
+                    {"role": "assistant", "content": json.dumps(verification, ensure_ascii=False)},
+                    {"role": "user", "content": (
+                        "Your verification failed an application constraint: " + str(exc) +
+                        " Recheck the unchanged proposed answer. Correct only witness "
+                        "selection or verdict structure. Select the source spans that "
+                        "actually support each exact claim and all its qualifications. "
+                        "Return verdict=unsupported whenever the claim lacks support; do "
+                        "not change the answer or manufacture support."
+                    )},
+                ]
         raise AssertionError("unreachable")
 
-    def _generate_openai_compatible(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-        citation_packages: dict[str, list[str]] | None = None,
-    ) -> dict[str, Any]:
-        return self._generate_openai_compatible_messages(
-            messages=_answer_messages(
-                question, normalized_question, evidence, schema=schema, citation_packages=citation_packages
-            ),
-            configuration=configuration,
-            schema=schema,
-            schema_name="danish_rag_answer",
-        )
 
-    def _generate_openai_compatible_messages(
-        self,
-        *,
-        messages: list[dict[str, str]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-        schema_name: str,
-    ) -> dict[str, Any]:
-        payload = {
-            "model": configuration.model,
-            "messages": messages,
-            "temperature": 0,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": schema_name,
-                    "schema": schema,
-                    "strict": True,
-                },
-            },
-        }
-        response = self._request_json(
-            configuration.endpoint,
-            "POST",
-            "/v1/chat/completions",
-            payload,
-        )
-        content = (
-            response.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content")
-        )
-        return _parse_provider_content(content)
+class EvidenceBoundedAnswer:
+    """Generate, verify, at most one repair, then fail closed.
 
-    def _request_json(
-        self,
-        endpoint: str,
-        method: str,
-        path: str,
-        payload: dict[str, Any],
-    ) -> dict[str, Any]:
-        try:
-            require_loopback_endpoint(endpoint, purpose="Answer generation")
-        except PrivacyBoundaryError as exc:
-            raise AnswerPipelineError(str(exc)) from exc
-        request = urllib.request.Request(
-            f"{endpoint.rstrip('/')}{path}",
-            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers={"Accept": "application/json", "Content-Type": "application/json"},
-            method=method,
+    The single owner of the retry rules: one request (the question and the evidence it
+    was drafted from) goes in; a verified answer comes out, or AnswerValidationError is
+    raised and nothing is returned. The verifier decides how verification and salvage
+    work; this class never looks at what kind of generator or verifier it holds.
+    """
+
+    def __init__(self, *, generator: AnswerGenerator, verifier: AnswerVerifier) -> None:
+        if verifier.repairs_rejected_drafts and not callable(getattr(generator, "repair_answer", None)):
+            raise ValueError(
+                "A verifier that repairs rejected drafts needs a generator with repair_answer."
+            )
+        self.generator = generator
+        self.verifier = verifier
+
+    def answer(self, request: AnswerRequest) -> dict[str, Any]:
+        if request.safety.skip_generation:
+            return self.verifier.refusal_answer(
+                _refusal_payload(request.safety, request.evidence), request)
+        schema = answer_schema([str(item["citation_id"]) for item in request.evidence])
+        draft = self.generator.generate(
+            question=request.question, normalized_question=request.normalized_question,
+            evidence=request.evidence, configuration=request.configuration, schema=schema,
         )
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise AnswerPipelineError(f"Local provider returned HTTP {exc.code}: {detail}") from exc
-        except TimeoutError as exc:
-            raise AnswerPipelineError(
-                "Local generation provider timed out while preparing the answer. "
-                "Keep the question in the composer, confirm the local provider is "
-                "running, and retry."
-            ) from exc
-        except urllib.error.URLError as exc:
-            raise AnswerPipelineError(
-                "Local generation provider is unavailable. Start the configured local "
-                f"provider at {endpoint.rstrip('/')}, confirm the selected model is "
-                "loaded, and retry."
-            ) from exc
-        except json.JSONDecodeError as exc:
-            raise AnswerPipelineError(
-                "Local generation provider returned malformed JSON before answer "
-                "validation. Confirm the configured model supports structured output "
-                "and retry."
-            ) from exc
-        except Exception as exc:
-            raise AnswerPipelineError(f"Local provider failed during answer generation: {exc}") from exc
+        for attempt in range(2):
+            draft = self.verifier.prepare(draft)
+            try:
+                return self.verifier.verified_answer(draft, request)
+            except AnswerValidationError as exc:
+                if attempt == 1:
+                    salvaged = self.verifier.salvage(exc, draft, request)
+                    if salvaged is None:
+                        raise
+                    return salvaged
+                if not self.verifier.repairs_rejected_drafts:
+                    raise
+                draft = self.generator.repair_answer(
+                    question=request.question, normalized_question=request.normalized_question,
+                    evidence=request.evidence, configuration=request.configuration,
+                    schema=schema, rejection=str(exc), previous_answer=draft,
+                )
+        raise AssertionError("unreachable")
 
 
 class AnswerService:
@@ -609,10 +669,16 @@ class AnswerService:
         *,
         retriever: Any,
         generator: AnswerGenerator,
+        verifier: AnswerVerifier | None = None,
         clock: Callable[[], datetime] = system_utc_clock,
     ) -> None:
+        """`verifier` picks the regime; omitted, controlled fixtures get the lexical guard."""
+
         self.retriever = retriever
         self.generator = generator
+        self.verifier = LexicalAnswerVerifier() if verifier is None else verifier
+        self.evidence_bounded_answer = EvidenceBoundedAnswer(
+            generator=generator, verifier=self.verifier)
         self.clock = clock
 
     def answer(
@@ -723,68 +789,15 @@ class AnswerService:
                 corpus_identity=str(self.retriever.manifest["corpus_id"]),
             )
 
-        if safety.skip_generation:
-            generated = _refusal_payload(safety, eligible_evidence)
-        else:
-            generated = self.generator.generate(
-                question=generation_question,
-                normalized_question=generation_normalized_question,
-                evidence=eligible_evidence,
-                configuration=configuration,
-                schema=answer_schema(
-                    [str(item["citation_id"]) for item in eligible_evidence]
-                ),
-            )
-        # Verification is a fresh local provider call, never a flag accepted from
-        # the generated JSON. Retry once with bounded feedback and fail closed.
-        for attempt in range(2):
-            try:
-                if isinstance(self.generator, LocalProviderAnswerGenerator) and not safety.skip_generation:
-                    generated = _assemble_supported_summary(generated)
-                    verified_claims = self.generator.verify_answer(
-                        generated, evidence=eligible_evidence, configuration=configuration)
-                    answer = _complete_verified_answer(
-                        generated, verified_claims=verified_claims,
-                        safety=safety, evidence=eligible_evidence,
-                        blocked_evidence=blocked_evidence, evaluated_at=evaluated_at,
-                    )
-                else:
-                    augmented = _augment_generated_payload(
-                        generated, safety=safety, evidence=eligible_evidence,
-                        blocked_evidence=blocked_evidence,
-                    )
-                    if isinstance(self.generator, LocalProviderAnswerGenerator):
-                        augmented = _assemble_supported_summary(augmented)
-                    _reject_prohibited_safety_claims(augmented, safety=safety)
-                    answer = validate_answer(
-                        augmented, evidence=eligible_evidence, evaluated_at=evaluated_at,
-                    )
-                break
-            except AnswerValidationError as exc:
-                if (attempt == 1 and isinstance(exc, _RejectedVerifiedAnswer)
-                        and not safety.skip_generation
-                        and exc.payload == generated and exc.evidence == eligible_evidence):
-                    try:
-                        partial, bindings, status = partial_verified_answer(
-                            generated, eligible_evidence, exc.verification)
-                    except VerificationError:
-                        raise exc
-                    answer = _complete_verified_answer(
-                        partial, verified_claims=bindings, safety=safety,
-                        evidence=eligible_evidence, blocked_evidence=blocked_evidence,
-                        verification_status=status, evaluated_at=evaluated_at,
-                    )
-                    break
-                if (attempt == 1 or safety.skip_generation
-                        or not isinstance(self.generator, LocalProviderAnswerGenerator)):
-                    raise
-                generated = self.generator.repair_answer(
-                    question=generation_question,
-                    normalized_question=generation_normalized_question,
-                    evidence=eligible_evidence, configuration=configuration,
-                    schema=answer_schema([str(item["citation_id"]) for item in eligible_evidence]),
-                    rejection=str(exc), previous_answer=generated,
-                )
+        answer = self.evidence_bounded_answer.answer(AnswerRequest(
+            question=generation_question,
+            normalized_question=generation_normalized_question,
+            evidence=eligible_evidence,
+            blocked_evidence=blocked_evidence,
+            safety=safety,
+            evaluated_at=evaluated_at,
+            configuration=configuration,
+        ))
         answer["response_kind"] = safety.response_kind
         answer["assumptions"] = ambiguity.assumptions
         answer["suggested_follow_ups"] = _suggested_follow_ups(

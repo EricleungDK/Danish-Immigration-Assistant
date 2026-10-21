@@ -49,7 +49,7 @@ requirement.
 - Users choose and run their own local model provider; Ollama is not mandatory.
 - Issue #26 records Ollama 0.30.6+ as the first MVP provider baseline and `gemma4:12b` as the approved initial generation model. This does not make Ollama mandatory for future providers. See [docs/runtime-baseline.md](runtime-baseline.md) for the checked runtime contract.
 - Provider-specific differences are isolated behind independent adapters rather than treated as perfectly interchangeable.
-- `local_model_transport.py` owns all HTTP access to local model providers: chat (messages plus optional JSON schema), embed, list models, version, and Ollama model inspection. Ollama and OpenAI-compatible adapters share one loopback guard (checked on construction and before every request, no opt-out, no redirects or proxies). OpenAI-compatible refuses embed with an explicit unsupported error. The Ollama adapter owns deterministic options (temperature, seed) and thinking-disabled; `ollama_contract.py` only re-exports them. Failures raise typed errors (unreachable, timeout, model missing, protocol); user-facing wording stays with callers. A scripted `FakeTransport` records requests and replays queued responses for tests and monitors. The runtime probe, embedding provider, provider setup (connection test and model discovery, mapping typed errors to its own user-facing messages), and retrieval benchmark (non-loopback embedding endpoints rejected) run through it; answer generation migrates in a later unit. `privacy_boundary.is_loopback_url` is the one loopback definition; `runtime_policy` and other callers import it from there.
+- `local_model_transport.py` owns all HTTP access to local model providers: chat (messages plus optional JSON schema), embed, list models, version, and Ollama model inspection. Ollama and OpenAI-compatible adapters share one loopback guard (checked on construction and before every request, no opt-out, no redirects or proxies). OpenAI-compatible refuses embed with an explicit unsupported error. The Ollama adapter owns deterministic options (temperature, seed) and thinking-disabled; `ollama_contract.py` only re-exports them. Failures raise typed errors (unreachable, timeout, model missing, protocol); user-facing wording stays with callers. A scripted `FakeTransport` records requests and replays queued responses for tests and monitors. The runtime probe, embedding provider, provider setup (connection test and model discovery, mapping typed errors to its own user-facing messages), retrieval benchmark (non-loopback embedding endpoints rejected), and answer generation, verification, repair, and social replies run through it (the application factory injects a transport, or builds the configured provider's adapter; the answer path adds no HTTP code or request options of its own). `privacy_boundary.is_loopback_url` is the one loopback definition; `runtime_policy` and other callers import it from there.
 - Generation and embedding are separate capabilities and may use different providers or models.
 - Provider selection remains manual and includes a connection test. Following the
   2026-07-23 revised product requirement, setup can explicitly query the selected
@@ -135,6 +135,18 @@ validation, storage, and release behavior.
 - The generation model must not browse, choose arbitrary tools, or supply unsupported facts from its pretrained knowledge.
 - When only part of a question is supported, the application answers that portion and explicitly declines the unsupported portion.
 - Official facts and interpretation remain visibly distinct.
+- The Evidence-bounded answer module in `answer_pipeline.py` has one entry point
+  (`EvidenceBoundedAnswer.answer`): a question plus retrieved evidence goes in; a
+  verified answer comes out, or the request fails closed. It generates a draft,
+  verifies it, allows at most one repair, and then fails closed, in one place. The
+  verifier is an interface with two adapters chosen when the answer service is built:
+  `ModelAnswerVerifier` (a separate verification request through the transport with
+  an 8192-token context, one bounded repair, partial answers) and
+  `LexicalAnswerVerifier` (the deterministic claim-support guard, no repair). No code
+  branches on the concrete generator class. Production and the live final-answer
+  evaluation runner use the model verifier; controlled fixtures and direct validation
+  keep the lexical guard. Citation-label bijection, package-label expansion, and
+  verified-claim binding are shared by both.
 - Production local-provider answers use a separate local verification request to
   check the summary and every model-authored section against exact spans of the
   retrieved evidence. The displayed summary repeats the first official-fact section, or

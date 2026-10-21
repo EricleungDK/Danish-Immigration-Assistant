@@ -3,11 +3,15 @@ from dataclasses import replace
 import unittest
 from unittest.mock import patch
 
-from danish_rag.answer_pipeline import AnswerService, AnswerValidationError, LocalProviderAnswerGenerator
+from danish_rag.answer_pipeline import AnswerValidationError
 from danish_rag.answer_verification import VerificationError, partial_verified_answer
+from danish_rag.local_model_transport import FakeTransport
+from tests.answer_transport import model_service, requests, script, wire
 from tests.test_issue_13_evidence_safety import FixtureRetriever, evidence_fixture, provider_configuration
 from tests.test_answer_policy_provenance import CLAIM, QUESTION
-from tests.evaluation_time import fixed_clock
+
+
+ALIASES = {'good': 'e1', 'negative': 'e2'}
 
 
 def positive(quote='e1s1'):
@@ -16,26 +20,6 @@ def positive(quote='e1s1'):
 
 def negative():
     return {'verdict': 'unsupported', 'failure_reason': 'unsupported_detail', 'witnesses': []}
-
-
-class ScriptedVerifier(LocalProviderAnswerGenerator):
-    def __init__(self, payload, response):
-        super().__init__()
-        self.payload = deepcopy(payload)
-        self.response = deepcopy(response)
-        self.repairs = 0
-        self.verifications = 0
-
-    def generate(self, **kwargs):
-        return deepcopy(self.payload)
-
-    def repair_answer(self, **kwargs):
-        self.repairs += 1
-        return deepcopy(self.payload)
-
-    def _generate_ollama_messages(self, **kwargs):
-        self.verifications += 1
-        return deepcopy(self.response)
 
 
 class PartialVerifiedAnswerTests(unittest.TestCase):
@@ -52,20 +36,23 @@ class PartialVerifiedAnswerTests(unittest.TestCase):
                                'item_2': positive('e2s1'), 'item_3': negative()}}
         return answer, evidence, response
 
-    def run_service(self, answer, evidence, response):
-        generator = ScriptedVerifier(answer, response)
-        result = AnswerService(retriever=FixtureRetriever(evidence), generator=generator, clock=fixed_clock).answer(
-            QUESTION, replace(provider_configuration(), provider_id='ollama'))
-        return result.answer, generator
+    def run_service(self, answer, evidence, response, *, repaired=None):
+        """Generation, verification, then (when the first check rejects) repair and re-check."""
+
+        transport = script(FakeTransport(), wire(answer, ALIASES), response)
+        if repaired is not False:
+            script(transport, wire(answer if repaired is None else repaired, ALIASES), response)
+        service = model_service(transport, FixtureRetriever(evidence))
+        result = service.answer(QUESTION, replace(provider_configuration(), provider_id='ollama'))
+        return result.answer, transport
 
     def test_exhausted_repair_retains_only_fully_verified_facts_and_all_app_boundaries(self):
         answer, evidence, response = self.fixture()
         evidence[0]['source_health'] = 'overdue-policy-usable'
         evidence[1]['agreement_state'] = 'conflict'
         evidence.append(evidence_fixture('blocked', content='Unreviewed content.', review_state='changed-unreviewed'))
-        result, generator = self.run_service(answer, evidence, response)
-        self.assertEqual(generator.repairs, 1)
-        self.assertEqual(generator.verifications, 2)
+        result, transport = self.run_service(answer, evidence, response)
+        self.assertEqual(len(requests(transport)), 4)  # generate, verify, repair, verify
         facts = [s for s in result['sections'] if s['kind'] == 'official_fact']
         self.assertEqual([s['text'] for s in facts], [CLAIM])
         self.assertEqual(result['summary'], CLAIM)
@@ -114,8 +101,8 @@ class PartialVerifiedAnswerTests(unittest.TestCase):
         answer['sections'] = answer['sections'][:1]
         response['checks'] = {key: response['checks'][key] for key in ('item_0', 'item_1')}
         with patch('danish_rag.answer_pipeline.partial_verified_answer', side_effect=AssertionError('not needed')):
-            result, generator = self.run_service(answer, evidence, response)
-        self.assertEqual(generator.repairs, 0)
+            result, transport = self.run_service(answer, evidence, response, repaired=False)
+        self.assertEqual(len(requests(transport)), 2)  # generate, verify: no repair
         self.assertNotIn('verification', result)
         self.assertFalse(any('answer is partial' in s['text'] for s in result['sections']))
 
@@ -134,13 +121,7 @@ class PartialVerifiedAnswerTests(unittest.TestCase):
 
     def test_resource_error_cannot_use_an_earlier_partial_response(self):
         answer, evidence, response = self.fixture()
-        generator = ScriptedVerifier(answer, response)
-        original = generator._generate_ollama_messages
-        def resource_failure(**kwargs):
-            if generator.repairs:
-                raise AnswerValidationError('Verification protocol exceeds resource bound.')
-            return original(**kwargs)
-        generator._generate_ollama_messages = resource_failure
-        with self.assertRaisesRegex(AnswerValidationError, 'resource bound'):
-            AnswerService(retriever=FixtureRetriever(evidence), generator=generator, clock=fixed_clock).answer(
-                QUESTION, replace(provider_configuration(), provider_id='ollama'))
+        oversized = deepcopy(answer)
+        oversized['sections'][0]['text'] = CLAIM + ' ' + 'padding ' * 4000
+        with self.assertRaisesRegex(AnswerValidationError, 'exceeds 24000'):
+            self.run_service(answer, evidence, response, repaired=oversized)

@@ -11,8 +11,9 @@ import httpx
 
 from danish_rag.answer_pipeline import (
     AnswerPipelineError,
-    LocalProviderAnswerGenerator,
+    TransportAnswerGenerator,
     answer_schema,
+    provider_transport,
 )
 from danish_rag.knowledge_release import (
     BUNDLED_MINIMAL_RELEASE,
@@ -289,24 +290,25 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(delete.status_code, 303)
 
     def test_local_generation_refuses_non_loopback_provider_before_network(self):
-        generator = LocalProviderAnswerGenerator()
-        configuration = ProviderConfiguration(
-            provider_id="openai_compatible",
-            endpoint="https://api.example.test",
-            model="remote-model",
-        )
+        generator = TransportAnswerGenerator(provider_transport())
+        for provider_id in ("openai_compatible", "ollama"):
+            configuration = ProviderConfiguration(
+                provider_id=provider_id,
+                endpoint="https://api.example.test",
+                model="remote-model",
+            )
 
-        with patch("urllib.request.urlopen") as urlopen:
-            with self.assertRaisesRegex(AnswerPipelineError, "loopback endpoint"):
-                generator.generate(
-                    question="What Danish test do I need?",
-                    normalized_question="What Danish test do I need?",
-                    evidence=[],
-                    configuration=configuration,
-                    schema=answer_schema(),
-                )
-
-        urlopen.assert_not_called()
+            # The adapter refuses a non-loopback endpoint when it is built, before any
+            # request could be made.
+            with self.subTest(provider_id=provider_id):
+                with self.assertRaisesRegex(AnswerPipelineError, "loopback endpoint"):
+                    generator.generate(
+                        question="What Danish test do I need?",
+                        normalized_question="What Danish test do I need?",
+                        evidence=[],
+                        configuration=configuration,
+                        schema=answer_schema(),
+                    )
 
     def test_policy_allows_only_content_free_release_update_requests(self):
         policy = load_runtime_policy(POLICY_PATH)

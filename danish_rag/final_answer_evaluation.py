@@ -17,7 +17,14 @@ from pathlib import Path
 from typing import Any, Protocol, Sequence
 from urllib.parse import urlparse
 
-from .answer_pipeline import AnswerResult, AnswerService, LocalProviderAnswerGenerator
+from .answer_pipeline import (
+    AnswerResult,
+    AnswerService,
+    AnswerVerifier,
+    ModelAnswerVerifier,
+    TransportAnswerGenerator,
+    provider_transport,
+)
 from .embedding_provider import EmbeddingProvider
 from .evidence_integrity import (
     canonical_json_sha256 as _sha256_json,
@@ -146,12 +153,16 @@ class AnswerServiceCaseRunner:
         retriever: Any,
         generator: Any,
         configuration: ProviderConfiguration,
+        verifier: AnswerVerifier | None = None,
         clock: Callable[[], datetime] = system_utc_clock,
     ) -> None:
+        # No verifier means the controlled-fixture regime (the lexical guard); the live
+        # runner names the model verifier explicitly.
         self._retriever = _RecordingRetriever(retriever)
         self._service = AnswerService(
             retriever=self._retriever,
             generator=generator,
+            verifier=verifier,
             clock=clock,
         )
         self._configuration = configuration
@@ -249,11 +260,11 @@ def build_live_ollama_runner(
         trust_root_path=trust_root_path,
         clock=clock,
     )
+    transports = provider_transport(generation_timeout_seconds)
     return AnswerServiceCaseRunner(
         retriever=retriever,
-        generator=LocalProviderAnswerGenerator(
-            timeout_seconds=generation_timeout_seconds
-        ),
+        generator=TransportAnswerGenerator(transports),
+        verifier=ModelAnswerVerifier(transports),
         configuration=configuration,
         clock=clock,
     )

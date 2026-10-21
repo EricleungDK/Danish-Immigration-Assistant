@@ -6,9 +6,9 @@ from pathlib import Path
 
 import httpx
 
-from danish_rag.answer_pipeline import LocalProviderAnswerGenerator
 from danish_rag.conversation_store import ConversationStore
 from danish_rag.local_app import create_app
+from danish_rag.local_model_transport import OllamaTransport
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
 from danish_rag.runtime_policy import load_runtime_policy
 from tests.evaluation_time import fixed_clock
@@ -49,7 +49,10 @@ class LiveAnswerGenerationSmokeTests(unittest.IsolatedAsyncioTestCase):
             app = create_app(
                 config_path=config_path,
                 data_dir=data_dir,
-                answer_generator=LocalProviderAnswerGenerator(timeout_seconds=timeout_seconds), clock=fixed_clock,
+                transport=OllamaTransport(
+                    provider_policy["default_endpoint"], timeout_seconds=timeout_seconds
+                ),
+                clock=fixed_clock,
             )
             client = httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app),

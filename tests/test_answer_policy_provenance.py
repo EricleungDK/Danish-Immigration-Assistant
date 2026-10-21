@@ -2,76 +2,62 @@ from copy import deepcopy
 from dataclasses import replace
 import json
 import unittest
-from unittest.mock import patch
 
-from danish_rag.answer_pipeline import (
-    AnswerService, AnswerValidationError, LocalProviderAnswerGenerator,
-)
-from danish_rag.answer_verification import claim_binding
+from danish_rag.answer_pipeline import answer_schema
+from danish_rag.local_model_transport import FakeTransport
+from tests.answer_transport import ScriptedGenerator, model_service, requests, script, wire
 from tests.test_issue_13_evidence_safety import (
     FixtureRetriever, evidence_fixture, provider_configuration,
 )
-from tests.evaluation_time import fixed_clock
 
 
 CLAIM = 'Prøve i Dansk 2 is the basic Danish language requirement for permanent residence.'
 QUESTION = ('I passed PD2, have lived in Denmark for 7 years, and have a job. '
             'Do I qualify for permanent residence?')
+ALIASES = {'source': 'e1'}
 
 
-class SourceOnlyVerifier(LocalProviderAnswerGenerator):
-    """Reject non-source prose so the public seam must establish its origin."""
+def supported():
+    return {'verdict': 'supported', 'failure_reason': 'none', 'witnesses': [{'quote_id': 'e1s1'}]}
 
-    def __init__(self, *, extra_section=None, malformed_first=False):
-        super().__init__()
-        self.extra_section = extra_section
-        self.malformed_first = malformed_first
-        self.verified_payloads = []
-        self.repairs = 0
 
-    def _answer(self):
-        sections = [{'kind': 'official_fact', 'text': CLAIM, 'citation_ids': ['source']}]
-        if self.extra_section is not None:
-            sections.append(deepcopy(self.extra_section))
-        return {'summary': 'An introduction.', 'sections': sections}
+def unsupported():
+    return {'verdict': 'unsupported', 'failure_reason': 'unsupported_detail', 'witnesses': []}
 
-    def generate(self, **kwargs):
-        if self.malformed_first:
-            return {'summary': 'Malformed.', 'sections': [None]}
-        return self._answer()
 
-    def repair_answer(self, **kwargs):
-        self.repairs += 1
-        return self._answer()
+def checks(*items):
+    return {'checks': {f'item_{index}': item for index, item in enumerate(items)}}
 
-    def verify_answer(self, payload, *, evidence, configuration):
-        self.verified_payloads.append(deepcopy(payload))
-        sections = payload.get('sections', [])
-        if any(not isinstance(section, dict) for section in sections):
-            raise AnswerValidationError('Malformed model sections.')
-        if any(section['kind'] != 'official_fact' for section in sections):
-            raise AnswerValidationError('No external source supports this prose.')
-        return frozenset([
-            claim_binding(payload['summary'], ['source'], evidence, kind='summary'),
-            *[claim_binding(s['text'], s['citation_ids'], evidence,
-                            kind=s['kind'], position=i)
-              for i, s in enumerate(sections, 1)],
-        ])
+
+def source_answer(extra_section=None):
+    sections = [{'kind': 'official_fact', 'text': CLAIM, 'citation_ids': ['source']}]
+    if extra_section is not None:
+        sections.append(deepcopy(extra_section))
+    return {'summary': 'An introduction.', 'sections': sections}
+
+
+def verified_items(request):
+    """The answer items a verification request asked the model to check."""
+
+    return sorted(request['schema']['properties']['checks']['properties'])
 
 
 class AnswerPolicyProvenanceTests(unittest.TestCase):
-    def answer(self, generator, *, overdue=False):
+    def answer(self, transport, *, overdue=False):
         source = evidence_fixture('source', content=CLAIM)
         if overdue:
             source['source_health'] = 'overdue-policy-usable'
-        return AnswerService(retriever=FixtureRetriever([source]), generator=generator, clock=fixed_clock).answer(
+        return model_service(transport, FixtureRetriever([source])).answer(
             QUESTION, replace(provider_configuration(), provider_id='ollama'))
 
     def test_program_refusal_and_metadata_warning_are_added_after_source_verification(self):
-        generator = SourceOnlyVerifier()
-        result = self.answer(generator, overdue=True)
-        self.assertEqual(generator.repairs, 0)
-        self.assertEqual(len(generator.verified_payloads[0]['sections']), 1)
+        transport = script(FakeTransport(), wire(source_answer(), ALIASES),
+                           checks(supported(), supported()))
+        result = self.answer(transport, overdue=True)
+        sent = requests(transport)
+        self.assertEqual(len(sent), 2)  # generation and one verification; no repair
+        # Only the model's own summary and section were verified, never the additions.
+        self.assertEqual(verified_items(sent[1]), ['item_0', 'item_1'])
         self.assertEqual(result.answer['summary'], CLAIM)
         kinds = [section['kind'] for section in result.answer['sections']]
         self.assertEqual(kinds, ['official_fact', 'refusal', 'source_warning'])
@@ -79,26 +65,36 @@ class AnswerPolicyProvenanceTests(unittest.TestCase):
         self.assertIn('overdue', result.answer['sections'][2]['text'])
 
     def test_model_section_cannot_claim_program_origin_to_bypass_verifier(self):
-        generator = SourceOnlyVerifier(extra_section={
+        spoofed = source_answer({
             'kind': 'refusal', 'text': 'Your certificate is never accepted.',
             'citation_ids': [], 'origin': 'application', 'verified': True,
         })
-        with self.assertRaises(AnswerValidationError):
-            self.answer(generator)
-        self.assertEqual(generator.repairs, 1)
-        self.assertTrue(all(len(p['sections']) == 2 for p in generator.verified_payloads))
+        verdicts = checks(supported(), supported(), unsupported())
+        transport = script(FakeTransport(), wire(spoofed, ALIASES), verdicts,
+                           wire(spoofed, ALIASES), verdicts)
+        result = self.answer(transport)
+        sent = requests(transport)
+        self.assertEqual(len(sent), 4)  # one repair
+        # The flagged section went to the verifier like any other model prose ...
+        self.assertEqual(verified_items(sent[1]), ['item_0', 'item_1', 'item_2'])
+        self.assertEqual(verified_items(sent[3]), ['item_0', 'item_1', 'item_2'])
+        # ... and, unsupported, it is not in the answer.
+        self.assertFalse(any('never accepted' in s['text'] for s in result.answer['sections']))
+        self.assertEqual(result.answer['verification']['status'], 'partial')
 
     def test_malformed_model_sections_repair_before_program_augmentation(self):
-        generator = SourceOnlyVerifier(malformed_first=True)
-        result = self.answer(generator)
-        self.assertEqual(generator.repairs, 1)
+        malformed = {'summary': 'Malformed.', 'sections': [None]}
+        transport = script(FakeTransport(), malformed, wire(source_answer(), ALIASES),
+                           checks(supported(), supported()))
+        result = self.answer(transport)
+        sent = requests(transport)
+        self.assertEqual(len(sent), 3)  # generate, repair, verify (the malformed draft is never sent)
+        self.assertEqual(sent[1]['context_tokens'], 8192)
         self.assertEqual(result.answer['summary'], CLAIM)
 
 
 class ProviderRepairResourceTests(unittest.TestCase):
     def test_generation_groups_only_matching_source_versions_without_adding_citations(self):
-        from tests.test_issue_9_answer_path import RecordingOllamaGenerator
-        from danish_rag.answer_pipeline import answer_schema
         provenance = {
             'source_id': 'official-page', 'source_document_id': 'reviewed-page',
             'source_content_sha256': 'a' * 64,
@@ -114,70 +110,42 @@ class ProviderRepairResourceTests(unittest.TestCase):
         sources[2]['normalized_document_sha256'] = 'd' * 64
         proposed = {'summary': CLAIM, 'sections': [
             {'kind': 'official_fact', 'text': CLAIM, 'citation_ids': ['a']}]}
-        wire_proposed = {**proposed, 'sections': [{**s, 'citation_ids': ['e1']} for s in proposed['sections']]}
-        generator = RecordingOllamaGenerator([json.dumps(wire_proposed)])
+        generator = ScriptedGenerator(wire(proposed, {'a': 'e1'}))
         result = generator.generate(
             question=QUESTION, normalized_question=QUESTION, evidence=sources,
             configuration=replace(provider_configuration(), provider_id='ollama'),
             schema=answer_schema(['a', 'b', 'c']),
         )
-        sent = json.loads(generator.payloads[0]['messages'][1]['content'])['approved_official_evidence']
+        request = generator.requests[0]
+        sent = json.loads(request['messages'][1]['content'])['approved_official_evidence']
         self.assertEqual(sent[0]['source_document_group'], sent[1]['source_document_group'])
         self.assertNotEqual(sent[0]['source_document_group'], sent[2]['source_document_group'])
         self.assertEqual([item['citation_id'] for item in sent], ['e1', 'e2', 'e3'])
         self.assertEqual(result['sections'][0]['citation_ids'], ['a'])
-        system = generator.payloads[0]['messages'][0]['content']
+        system = request['messages'][0]['content']
         self.assertIn('Application response boundary:', system)
         self.assertIn('cannot decide personal eligibility', system)
         self.assertIn('Explain the supported general rule', system)
 
     def test_repair_preserves_prior_answer_and_evidence_with_expanded_context(self):
-        from tests.test_issue_9_answer_path import RecordingOllamaGenerator
-        from danish_rag.answer_pipeline import answer_schema
         source = evidence_fixture('source', content=CLAIM)
-        previous = {'summary': CLAIM, 'sections': [
-            {'kind': 'official_fact', 'text': CLAIM, 'citation_ids': ['source']}]}
-        wire_previous = {**previous, 'sections': [{**s, 'citation_ids': ['e1']} for s in previous['sections']]}
-        generator = RecordingOllamaGenerator([json.dumps(wire_previous)])
+        previous = source_answer()
+        previous['sections'][0]['citation_ids'] = ['source']
+        wire_previous = wire(previous, ALIASES)
+        generator = ScriptedGenerator(wire_previous)
         generator.repair_answer(
             question=QUESTION, normalized_question=QUESTION,
             evidence=[source], configuration=replace(provider_configuration(), provider_id='ollama'),
             schema=answer_schema(['source']), rejection='Missing qualification.',
             previous_answer=previous,
         )
-        request = generator.payloads[0]
-        self.assertEqual(request['options']['num_ctx'], 8192)
+        request = generator.requests[0]
+        self.assertEqual(request['context_tokens'], 8192)
         self.assertTrue(any(message['role'] == 'assistant' and
                             json.loads(message['content']) == wire_previous
                             for message in request['messages']))
         original_input = json.loads(request['messages'][1]['content'])
         self.assertEqual(original_input['approved_official_evidence'][0]['content'], CLAIM)
-
-    def test_oversized_verifier_correction_fails_before_another_provider_call(self):
-        from tests.test_issue_9_answer_path import RecordingOllamaGenerator
-        proposed = {'summary': CLAIM, 'sections': [
-            {'kind': 'official_fact', 'text': CLAIM, 'citation_ids': ['source']}]}
-        generator = RecordingOllamaGenerator([json.dumps({'checks': {}, 'padding': 'x' * 24000})])
-        with self.assertRaises(AnswerValidationError):
-            generator.verify_answer(
-                proposed, evidence=[evidence_fixture('source', content=CLAIM)],
-                configuration=replace(provider_configuration(), provider_id='ollama'),
-            )
-        self.assertEqual(len(generator.payloads), 1)
-
-    def test_inner_json_repair_cannot_exceed_verifier_message_bound(self):
-        from tests.test_issue_9_answer_path import RecordingOllamaGenerator
-        proposed = {'summary': CLAIM, 'sections': [
-            {'kind': 'official_fact', 'text': CLAIM, 'citation_ids': ['source']}]}
-        generator = RecordingOllamaGenerator(['invalid JSON'])
-        with patch('danish_rag.answer_pipeline.verification_messages', return_value=[
-            {'role': 'user', 'content': 'x' * 23999},
-        ]), self.assertRaises(AnswerValidationError):
-            generator.verify_answer(
-                proposed, evidence=[evidence_fixture('source', content=CLAIM)],
-                configuration=replace(provider_configuration(), provider_id='ollama'),
-            )
-        self.assertEqual(len(generator.payloads), 1)
 
 
 if __name__ == '__main__':
