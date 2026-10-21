@@ -9,11 +9,10 @@ from typing import Any, Protocol
 
 from .local_model_transport import (
     LocalModelTransport,
-    LocalModelTransportError,
     ModelMissingError,
     OllamaTransport,
 )
-from .privacy_boundary import PrivacyBoundaryError
+from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
 
 
 DEFAULT_OLLAMA_EMBEDDING_ENDPOINT = "http://127.0.0.1:11434"
@@ -46,6 +45,8 @@ class OllamaEmbeddingProvider:
     ) -> None:
         if transport is None:
             try:
+                endpoint = endpoint.rstrip("/")
+                require_loopback_endpoint(endpoint, purpose="Local embedding")
                 transport = OllamaTransport(endpoint, timeout_seconds=timeout_seconds)
             except PrivacyBoundaryError as exc:
                 raise EmbeddingProviderError(
@@ -64,7 +65,7 @@ class OllamaEmbeddingProvider:
                 f"The approved embedding model '{model}' is not installed in Ollama. "
                 f"Run `ollama pull {model}` and retry local indexing."
             ) from exc
-        except LocalModelTransportError as exc:
+        except Exception as exc:
             raise EmbeddingProviderError(
                 f"Could not inspect the approved embedding model '{model}' at the local "
                 f"Ollama endpoint {self.endpoint}. Start Ollama, run `ollama pull {model}`, "
@@ -81,7 +82,7 @@ class OllamaEmbeddingProvider:
         if not identity.get("digest"):
             try:
                 installed = self._transport.list_models()
-            except LocalModelTransportError:
+            except Exception:
                 installed = []
             tag_identity = _matching_tag_identity(installed, model)
             if tag_identity is not None:
@@ -97,12 +98,15 @@ class OllamaEmbeddingProvider:
     def embed(self, model: str, text: str) -> list[float]:
         try:
             vectors = self._transport.embed(model=model, texts=[text])
-        except LocalModelTransportError as exc:
+        except Exception as exc:
             raise EmbeddingProviderError(
                 f"Ollama could not embed text with '{model}' at {self.endpoint}. Start "
                 f"Ollama, run `ollama pull {model}`, and retry. Detail: {exc}"
             ) from exc
-        return validate_embedding_vector(vectors[0] if vectors else None, context=f"Ollama model '{model}'")
+        vector = vectors[0] if vectors else None
+        if isinstance(vector, dict) and "embedding" in vector:
+            vector = vector["embedding"]
+        return validate_embedding_vector(vector, context=f"Ollama model '{model}'")
 
 
 def resolve_embedding_provider(

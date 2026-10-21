@@ -1,9 +1,14 @@
 import json
+import os
+import ssl
 import threading
 import time
 import unittest
+import urllib.error
+from unittest.mock import MagicMock, patch
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from danish_rag import local_model_transport
 from danish_rag.local_model_transport import (
     FakeTransport,
     FakeTransportScriptError,
@@ -309,6 +314,39 @@ class OllamaTransportTests(unittest.TestCase):
                 transport.list_models()
             with self.assertRaisesRegex(ModelProtocolError, "JSON object"):
                 transport.show_model("m")
+
+
+class TransportRobustnessTests(unittest.TestCase):
+    def test_other_os_errors_such_as_ssl_failures_are_unreachable(self):
+        for error in (ssl.SSLError("bad"), OSError("network down")):
+            with self.subTest(error=type(error).__name__):
+                opener = MagicMock()
+                opener.open.side_effect = error
+                with patch.object(local_model_transport, "_OPENER", opener):
+                    with self.assertRaises(ModelUnreachableError):
+                        OllamaTransport("http://127.0.0.1:1").version()
+
+    def test_http_error_responses_are_closed(self):
+        body = MagicMock()
+        error = urllib.error.HTTPError("http://127.0.0.1:1/x", 500, "boom", {}, body)
+        opener = MagicMock()
+        opener.open.side_effect = error
+        with patch.object(local_model_transport, "_OPENER", opener):
+            with self.assertRaises(ModelProtocolError):
+                OllamaTransport("http://127.0.0.1:1").version()
+        body.close.assert_called()
+
+    def test_proxy_environment_variables_are_ignored(self):
+        routes = {("GET", "/api/version"): ok({"version": "0.30.6"})}
+        proxy = {
+            "HTTP_PROXY": "http://127.0.0.1:9",
+            "http_proxy": "http://127.0.0.1:9",
+            "NO_PROXY": "",
+            "no_proxy": "",
+        }
+        with _StubServer(routes) as server, patch.dict(os.environ, proxy):
+            self.assertEqual(OllamaTransport(server.endpoint).version(), "0.30.6")
+        self.assertEqual(len(server.requests), 1)
 
 
 class OpenAICompatibleTransportTests(unittest.TestCase):

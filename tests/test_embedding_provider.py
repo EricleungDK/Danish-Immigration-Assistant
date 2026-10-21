@@ -5,6 +5,7 @@ from danish_rag.embedding_provider import (
     OllamaEmbeddingProvider,
     canonical_model_identity,
 )
+from danish_rag.privacy_boundary import PrivacyBoundaryError
 from danish_rag.local_model_transport import (
     FakeTransport,
     ModelMissingError,
@@ -121,8 +122,37 @@ class OllamaEmbeddingProviderTests(unittest.TestCase):
         ):
             provider_with(fake).inspect_model("embeddinggemma")
 
+    def test_embed_accepts_object_shaped_embeddings(self):
+        fake = FakeTransport()
+        fake.queue_embed([{"embedding": [0.25, 0.5]}])
+        self.assertEqual(provider_with(fake).embed("embeddinggemma", "hi"), [0.25, 0.5])
+
+    def test_embed_wraps_untyped_failures_too(self):
+        for error in (RuntimeError("boom"), PrivacyBoundaryError("not loopback")):
+            with self.subTest(error=type(error).__name__):
+                fake = FakeTransport()
+                fake.queue_error(error, operation="embed")
+                with self.assertRaisesRegex(EmbeddingProviderError, "ollama pull"):
+                    provider_with(fake).embed("embeddinggemma", "hi")
+
+    def test_inspect_wraps_untyped_failures_and_falls_back_past_list_errors(self):
+        fake = FakeTransport()
+        fake.queue_error(RuntimeError("boom"), operation="show_model")
+        with self.assertRaisesRegex(EmbeddingProviderError, "Could not inspect"):
+            provider_with(fake).inspect_model("embeddinggemma")
+
+        fake = FakeTransport()
+        fake.queue_show({"model": "embeddinggemma"})
+        fake.queue_error(RuntimeError("tags exploded"), operation="list_models")
+        self.assertNotIn("digest", provider_with(fake).inspect_model("embeddinggemma"))
+
     def test_non_loopback_endpoint_is_rejected_as_an_embedding_provider_error(self):
-        with self.assertRaisesRegex(EmbeddingProviderError, "loopback"):
+        with self.assertRaisesRegex(
+            EmbeddingProviderError,
+            r"Local embedding requires an Ollama loopback endpoint such as "
+            r"http://127.0.0.1:11434\. Local embedding requires a loopback endpoint; "
+            r"refusing http://example.com:11434\.",
+        ):
             OllamaEmbeddingProvider("http://example.com:11434")
 
 

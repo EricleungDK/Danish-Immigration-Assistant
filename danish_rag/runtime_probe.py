@@ -127,9 +127,8 @@ def run_runtime_probe(
             started_counter,
         )
 
-    client = client or OllamaTransport(endpoint, timeout_seconds=timeout_seconds)
-
     try:
+        client = client or OllamaTransport(endpoint, timeout_seconds=timeout_seconds)
         version = _timed(timings, "service_version", client.version)
     except Exception as exc:
         return _finish(

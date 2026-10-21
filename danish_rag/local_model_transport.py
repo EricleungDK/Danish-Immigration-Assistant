@@ -122,6 +122,7 @@ class _HttpJsonTransport:
             with _OPENER.open(request, timeout=self.timeout_seconds) as response:
                 body = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
+            exc.close()
             if exc.code in missing_statuses:
                 raise ModelMissingError(
                     f"{name} does not have the requested model ({path})."
@@ -133,7 +134,7 @@ class _HttpJsonTransport:
             raise ModelUnreachableError(f"{name} is unreachable at {self.endpoint}.") from exc
         except TimeoutError as exc:
             raise ModelTimeoutError(f"{name} timed out at {self.endpoint}.") from exc
-        except (http.client.HTTPException, ConnectionError) as exc:
+        except (http.client.HTTPException, OSError) as exc:
             raise ModelUnreachableError(f"{name} is unreachable at {self.endpoint}.") from exc
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise ModelProtocolError(

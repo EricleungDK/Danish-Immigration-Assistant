@@ -81,6 +81,15 @@ class RuntimeProbeTests(unittest.TestCase):
         self.assertEqual(chat["model"], "gemma4:12b")
         self.assertEqual(chat["schema"]["required"], ["runtime_baseline", "status"])
 
+    def test_scheme_odd_loopback_endpoint_is_reported_as_unreachable(self):
+        policy = load_runtime_policy(POLICY_PATH)
+        policy["providers"]["initial"]["default_endpoint"] = "ftp://127.0.0.1:11434"
+
+        result = run_runtime_probe(policy)
+
+        self.assertEqual(result.exit_status, ProbeExitStatus.PROVIDER_UNREACHABLE)
+        self.assertIn("Ollama service is unreachable", result.diagnostic)
+
     def test_probe_builds_a_loopback_ollama_transport_by_default(self):
         from danish_rag.runtime_probe import OllamaClient
 
