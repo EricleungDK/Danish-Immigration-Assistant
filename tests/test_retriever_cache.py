@@ -125,6 +125,45 @@ class RetrieverCacheAppTests(sm.AppTestCase):
             self.assertEqual((await self.ask(client)).status_code, 200)
         self.assertEqual(len(counter.built), 1)
 
+    async def outcome(self, client):
+        response = await self.ask(client)
+        return response.status_code, response.text
+
+    async def test_eligibility_lapse_after_the_build_matches_a_fresh_build(self):
+        # Eligibility changing over time (a freshness window lapsing) must give the
+        # same outcome as building the retriever from scratch at that time.
+        from danish_rag import retrieval
+
+        real = retrieval._is_release_eligible
+        with patch.object(
+            snapshot_clock, "BUNDLED_CATALOG_DIR", Path(self.tempdir.name) / "none"
+        ), patch.object(
+            retrieval,
+            "_is_release_eligible",
+            lambda document, at: real(document, at) and at < sm.LATE_WALL_CLOCK,
+        ):
+            cached_client = self.make_client()
+            self.assertEqual((await self.ask(cached_client)).status_code, 200)
+            with sm.late_wall_clock():
+                cached = await self.outcome(cached_client)
+                fresh = await self.outcome(self.make_client())
+        self.assertNotEqual(fresh[0], 200)
+        self.assertEqual(cached[0], fresh[0])
+        self.assertIn("re-index required", cached[1])
+
+    async def test_embedding_model_drift_matches_a_fresh_build(self):
+        client = self.make_client()
+        self.assertEqual((await self.ask(client)).status_code, 200)
+        self.provider._model_identity = {
+            **self.provider._model_identity,
+            "digest": "sha256:swapped-model",
+        }
+        cached = await self.outcome(client)
+        fresh = await self.outcome(self.make_client())
+        self.assertEqual(fresh[0], 503)
+        self.assertEqual(cached[0], fresh[0])
+        self.assertIn("re-index required", cached[1])
+
     async def test_failed_build_does_not_replace_the_cached_retriever(self):
         client = self.make_client()
         with BuildCounter() as counter:
@@ -202,6 +241,34 @@ class RetrieverCacheUnitTests(unittest.TestCase):
             t.join()
         self.assertEqual(len(builds), 1)
         self.assertEqual(results, ["retriever"] * 8)
+
+    def test_hits_do_not_wait_for_a_slow_build_of_another_key(self):
+        cache = RetrieverCache()
+        cache.get_or_build("a", lambda: "old", lambda r: "a")
+        started, release = threading.Event(), threading.Event()
+
+        def slow():
+            started.set()
+            release.wait(5)
+            return "new"
+
+        builder = threading.Thread(
+            target=lambda: cache.get_or_build("b", slow, lambda r: "b")
+        )
+        builder.start()
+        self.assertTrue(started.wait(5))
+        hit = []
+        waiter = threading.Thread(
+            target=lambda: hit.append(cache.get_or_build("a", lambda: "x", lambda r: "a"))
+        )
+        waiter.start()
+        waiter.join(1)
+        finished = not waiter.is_alive()
+        release.set()
+        builder.join()
+        waiter.join()
+        self.assertTrue(finished)
+        self.assertEqual(hit, ["old"])
 
     def test_failed_build_leaves_the_entry_and_is_not_cached(self):
         cache = RetrieverCache()

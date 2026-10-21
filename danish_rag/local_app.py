@@ -22,7 +22,7 @@ from .answer_pipeline import (
     LocalProviderAnswerGenerator,
 )
 from .conversation_store import ConversationStore
-from .embedding_provider import EmbeddingProvider
+from .embedding_provider import EmbeddingProvider, resolve_embedding_provider
 from .retriever_cache import RetrieverCache, release_cache_key
 from .evidence_integrity import system_utc_clock
 from .github_release_client import GitHubReleaseClient
@@ -60,7 +60,12 @@ from .provider_setup import (
     validate_provider_configuration,
     validated_configuration,
 )
-from .retrieval import HybridRetriever, RetrievalError
+from .retrieval import (
+    HybridRetriever,
+    RetrievalError,
+    embedding_model_profile,
+    inspect_embedding_model,
+)
 from .runtime_policy import load_runtime_policy
 from .snapshot_clock import (
     SnapshotState,
@@ -724,20 +729,43 @@ def create_app(
             verified_release = ensure_release()
             snapshot_state = current_snapshot_state()
             try:
-                # Keyed by the release this request just verified, so it never gets a
-                # retriever for another release; the clock is read per retrieve().
+                # Keyed by the release this request just verified plus the live embedding
+                # model identity (checked every request, as a fresh build did); the clock
+                # is read per retrieve().
+                index_metadata = verified_release["index"]
+                live_identity = inspect_embedding_model(
+                    resolve_embedding_provider(embedding_provider),
+                    str(embedding_model_profile(index_metadata["embedding_model"])["name"]),
+                )
+                built_here: list[HybridRetriever] = []
+
+                def build_retriever() -> HybridRetriever:
+                    built_here.append(
+                        HybridRetriever.from_data_dir(
+                            resolved_data_dir,
+                            embedding_provider=embedding_provider,
+                            trust_root_path=resolved_trust_root_path,
+                            clock=request_clock,
+                        )
+                    )
+                    return built_here[0]
+
                 retriever = retriever_cache.get_or_build(
-                    release_cache_key(verified_release["active"], verified_release["index"]),
-                    lambda: HybridRetriever.from_data_dir(
-                        resolved_data_dir,
-                        embedding_provider=embedding_provider,
-                        trust_root_path=resolved_trust_root_path,
-                        clock=request_clock,
+                    release_cache_key(
+                        verified_release["active"], index_metadata, live_identity
                     ),
+                    build_retriever,
                     lambda built: release_cache_key(
-                        built.active_release, built.dense_index["metadata"]
+                        built.active_release,
+                        built.dense_index["metadata"],
+                        built.embedding_model_identity,
                     ),
                 )
+                if not built_here:
+                    # Cache hit: re-run the build-time checks (eligibility and index
+                    # coverage depend on the request's evaluation time) as a fresh
+                    # build would.
+                    retriever._validate_index()
             except Exception as exc:
                 snapshot_state.mark_unavailable(exc)
                 raise
