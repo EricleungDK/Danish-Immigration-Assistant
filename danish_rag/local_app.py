@@ -19,13 +19,18 @@ from .answer_pipeline import (
     AnswerPipelineError,
     AnswerService,
     AnswerValidationError,
-    LocalProviderAnswerGenerator,
+    LexicalAnswerVerifier,
+    ModelAnswerVerifier,
+    TransportAnswerGenerator,
+    fixed_transport,
+    provider_transport,
 )
 from .conversation_store import ConversationStore
 from .embedding_provider import EmbeddingProvider, resolve_embedding_provider
 from .retriever_cache import RetrieverCache, release_cache_key
 from .evidence_integrity import system_utc_clock
 from .github_release_client import GitHubReleaseClient
+from .local_model_transport import LocalModelTransport
 from .knowledge_release import (
     APPLICATION_VERSION,
     BUNDLED_MINIMAL_RELEASE,
@@ -88,6 +93,7 @@ def create_app(
     config_path: str | Path | None = None,
     data_dir: str | Path | None = None,
     answer_generator: Any | None = None,
+    transport: LocalModelTransport | None = None,
     capability_tester: Callable[[ProviderConfiguration], CapabilityTestResult | dict[str, Any]]
     | None = None,
     model_discoverer: Callable[
@@ -164,7 +170,19 @@ def create_app(
     retriever_cache: RetrieverCache[HybridRetriever] = RetrieverCache()
     tester = capability_tester or ProviderCapabilityTester()
     discover_models = model_discoverer or ProviderModelDiscoverer()
-    generator = answer_generator or LocalProviderAnswerGenerator()
+    if answer_generator is not None and transport is not None:
+        raise ValueError("Choose either an injected answer generator or a transport.")
+    if answer_generator is not None:
+        # Fixture path only (browser/monitor/test fixtures; deleted with the generator
+        # protocol in #77): a controlled generator gets the deterministic lexical guard.
+        # No production entry point passes answer_generator; live runs use a transport.
+        generator, verifier = answer_generator, LexicalAnswerVerifier()
+    else:
+        # Production: the configured provider's transport (or the injected one) drafts,
+        # verifies with a separate request, and repairs once.
+        transports = fixed_transport(transport) if transport is not None else provider_transport()
+        generator = TransportAnswerGenerator(transports)
+        verifier = ModelAnswerVerifier(transports)
     store = ConversationStore(resolved_data_dir / "conversations.sqlite3")
     update_controller = KnowledgeUpdateController(
         data_dir=resolved_data_dir,
@@ -777,6 +795,7 @@ def create_app(
             result = AnswerService(
                 retriever=retriever,
                 generator=generator,
+                verifier=verifier,
                 clock=request_clock,
             ).answer(
                 question,

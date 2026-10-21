@@ -7,13 +7,19 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 from danish_rag import evidence_integrity
-from danish_rag.answer_pipeline import AnswerService
+from danish_rag.answer_pipeline import (
+    AnswerService, LexicalAnswerVerifier, TransportAnswerGenerator, fixed_transport,
+)
+from danish_rag.local_model_transport import FakeTransport
 from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.retrieval import HybridRetriever
 from danish_rag.trust_indicators import assess_source_freshness
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.evaluation_time import fixed_clock
-from tests.test_answer_policy_provenance import CLAIM, QUESTION, SourceOnlyVerifier
+from tests.answer_transport import model_service, script, wire
+from tests.test_answer_policy_provenance import (
+    ALIASES, CLAIM, QUESTION, checks, source_answer, supported,
+)
 from tests.test_issue_13_evidence_safety import (
     FixtureRetriever,
     evidence_fixture,
@@ -117,10 +123,10 @@ class AnswerServiceClockTests(unittest.TestCase):
             "next_review_due_utc": DUE,
             "overdue_blocked_after_utc": "2026-12-01T00:00:00Z",
         }
-        return AnswerService(
-            retriever=FixtureRetriever([source]),
-            generator=SourceOnlyVerifier(),
-            clock=clock,
+        transport = script(FakeTransport(), wire(source_answer(), ALIASES),
+                           checks(supported(), supported()))
+        return model_service(
+            transport, FixtureRetriever([source]), clock=clock,
         ).answer(QUESTION, replace(provider_configuration(), provider_id="ollama"))
 
     def test_fresh_tomato_score_depends_only_on_inputs_and_injected_time(self) -> None:
@@ -133,7 +139,9 @@ class AnswerServiceClockTests(unittest.TestCase):
 
     def test_service_default_clock_is_system_utc(self) -> None:
         service = AnswerService(
-            retriever=FixtureRetriever([]), generator=SourceOnlyVerifier()
+            retriever=FixtureRetriever([]),
+            generator=TransportAnswerGenerator(fixed_transport(FakeTransport())),
+            verifier=LexicalAnswerVerifier(),
         )
         self.assertEqual(service.clock().utcoffset(), timedelta(0))
 

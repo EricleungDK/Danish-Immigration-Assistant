@@ -114,10 +114,10 @@ class VerifiedClaimBindingTests(unittest.TestCase):
 class LocalProviderVerificationIntegrationTests(unittest.TestCase):
     def test_production_answer_repairs_rejected_translation_then_verifies_it_separately(self):
         import json
-        from danish_rag.answer_pipeline import AnswerService
+        from danish_rag.local_model_transport import FakeTransport
         from danish_rag.provider_setup import ProviderConfiguration
+        from tests.answer_transport import model_service, requests, script, wire
         from tests.test_claim_to_citation_validation import evidence, payload
-        from tests.test_issue_9_answer_path import RecordingOllamaGenerator
 
         source = evidence('Du tilmelder dig direkte ved sprogcentret.')
         claim = 'Register directly at the language centre.'
@@ -129,8 +129,8 @@ class LocalProviderVerificationIntegrationTests(unittest.TestCase):
             {'index': 1, 'supported': True, 'contains_factual_claim': True,
              'witnesses': [{'citation_id': 'official-source', 'quote_id': 'e1s1'}]}]}
         rejected = {'checks': [{**c, 'supported': False} for c in checks['checks']]}
-        wire_answer = {**answer, 'sections': [{**s, 'citation_ids': ['e1']} for s in answer['sections']]}
-        generator = RecordingOllamaGenerator([json.dumps(p) for p in [wire_answer, rejected, wire_answer, checks]])
+        wire_answer = wire(answer, {'official-source': 'e1'})
+        transport = script(FakeTransport(), wire_answer, rejected, wire_answer, checks)
 
         class Retriever:
             manifest = {'corpus_id': 'test-corpus'}
@@ -141,21 +141,20 @@ class LocalProviderVerificationIntegrationTests(unittest.TestCase):
             provider_id='ollama', endpoint='http://127.0.0.1:11434', model='fixture',
             provider_version='fixture', model_identity={}, capabilities=['generation'],
             validated_at_utc='test')
-        result = AnswerService(retriever=Retriever(), generator=generator, clock=fixed_clock).answer(
+        result = model_service(transport, Retriever()).answer(
             'Where do I register for Prøve i Dansk 2?', configuration)
+        sent = requests(transport)
         self.assertEqual(result.answer['sections'][0]['text'], claim)
         self.assertEqual(result.answer['summary'], claim)
-        self.assertEqual(len(generator.payloads), 4)
+        self.assertEqual(len(sent), 4)
         self.assertTrue(any(message['role'] == 'assistant' and
                             json.loads(message['content']) == {**assembled, 'sections': wire_answer['sections']}
-                            for message in generator.payloads[2]['messages']))
-        self.assertIn('separate conservative evidence verifier',
-                      generator.payloads[1]['messages'][0]['content'])
-        self.assertIn('separate conservative evidence verifier',
-                      generator.payloads[3]['messages'][0]['content'])
-        self.assertEqual(generator.responses, [])
-        self.assertEqual(generator.payloads[1]['options']['num_ctx'], 8192)
-        self.assertNotIn('num_ctx', generator.payloads[0]['options'])
+                            for message in sent[2]['messages']))
+        self.assertIn('separate conservative evidence verifier', sent[1]['messages'][0]['content'])
+        self.assertIn('separate conservative evidence verifier', sent[3]['messages'][0]['content'])
+        self.assertEqual(transport.remaining, 0)
+        self.assertEqual(sent[1]['context_tokens'], 8192)
+        self.assertIsNone(sent[0]['context_tokens'])
 
 class CitationCoverageVerificationTests(unittest.TestCase):
     def test_every_citation_needs_a_witness_and_its_own_numeric_support(self):
@@ -172,31 +171,6 @@ class CitationCoverageVerificationTests(unittest.TestCase):
         checks[1]['witnesses'].append({'citation_id': 'b', 'quote_id': 'e2s1'})
         with self.assertRaisesRegex(VerificationError, 'unsupported exam identities'):
             validate_verification(answer, evidence, {'checks': checks})
-
-class VerifierCorrectionTests(unittest.TestCase):
-    def test_wrong_witness_selection_is_corrected_without_changing_the_answer(self):
-        import json
-        from danish_rag.provider_setup import ProviderConfiguration
-        from tests.test_issue_9_answer_path import RecordingOllamaGenerator
-        source = [{'citation_id': 'source', 'content':
-                   'Prøve i Dansk 2 is the basic requirement. Prøve i Dansk 3 is supplementary.'}]
-        answer = {'summary': 'Details below.', 'sections': [
-            {'kind': 'official_fact', 'text': 'Prøve i Dansk 2 is the basic requirement.',
-             'citation_ids': ['source']}]}
-        checks = [{'index': 0, 'supported': True, 'contains_factual_claim': False, 'witnesses': []},
-                  {'index': 1, 'supported': True, 'contains_factual_claim': True,
-                   'witnesses': [{'citation_id': 'source', 'quote_id': 'e1s2'}]}]
-        wrong = json.dumps({'checks': checks})
-        checks[1]['witnesses'][0]['quote_id'] = 'e1s1'
-        generator = RecordingOllamaGenerator([wrong, json.dumps({'checks': checks})])
-        configuration = ProviderConfiguration(
-            provider_id='ollama', endpoint='http://127.0.0.1:11434', model='fixture',
-            provider_version='fixture', model_identity={}, capabilities=['generation'],
-            validated_at_utc='test')
-        verified = generator.verify_answer(answer, evidence=source, configuration=configuration)
-        self.assertTrue(verified)
-        self.assertEqual(len(generator.payloads), 2)
-        self.assertIn('unsupported exam identities', generator.payloads[1]['messages'][-1]['content'])
 
 class KeyedVerificationProtocolTests(unittest.TestCase):
     def test_keyed_protocol_requires_every_item_and_constrains_wrong_exam_spans(self):
@@ -245,34 +219,33 @@ class WitnessContextTests(unittest.TestCase):
 
 class MalformedProposedAnswerTests(unittest.TestCase):
     def test_malformed_answers_fail_with_answer_validation_error_before_provider_request(self):
-        from danish_rag.answer_pipeline import AnswerValidationError
+        from danish_rag.answer_pipeline import AnswerValidationError, ModelAnswerVerifier, fixed_transport
+        from danish_rag.local_model_transport import FakeTransport
         from danish_rag.provider_setup import ProviderConfiguration
-        from tests.test_issue_9_answer_path import RecordingOllamaGenerator
         configuration = ProviderConfiguration(
             provider_id='ollama', endpoint='http://127.0.0.1:11434', model='fixture',
             provider_version='fixture', model_identity={}, capabilities=['generation'],
             validated_at_utc='test')
-        generator = RecordingOllamaGenerator([])
+        transport = FakeTransport()
+        verifier = ModelAnswerVerifier(fixed_transport(transport))
         for answer in ({'sections': []}, {'summary': 'Summary', 'sections': [None]},
                        {'summary': 'Summary', 'sections': [{'kind': [], 'text': 'Fact', 'citation_ids': []}]},
                        {'summary': 'Summary', 'sections': [{'kind': 'official_fact', 'text': 'Fact'}]}):
             with self.subTest(answer=answer), self.assertRaises(AnswerValidationError):
-                generator.verify_answer(answer, evidence=[], configuration=configuration)
-        self.assertEqual(generator.payloads, [])
+                verifier.verified_claims(answer, evidence=[], configuration=configuration)
+        self.assertEqual(transport.requests, [])
 
 class RefusalSummaryTests(unittest.TestCase):
     def test_refusal_only_generation_introduces_its_actual_evidence_boundary(self):
-        import json
-        from danish_rag.answer_pipeline import AnswerService
+        from danish_rag.local_model_transport import FakeTransport
         from danish_rag.provider_setup import ProviderConfiguration
+        from tests.answer_transport import model_service, script
         from tests.test_claim_to_citation_validation import evidence
-        from tests.test_issue_9_answer_path import RecordingOllamaGenerator
         refusal = 'The available evidence does not establish the requested future fee.'
         answer = {'summary': 'An unsupported fee conclusion.', 'sections': [
             {'kind': 'refusal', 'text': refusal, 'citation_ids': []}]}
         check = {'supported': True, 'contains_factual_claim': False, 'witnesses': []}
-        generator = RecordingOllamaGenerator([json.dumps(answer), json.dumps({
-            'checks': {'item_0': check, 'item_1': check}})])
+        transport = script(FakeTransport(), answer, {'checks': {'item_0': check, 'item_1': check}})
         class Retriever:
             manifest = {'corpus_id': 'test-corpus'}
             def retrieve(self, question):
@@ -281,7 +254,7 @@ class RefusalSummaryTests(unittest.TestCase):
             provider_id='ollama', endpoint='http://127.0.0.1:11434', model='fixture',
             provider_version='fixture', model_identity={}, capabilities=['generation'],
             validated_at_utc='test')
-        result = AnswerService(retriever=Retriever(), generator=generator, clock=fixed_clock).answer(
+        result = model_service(transport, Retriever()).answer(
             'What registration fee applies to Prøve i Dansk 2 in 2030?', configuration)
         self.assertEqual(result.answer['summary'], refusal)
         self.assertEqual(result.answer['sections'][0]['text'], refusal)
@@ -289,22 +262,19 @@ class RefusalSummaryTests(unittest.TestCase):
 
 class SafetyAugmentationSummaryTests(unittest.TestCase):
     def test_safety_refusal_remains_explicit_and_summary_uses_the_verified_fact(self):
-        import json
         from dataclasses import replace
-        from danish_rag.answer_pipeline import AnswerService
+        from danish_rag.local_model_transport import FakeTransport
+        from tests.answer_transport import model_service, script, wire
         from tests.test_issue_13_evidence_safety import FixtureRetriever, evidence_fixture, provider_configuration
-        from tests.test_issue_9_answer_path import RecordingOllamaGenerator
         claim = 'Prøve i Dansk 2 is the basic Danish language requirement for permanent residence.'
         answer = {'summary': 'An introduction.', 'sections': [
             {'kind': 'official_fact', 'text': claim, 'citation_ids': ['source']}]}
         supported = {'supported': True, 'contains_factual_claim': True,
                      'witnesses': [{'citation_id': 'source', 'quote_id': 'e1s1'}]}
         checks = {'item_0': supported, 'item_1': supported}
-        wire_answer = {**answer, 'sections': [{**s, 'citation_ids': ['e1']} for s in answer['sections']]}
-        generator = RecordingOllamaGenerator([json.dumps(wire_answer), json.dumps({'checks': checks})])
-        result = AnswerService(
-            retriever=FixtureRetriever([evidence_fixture('source', content=claim)]),
-            generator=generator, clock=fixed_clock,
+        transport = script(FakeTransport(), wire(answer, {'source': 'e1'}), {'checks': checks})
+        result = model_service(
+            transport, FixtureRetriever([evidence_fixture('source', content=claim)]),
         ).answer('I passed PD2, have lived in Denmark for 7 years, and have a job. '
                  'Do I qualify for permanent residence?',
                  replace(provider_configuration(), provider_id='ollama'))

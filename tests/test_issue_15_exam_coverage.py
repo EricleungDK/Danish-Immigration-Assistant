@@ -8,6 +8,7 @@ from danish_rag.answer_pipeline import (
     AnswerService,
     AnswerValidationError,
     answer_schema,
+    LexicalAnswerVerifier,
 )
 from danish_rag.knowledge_release import (
     BUNDLED_MINIMAL_RELEASE,
@@ -167,7 +168,7 @@ class Issue15ExamCoverageTests(unittest.TestCase):
             }
         )
 
-        result = AnswerService(retriever=self.retriever, generator=generator, clock=review_clock).answer(
+        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=self.retriever, generator=generator, clock=review_clock).answer(
             (
                 "Can you compare Prøve i Dansk 1, Prøve i Dansk 2, Prøve i Dansk 3, "
                 "and Studieprøven for permanent residence?"
@@ -201,7 +202,7 @@ class Issue15ExamCoverageTests(unittest.TestCase):
             }
         )
 
-        result = AnswerService(retriever=self.retriever, generator=generator, clock=review_clock).answer(
+        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=self.retriever, generator=generator, clock=review_clock).answer(
             "I have an old Danish certificate. Can you tell me whether SIRI will accept it for permanent residence?",
             provider_configuration(),
         )
@@ -244,7 +245,7 @@ class Issue15ExamCoverageTests(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(AnswerValidationError, "prohibited"):
-            AnswerService(retriever=self.retriever, generator=generator, clock=review_clock).answer(
+            AnswerService(verifier=LexicalAnswerVerifier(), retriever=self.retriever, generator=generator, clock=review_clock).answer(
                 "I have an old Danish certificate. Can you tell me whether SIRI will accept it for permanent residence?",
                 provider_configuration(),
             )

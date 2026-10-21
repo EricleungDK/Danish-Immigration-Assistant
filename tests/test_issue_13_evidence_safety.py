@@ -8,6 +8,7 @@ from danish_rag.answer_pipeline import (
     AnswerValidationError,
     answer_schema,
     validate_answer,
+    LexicalAnswerVerifier,
 )
 from danish_rag.provider_setup import ProviderConfiguration
 from tests.evaluation_time import FIXED_TIME, fixed_clock
@@ -182,6 +183,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         generator = supported_citizenship_boundary_generator()
 
         result = AnswerService(
+            verifier=LexicalAnswerVerifier(),
             retriever=retriever,
             generator=generator, clock=fixed_clock,
         ).answer(case["prompt"], provider_configuration())
@@ -237,6 +239,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         )
 
         result = AnswerService(
+            verifier=LexicalAnswerVerifier(),
             retriever=retriever,
             generator=supported_citizenship_boundary_generator(), clock=fixed_clock,
         ).answer(
@@ -274,6 +277,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
         with self.assertRaisesRegex(AnswerValidationError, "prohibited"):
             AnswerService(
+                verifier=LexicalAnswerVerifier(),
                 retriever=FixtureRetriever(
                     citizenship_boundary_evidence(),
                     manifest=citizenship_boundary_manifest(),
@@ -303,6 +307,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
         with self.assertRaisesRegex(AnswerValidationError, "prohibited"):
             AnswerService(
+                verifier=LexicalAnswerVerifier(),
                 retriever=FixtureRetriever(
                     citizenship_boundary_evidence(),
                     manifest=citizenship_boundary_manifest(),
@@ -340,6 +345,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         )
 
         result = AnswerService(
+            verifier=LexicalAnswerVerifier(),
             retriever=FixtureRetriever(evidence),
             generator=generator, clock=fixed_clock,
         ).answer(
@@ -384,6 +390,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
         with self.assertRaisesRegex(AnswerValidationError, "prohibited"):
             AnswerService(
+                verifier=LexicalAnswerVerifier(),
                 retriever=FixtureRetriever(evidence),
                 generator=generator, clock=fixed_clock,
             ).answer(
@@ -418,6 +425,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         )
 
         result = AnswerService(
+            verifier=LexicalAnswerVerifier(),
             retriever=FixtureRetriever(evidence),
             generator=generator, clock=fixed_clock,
         ).answer(
@@ -444,6 +452,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         generator = FixtureGenerator({"summary": "should not run", "sections": []})
 
         result = AnswerService(
+            verifier=LexicalAnswerVerifier(),
             retriever=FixtureRetriever(boundary_evidence),
             generator=generator, clock=fixed_clock,
         ).answer(
@@ -472,6 +481,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         )
 
         result = AnswerService(
+            verifier=LexicalAnswerVerifier(),
             retriever=FixtureRetriever([]),
             generator=generator, clock=fixed_clock,
         ).answer(
@@ -523,6 +533,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         )
 
         result = AnswerService(
+            verifier=LexicalAnswerVerifier(),
             retriever=FixtureRetriever(evidence),
             generator=generator, clock=fixed_clock,
         ).answer(
@@ -558,6 +569,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         )
 
         result = AnswerService(
+            verifier=LexicalAnswerVerifier(),
             retriever=FixtureRetriever(evidence),
             generator=generator, clock=fixed_clock,
         ).answer(

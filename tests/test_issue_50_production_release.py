@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from danish_rag.answer_pipeline import AnswerService
+from danish_rag.answer_pipeline import AnswerService, LexicalAnswerVerifier
 from danish_rag.knowledge_release import (
     KnowledgeReleaseError,
     install_knowledge_release,
@@ -593,6 +593,7 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
                 self.assertEqual(result["knowledge_release_id"], "kr-2026-08-17.1")
 
         answer = AnswerService(
+            verifier=LexicalAnswerVerifier(),
             retriever=HybridRetriever.from_data_dir(
                 self.root / "local-data",
                 embedding_provider=DeterministicEmbeddingProviderFixture(),

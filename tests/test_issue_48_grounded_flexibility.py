@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from danish_rag.answer_pipeline import AnswerResult
+from danish_rag.answer_pipeline import AnswerResult, LexicalAnswerVerifier
 from danish_rag.final_answer_evaluation import (
     AnswerServiceCaseRunner,
     CaseExecution,
@@ -75,6 +75,7 @@ def build_production_answer_runner(data_dir):
             embedding_provider=embedding_provider, clock=review_clock,
         ),
         generator=GroundedFlexibilityAnswerGenerator(),
+        verifier=LexicalAnswerVerifier(),
         configuration=ProviderConfiguration(
             provider_id="controlled",
             endpoint="in-process",

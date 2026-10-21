@@ -8,7 +8,6 @@ import httpx
 
 from danish_rag.answer_pipeline import (
     AnswerValidationError,
-    LocalProviderAnswerGenerator,
     _answer_messages,
     answer_schema,
     conversation_schema,
@@ -18,6 +17,8 @@ from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
 from danish_rag.retrieval import HybridRetriever
+from danish_rag.local_model_transport import FakeTransport, ModelUnreachableError
+from tests.answer_transport import ScriptedGenerator, requests, script, wire
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.evaluation_time import fixed_clock
 
@@ -82,38 +83,10 @@ class FixtureAnswerGenerator:
         }
 
 
-class RecordingOllamaGenerator(LocalProviderAnswerGenerator):
-    def __init__(self, responses: list[str]) -> None:
-        super().__init__(timeout_seconds=1)
-        self.responses = list(responses)
-        self.payloads: list[dict[str, Any]] = []
-
-    def _request_json(self, endpoint, method, path, payload):
-        self.payloads.append(payload)
-        return {"message": {"content": self.responses.pop(0)}}
-
-
-class RecordingOpenAICompatibleGenerator(LocalProviderAnswerGenerator):
-    def __init__(self, response: dict[str, Any]) -> None:
-        super().__init__(timeout_seconds=1)
-        self.response = response
-        self.payloads: list[dict[str, Any]] = []
-
-    def _request_json(self, endpoint, method, path, payload):
-        self.payloads.append(payload)
-        return {
-            "choices": [
-                {"message": {"content": json.dumps(self.response)}}
-            ]
-        }
-
-
 class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
-    async def test_ollama_schema_is_prompt_grounded_and_thinking_is_disabled(self):
+    async def test_generation_request_is_prompt_grounded_with_the_aliased_schema(self):
         schema = answer_schema(["official-1"])
-        generator = RecordingOllamaGenerator(
-            [json.dumps({"summary": "Supported.", "sections": []})]
-        )
+        generator = ScriptedGenerator({"summary": "Supported.", "sections": []})
 
         generator.generate(
             question="Where do I register?",
@@ -140,23 +113,18 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
             schema=schema,
         )
 
-        payload = generator.payloads[0]
-        self.assertIs(payload["think"], False)
-        self.assertEqual(payload["format"], answer_schema(["e1"]))
-        self.assertEqual(
-            payload["options"],
-            {"temperature": 0, "seed": 0},
-        )
+        request = generator.requests[0]
+        self.assertEqual(request["schema"], answer_schema(["e1"]))
+        self.assertIsNone(request["context_tokens"])
+        self.assertEqual(request["model"], "fixture-model")
         self.assertIn(
             json.dumps(answer_schema(["e1"]), ensure_ascii=False, sort_keys=True),
-            payload["messages"][1]["content"],
+            request["messages"][1]["content"],
         )
 
-    async def test_ollama_social_conversation_is_structured_and_fact_bounded(self):
+    async def test_social_conversation_is_structured_and_fact_bounded(self):
         schema = conversation_schema()
-        generator = RecordingOllamaGenerator(
-            [json.dumps({"response": "Here is a short, harmless joke."})]
-        )
+        generator = ScriptedGenerator({"response": "Here is a short, harmless joke."})
 
         result = generator.converse(
             question="Tell me a short joke.",
@@ -173,46 +141,16 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(result, {"response": "Here is a short, harmless joke."})
-        payload = generator.payloads[0]
-        self.assertIs(payload["think"], False)
-        self.assertEqual(payload["format"], schema)
-        self.assertEqual(
-            payload["options"],
-            {"temperature": 0, "seed": 0},
-        )
-        self.assertIn("non-factual social conversation", payload["messages"][0]["content"])
-        self.assertIn("Do not provide immigration", payload["messages"][0]["content"])
-        self.assertNotIn("approved_official_evidence", payload["messages"][1]["content"])
+        request = generator.requests[0]
+        self.assertEqual(request["schema"], schema)
+        self.assertIsNone(request["context_tokens"])
+        self.assertIn("non-factual social conversation", request["messages"][0]["content"])
+        self.assertIn("Do not provide immigration", request["messages"][0]["content"])
+        self.assertNotIn("approved_official_evidence", request["messages"][1]["content"])
 
-    async def test_openai_compatible_social_conversation_uses_strict_schema(self):
-        schema = conversation_schema()
-        generator = RecordingOpenAICompatibleGenerator(
-            {"response": "I can keep this social turn brief."}
-        )
-
-        result = generator.converse(
-            question="How are you?",
-            configuration=ProviderConfiguration(
-                provider_id="openai_compatible",
-                endpoint="http://127.0.0.1:1234",
-                model="fixture-model",
-                provider_version="fixture-provider",
-                model_identity={"id": "fixture-model"},
-                capabilities=["generation"],
-                validated_at_utc="2026-07-14T00:00:00Z",
-            ),
-            schema=schema,
-        )
-
-        self.assertEqual(result, {"response": "I can keep this social turn brief."})
-        response_format = generator.payloads[0]["response_format"]
-        self.assertEqual(response_format["json_schema"]["name"], "danish_rag_conversation")
-        self.assertEqual(response_format["json_schema"]["schema"], schema)
-        self.assertIs(response_format["json_schema"]["strict"], True)
-
-    async def test_ollama_retries_ambiguous_structured_output_once(self):
+    async def test_ambiguous_structured_output_is_retried_once(self):
         valid = json.dumps({"summary": "Supported.", "sections": []})
-        generator = RecordingOllamaGenerator([valid + "\n" + valid, valid])
+        generator = ScriptedGenerator(valid + "\n" + valid, valid)
         configuration = ProviderConfiguration(
             provider_id="ollama",
             endpoint="http://127.0.0.1:11434",
@@ -232,12 +170,12 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(result["summary"], "Supported.")
-        self.assertEqual(len(generator.payloads), 2)
-        self.assertIn("invalid", generator.payloads[1]["messages"][-1]["content"])
+        self.assertEqual(len(generator.requests), 2)
+        self.assertIn("invalid", generator.requests[1]["messages"][-1]["content"])
 
-    async def test_ollama_rejects_a_second_ambiguous_structured_output(self):
+    async def test_a_second_ambiguous_structured_output_is_rejected(self):
         invalid = '{"summary":"first","sections":[]}\n{"summary":"second","sections":[]}'
-        generator = RecordingOllamaGenerator([invalid, invalid])
+        generator = ScriptedGenerator(invalid, invalid)
 
         with self.assertRaises(AnswerValidationError):
             generator.generate(
@@ -256,7 +194,7 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
                 schema=answer_schema([]),
             )
 
-        self.assertEqual(len(generator.payloads), 2)
+        self.assertEqual(len(generator.requests), 2)
 
     async def test_generation_contract_answers_supported_parts_without_inventing_absence(self):
         messages = _answer_messages(
@@ -324,6 +262,72 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
         )
         self.addAsyncCleanup(client.aclose)
         return client
+
+    def make_transport_client(self, transport):
+        app = create_app(
+            config_path=self.config_path,
+            data_dir=self.data_dir,
+            transport=transport,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
+        )
+        client = httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://testserver",
+        )
+        self.addAsyncCleanup(client.aclose)
+        return client
+
+    async def test_application_answers_through_the_injected_transport_with_model_verification(self):
+        from danish_rag.answer_verification import source_witnesses
+
+        install_minimal_knowledge_release(
+            self.data_dir, embedding_provider=self.embedding_provider, clock=fixed_clock,
+        )
+        question = "What Danish test do I need for permanent residence?"
+        evidence = HybridRetriever.from_data_dir(
+            self.data_dir, embedding_provider=self.embedding_provider, clock=fixed_clock,
+        ).retrieve(question)
+        claim = source_witnesses(evidence)["e1s1"]["quote"]
+        proposed = {"summary": "Introduction.", "sections": [
+            {"kind": "official_fact", "text": claim, "citation_ids": [evidence[0]["citation_id"]]}]}
+        supported = {"verdict": "supported", "failure_reason": "none",
+                     "witnesses": [{"quote_id": "e1s1"}]}
+        transport = script(
+            FakeTransport(), wire(proposed, {evidence[0]["citation_id"]: "e1"}),
+            {"checks": {"item_0": supported, "item_1": supported}})
+        client = self.make_transport_client(transport)
+
+        response = await client.post(
+            "/ask", data={"question": question}, headers={"Origin": "http://testserver"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Evidence Confidence: High", response.text)
+        self.assertIn("Fresh Tomato Score: High", response.text)
+        self.assertIn("SIRI", response.text)
+        sent = requests(transport)
+        self.assertEqual([item["context_tokens"] for item in sent], [None, 8192])
+        self.assertEqual(sent[0]["model"], "fixture-model")
+        record = ConversationStore(self.data_dir / "conversations.sqlite3")
+        saved = record.get_conversation(record.list_conversations()[0]["id"])
+        self.assertEqual(saved["answer"]["sections"][0]["text"], claim)
+        self.assertEqual(saved["answer"]["summary"], claim)
+
+    async def test_transport_failure_through_the_application_is_a_safe_provider_error(self):
+        transport = FakeTransport()
+        transport.queue_error(ModelUnreachableError("refused"))
+        client = self.make_transport_client(transport)
+
+        response = await client.post(
+            "/ask",
+            data={"question": "What Danish test do I need for permanent residence?"},
+            headers={"Origin": "http://testserver"},
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("Local generation provider is unavailable", response.text)
+        self.assertEqual(
+            ConversationStore(self.data_dir / "conversations.sqlite3").list_conversations(), [])
 
     async def test_minimal_release_installs_and_hybrid_retrieval_finds_supported_source(self):
         installation = install_minimal_knowledge_release(

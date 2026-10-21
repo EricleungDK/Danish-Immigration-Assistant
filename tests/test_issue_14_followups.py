@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from danish_rag.answer_pipeline import AnswerService
+from danish_rag.answer_pipeline import AnswerService, LexicalAnswerVerifier
 from danish_rag.conversation_store import ConversationStore
 from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.local_app import create_app
@@ -133,7 +133,7 @@ class Issue14FollowUpServiceTests(unittest.TestCase):
             }
         ]
 
-        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
+        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
             "What about PD3?",
             provider_configuration(),
             conversation_turns=prior_turns,
@@ -154,6 +154,7 @@ class Issue14FollowUpServiceTests(unittest.TestCase):
 
     def test_suggested_follow_ups_are_stored_and_stay_inside_evidence_boundary(self):
         result = AnswerService(
+            verifier=LexicalAnswerVerifier(),
             retriever=RecordingRetriever(),
             generator=RecordingGenerator(), clock=fixed_clock,
         ).answer(
