@@ -12,7 +12,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import math
 import re
 import subprocess
 import tempfile
@@ -25,7 +24,11 @@ from unittest.mock import patch
 
 import httpx
 
-from .answer_pipeline import AnswerPipelineError, AnswerService, LexicalAnswerVerifier
+from .answer_pipeline import (
+    AnswerService, LexicalAnswerVerifier, TransportAnswerGenerator, fixed_transport,
+)
+from .controlled_model import CannedAnswer, ControlledModel
+from .embedding_provider import OllamaEmbeddingProvider
 from .evidence_integrity import (
     canonical_json_sha256 as _sha256_json,
     format_utc_seconds,
@@ -37,6 +40,7 @@ from .evaluation_quality_bar import (
     load_evaluation_cases,
 )
 from .local_app import create_app
+from .local_model_transport import FakeTransport, ModelUnreachableError
 from .provider_setup import (
     ProviderConfiguration,
     save_provider_configuration,
@@ -256,7 +260,7 @@ def run_source_policy_scenario(
     _require_assertion_contract(case)
     scenario = _build_source_scenario(case_id)
     retriever = _ScenarioRetriever(scenario["evidence"])
-    generator = _ScenarioGenerator(scenario["generated"])
+    generator = _ScenarioModel(scenario["evidence"], scenario["generated"])
     network_requests: list[str] = []
 
     def reject_network(request: Any, *args: Any, **kwargs: Any) -> Any:
@@ -275,7 +279,7 @@ def run_source_policy_scenario(
     )
     with patch.object(urllib.request, "urlopen", side_effect=reject_network):
         result = AnswerService(
-            retriever=retriever, generator=generator,
+            retriever=retriever, generator=TransportAnswerGenerator(fixed_transport(generator.transport)),
             verifier=LexicalAnswerVerifier(), clock=clock,
         ).answer(
             str(case["prompt"]), configuration
@@ -555,11 +559,12 @@ async def _run_provider_recovery_execution_async() -> dict[str, Any]:
             network_requests.append(str(getattr(request, "full_url", request)))
             raise AssertionError("provider recovery attempted remote fallback")
 
+        fake = _provider_recovery_model()
         app = create_app(
             config_path=config_path,
             data_dir=data_dir,
-            answer_generator=_UnavailableEvaluationGenerator(),
-            embedding_provider=_DeterministicEvaluationEmbeddingProvider(),
+            transport=fake,
+            embedding_provider=OllamaEmbeddingProvider(transport=fake),
         )
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -728,7 +733,7 @@ def _source_scenario_observations(
     answer: dict[str, Any],
     *,
     retrieved_evidence: list[dict[str, Any]],
-    generator: "_ScenarioGenerator",
+    generator: "_ScenarioModel",
     network_requests: list[str],
 ) -> tuple[dict[str, bool], dict[str, dict[str, Any]], dict[str, Any]]:
     sections = [item for item in answer.get("sections", []) if isinstance(item, dict)]
@@ -1290,60 +1295,32 @@ class _ScenarioRetriever:
         return [dict(item) for item in self.evidence]
 
 
-class _ScenarioGenerator:
-    def __init__(self, payload: dict[str, Any]) -> None:
-        self.payload = payload
-        self.calls: list[dict[str, Any]] = []
+class _ScenarioModel:
+    """The controlled model answering one scenario with its canned payload."""
 
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        del question, normalized_question, configuration, schema
-        self.calls.append(
-            {"evidence_ids": [str(item["citation_id"]) for item in evidence]}
-        )
-        return json.loads(json.dumps(self.payload))
+    def __init__(self, evidence: list[dict[str, Any]], payload: dict[str, Any]) -> None:
+        self._canned = CannedAnswer(payload, evidence)
+        self.transport = FakeTransport(responder=ControlledModel(draft=self._canned))
+
+    @property
+    def calls(self) -> list[dict[str, Any]]:
+        return [{"evidence_ids": call["evidence_ids"]} for call in self._canned.calls]
 
 
-class _UnavailableEvaluationGenerator:
-    def generate(self, **kwargs: Any) -> dict[str, Any]:
-        del kwargs
-        raise AnswerPipelineError(
-            "Local generation provider is unavailable. Start the local provider and retry."
-        )
+def _provider_recovery_model() -> FakeTransport:
+    """A fake whose generation provider is down while embeddings still work."""
 
+    embedder = ControlledModel(model_identity={
+        "digest": "sha256:deterministic-evaluation-embedding-provider",
+        "details": {"family": "evaluation-fixture", "parameter_size": "fixture"},
+    })
 
-class _DeterministicEvaluationEmbeddingProvider:
-    provider_id = "deterministic-evaluation-embedding-provider"
-    endpoint = "evaluation://in-process"
-    vector_dimensions = 768
+    def respond(operation: str, params: dict[str, Any]) -> Any:
+        if operation == "chat":
+            raise ModelUnreachableError("The local generation provider is not running.")
+        return embedder(operation, params)
 
-    def inspect_model(self, model: str) -> dict[str, Any]:
-        return {
-            "model": model,
-            "digest": "sha256:deterministic-evaluation-embedding-provider",
-            "details": {"family": "evaluation-fixture", "parameter_size": "fixture"},
-        }
-
-    def embed(self, model: str, text: str) -> list[float]:
-        del model
-        vector = [0.0] * self.vector_dimensions
-        for token in re.findall(r"[0-9a-zA-ZæøåÆØÅ]+", text.casefold()):
-            digest = hashlib.sha256(token.encode("utf-8")).digest()
-            index = int.from_bytes(digest[:4], "big") % self.vector_dimensions
-            vector[index] += 1.0 if digest[4] % 2 == 0 else -1.0
-        norm = math.sqrt(sum(value * value for value in vector))
-        if norm == 0:
-            return vector
-        return [round(value / norm, 9) for value in vector]
-
-
+    return FakeTransport(responder=respond)
 def _scenario_evidence(
     citation_id: str,
     *,

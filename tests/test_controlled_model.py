@@ -3,10 +3,11 @@
 import unittest
 
 from danish_rag.answer_pipeline import (
+    answer_schema,
     AnswerService, AnswerValidationError, LexicalAnswerVerifier, ModelAnswerVerifier,
     TransportAnswerGenerator, fixed_transport,
 )
-from danish_rag.controlled_model import ControlledModel
+from danish_rag.controlled_model import CannedAnswer, ControlledModel
 from danish_rag.embedding_provider import OllamaEmbeddingProvider
 from danish_rag.local_model_transport import (
     FakeTransport, FakeTransportScriptError, ModelUnreachableError, UnsupportedOperationError,
@@ -142,6 +143,59 @@ class ControlledModelTests(unittest.TestCase):
         fake = FakeTransport(responder=ControlledModel())
         with self.assertRaises(UnsupportedOperationError):
             fake.version()
+
+
+class CannedAnswerTests(unittest.TestCase):
+    def evidence(self):
+        return [
+            {**RecordingRetriever().retrieve("q")[0], "citation_id": "doc-a", "content": FACT},
+            {**RecordingRetriever().retrieve("q")[0], "citation_id": "doc-b",
+             "content": "Registration is done at the sprogcenter."},
+        ]
+
+    def payload(self, *cited):
+        return {"summary": "Canned.", "sections": [
+            {"kind": "official_fact", "text": FACT, "citation_ids": list(cited)}]}
+
+    def test_a_payload_written_with_the_retrievers_ids_reaches_the_model_as_aliases(self):
+        sources = self.evidence()
+        canned = CannedAnswer(self.payload("doc-b"), sources)
+        model = ControlledModel(draft=canned)
+        generator = TransportAnswerGenerator(fixed_transport(FakeTransport(responder=model)))
+
+        result = generator.generate(
+            question="q", normalized_question="q", evidence=sources,
+            configuration=provider_configuration(), schema=answer_schema(["doc-a", "doc-b"]))
+
+        self.assertEqual(result["sections"][0]["citation_ids"], ["doc-b"])
+        self.assertEqual(canned.calls[0]["evidence_ids"], ["doc-a", "doc-b"])
+        self.assertEqual(canned.calls[0]["question"], "q")
+        self.assertEqual(canned.calls[0]["schema"], model.calls[0].schema)
+        self.assertEqual(sorted(canned.calls[0]["schema_ids"]), ["doc-a", "doc-b"])
+
+    def test_sources_may_be_resolved_per_question(self):
+        sources = self.evidence()
+        canned = CannedAnswer(self.payload("doc-a"), lambda question: sources)
+        model = ControlledModel(draft=canned)
+        generator = TransportAnswerGenerator(fixed_transport(FakeTransport(responder=model)))
+
+        result = generator.generate(
+            question="q", normalized_question="q", evidence=sources[:1],
+            configuration=provider_configuration(), schema=answer_schema(["doc-a"]))
+
+        self.assertEqual(result["sections"][0]["citation_ids"], ["doc-a"])
+        self.assertEqual(canned.calls[0]["evidence_ids"], ["doc-a"])
+
+    def test_an_unknown_shown_source_fails_loudly(self):
+        canned = CannedAnswer(self.payload("doc-a"), self.evidence()[:1])
+        generator = TransportAnswerGenerator(fixed_transport(
+            FakeTransport(responder=ControlledModel(draft=canned))))
+
+        with self.assertRaises(KeyError):
+            generator.generate(
+                question="q", normalized_question="q", evidence=self.evidence(),
+                configuration=provider_configuration(),
+                schema=answer_schema(["doc-a", "doc-b"]))
 
 
 if __name__ == "__main__":

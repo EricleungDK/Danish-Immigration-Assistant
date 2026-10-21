@@ -138,6 +138,49 @@ class ControlledModel:
         return [round(value / norm, 9) for value in vector]
 
 
+class CannedAnswer:
+    """A draft that returns a fixed payload written with the retriever's own citation ids.
+
+    The model is shown aliased evidence, so the canonical ids are recovered by matching the
+    evidence text it was shown against `sources` (a list, or a function of the question).
+    `calls` records each request with the canonical ids of the evidence the model saw.
+    """
+
+    def __init__(
+        self,
+        payload: dict[str, Any],
+        sources: list[dict[str, Any]] | Callable[[str], list[dict[str, Any]]],
+    ) -> None:
+        self.payload = payload
+        self._sources = sources
+        self.calls: list[dict[str, Any]] = []
+
+    def __call__(self, call: GenerationCall) -> dict[str, Any]:
+        sources = self._sources(call.question) if callable(self._sources) else self._sources
+        canonical_by_content = {str(item["content"]): str(item["citation_id"]) for item in sources}
+        aliases = {
+            canonical_by_content[str(item["content"])]: str(item["citation_id"])
+            for item in call.evidence
+        }
+        canonical_by_alias = {alias: canonical for canonical, alias in aliases.items()}
+        offered = call.schema["properties"]["sections"]["items"]["properties"][
+            "citation_ids"]["items"].get("enum", [])
+        self.calls.append({
+            "question": call.question,
+            "normalized_question": call.normalized_question,
+            "evidence_ids": list(aliases),
+            #: The canonical ids the model was allowed to cite, in the schema's order.
+            "schema_ids": [canonical_by_alias[a] for a in offered if a in canonical_by_alias],
+            "schema": call.schema,
+        })
+        payload = json.loads(json.dumps(self.payload))
+        for section in payload.get("sections", []):
+            section["citation_ids"] = [
+                aliases.get(key, key) for key in section.get("citation_ids", [])
+            ]
+        return payload
+
+
 def _verdicts(payload: dict[str, Any]) -> dict[str, Any]:
     """Verify each item the way the deterministic claim-support guard would.
 
