@@ -32,6 +32,21 @@ _COLLECTORS = {
 }
 _DEFAULT_COLLECTOR = "danish_rag/grounded_flexibility_retrieval.py"
 
+# The only evidence files a full rebind may rewrite. A binding outside this set (for
+# example an approval record) changing means a new dependency on implementation hashes
+# that a reviewer must look at, so it fails instead of being silently re-blessed.
+ALLOWED_REBIND_FILES = frozenset({
+    "config/release-qualification.json",
+    "docs/progress/issue-51-approved-retrieval.json",
+    "docs/progress/issue-51-candidate-retrieval-baseline.json",
+    "docs/progress/issue-51-completion-retrieval.json",
+    "docs/progress/issue-51-final-answer-remediation.json",
+    "docs/progress/issue-51-live-passage-checks.json",
+    "docs/progress/issue-51-partial-answer-check.json",
+    "docs/progress/issue-51-retrieval-remediation.json",
+    "docs/progress/release-evaluation-current.json",
+})
+
 
 def copy_repository(destination: str | Path) -> Path:
     """Copy the repository files that evidence verification reads."""
@@ -56,12 +71,14 @@ def rebind_implementation_hashes(
         paths = sorted(
             [*base.glob("docs/progress/*.json"), *base.glob("config/*.json")]
         )
+        allowed = ALLOWED_REBIND_FILES
     else:
         paths = [base / Path(item) for item in evidence_files]
+        allowed = frozenset(Path(item).as_posix() for item in evidence_files)
     original = {path: _sha(path.read_bytes()) for path in paths}
     renames: dict[str, str] = {}
     for _ in range(10):
-        changed = False
+        changed: list[str] = []
         for path in paths:
             text = path.read_text(encoding="utf-8")
             replacements = dict(_implementation_replacements(base, path, text))
@@ -72,7 +89,7 @@ def rebind_implementation_hashes(
                     new_text = new_text.replace(old, new)
             if new_text != text:
                 path.write_bytes(new_text.encode("utf-8"))
-                changed = True
+                changed.append(path.relative_to(base).as_posix())
         renames = {
             original[path]: _sha(path.read_bytes())
             for path in paths
@@ -80,6 +97,18 @@ def rebind_implementation_hashes(
         }
         if not changed:
             break
+    else:
+        raise AssertionError(
+            "evidence rebinding did not converge; still changing: "
+            + ", ".join(sorted(changed))
+        )
+    touched = {
+        path.relative_to(base).as_posix()
+        for path in paths
+        if original[path] != _sha(path.read_bytes())
+    }
+    unexpected = touched - allowed
+    assert not unexpected, f"rebinding touched unexpected evidence files: {sorted(unexpected)}"
     return renames
 
 
