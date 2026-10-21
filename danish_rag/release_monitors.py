@@ -42,12 +42,13 @@ from .knowledge_release import (
 from .local_app import create_app
 from .privacy_boundary import (
     build_release_network_request,
+    is_loopback_url,
     validate_runtime_policy_privacy_boundary,
     validate_update_request_fields,
 )
 from .provider_setup import ProviderConfiguration, save_provider_configuration
 from .retrieval import HybridRetriever
-from .runtime_policy import is_loopback_url, load_runtime_policy
+from .runtime_policy import load_runtime_policy
 from .source_maintenance import build_publishable_knowledge_release
 from .supported_environment_monitor import (
     LiveEnvironmentWorkspace,
