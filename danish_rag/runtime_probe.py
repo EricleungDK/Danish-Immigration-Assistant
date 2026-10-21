@@ -8,15 +8,17 @@ import os
 import platform
 import sys
 import time
-import urllib.error
-import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from enum import IntEnum
 from pathlib import Path
 from typing import Any, Literal, TypedDict, cast
 
-from .ollama_contract import OLLAMA_DETERMINISTIC_CHAT_OPTIONS
+from .local_model_transport import (
+    LocalModelTransport,
+    ModelMissingError,
+    OllamaTransport,
+)
 from .runtime_policy import RuntimePolicy, is_loopback_url, load_runtime_policy
 
 
@@ -86,66 +88,16 @@ class ProbeResult:
         return asdict(self)
 
 
-class OllamaClient:
-    def __init__(self, endpoint: str, timeout_seconds: float = 60.0):
-        self.endpoint = endpoint.rstrip("/")
-        self.timeout_seconds = timeout_seconds
-
-    def get_version(self) -> dict[str, Any]:
-        return self._request("GET", "/api/version")
-
-    def show_model(self, model: str) -> dict[str, Any]:
-        try:
-            return self._request("POST", "/api/show", {"model": model})
-        except urllib.error.HTTPError as exc:
-            if exc.code in {400, 404}:
-                raise FileNotFoundError(model) from exc
-            raise
-
-    def chat_structured(
-        self,
-        *,
-        model: str,
-        schema: dict[str, Any],
-        messages: list[dict[str, str]],
-    ) -> dict[str, Any]:
-        return self._request(
-            "POST",
-            "/api/chat",
-            {
-                "model": model,
-                "messages": messages,
-                "stream": False,
-                "format": schema,
-                "think": False,
-                "options": dict(OLLAMA_DETERMINISTIC_CHAT_OPTIONS),
-            },
-        )
-
-    def _request(
-        self, method: str, path: str, payload: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        data = None
-        headers = {"Accept": "application/json"}
-        if payload is not None:
-            data = json.dumps(payload).encode("utf-8")
-            headers["Content-Type"] = "application/json"
-
-        request = urllib.request.Request(
-            f"{self.endpoint}{path}",
-            data=data,
-            headers=headers,
-            method=method,
-        )
-        with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-            return json.loads(response.read().decode("utf-8"))
+# provider_setup still imports this name; the Ollama transport adapter is the client.
+OllamaClient = OllamaTransport
 
 
 def run_runtime_probe(
     policy: RuntimePolicy,
     *,
-    client: Any | None = None,
+    client: LocalModelTransport | None = None,
     command: list[str] | None = None,
+    timeout_seconds: float = 60.0,
 ) -> ProbeResult:
     started = datetime.now(UTC)
     started_counter = time.perf_counter()
@@ -175,10 +127,10 @@ def run_runtime_probe(
             started_counter,
         )
 
-    client = client or OllamaClient(endpoint)
+    client = client or OllamaTransport(endpoint, timeout_seconds=timeout_seconds)
 
     try:
-        version_payload = _timed(timings, "service_version", client.get_version)
+        version = _timed(timings, "service_version", client.version)
     except Exception as exc:
         return _finish(
             result,
@@ -187,7 +139,7 @@ def run_runtime_probe(
             started_counter,
         )
 
-    version = str(version_payload.get("version", ""))
+    version = str(version)
     result.provider["version"] = version
     minimum_version = provider_policy["minimum_version"]
     if _version_tuple(version) < _version_tuple(minimum_version):
@@ -200,7 +152,7 @@ def run_runtime_probe(
 
     try:
         model_payload = _timed(timings, "model_inspection", client.show_model, model_name)
-    except FileNotFoundError:
+    except ModelMissingError:
         return _finish(
             result,
             ProbeExitStatus.MODEL_UNAVAILABLE,
@@ -257,15 +209,15 @@ def run_runtime_probe(
         },
     ]
     try:
-        chat_payload = _timed(
+        chat_result = _timed(
             timings,
             "structured_completion",
-            client.chat_structured,
+            client.chat,
             model=model_name,
             schema=schema,
             messages=messages,
         )
-        structured_response = _parse_structured_response(chat_payload)
+        structured_response = _parse_structured_response(chat_result.content)
         _validate_structured_response(structured_response, policy["baseline_id"])
     except Exception as exc:
         return _finish(
@@ -329,10 +281,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     policy = load_runtime_policy(args.policy)
-    endpoint = policy["providers"]["initial"]["default_endpoint"]
-    client = OllamaClient(endpoint, timeout_seconds=args.timeout)
     command = [sys.executable, "-m", "danish_rag.runtime_probe", *sys.argv[1:]]
-    result = run_runtime_probe(policy, client=client, command=command)
+    result = run_runtime_probe(
+        policy, command=command, timeout_seconds=args.timeout
+    )
     write_evidence(result, args.evidence)
 
     print(result.diagnostic)
@@ -472,12 +424,7 @@ def _structured_probe_schema(baseline_id: str) -> dict[str, Any]:
     }
 
 
-def _parse_structured_response(
-    chat_payload: dict[str, Any],
-) -> StructuredProbeResponse:
-    content = chat_payload.get("message", {}).get("content")
-    if not isinstance(content, str):
-        raise ValueError("chat response did not include message.content")
+def _parse_structured_response(content: str) -> StructuredProbeResponse:
     parsed = json.loads(content)
     if not isinstance(parsed, dict):
         raise ValueError("chat response JSON was not an object")

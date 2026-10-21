@@ -5,11 +5,15 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import urllib.error
-import urllib.request
 from typing import Any, Protocol
 
-from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
+from .local_model_transport import (
+    LocalModelTransport,
+    LocalModelTransportError,
+    ModelMissingError,
+    OllamaTransport,
+)
+from .privacy_boundary import PrivacyBoundaryError
 
 
 DEFAULT_OLLAMA_EMBEDDING_ENDPOINT = "http://127.0.0.1:11434"
@@ -29,7 +33,7 @@ class EmbeddingProvider(Protocol):
 
 
 class OllamaEmbeddingProvider:
-    """Production embedding adapter for Ollama's loopback HTTP API."""
+    """Production embedding adapter over the local model transport (Ollama, loopback)."""
 
     provider_id = "ollama"
 
@@ -38,26 +42,29 @@ class OllamaEmbeddingProvider:
         endpoint: str = DEFAULT_OLLAMA_EMBEDDING_ENDPOINT,
         *,
         timeout_seconds: float = 60.0,
+        transport: LocalModelTransport | None = None,
     ) -> None:
-        self.endpoint = endpoint.rstrip("/")
+        if transport is None:
+            try:
+                transport = OllamaTransport(endpoint, timeout_seconds=timeout_seconds)
+            except PrivacyBoundaryError as exc:
+                raise EmbeddingProviderError(
+                    "Local embedding requires an Ollama loopback endpoint such as "
+                    f"{DEFAULT_OLLAMA_EMBEDDING_ENDPOINT}. {exc}"
+                ) from exc
+        self._transport = transport
+        self.endpoint = transport.endpoint
         self.timeout_seconds = timeout_seconds
-        try:
-            require_loopback_endpoint(self.endpoint, purpose="Local embedding")
-        except PrivacyBoundaryError as exc:
-            raise EmbeddingProviderError(
-                "Local embedding requires an Ollama loopback endpoint such as "
-                f"{DEFAULT_OLLAMA_EMBEDDING_ENDPOINT}. {exc}"
-            ) from exc
 
     def inspect_model(self, model: str) -> dict[str, Any]:
         try:
-            payload = self._request("POST", "/api/show", {"model": model})
-        except _OllamaModelNotFoundError as exc:
+            payload = self._transport.show_model(model)
+        except ModelMissingError as exc:
             raise EmbeddingProviderError(
                 f"The approved embedding model '{model}' is not installed in Ollama. "
                 f"Run `ollama pull {model}` and retry local indexing."
             ) from exc
-        except Exception as exc:
+        except LocalModelTransportError as exc:
             raise EmbeddingProviderError(
                 f"Could not inspect the approved embedding model '{model}' at the local "
                 f"Ollama endpoint {self.endpoint}. Start Ollama, run `ollama pull {model}`, "
@@ -73,10 +80,10 @@ class OllamaEmbeddingProvider:
 
         if not identity.get("digest"):
             try:
-                tags_payload = self._request("GET", "/api/tags")
-            except Exception:
-                tags_payload = {}
-            tag_identity = _matching_tag_identity(tags_payload, model)
+                installed = self._transport.list_models()
+            except LocalModelTransportError:
+                installed = []
+            tag_identity = _matching_tag_identity(installed, model)
             if tag_identity is not None:
                 identity["model"] = tag_identity.get("model") or tag_identity.get("name") or model
                 for key in ("digest", "modified_at", "details"):
@@ -89,63 +96,13 @@ class OllamaEmbeddingProvider:
 
     def embed(self, model: str, text: str) -> list[float]:
         try:
-            payload = self._request(
-                "POST",
-                "/api/embed",
-                {"model": model, "input": text},
-            )
-        except Exception as exc:
+            vectors = self._transport.embed(model=model, texts=[text])
+        except LocalModelTransportError as exc:
             raise EmbeddingProviderError(
                 f"Ollama could not embed text with '{model}' at {self.endpoint}. Start "
                 f"Ollama, run `ollama pull {model}`, and retry. Detail: {exc}"
             ) from exc
-
-        vector = _extract_embedding_vector(payload)
-        return validate_embedding_vector(vector, context=f"Ollama model '{model}'")
-
-    def _request(
-        self,
-        method: str,
-        path: str,
-        payload: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        data = None
-        headers = {"Accept": "application/json"}
-        if payload is not None:
-            data = json.dumps(payload).encode("utf-8")
-            headers["Content-Type"] = "application/json"
-        request = urllib.request.Request(
-            f"{self.endpoint}{path}",
-            data=data,
-            headers=headers,
-            method=method,
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                response_payload = json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            if path == "/api/show" and exc.code in {400, 404}:
-                raise _OllamaModelNotFoundError from exc
-            raise EmbeddingProviderError(
-                f"Ollama returned HTTP {exc.code} for {path}."
-            ) from exc
-        except urllib.error.URLError as exc:
-            raise EmbeddingProviderError(
-                f"Ollama is unreachable at {self.endpoint}."
-            ) from exc
-        except (TimeoutError, json.JSONDecodeError) as exc:
-            raise EmbeddingProviderError(
-                f"Ollama returned no usable JSON response for {path}."
-            ) from exc
-        if not isinstance(response_payload, dict):
-            raise EmbeddingProviderError(
-                f"Ollama response for {path} must be a JSON object."
-            )
-        return response_payload
-
-
-class _OllamaModelNotFoundError(RuntimeError):
-    pass
+        return validate_embedding_vector(vectors[0] if vectors else None, context=f"Ollama model '{model}'")
 
 
 def resolve_embedding_provider(
@@ -209,25 +166,10 @@ def validate_embedding_vector(value: Any, *, context: str) -> list[float]:
     return vector
 
 
-def _extract_embedding_vector(payload: dict[str, Any]) -> Any:
-    if "embedding" in payload:
-        return payload["embedding"]
-    embeddings = payload.get("embeddings")
-    if isinstance(embeddings, list) and embeddings:
-        first = embeddings[0]
-        if isinstance(first, dict) and "embedding" in first:
-            return first["embedding"]
-        return first
-    return None
-
-
 def _matching_tag_identity(
-    payload: dict[str, Any],
+    models: list[dict[str, Any]],
     requested_model: str,
 ) -> dict[str, Any] | None:
-    models = payload.get("models")
-    if not isinstance(models, list):
-        return None
     requested_reference = _normalized_model_reference(requested_model)
     for candidate in models:
         if not isinstance(candidate, dict):

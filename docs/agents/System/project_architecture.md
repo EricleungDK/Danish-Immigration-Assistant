@@ -48,6 +48,9 @@ tests/                         unit, integration, live opt-in, and browser gates
 
 ## Key Patterns
 
+- `local_model_transport.py` is the single seam for local model HTTP (Ollama and
+  OpenAI-compatible adapters, loopback enforced, typed errors, scripted `FakeTransport`);
+  `runtime_probe.py` and `embedding_provider.py` run through it.
 - `provider_setup.py`, `runtime_probe.py`, and `embedding_provider.py` keep
   provider capability and model identity contracts explicit.
 - `retrieval.py` verifies corpus/index compatibility, filters ineligible sources,

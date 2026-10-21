@@ -2,12 +2,17 @@ import json
 import unittest
 from pathlib import Path
 from typing import get_type_hints
-from unittest.mock import MagicMock, patch
 
+from danish_rag.local_model_transport import (
+    FakeTransport,
+    ModelMissingError,
+    ModelUnreachableError,
+    OllamaTransport,
+)
+from danish_rag.privacy_boundary import PrivacyBoundaryError
 from danish_rag.runtime_policy import load_runtime_policy
 from danish_rag.runtime_probe import (
     EnvironmentEvidence,
-    OllamaClient,
     ProbeExitStatus,
     ProbeResult,
     run_runtime_probe,
@@ -18,98 +23,70 @@ ROOT = Path(__file__).resolve().parents[1]
 POLICY_PATH = ROOT / "config" / "runtime-policy.json"
 
 
-class FakeOllamaClient:
-    def __init__(
-        self,
-        *,
-        version="0.30.6",
-        show=None,
-        chat_content=None,
-        failure=None,
-    ):
-        self.version = version
-        self.show = show if show is not None else {
-            "details": {
-                "families": ["gemma4"],
-                "family": "gemma4",
-                "quantization_level": "Q4_K_M",
-            },
-            "model_info": {
-                "general.architecture": "gemma4",
-                "general.parameter_count": 11900000000,
-            },
-            "capabilities": ["completion"],
-        }
-        self.chat_content = chat_content or json.dumps(
-            {"runtime_baseline": "mvp-runtime-baseline-issue-26", "status": "ok"}
+def scripted_transport(
+    *,
+    version="0.30.6",
+    show=None,
+    chat_content=None,
+    failure=None,
+):
+    default_show = {
+        "details": {
+            "families": ["gemma4"],
+            "family": "gemma4",
+            "quantization_level": "Q4_K_M",
+        },
+        "model_info": {
+            "general.architecture": "gemma4",
+            "general.parameter_count": 11900000000,
+        },
+        "capabilities": ["completion"],
+    }
+    transport = FakeTransport()
+    if failure == "service":
+        transport.queue_error(ModelUnreachableError("connection refused"), operation="version")
+        return transport
+    transport.queue_version(version)
+    if failure == "model":
+        transport.queue_error(ModelMissingError("gemma4:12b"), operation="show_model")
+        return transport
+    transport.queue_show(show if show is not None else default_show)
+    if failure == "chat":
+        transport.queue_error(RuntimeError("chat failed"), operation="chat")
+    else:
+        transport.queue_chat(
+            chat_content
+            or json.dumps(
+                {"runtime_baseline": "mvp-runtime-baseline-issue-26", "status": "ok"}
+            )
         )
-        self.failure = failure
-        self.chat_calls = 0
+    return transport
 
-    def get_version(self):
-        if self.failure == "service":
-            raise ConnectionError("connection refused")
-        return {"version": self.version}
 
-    def show_model(self, model):
-        if self.failure == "model":
-            raise FileNotFoundError(model)
-        return self.show
-
-    def chat_structured(self, *, model, schema, messages):
-        self.chat_calls += 1
-        if self.failure == "chat":
-            raise RuntimeError("chat failed")
-        return {"message": {"content": self.chat_content}}
+def chat_requests(transport):
+    return [r for r in transport.requests if r.operation == "chat"]
 
 
 class RuntimeProbeTests(unittest.TestCase):
-    def test_ollama_structured_chat_uses_deterministic_runtime_options(self):
-        response = MagicMock()
-        response.__enter__.return_value = response
-        response.read.return_value = json.dumps(
-            {"message": {"content": "{}"}}
-        ).encode("utf-8")
-        client = OllamaClient("http://127.0.0.1:11434")
+    def test_probe_requests_structured_chat_through_the_transport(self):
+        transport = scripted_transport()
 
-        with patch(
-            "danish_rag.runtime_probe.urllib.request.urlopen",
-            return_value=response,
-        ) as urlopen:
-            client.chat_structured(
-                model="gemma4:12b",
-                schema={"type": "object"},
-                messages=[{"role": "user", "content": "Return JSON."}],
-            )
+        run_runtime_probe(load_runtime_policy(POLICY_PATH), client=transport)
 
-        request = urlopen.call_args.args[0]
-        payload = json.loads(request.data.decode("utf-8"))
         self.assertEqual(
-            payload["options"],
-            {"temperature": 0, "seed": 0},
+            [request.operation for request in transport.requests],
+            ["version", "show_model", "chat"],
         )
+        chat = chat_requests(transport)[0].params
+        self.assertEqual(chat["model"], "gemma4:12b")
+        self.assertEqual(chat["schema"]["required"], ["runtime_baseline", "status"])
 
-    def test_ollama_structured_chat_disables_thinking_like_answer_path(self):
-        response = MagicMock()
-        response.__enter__.return_value = response
-        response.read.return_value = json.dumps(
-            {"message": {"content": "{}"}}
-        ).encode("utf-8")
-        client = OllamaClient("http://127.0.0.1:11434")
+    def test_probe_builds_a_loopback_ollama_transport_by_default(self):
+        from danish_rag.runtime_probe import OllamaClient
 
-        with patch(
-            "danish_rag.runtime_probe.urllib.request.urlopen",
-            return_value=response,
-        ) as urlopen:
-            client.chat_structured(
-                model="gemma4:12b",
-                schema={"type": "object"},
-                messages=[{"role": "user", "content": "Return JSON."}],
-            )
-
-        request = urlopen.call_args.args[0]
-        payload = json.loads(request.data.decode("utf-8"))
-        self.assertIs(payload["think"], False)
+        self.assertTrue(issubclass(OllamaClient, OllamaTransport))
+        with self.assertRaises(PrivacyBoundaryError):
+            OllamaClient("http://example.com:11434")
 
     def test_probe_result_uses_named_environment_evidence_type(self):
         self.assertIs(
@@ -125,7 +102,7 @@ class RuntimeProbeTests(unittest.TestCase):
     def test_probe_succeeds_with_version_model_completion_and_structured_json(self):
         policy = load_runtime_policy(POLICY_PATH)
 
-        result = run_runtime_probe(policy, client=FakeOllamaClient())
+        result = run_runtime_probe(policy, client=scripted_transport())
 
         self.assertIsInstance(result, ProbeResult)
         self.assertEqual(result.exit_status, ProbeExitStatus.PASSED)
@@ -141,7 +118,7 @@ class RuntimeProbeTests(unittest.TestCase):
     def test_probe_reports_missing_service_with_actionable_diagnostic(self):
         policy = load_runtime_policy(POLICY_PATH)
 
-        result = run_runtime_probe(policy, client=FakeOllamaClient(failure="service"))
+        result = run_runtime_probe(policy, client=scripted_transport(failure="service"))
 
         self.assertEqual(result.exit_status, ProbeExitStatus.PROVIDER_UNREACHABLE)
         self.assertIn("Ollama service is unreachable", result.diagnostic)
@@ -151,7 +128,7 @@ class RuntimeProbeTests(unittest.TestCase):
     def test_probe_reports_incompatible_ollama_version_with_required_floor(self):
         policy = load_runtime_policy(POLICY_PATH)
 
-        result = run_runtime_probe(policy, client=FakeOllamaClient(version="0.30.5"))
+        result = run_runtime_probe(policy, client=scripted_transport(version="0.30.5"))
 
         self.assertEqual(result.exit_status, ProbeExitStatus.PROVIDER_VERSION_UNSUPPORTED)
         self.assertIn("Upgrade Ollama to 0.30.6 or newer", result.diagnostic)
@@ -159,7 +136,7 @@ class RuntimeProbeTests(unittest.TestCase):
     def test_probe_reports_missing_generation_model_with_pull_command(self):
         policy = load_runtime_policy(POLICY_PATH)
 
-        result = run_runtime_probe(policy, client=FakeOllamaClient(failure="model"))
+        result = run_runtime_probe(policy, client=scripted_transport(failure="model"))
 
         self.assertEqual(result.exit_status, ProbeExitStatus.MODEL_UNAVAILABLE)
         self.assertIn("gemma4:12b is not installed", result.diagnostic)
@@ -170,7 +147,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=FakeOllamaClient(chat_content=json.dumps({"status": "ok"})),
+            client=scripted_transport(chat_content=json.dumps({"status": "ok"})),
         )
 
         self.assertEqual(result.exit_status, ProbeExitStatus.STRUCTURED_RESPONSE_INVALID)
@@ -181,7 +158,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=FakeOllamaClient(
+            client=scripted_transport(
                 chat_content=json.dumps(
                     {
                         "runtime_baseline": "mvp-runtime-baseline-issue-26",
@@ -198,7 +175,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
     def test_probe_rejects_model_without_completion_capability_before_chat(self):
         policy = load_runtime_policy(POLICY_PATH)
-        client = FakeOllamaClient(
+        client = scripted_transport(
             show={
                 "details": {
                     "family": "gemma4",
@@ -212,7 +189,7 @@ class RuntimeProbeTests(unittest.TestCase):
         result = run_runtime_probe(policy, client=client)
 
         self.assertEqual(result.exit_status, ProbeExitStatus.MODEL_UNAVAILABLE)
-        self.assertEqual(client.chat_calls, 0)
+        self.assertEqual(chat_requests(client), [])
         self.assertEqual(result.model["capabilities"], ["thinking"])
         self.assertIn("completion", result.diagnostic)
         self.assertIn("issue #26", result.diagnostic)
@@ -222,7 +199,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=FakeOllamaClient(chat_content=json.dumps(["not", "an", "object"])),
+            client=scripted_transport(chat_content=json.dumps(["not", "an", "object"])),
         )
 
         self.assertEqual(result.exit_status, ProbeExitStatus.STRUCTURED_RESPONSE_INVALID)
@@ -233,7 +210,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=FakeOllamaClient(
+            client=scripted_transport(
                 chat_content=json.dumps(
                     {
                         "runtime_baseline": "different-baseline",
@@ -251,7 +228,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=FakeOllamaClient(
+            client=scripted_transport(
                 show={
                     "details": {
                         "family": "llama",
@@ -273,7 +250,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=FakeOllamaClient(
+            client=scripted_transport(
                 show={
                     "details": {},
                     "model_info": {},
@@ -291,7 +268,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=FakeOllamaClient(
+            client=scripted_transport(
                 show={
                     "details": {
                         "family": "gemma4",
