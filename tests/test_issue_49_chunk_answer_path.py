@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from danish_rag.answer_pipeline import AnswerService
+from danish_rag.answer_pipeline import AnswerService, LexicalAnswerVerifier
 from danish_rag.conversation_store import ConversationStore
 from danish_rag.knowledge_release import install_knowledge_release
 from danish_rag.provider_setup import ProviderConfiguration
@@ -76,6 +76,7 @@ class ChunkAnswerPathTests(unittest.TestCase):
 
     def test_chunked_source_installs_retrieves_cites_and_persists_full_provenance(self):
         result = AnswerService(
+            verifier=LexicalAnswerVerifier(),
             retriever=HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,

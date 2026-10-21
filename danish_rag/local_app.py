@@ -173,7 +173,9 @@ def create_app(
     if answer_generator is not None and transport is not None:
         raise ValueError("Choose either an injected answer generator or a transport.")
     if answer_generator is not None:
-        # Controlled generator (fixtures, monitors): the deterministic lexical guard.
+        # Fixture path only (browser/monitor/test fixtures; deleted with the generator
+        # protocol in #77): a controlled generator gets the deterministic lexical guard.
+        # No production entry point passes answer_generator; live runs use a transport.
         generator, verifier = answer_generator, LexicalAnswerVerifier()
     else:
         # Production: the configured provider's transport (or the injected one) drafts,

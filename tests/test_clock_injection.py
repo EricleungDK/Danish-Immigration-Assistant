@@ -7,7 +7,9 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 from danish_rag import evidence_integrity
-from danish_rag.answer_pipeline import AnswerService, TransportAnswerGenerator, fixed_transport
+from danish_rag.answer_pipeline import (
+    AnswerService, LexicalAnswerVerifier, TransportAnswerGenerator, fixed_transport,
+)
 from danish_rag.local_model_transport import FakeTransport
 from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.retrieval import HybridRetriever
@@ -139,6 +141,7 @@ class AnswerServiceClockTests(unittest.TestCase):
         service = AnswerService(
             retriever=FixtureRetriever([]),
             generator=TransportAnswerGenerator(fixed_transport(FakeTransport())),
+            verifier=LexicalAnswerVerifier(),
         )
         self.assertEqual(service.clock().utcoffset(), timedelta(0))
 

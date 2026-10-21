@@ -25,7 +25,7 @@ from unittest.mock import patch
 
 import httpx
 
-from .answer_pipeline import AnswerPipelineError, AnswerService
+from .answer_pipeline import AnswerPipelineError, AnswerService, LexicalAnswerVerifier
 from .evidence_integrity import (
     canonical_json_sha256 as _sha256_json,
     format_utc_seconds,
@@ -275,7 +275,8 @@ def run_source_policy_scenario(
     )
     with patch.object(urllib.request, "urlopen", side_effect=reject_network):
         result = AnswerService(
-            retriever=retriever, generator=generator, clock=clock
+            retriever=retriever, generator=generator,
+            verifier=LexicalAnswerVerifier(), clock=clock,
         ).answer(
             str(case["prompt"]), configuration
         )

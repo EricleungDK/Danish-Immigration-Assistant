@@ -21,6 +21,7 @@ from .answer_pipeline import (
     AnswerResult,
     AnswerService,
     AnswerVerifier,
+    LexicalAnswerVerifier,
     ModelAnswerVerifier,
     TransportAnswerGenerator,
     provider_transport,
@@ -159,11 +160,11 @@ class AnswerServiceCaseRunner:
         retriever: Any,
         generator: Any,
         configuration: ProviderConfiguration,
-        verifier: AnswerVerifier | None = None,
+        verifier: AnswerVerifier,
         clock: Callable[[], datetime] = system_utc_clock,
     ) -> None:
-        # No verifier means the controlled-fixture regime (the lexical guard); the live
-        # runner names the model verifier explicitly.
+        # The regime is explicit: the live runner names the model verifier, controlled
+        # fixtures name the lexical guard.
         self._retriever = _RecordingRetriever(retriever)
         self._service = AnswerService(
             retriever=self._retriever,
@@ -2182,6 +2183,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     documents=verified_release["documents"],
                 ),
                 generator=ControlledAnswerGenerator(),
+                verifier=LexicalAnswerVerifier(),
                 configuration=ProviderConfiguration(
                     provider_id="controlled",
                     endpoint="in-process",

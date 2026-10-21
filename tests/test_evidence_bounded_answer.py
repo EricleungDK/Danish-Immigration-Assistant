@@ -21,9 +21,12 @@ from danish_rag.answer_pipeline import (
 )
 from danish_rag.local_model_transport import (
     FakeTransport,
+    ModelMissingError,
+    ModelProtocolError,
     ModelTimeoutError,
     ModelUnreachableError,
     OllamaTransport,
+    OpenAICompatibleTransport,
 )
 from tests.answer_transport import (
     lexical_service, model_service, requests, script, wire,
@@ -156,6 +159,35 @@ class ModelRegimeTests(unittest.TestCase):
             ask(model_service(broken, self.retriever()))
         self.assertEqual(len(requests(broken)), 2)
 
+    def test_reply_without_message_content_is_reasked_once_then_fails_validation(self):
+        replies = iter([{'message': {}}, {'message': {'content': json.dumps(wire(draft(), ALIASES))}},
+                        {'message': {'content': json.dumps(checks(supported(), supported()))}}])
+
+        def fake_request(self, method, path, payload=None, *, missing_statuses=()):
+            return next(replies)
+
+        with patch.object(OllamaTransport, '_request', fake_request):
+            transport = OllamaTransport(configuration().endpoint, timeout_seconds=1)
+            result = ask(model_service(transport, self.retriever()))
+        self.assertEqual(result.answer['sections'][0]['text'], CLAIM)
+
+        broken = iter([{}, {}])
+        with patch.object(OllamaTransport, '_request', lambda *a, **k: next(broken)):
+            transport = OllamaTransport(configuration().endpoint, timeout_seconds=1)
+            with self.assertRaises(AnswerValidationError):
+                ask(model_service(transport, self.retriever()))
+
+    def test_provider_failure_copy_names_the_actionable_problem(self):
+        for error, expected in (
+            (ModelMissingError('gone'), 'fixture-model'),
+            (ModelProtocolError('HTTP 500'), 'supports structured output'),
+        ):
+            transport = FakeTransport()
+            transport.queue_error(error)
+            with self.subTest(error=type(error).__name__):
+                with self.assertRaisesRegex(AnswerPipelineError, expected):
+                    ask(model_service(transport, self.retriever()))
+
     def verify_directly(self, transport):
         verifier = ModelAnswerVerifier(fixed_transport(transport))
         return verifier.verified_claims(
@@ -255,13 +287,40 @@ class VerifierChoiceTests(unittest.TestCase):
                 retriever=self.retriever(), generator=GenerateOnly(),
                 verifier=ModelAnswerVerifier(fixed_transport(FakeTransport())), clock=fixed_clock)
 
-    def test_service_without_an_explicit_verifier_keeps_the_lexical_guard(self):
+    def test_service_cannot_be_built_without_an_explicit_verifier(self):
+        class GenerateOnly:
+            def generate(self, **kwargs):
+                return draft(summary=CLAIM)
+
+        with self.assertRaises(TypeError):
+            AnswerService(retriever=self.retriever(), generator=GenerateOnly(), clock=fixed_clock)
+        with self.assertRaises(TypeError):
+            AnswerService(
+                retriever=self.retriever(),
+                generator=TransportAnswerGenerator(fixed_transport(FakeTransport())),
+                clock=fixed_clock)
+
+    def test_verifier_without_the_repair_declaration_is_refused_at_build_time(self):
+        class Incomplete:
+            def prepare(self, draft):
+                return draft
+
+        class GenerateOnly:
+            def generate(self, **kwargs):
+                return draft()
+
+        with self.assertRaisesRegex(ValueError, 'repairs_rejected_drafts'):
+            AnswerService(retriever=self.retriever(), generator=GenerateOnly(),
+                          verifier=Incomplete(), clock=fixed_clock)
+
+    def test_explicit_lexical_verifier_serves_controlled_generators(self):
         class GenerateOnly:
             def generate(self, **kwargs):
                 return draft(summary=CLAIM)
 
         result = ask(AnswerService(
-            retriever=self.retriever(), generator=GenerateOnly(), clock=fixed_clock))
+            retriever=self.retriever(), generator=GenerateOnly(),
+            verifier=LexicalAnswerVerifier(), clock=fixed_clock))
         self.assertEqual(result.answer['sections'][0]['text'], CLAIM)
 
     def test_both_verifiers_accept_the_same_evidence_with_the_same_answer(self):
@@ -383,6 +442,56 @@ class OllamaRequestBodyTests(unittest.TestCase):
         self.assertIn('checks', verification['format']['properties'])
         self.assertIn('summary', generation['format']['properties'])
         self.assertEqual(repair['format'], generation['format'])
+
+
+class OpenAICompatibleRequestTests(unittest.TestCase):
+    """Strict structured output and the alias boundary hold over the OpenAI-compatible adapter."""
+
+    def run_with_replies(self, call, replies):
+        sent = []
+        queue = iter(replies)
+
+        def fake_request(self, method, path, payload=None, *, missing_statuses=()):
+            sent.append((method, path, json.loads(json.dumps(payload))))
+            return {'choices': [{'message': {'content': json.dumps(next(queue))}}]}
+
+        with patch.object(OpenAICompatibleTransport, '_request', fake_request):
+            transport = OpenAICompatibleTransport('http://127.0.0.1:1234', timeout_seconds=1)
+            return call(TransportAnswerGenerator(fixed_transport(transport))), sent
+
+    def test_social_conversation_uses_a_strict_schema(self):
+        from danish_rag.answer_pipeline import conversation_schema
+        schema = conversation_schema()
+        result, sent = self.run_with_replies(
+            lambda generator: generator.converse(
+                question='How are you?', configuration=provider_configuration(), schema=schema),
+            [{'response': 'Fine.'}])
+        self.assertEqual(result, {'response': 'Fine.'})
+        method, path, body = sent[0]
+        self.assertEqual((method, path), ('POST', '/v1/chat/completions'))
+        self.assertEqual(body['temperature'], 0)
+        format_ = body['response_format']['json_schema']
+        self.assertIs(format_['strict'], True)
+        self.assertEqual(format_['schema'], schema)
+
+    def test_generation_uses_the_identical_alias_boundary(self):
+        from danish_rag.answer_pipeline import answer_schema
+        sources = [evidence_fixture('official-page-with-shared-prefix-' + suffix, content=CLAIM)
+                   for suffix in ('first', 'second')]
+        proposed = {'summary': CLAIM, 'sections': [
+            {'kind': 'official_fact', 'text': CLAIM, 'citation_ids': ['e2']}]}
+        result, sent = self.run_with_replies(
+            lambda generator: generator.generate(
+                question=QUESTION, normalized_question=QUESTION, evidence=sources,
+                configuration=provider_configuration(),
+                schema=answer_schema([source['citation_id'] for source in sources])),
+            [proposed])
+        self.assertEqual(result['sections'][0]['citation_ids'], [sources[1]['citation_id']])
+        schema = sent[0][2]['response_format']['json_schema']['schema']
+        enum = schema['properties']['sections']['items']['properties']['citation_ids']['items']['enum']
+        self.assertEqual(enum, ['e1', 'e2'])
+        shown = json.loads(sent[0][2]['messages'][1]['content'])['approved_official_evidence']
+        self.assertEqual([item['citation_id'] for item in shown], ['e1', 'e2'])
 
 
 if __name__ == '__main__':

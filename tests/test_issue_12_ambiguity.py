@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from danish_rag.answer_pipeline import AnswerService, answer_schema
+from danish_rag.answer_pipeline import AnswerService, answer_schema, LexicalAnswerVerifier
 from danish_rag.conversation_store import ConversationStore
 from danish_rag.evaluation_quality_bar import load_evaluation_cases
 from danish_rag.knowledge_release import install_minimal_knowledge_release
@@ -142,7 +142,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
                 retriever = CountingRetriever()
                 generator = FixtureAnswerGenerator()
 
-                result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
+                result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
                     question,
                     provider_configuration(),
                 )
@@ -155,6 +155,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
 
     def test_clarification_turn_trust_indicators_are_unchanged(self):
         result = AnswerService(
+            verifier=LexicalAnswerVerifier(),
             retriever=CountingRetriever(), generator=FixtureAnswerGenerator(), clock=fixed_clock
         ).answer("Which Danish test do I need for my application?", provider_configuration())
 
@@ -177,7 +178,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()
 
-        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
+        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
             "hi",
             provider_configuration(),
         )
@@ -194,7 +195,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()
 
-        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
+        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
             "Tell me a short joke.",
             provider_configuration(),
         )
@@ -234,7 +235,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
             )
         )
 
-        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
+        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
             "What is the capital of France?",
             provider_configuration(),
             conversation_turns=[
@@ -280,7 +281,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()
 
-        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
+        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
             "What is PD3?",
             provider_configuration(),
         )
@@ -307,7 +308,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
     def test_definition_does_not_override_consequential_application_ambiguity(self):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()
-        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
+        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
             "What is PD3 for permanent residence or citizenship?",
             provider_configuration(),
         )
@@ -319,7 +320,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()
         question = "What is PD3 registration?"
-        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
+        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
             question, provider_configuration(),
         )
         self.assertEqual(result.answer["response_kind"], "answer")
@@ -336,7 +337,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(question=question):
                 retriever = CountingRetriever()
                 generator = FixtureAnswerGenerator()
-                result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
+                result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
                     question, provider_configuration(),
                 )
                 self.assertEqual(result.answer["response_kind"], "clarification")
@@ -352,7 +353,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(question=question):
                 retriever = CountingRetriever()
                 generator = FixtureAnswerGenerator()
-                result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
+                result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
                     question, provider_configuration(),
                 )
                 self.assertEqual(result.answer["response_kind"], "answer")

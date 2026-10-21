@@ -19,7 +19,8 @@ from .answer_verification import (
     evidence_group_keys, claim_anchor_deficits, partial_verified_answer,
 )
 from .local_model_transport import (
-    LocalModelTransport, LocalModelTransportError, ModelTimeoutError, ModelUnreachableError,
+    LocalModelTransport, LocalModelTransportError, ModelMissingError, ModelProtocolError,
+    ModelTimeoutError, ModelUnreachableError,
 )
 from .privacy_boundary import PrivacyBoundaryError
 from .evidence_integrity import system_utc_clock
@@ -322,7 +323,7 @@ def provider_transport(
     return resolve
 
 
-def _provider_failure(exc: Exception, endpoint: str) -> AnswerPipelineError:
+def _provider_failure(exc: Exception, endpoint: str, model: str) -> AnswerPipelineError:
     if isinstance(exc, PrivacyBoundaryError):
         return AnswerPipelineError(str(exc))
     if isinstance(exc, ModelTimeoutError):
@@ -337,7 +338,23 @@ def _provider_failure(exc: Exception, endpoint: str) -> AnswerPipelineError:
             f"provider at {endpoint.rstrip('/')}, confirm the selected model is "
             "loaded, and retry."
         )
+    if isinstance(exc, ModelMissingError):
+        return AnswerPipelineError(
+            f"Local provider does not have the selected model {model!r} (HTTP 404). "
+            "Confirm the selected model is installed and loaded, and retry."
+        )
+    if isinstance(exc, ModelProtocolError):
+        return AnswerPipelineError(
+            f"Local generation provider returned an unusable response: {exc} "
+            "Confirm the configured model supports structured output and retry."
+        )
     return AnswerPipelineError(f"Local provider failed during answer generation: {exc}")
+
+
+# The adapters raise ModelProtocolError for a reply with no message.content. For a
+# structured exchange that is an invalid reply (re-asked once, then a validation
+# failure), not a provider outage.
+_NO_REPLY_CONTENT = "message.content"
 
 
 def _structured_chat(
@@ -364,15 +381,20 @@ def _structured_chat(
                 model=configuration.model, messages=request_messages,
                 schema=schema, context_tokens=context_tokens,
             )
+            content, done_reason = reply.content, reply.done_reason
+        except ModelProtocolError as exc:
+            if _NO_REPLY_CONTENT not in str(exc):
+                raise _provider_failure(exc, configuration.endpoint, configuration.model) from exc
+            content, done_reason = None, None
         except (LocalModelTransportError, PrivacyBoundaryError) as exc:
-            raise _provider_failure(exc, configuration.endpoint) from exc
-        if reply.done_reason == "length":
+            raise _provider_failure(exc, configuration.endpoint, configuration.model) from exc
+        if done_reason == "length":
             raise AnswerValidationError(
                 "Local provider exhausted the available context before completing "
                 "structured output."
             )
         try:
-            return _parse_provider_content(reply.content)
+            return _parse_provider_content(content)
         except AnswerValidationError:
             if attempt == 1:
                 raise
@@ -478,7 +500,8 @@ class AnswerVerifier(Protocol):
 
     Two adapters: `ModelAnswerVerifier` (a separate local verification request) and
     `LexicalAnswerVerifier` (the deterministic claim-support guard). Which one an
-    answer service uses is decided once, when it is built.
+    answer service uses is decided once, when it is built. Every adapter must define
+    `repairs_rejected_drafts`; building a service with one that does not is an error.
     """
 
     #: Whether a rejected draft earns the writer one bounded repair attempt.
@@ -627,6 +650,8 @@ class EvidenceBoundedAnswer:
     """
 
     def __init__(self, *, generator: AnswerGenerator, verifier: AnswerVerifier) -> None:
+        if not isinstance(getattr(verifier, "repairs_rejected_drafts", None), bool):
+            raise ValueError("An answer verifier must declare repairs_rejected_drafts (True or False).")
         if verifier.repairs_rejected_drafts and not callable(getattr(generator, "repair_answer", None)):
             raise ValueError(
                 "A verifier that repairs rejected drafts needs a generator with repair_answer."
@@ -669,14 +694,15 @@ class AnswerService:
         *,
         retriever: Any,
         generator: AnswerGenerator,
-        verifier: AnswerVerifier | None = None,
+        verifier: AnswerVerifier,
         clock: Callable[[], datetime] = system_utc_clock,
     ) -> None:
-        """`verifier` picks the regime; omitted, controlled fixtures get the lexical guard."""
+        """`verifier` is required: it picks the regime (model verification for real model
+        output, the lexical guard for controlled fixtures); there is no silent default."""
 
         self.retriever = retriever
         self.generator = generator
-        self.verifier = LexicalAnswerVerifier() if verifier is None else verifier
+        self.verifier = verifier
         self.evidence_bounded_answer = EvidenceBoundedAnswer(
             generator=generator, verifier=self.verifier)
         self.clock = clock
