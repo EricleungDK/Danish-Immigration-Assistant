@@ -1,14 +1,7 @@
-"""Shared request contracts for local Ollama adapters."""
+"""Compatibility re-export: the Ollama contract is owned by the Ollama transport adapter."""
 
 from __future__ import annotations
 
-from types import MappingProxyType
-from typing import Final, Mapping
+from .local_model_transport import OLLAMA_DETERMINISTIC_CHAT_OPTIONS
 
-
-OLLAMA_DETERMINISTIC_CHAT_OPTIONS: Final[Mapping[str, int]] = MappingProxyType(
-    {
-        "temperature": 0,
-        "seed": 0,
-    }
-)
+__all__ = ["OLLAMA_DETERMINISTIC_CHAT_OPTIONS"]

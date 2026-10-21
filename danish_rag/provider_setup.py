@@ -357,8 +357,13 @@ class ProviderCapabilityTester:
         policy = deepcopy(self.policy)
         policy["providers"]["initial"]["default_endpoint"] = configuration.endpoint
         policy["models"]["generation"]["initial"] = configuration.model
-        client = OllamaClient(configuration.endpoint, timeout_seconds=self.timeout_seconds)
-        result = run_runtime_probe(policy, client=client)
+        try:
+            client = OllamaClient(configuration.endpoint, timeout_seconds=self.timeout_seconds)
+        except PrivacyBoundaryError:
+            client = None  # the probe reports the same unreachable result itself
+        result = run_runtime_probe(
+            policy, client=client, timeout_seconds=self.timeout_seconds
+        )
         if result.exit_status is ProbeExitStatus.PASSED:
             return CapabilityTestResult(
                 ok=True,
