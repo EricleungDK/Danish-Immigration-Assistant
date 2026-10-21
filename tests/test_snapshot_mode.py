@@ -26,7 +26,9 @@ from danish_rag.knowledge_release import (
     install_minimal_knowledge_release,
     verify_knowledge_release,
 )
+from danish_rag.controlled_model import ControlledModel
 from danish_rag.local_app import create_app
+from danish_rag.local_model_transport import FakeTransport
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
 from danish_rag.retrieval import HybridRetriever
 from danish_rag.snapshot_clock import snapshot_aware_clock
@@ -414,12 +416,15 @@ QUESTION = "What Danish test do I need for permanent residence?"
 RELEASES = {"kr-2026-07-06.1": BUNDLED_MINIMAL_RELEASE, "kr-2026-09-05.1": SEPTEMBER_RELEASE}
 
 
-class FirstEvidenceAnswerGenerator:
+class AnsweringProbe:
+    """A controlled model that answers with the first evidence and notes the clock."""
+
     def __init__(self) -> None:
         self.clock_seen: list[datetime] = []
         self.while_answering = None  # optional hook, e.g. a concurrent install
+        self.model = ControlledModel(draft=self._draft)
 
-    def generate(self, *, evidence, **_):
+    def _draft(self, call):
         self.clock_seen.append(now_utc())  # the freshness clock while answering
         if self.while_answering:
             self.while_answering()
@@ -428,8 +433,8 @@ class FirstEvidenceAnswerGenerator:
             "sections": [
                 {
                     "kind": "official_fact",
-                    "text": evidence[0]["content"],
-                    "citation_ids": [evidence[0]["citation_id"]],
+                    "text": call.evidence[0]["content"],
+                    "citation_ids": [call.evidence[0]["citation_id"]],
                 }
             ],
         }
@@ -457,11 +462,11 @@ class AppTestCase(unittest.IsolatedAsyncioTestCase):
         )
 
     def make_client(self, **app_kwargs) -> httpx.AsyncClient:
-        self.generator = FirstEvidenceAnswerGenerator()
+        self.probe = AnsweringProbe()
         app = create_app(
             config_path=self.config_path,
             data_dir=self.data_dir,
-            answer_generator=self.generator,
+            transport=FakeTransport(responder=self.probe.model),
             embedding_provider=self.provider,
             **{"clock": wall_clock, **app_kwargs},
         )
@@ -520,7 +525,7 @@ class SnapshotAppTests(AppTestCase):
             response = await self.ask(client)
             self.assertEqual(now_utc(), LATE_WALL_CLOCK)
         self.assert_cited_answer(response, "kr-2026-07-06.1")
-        self.assertEqual(self.generator.clock_seen, [JULY_SNAPSHOT])
+        self.assertEqual(self.probe.clock_seen, [JULY_SNAPSHOT])
         self.assertEqual(now_utc(), FIXED_TIME)
 
     async def test_snapshot_clock_does_not_leak_between_requests_or_apps(self):
@@ -618,11 +623,11 @@ class SnapshotLabelTests(AppTestCase):
                 blocked = await self.ask(client)
             self.assertNotIn("Fresh Tomato Score: High", blocked.text)
             self.assertNotIn("as of the snapshot date", blocked.text)
-            self.assertEqual(self.generator.clock_seen, [])
+            self.assertEqual(self.probe.clock_seen, [])
             # Before the due date the same release is served at the wall clock.
             fresh = await self.ask(client)
         self.assertEqual(fresh.status_code, 200)
-        self.assertEqual(self.generator.clock_seen, [FIXED_TIME])
+        self.assertEqual(self.probe.clock_seen, [FIXED_TIME])
         self.assertNotIn("as of the snapshot date", fresh.text)
 
     async def test_first_request_on_a_fresh_install_shows_the_installed_release_snapshot(self):
@@ -670,7 +675,7 @@ class SnapshotConsistencyTests(AppTestCase):
         ):
             response = await self.ask(client)
         self.assert_cited_answer(response, "kr-2026-09-05.1")
-        self.assertEqual(self.generator.clock_seen, [SEPTEMBER_SNAPSHOT])
+        self.assertEqual(self.probe.clock_seen, [SEPTEMBER_SNAPSHOT])
         self.assertEqual(self.stored_snapshot()["release_id"], "kr-2026-09-05.1")
 
     def stored_snapshot(self):
@@ -734,7 +739,7 @@ class SnapshotConsistencyTests(AppTestCase):
                 with late_wall_clock(), self.assertLogs("danish_rag.snapshot_clock", "WARNING"):
                     response = await self.ask(client)
                 self.assertNotIn("Fresh Tomato Score: High", response.text)
-                self.assertEqual(self.generator.clock_seen, [])
+                self.assertEqual(self.probe.clock_seen, [])
 
     async def test_a_failed_retriever_load_marks_the_request_unavailable(self):
         install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
@@ -886,7 +891,7 @@ class SnapshotBasisConsistencyTests(AppTestCase):
         install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         # A concurrent install lands after the answer was generated, before the page renders.
-        self.generator.while_answering = lambda: install_knowledge_release(
+        self.probe.while_answering = lambda: install_knowledge_release(
             self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider, clock=wall_clock
         )
         with late_wall_clock():
@@ -913,7 +918,7 @@ class SnapshotBasisConsistencyTests(AppTestCase):
         install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         answered = {"done": False}
-        self.generator.while_answering = lambda: answered.update(done=True)
+        self.probe.while_answering = lambda: answered.update(done=True)
         real = local_app.ensure_minimal_knowledge_release
 
         def ensure_then_fail(*args, **kwargs):

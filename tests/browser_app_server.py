@@ -24,7 +24,9 @@ from danish_rag.knowledge_release import (
     dismiss_pending_knowledge_update,
     install_minimal_knowledge_release,
 )
+from danish_rag.controlled_model import ControlledModel, GenerationCall
 from danish_rag.local_app import create_app
+from danish_rag.local_model_transport import FakeTransport
 from danish_rag.provider_setup import ProviderConfiguration
 from danish_rag.source_maintenance import build_publishable_knowledge_release
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
@@ -72,47 +74,38 @@ def fixture_model_discoverer(configuration: ProviderConfiguration) -> dict[str, 
     }
 
 
-class FixtureAnswerGenerator:
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        citation_id = evidence[0]["citation_id"]
-        sections = [
+def fixture_answer(call: GenerationCall) -> dict[str, Any]:
+    citation_id = call.evidence[0]["citation_id"]
+    sections = [
+        {
+            "kind": "official_fact",
+            "text": (
+                "Permanent opholdstilladelse can require documentation for "
+                "bestået Prøve i Dansk 2 or an equivalent Danish test."
+            ),
+            "citation_ids": [citation_id],
+        },
+        {
+            "kind": "interpretation",
+            "text": (
+                "Use Prøve i Dansk 2 as the Danish term to recognize on the "
+                "official page, without treating this as a personal eligibility decision."
+            ),
+            "citation_ids": [citation_id],
+        },
+    ]
+    if "warning" in call.question.casefold():
+        sections.append(
             {
-                "kind": "official_fact",
-                "text": (
-                    "Permanent opholdstilladelse can require documentation for "
-                    "bestået Prøve i Dansk 2 or an equivalent Danish test."
-                ),
+                "kind": "source_warning",
+                "text": "Review the cited official source before relying on freshness-sensitive details.",
                 "citation_ids": [citation_id],
-            },
-            {
-                "kind": "interpretation",
-                "text": (
-                    "Use Prøve i Dansk 2 as the Danish term to recognize on the "
-                    "official page, without treating this as a personal eligibility decision."
-                ),
-                "citation_ids": [citation_id],
-            },
-        ]
-        if "warning" in question.casefold():
-            sections.append(
-                {
-                    "kind": "source_warning",
-                    "text": "Review the cited official source before relying on freshness-sensitive details.",
-                    "citation_ids": [citation_id],
-                }
-            )
-        return {
-            "summary": "The reviewed source identifies Prøve i Dansk 2 for this supported question.",
-            "sections": sections,
-        }
+            }
+        )
+    return {
+        "summary": "The reviewed source identifies Prøve i Dansk 2 for this supported question.",
+        "sections": sections,
+    }
 
 
 CONFIG_PATH = Path(
@@ -259,7 +252,7 @@ GITHUB_RELEASE_CLIENT = FixtureGitHubReleaseClient(ensure_browser_release_catalo
 app = create_app(
     config_path=CONFIG_PATH,
     data_dir=DATA_DIR,
-    answer_generator=FixtureAnswerGenerator(),
+    transport=FakeTransport(responder=ControlledModel(draft=fixture_answer)),
     capability_tester=fixture_capability_tester,
     model_discoverer=fixture_model_discoverer,
     embedding_provider=EMBEDDING_PROVIDER,

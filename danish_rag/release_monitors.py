@@ -12,7 +12,6 @@ import asyncio
 import hashlib
 import io
 import json
-import math
 import re
 import shutil
 import subprocess
@@ -27,6 +26,8 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 
+from .controlled_model import ControlledModel, GenerationCall
+from .embedding_provider import EmbeddingProvider, OllamaEmbeddingProvider
 from .evidence_integrity import system_utc_clock
 from .github_release_client import (
     ArtifactDownloadApproval,
@@ -40,6 +41,7 @@ from .knowledge_release import (
     verify_knowledge_release,
 )
 from .local_app import create_app
+from .local_model_transport import FakeTransport, LocalModelTransport
 from .privacy_boundary import (
     build_release_network_request,
     is_loopback_url,
@@ -86,51 +88,34 @@ class ReleaseMonitorError(RuntimeError):
     """Raised when a release monitor cannot execute its public seam."""
 
 
-class _FixtureEmbeddingProvider:
-    provider_id = "fixture-deterministic-embedding-provider"
-    endpoint = "fixture://deterministic-embedding-provider"
-    vector_dimensions = 768
+def _fixture_answer(call: GenerationCall) -> dict[str, Any]:
+    return {
+        "summary": "Fixture answer grounded in the selected official evidence.",
+        "sections": [
+            {
+                "kind": "official_fact",
+                "text": "A Danish language test can be required.",
+                "citation_ids": [str(call.evidence[0]["citation_id"])],
+            }
+        ],
+    }
 
-    def inspect_model(self, model: str) -> dict[str, Any]:
-        return {
-            "model": model,
+
+def _fixture_model(
+    mode: str,
+) -> tuple[LocalModelTransport | None, EmbeddingProvider | None]:
+    """The shared fake serving a controlled model in fixture mode; live mode uses none."""
+
+    if mode != "fixture":
+        return None, None
+    transport = FakeTransport(responder=ControlledModel(
+        draft=_fixture_answer,
+        model_identity={
             "digest": "sha256:release-monitor-fixture-embedding",
             "details": {"family": "gemma3", "parameter_size": "fixture"},
-        }
-
-    def embed(self, model: str, text: str) -> list[float]:
-        vector = [0.0] * self.vector_dimensions
-        for token in re.findall(r"[0-9a-zA-ZæøåÆØÅ]+", text.casefold()):
-            digest = hashlib.sha256(token.encode("utf-8")).digest()
-            index = int.from_bytes(digest[:4], "big") % self.vector_dimensions
-            vector[index] += 1.0 if digest[4] % 2 == 0 else -1.0
-        norm = math.sqrt(sum(value * value for value in vector))
-        if norm == 0:
-            return vector
-        return [round(value / norm, 9) for value in vector]
-
-
-class _FixtureAnswerGenerator:
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        citation_id = str(evidence[0]["citation_id"])
-        return {
-            "summary": "Fixture answer grounded in the selected official evidence.",
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": "A Danish language test can be required.",
-                    "citation_ids": [citation_id],
-                }
-            ],
-        }
+        },
+    ))
+    return transport, OllamaEmbeddingProvider(transport=transport)
 
 
 class _NetworkCallObserver:
@@ -415,8 +400,7 @@ async def run_network_boundary_monitor(
         config_path = workspace / "provider-config.json"
         release_catalog = workspace / "release-catalog"
         prior_release = workspace / "prior-release" / "kr-2026-07-06.1"
-        embedding_provider = _FixtureEmbeddingProvider() if mode == "fixture" else None
-        answer_generator: Any | None = _FixtureAnswerGenerator() if mode == "fixture" else None
+        transport, embedding_provider = _fixture_model(mode)
         signing_private_key_path, trust_root_path = (
             _create_ephemeral_release_signing_material(workspace)
         )
@@ -447,7 +431,7 @@ async def run_network_boundary_monitor(
                 prior_release=prior_release,
                 trust_root_path=trust_root_path,
                 embedding_provider=embedding_provider,
-                answer_generator=answer_generator,
+                transport=transport,
                 workflow_results=workflow_results,
                 clock=clock,
             )
@@ -548,7 +532,7 @@ async def _execute_network_observed_workflows(
     prior_release: Path,
     trust_root_path: Path,
     embedding_provider: Any | None,
-    answer_generator: Any | None,
+    transport: LocalModelTransport | None,
     workflow_results: list[dict[str, Any]],
     clock: Callable[[], datetime],
 ) -> None:
@@ -574,7 +558,7 @@ async def _execute_network_observed_workflows(
     app = create_app(
         config_path=config_path,
         data_dir=data_dir,
-        answer_generator=answer_generator,
+        transport=transport,
         release_catalog_dir=release_catalog,
         embedding_provider=embedding_provider,
         trust_root_path=trust_root_path, clock=clock,
@@ -897,7 +881,7 @@ def run_rollback_fault_matrix(
             data_dir = workspace / "data"
             release_dir = workspace / "release-catalog" / f"kr-2099-01-01.{case_number}"
             prior_release = workspace / "prior-release" / "kr-2026-07-06.1"
-            embedding_provider = _FixtureEmbeddingProvider() if mode == "fixture" else None
+            _, embedding_provider = _fixture_model(mode)
             signing_private_key_path, trust_root_path = (
                 _create_ephemeral_release_signing_material(workspace)
             )
@@ -1673,8 +1657,7 @@ async def run_supported_environment_critical_journeys(
         release_catalog = workspace / "release-catalog"
         prior_release = workspace / "prior-release" / "kr-2026-07-06.1"
         target_release_id = "kr-2099-01-01.1"
-        embedding_provider = _FixtureEmbeddingProvider() if mode == "fixture" else None
-        answer_generator: Any | None = _FixtureAnswerGenerator() if mode == "fixture" else None
+        transport, embedding_provider = _fixture_model(mode)
         signing_private_key_path, trust_root_path = (
             _create_ephemeral_release_signing_material(workspace)
         )
@@ -1725,7 +1708,7 @@ async def run_supported_environment_critical_journeys(
         app = create_app(
             config_path=config_path,
             data_dir=data_dir,
-            answer_generator=answer_generator,
+            transport=transport,
             capability_tester=capability_tester,
             release_catalog_dir=release_catalog,
             embedding_provider=embedding_provider,

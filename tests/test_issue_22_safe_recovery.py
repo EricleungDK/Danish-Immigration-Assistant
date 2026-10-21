@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 import httpx
 
-from danish_rag.answer_pipeline import AnswerPipelineError
 from danish_rag.conversation_store import ConversationStore
 from danish_rag.knowledge_release import (
     ACTIVE_RELEASE_FILE,
@@ -16,73 +15,47 @@ from danish_rag.knowledge_release import (
     install_minimal_knowledge_release,
     load_active_release,
 )
+from danish_rag.controlled_model import ControlledModel, GenerationCall
 from danish_rag.local_app import create_app
+from danish_rag.local_model_transport import FakeTransport
+from danish_rag.local_model_transport import ModelUnreachableError
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.evaluation_time import fixed_clock
 
 
-class SuccessfulAnswerGenerator:
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        citation_id = evidence[0]["citation_id"]
-        return {
-            "summary": "The official source supports a Danish language requirement answer.",
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": (
-                        "Permanent opholdstilladelse can require documentation for "
-                        "passed Prøve i Dansk 2 or an equivalent Danish test."
-                    ),
-                    "citation_ids": [citation_id],
-                }
-            ],
-        }
+def successful_draft(call: GenerationCall) -> dict[str, Any]:
+    citation_id = call.evidence[0]["citation_id"]
+    return {
+        "summary": "The official source supports a Danish language requirement answer.",
+        "sections": [
+            {
+                "kind": "official_fact",
+                "text": (
+                    "Permanent opholdstilladelse can require documentation for "
+                    "passed Prøve i Dansk 2 or an equivalent Danish test."
+                ),
+                "citation_ids": [citation_id],
+            }
+        ],
+    }
 
 
-class UnavailableProviderGenerator:
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        raise AnswerPipelineError(
-            "Local generation provider is unavailable. Start the local provider and retry."
-        )
+def unavailable_draft(call: GenerationCall) -> dict[str, Any]:
+    raise ModelUnreachableError("The local provider refused the connection.")
 
 
-class InvalidStructuredOutputGenerator:
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        return {
-            "summary": "Unsupported structured output.",
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": "Prøve i Dansk 2 can support permanent residence.",
-                    "citation_ids": [],
-                }
-            ],
-        }
+def invalid_structured_draft(call: GenerationCall) -> dict[str, Any]:
+    return {
+        "summary": "Unsupported structured output.",
+        "sections": [
+            {
+                "kind": "official_fact",
+                "text": "Prøve i Dansk 2 can support permanent residence.",
+                "citation_ids": [],
+            }
+        ],
+    }
 
 
 class Issue22SafeRecoveryTests(unittest.IsolatedAsyncioTestCase):
@@ -106,11 +79,11 @@ class Issue22SafeRecoveryTests(unittest.IsolatedAsyncioTestCase):
             ),
         )
 
-    def make_client(self, answer_generator: Any | None = None) -> httpx.AsyncClient:
+    def make_client(self, draft=successful_draft) -> httpx.AsyncClient:
         app = create_app(
             config_path=self.config_path,
             data_dir=self.data_dir,
-            answer_generator=answer_generator or SuccessfulAnswerGenerator(),
+            transport=FakeTransport(responder=ControlledModel(draft=draft)),
             embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         client = httpx.AsyncClient(
@@ -155,7 +128,7 @@ class Issue22SafeRecoveryTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_provider_failure_preserves_question_prior_conversation_and_record(self):
         conversation_id = await self.create_conversation()
-        client = self.make_client(UnavailableProviderGenerator())
+        client = self.make_client(unavailable_draft)
 
         response = await self.post_question(
             client,
@@ -172,7 +145,7 @@ class Issue22SafeRecoveryTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_validation_failure_preserves_question_prior_conversation_and_record(self):
         conversation_id = await self.create_conversation()
-        client = self.make_client(InvalidStructuredOutputGenerator())
+        client = self.make_client(invalid_structured_draft)
 
         response = await self.post_question(
             client,

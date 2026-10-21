@@ -1,17 +1,11 @@
 import json
 import unittest
 from pathlib import Path
-from typing import Any
 
-from danish_rag.answer_pipeline import (
-    AnswerService,
-    AnswerValidationError,
-    answer_schema,
-    validate_answer,
-    LexicalAnswerVerifier,
-)
+from danish_rag.answer_pipeline import AnswerValidationError, validate_answer
 from danish_rag.provider_setup import ProviderConfiguration
-from tests.evaluation_time import FIXED_TIME, fixed_clock
+from tests.answer_transport import CannedModel
+from tests.evaluation_time import FIXED_TIME
 
 
 def provider_configuration() -> ProviderConfiguration:
@@ -88,30 +82,6 @@ class FixtureRetriever:
         return self.evidence
 
 
-class FixtureGenerator:
-    def __init__(self, payload: dict[str, Any]) -> None:
-        self.payload = payload
-        self.calls: list[dict[str, Any]] = []
-
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        self.calls.append(
-            {
-                "question": question,
-                "evidence_ids": [item["citation_id"] for item in evidence],
-                "schema": schema,
-            }
-        )
-        return self.payload
-
-
 def citizenship_boundary_manifest(
     *,
     citizenship_review_state: str | None = None,
@@ -145,8 +115,8 @@ def citizenship_boundary_evidence() -> list[dict[str, object]]:
     ]
 
 
-def supported_citizenship_boundary_generator() -> FixtureGenerator:
-    return FixtureGenerator(
+def supported_citizenship_boundary_generator() -> CannedModel:
+    return CannedModel(
         {
             "summary": "The approved source supports a permanent-residence fact.",
             "sections": [
@@ -182,11 +152,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         )
         generator = supported_citizenship_boundary_generator()
 
-        result = AnswerService(
-            verifier=LexicalAnswerVerifier(),
-            retriever=retriever,
-            generator=generator, clock=fixed_clock,
-        ).answer(case["prompt"], provider_configuration())
+        result = generator.service(retriever).answer(case["prompt"], provider_configuration())
 
         self.assertEqual(retriever.calls, [case["prompt"]])
         self.assertEqual(result.answer["response_kind"], "answer")
@@ -238,11 +204,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
             ),
         )
 
-        result = AnswerService(
-            verifier=LexicalAnswerVerifier(),
-            retriever=retriever,
-            generator=supported_citizenship_boundary_generator(), clock=fixed_clock,
-        ).answer(
+        result = supported_citizenship_boundary_generator().service(retriever).answer(
             "Does meeting a citizenship language rule mean I satisfy the "
             "permanent residence language requirement?",
             provider_configuration(),
@@ -260,7 +222,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
     def test_citizenship_boundary_rejects_personal_residence_conclusion_without_repeated_context(
         self,
     ):
-        generator = FixtureGenerator(
+        generator = CannedModel(
             {
                 "summary": "The requirement is met.",
                 "sections": [
@@ -276,20 +238,16 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(AnswerValidationError, "prohibited"):
-            AnswerService(
-                verifier=LexicalAnswerVerifier(),
-                retriever=FixtureRetriever(
+            generator.service(FixtureRetriever(
                     citizenship_boundary_evidence(),
                     manifest=citizenship_boundary_manifest(),
-                ),
-                generator=generator, clock=fixed_clock,
-            ).answer(
+                )).answer(
                 EVAL_009_PROMPT,
                 provider_configuration(),
             )
 
     def test_citizenship_to_permanent_residence_conclusion_is_rejected(self):
-        generator = FixtureGenerator(
+        generator = CannedModel(
             {
                 "summary": "The source establishes the application outcome.",
                 "sections": [
@@ -306,14 +264,10 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(AnswerValidationError, "prohibited"):
-            AnswerService(
-                verifier=LexicalAnswerVerifier(),
-                retriever=FixtureRetriever(
+            generator.service(FixtureRetriever(
                     citizenship_boundary_evidence(),
                     manifest=citizenship_boundary_manifest(),
-                ),
-                generator=generator, clock=fixed_clock,
-            ).answer(
+                )).answer(
                 EVAL_009_PROMPT,
                 provider_configuration(),
             )
@@ -328,7 +282,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
                 ),
             )
         ]
-        generator = FixtureGenerator(
+        generator = CannedModel(
             {
                 "summary": "The source supports a language-requirement fact only.",
                 "sections": [
@@ -344,19 +298,15 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
             }
         )
 
-        result = AnswerService(
-            verifier=LexicalAnswerVerifier(),
-            retriever=FixtureRetriever(evidence),
-            generator=generator, clock=fixed_clock,
-        ).answer(
+        result = generator.service(FixtureRetriever(evidence)).answer(
             "I passed PD2, have lived in Denmark for 7 years, and have a job. "
             "Do I qualify for permanent residence?",
             provider_configuration(),
         )
 
         self.assertEqual(
-            generator.calls[0]["schema"],
-            answer_schema(["language-source"]),
+            generator.calls[0]["schema_ids"],
+            ["language-source"],
         )
         self.assertIn("bestået Prøve i Dansk 2", result.answer["sections"][0]["text"])
         self.assertIn("language-source", result.answer["sections"][0]["citation_ids"])
@@ -375,7 +325,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
     def test_personal_eligibility_conclusion_from_generator_is_rejected(self):
         evidence = [evidence_fixture("language-source")]
-        generator = FixtureGenerator(
+        generator = CannedModel(
             {
                 "summary": "You qualify for permanent residence.",
                 "sections": [
@@ -389,11 +339,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(AnswerValidationError, "prohibited"):
-            AnswerService(
-                verifier=LexicalAnswerVerifier(),
-                retriever=FixtureRetriever(evidence),
-                generator=generator, clock=fixed_clock,
-            ).answer(
+            generator.service(FixtureRetriever(evidence)).answer(
                 "I passed PD2, have lived in Denmark for 7 years, and have a job. "
                 "Do I qualify for permanent residence?",
                 provider_configuration(),
@@ -406,7 +352,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
                 content="One approved source describes a Danish-test requirement.",
             )
         ]
-        generator = FixtureGenerator(
+        generator = CannedModel(
             {
                 "summary": "The page does not decide whether SIRI will accept it.",
                 "sections": [
@@ -424,11 +370,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
             }
         )
 
-        result = AnswerService(
-            verifier=LexicalAnswerVerifier(),
-            retriever=FixtureRetriever(evidence),
-            generator=generator, clock=fixed_clock,
-        ).answer(
+        result = generator.service(FixtureRetriever(evidence)).answer(
             "I have an old Danish certificate. Can you tell me whether SIRI will "
             "accept it for permanent residence?",
             provider_configuration(),
@@ -449,13 +391,9 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
                 topic_tags=["safety-boundary", "evidence-boundary"],
             )
         ]
-        generator = FixtureGenerator({"summary": "should not run", "sections": []})
+        generator = CannedModel({"summary": "should not run", "sections": []})
 
-        result = AnswerService(
-            verifier=LexicalAnswerVerifier(),
-            retriever=FixtureRetriever(boundary_evidence),
-            generator=generator, clock=fixed_clock,
-        ).answer(
+        result = generator.service(FixtureRetriever(boundary_evidence)).answer(
             "Give me legal advice on how to argue that my Danish test should count.",
             provider_configuration(),
         )
@@ -467,7 +405,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         self.assertIn("legal advice", result.answer["sections"][0]["text"])
 
     def test_retrieval_miss_returns_refusal_without_generator_substitute_fact(self):
-        generator = FixtureGenerator(
+        generator = CannedModel(
             {
                 "summary": "PD2 is enough without sources.",
                 "sections": [
@@ -480,11 +418,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
             }
         )
 
-        result = AnswerService(
-            verifier=LexicalAnswerVerifier(),
-            retriever=FixtureRetriever([]),
-            generator=generator, clock=fixed_clock,
-        ).answer(
+        result = generator.service(FixtureRetriever([])).answer(
             "I heard PD2 is enough. Just confirm it quickly without sources.",
             provider_configuration(),
         )
@@ -519,7 +453,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
                 agreement_state="conflicts",
             ),
         ]
-        generator = FixtureGenerator(
+        generator = CannedModel(
             {
                 "summary": "The answer is limited because sources conflict.",
                 "sections": [
@@ -532,11 +466,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
             }
         )
 
-        result = AnswerService(
-            verifier=LexicalAnswerVerifier(),
-            retriever=FixtureRetriever(evidence),
-            generator=generator, clock=fixed_clock,
-        ).answer(
+        result = generator.service(FixtureRetriever(evidence)).answer(
             "One official page says PD2 and another appears to say a different Danish test. "
             "Which one is right?",
             provider_configuration(),
@@ -555,7 +485,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
     def test_overdue_policy_usable_source_gets_visible_warning_and_medium_freshness(self):
         evidence = [evidence_fixture("stale-source", source_health="overdue-policy-usable")]
-        generator = FixtureGenerator(
+        generator = CannedModel(
             {
                 "summary": "A policy-usable stale source supports only a limited answer.",
                 "sections": [
@@ -568,11 +498,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
             }
         )
 
-        result = AnswerService(
-            verifier=LexicalAnswerVerifier(),
-            retriever=FixtureRetriever(evidence),
-            generator=generator, clock=fixed_clock,
-        ).answer(
+        result = generator.service(FixtureRetriever(evidence)).answer(
             "Can an overdue but still policy-usable official source support a Danish exam answer?",
             provider_configuration(),
         )

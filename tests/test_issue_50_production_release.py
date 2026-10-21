@@ -9,12 +9,13 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from danish_rag.answer_pipeline import AnswerService, LexicalAnswerVerifier
+from danish_rag.controlled_model import ControlledModel
 from danish_rag.knowledge_release import (
     KnowledgeReleaseError,
     install_knowledge_release,
     load_active_release,
 )
+from danish_rag.local_model_transport import FakeTransport
 from danish_rag.production_knowledge_release import (
     ReleaseGovernance,
     build_reviewed_candidate_release,
@@ -29,6 +30,7 @@ from danish_rag.source_registry import (
     load_source_registry,
     validate_source_registry_against_release,
 )
+from tests.answer_transport import lexical_service
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.release_trust_fixture import create_test_release_trust_fixture
 from tests.evaluation_time import fixed_clock
@@ -37,26 +39,17 @@ ROOT = Path(__file__).resolve().parents[1]
 REVIEW_DIR = ROOT / "data" / "source_reviews" / "issue-46"
 
 
-class FirstChunkAnswerGenerator:
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        return {
-            "summary": "Reviewed official evidence found.",
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": evidence[0]["content"],
-                    "citation_ids": [evidence[0]["citation_id"]],
-                }
-            ],
-        }
+def first_chunk_draft(call):
+    return {
+        "summary": "Reviewed official evidence found.",
+        "sections": [
+            {
+                "kind": "official_fact",
+                "text": call.evidence[0]["content"],
+                "citation_ids": [call.evidence[0]["citation_id"]],
+            }
+        ],
+    }
 
 
 class Issue50ProductionReleaseTests(unittest.TestCase):
@@ -592,14 +585,13 @@ class Issue50ProductionReleaseTests(unittest.TestCase):
                 self.assertEqual(len(result["normalized_document_sha256"]), 64)
                 self.assertEqual(result["knowledge_release_id"], "kr-2026-08-17.1")
 
-        answer = AnswerService(
-            verifier=LexicalAnswerVerifier(),
-            retriever=HybridRetriever.from_data_dir(
+        answer = lexical_service(
+            FakeTransport(responder=ControlledModel(draft=first_chunk_draft)),
+            HybridRetriever.from_data_dir(
                 self.root / "local-data",
                 embedding_provider=DeterministicEmbeddingProviderFixture(),
                 trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
             ),
-            generator=FirstChunkAnswerGenerator(), clock=fixed_clock,
         ).answer(
             "What Danish language test is required for permanent residence?",
             ProviderConfiguration(

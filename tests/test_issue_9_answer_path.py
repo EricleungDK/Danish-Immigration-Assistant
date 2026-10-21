@@ -11,83 +11,63 @@ from danish_rag.answer_pipeline import (
     _answer_messages,
     answer_schema,
     fixed_transport,
+    provider_transport,
 )
 from danish_rag.social_conversation import TransportSocialReplies, conversation_schema
 from danish_rag.conversation_store import ConversationStore
 from danish_rag.knowledge_release import install_minimal_knowledge_release
+from danish_rag.controlled_model import ControlledModel, GenerationCall
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
 from danish_rag.retrieval import HybridRetriever
 from danish_rag.local_model_transport import FakeTransport, ModelUnreachableError
-from tests.answer_transport import ScriptedGenerator, requests, script, wire
+from tests.answer_transport import scripted_generator, requests, script, wire
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.evaluation_time import fixed_clock
 
 
-class FixtureAnswerGenerator:
-    def __init__(self, *, invalid: bool = False) -> None:
-        self.invalid = invalid
-        self.calls: list[dict[str, Any]] = []
-
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        self.calls.append(
+def fixture_draft(call: GenerationCall) -> dict[str, Any]:
+    citation_id = call.evidence[0]["citation_id"]
+    return {
+        "summary": "The official source says Prøve i Dansk 2 can be relevant for permanent residence.",
+        "sections": [
             {
-                "question": question,
-                "normalized_question": normalized_question,
-                "evidence_ids": [item["document_id"] for item in evidence],
-                "provider_id": configuration.provider_id,
-                "model": configuration.model,
-                "schema": schema,
-            }
-        )
-        if self.invalid:
-            return {
-                "summary": "Permanent residence language rules need official evidence.",
-                "sections": [
-                    {
-                        "kind": "official_fact",
-                        "text": "Prøve i Dansk 2 can support permanent residence.",
-                        "citation_ids": [],
-                    }
-                ],
-            }
+                "kind": "official_fact",
+                "text": (
+                    "Permanent opholdstilladelse can require documentation for having "
+                    "passed Prøve i Dansk 2 or an equivalent Danish test."
+                ),
+                "citation_ids": [citation_id],
+            },
+            {
+                "kind": "interpretation",
+                "text": (
+                    "In practical terms, treat Prøve i Dansk 2 as the Danish term to look "
+                    "for on the official page, but verify your own situation with the authority."
+                ),
+                "citation_ids": [citation_id],
+            },
+        ],
+    }
 
-        citation_id = evidence[0]["citation_id"]
-        return {
-            "summary": "The official source says Prøve i Dansk 2 can be relevant for permanent residence.",
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": (
-                        "Permanent opholdstilladelse can require documentation for having "
-                        "passed Prøve i Dansk 2 or an equivalent Danish test."
-                    ),
-                    "citation_ids": [citation_id],
-                },
-                {
-                    "kind": "interpretation",
-                    "text": (
-                        "In practical terms, treat Prøve i Dansk 2 as the Danish term to look "
-                        "for on the official page, but verify your own situation with the authority."
-                    ),
-                    "citation_ids": [citation_id],
-                },
-            ],
-        }
+
+def invalid_draft(call: GenerationCall) -> dict[str, Any]:
+    return {
+        "summary": "Permanent residence language rules need official evidence.",
+        "sections": [
+            {
+                "kind": "official_fact",
+                "text": "Prøve i Dansk 2 can support permanent residence.",
+                "citation_ids": [],
+            }
+        ],
+    }
 
 
 class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
     async def test_generation_request_is_prompt_grounded_with_the_aliased_schema(self):
         schema = answer_schema(["official-1"])
-        generator = ScriptedGenerator({"summary": "Supported.", "sections": []})
+        generator, transport = scripted_generator({"summary": "Supported.", "sections": []})
 
         generator.generate(
             question="Where do I register?",
@@ -114,7 +94,7 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
             schema=schema,
         )
 
-        request = generator.requests[0]
+        request = requests(transport)[0]
         self.assertEqual(request["schema"], answer_schema(["e1"]))
         self.assertIsNone(request["context_tokens"])
         self.assertEqual(request["model"], "fixture-model")
@@ -125,9 +105,9 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_social_conversation_is_structured_and_fact_bounded(self):
         schema = conversation_schema()
-        generator = ScriptedGenerator({"response": "Here is a short, harmless joke."})
+        generator, transport = scripted_generator({"response": "Here is a short, harmless joke."})
 
-        result = TransportSocialReplies(fixed_transport(generator.transport)).converse(
+        result = TransportSocialReplies(fixed_transport(transport)).converse(
             question="Tell me a short joke.",
             configuration=ProviderConfiguration(
                 provider_id="ollama",
@@ -142,7 +122,7 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(result, {"response": "Here is a short, harmless joke."})
-        request = generator.requests[0]
+        request = requests(transport)[0]
         self.assertEqual(request["schema"], schema)
         self.assertIsNone(request["context_tokens"])
         self.assertIn("non-factual social conversation", request["messages"][0]["content"])
@@ -151,7 +131,7 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_ambiguous_structured_output_is_retried_once(self):
         valid = json.dumps({"summary": "Supported.", "sections": []})
-        generator = ScriptedGenerator(valid + "\n" + valid, valid)
+        generator, transport = scripted_generator(valid + "\n" + valid, valid)
         configuration = ProviderConfiguration(
             provider_id="ollama",
             endpoint="http://127.0.0.1:11434",
@@ -171,12 +151,12 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(result["summary"], "Supported.")
-        self.assertEqual(len(generator.requests), 2)
-        self.assertIn("invalid", generator.requests[1]["messages"][-1]["content"])
+        self.assertEqual(len(requests(transport)), 2)
+        self.assertIn("invalid", requests(transport)[1]["messages"][-1]["content"])
 
     async def test_a_second_ambiguous_structured_output_is_rejected(self):
         invalid = '{"summary":"first","sections":[]}\n{"summary":"second","sections":[]}'
-        generator = ScriptedGenerator(invalid, invalid)
+        generator, transport = scripted_generator(invalid, invalid)
 
         with self.assertRaises(AnswerValidationError):
             generator.generate(
@@ -195,7 +175,7 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
                 schema=answer_schema([]),
             )
 
-        self.assertEqual(len(generator.requests), 2)
+        self.assertEqual(len(requests(transport)), 2)
 
     async def test_generation_contract_answers_supported_parts_without_inventing_absence(self):
         messages = _answer_messages(
@@ -250,11 +230,11 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
             ),
         )
 
-    def make_client(self, answer_generator: FixtureAnswerGenerator):
+    def make_client(self, model: ControlledModel):
         app = create_app(
             config_path=self.config_path,
             data_dir=self.data_dir,
-            answer_generator=answer_generator,
+            transport=FakeTransport(responder=model),
             embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         client = httpx.AsyncClient(
@@ -358,8 +338,8 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Prøve i Dansk 2", results[0]["content"])
 
     async def test_supported_question_renders_cited_answer_and_persists_record(self):
-        generator = FixtureAnswerGenerator()
-        client = self.make_client(generator)
+        model = ControlledModel(draft=fixture_draft)
+        client = self.make_client(model)
 
         response = await client.post(
             "/ask",
@@ -369,15 +349,18 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(response.status_code, 200)
         html = response.text
-        self.assertEqual(generator.calls[0]["provider_id"], "openai_compatible")
-        self.assertEqual(generator.calls[0]["model"], "fixture-model")
-        self.assertIn("di-rag-doc-permanent-residence-language", generator.calls[0]["evidence_ids"])
-        citation_schema = generator.calls[0]["schema"]["properties"]["sections"][
+        call = model.calls[0]
+        self.assertEqual(call.model, "fixture-model")
+        self.assertIn(
+            "Permanent residence language requirements",
+            [item["title"] for item in call.evidence],
+        )
+        citation_schema = call.schema["properties"]["sections"][
             "items"
         ]["properties"]["citation_ids"]["items"]
         self.assertEqual(
-            citation_schema["enum"],
-            sorted(generator.calls[0]["evidence_ids"]),
+            sorted(alias for alias in citation_schema["enum"] if alias.startswith("e")),
+            sorted(item["citation_id"] for item in call.evidence),
         )
         self.assertIn("Current Conversation", html)
         self.assertIn("Prøve i Dansk 2", html)
@@ -419,9 +402,22 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Prøve i Dansk 2", reopened.text)
         self.assertIn("Corpus: kr-2026-07-06.1", reopened.text)
 
+    def test_the_configured_provider_selects_its_adapter(self):
+        asked = []
+
+        def factory(provider_id, endpoint, timeout):
+            asked.append((provider_id, endpoint))
+            return FakeTransport()
+
+        transports = provider_transport(factory=factory)
+        transports(ProviderConfiguration(
+            provider_id="openai_compatible", endpoint="http://127.0.0.1:1234", model="fixture-model"))
+
+        self.assertEqual(asked, [("openai_compatible", "http://127.0.0.1:1234")])
+
     async def test_validation_failure_preserves_question_and_does_not_persist_answer(self):
-        generator = FixtureAnswerGenerator(invalid=True)
-        client = self.make_client(generator)
+        model = ControlledModel(draft=invalid_draft)
+        client = self.make_client(model)
 
         response = await client.post(
             "/ask",
@@ -430,7 +426,8 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(response.status_code, 422)
-        self.assertIn("Answer validation failed", response.text)
+        self.assertIn("answer validation failed; no answer was saved", response.text)
+        self.assertIn("rejected answer item 1", response.text)
         self.assertIn("Retry", response.text)
         self.assertIn(
             "What Danish test do I need for permanent residence?",

@@ -5,7 +5,7 @@ import unittest
 
 from danish_rag.answer_pipeline import answer_schema
 from danish_rag.local_model_transport import FakeTransport
-from tests.answer_transport import ScriptedGenerator, model_service, requests, script, wire
+from tests.answer_transport import scripted_generator, model_service, requests, script, wire
 from tests.test_issue_13_evidence_safety import (
     FixtureRetriever, evidence_fixture, provider_configuration,
 )
@@ -110,13 +110,13 @@ class ProviderRepairResourceTests(unittest.TestCase):
         sources[2]['normalized_document_sha256'] = 'd' * 64
         proposed = {'summary': CLAIM, 'sections': [
             {'kind': 'official_fact', 'text': CLAIM, 'citation_ids': ['a']}]}
-        generator = ScriptedGenerator(wire(proposed, {'a': 'e1'}))
+        generator, transport = scripted_generator(wire(proposed, {'a': 'e1'}))
         result = generator.generate(
             question=QUESTION, normalized_question=QUESTION, evidence=sources,
             configuration=replace(provider_configuration(), provider_id='ollama'),
             schema=answer_schema(['a', 'b', 'c']),
         )
-        request = generator.requests[0]
+        request = requests(transport)[0]
         sent = json.loads(request['messages'][1]['content'])['approved_official_evidence']
         self.assertEqual(sent[0]['source_document_group'], sent[1]['source_document_group'])
         self.assertNotEqual(sent[0]['source_document_group'], sent[2]['source_document_group'])
@@ -132,14 +132,14 @@ class ProviderRepairResourceTests(unittest.TestCase):
         previous = source_answer()
         previous['sections'][0]['citation_ids'] = ['source']
         wire_previous = wire(previous, ALIASES)
-        generator = ScriptedGenerator(wire_previous)
+        generator, transport = scripted_generator(wire_previous)
         generator.repair_answer(
             question=QUESTION, normalized_question=QUESTION,
             evidence=[source], configuration=replace(provider_configuration(), provider_id='ollama'),
             schema=answer_schema(['source']), rejection='Missing qualification.',
             previous_answer=previous,
         )
-        request = generator.requests[0]
+        request = requests(transport)[0]
         self.assertEqual(request['context_tokens'], 8192)
         self.assertTrue(any(message['role'] == 'assistant' and
                             json.loads(message['content']) == wire_previous

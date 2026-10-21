@@ -1,13 +1,14 @@
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
 
-from danish_rag.answer_pipeline import AnswerService, LexicalAnswerVerifier
+from danish_rag.controlled_model import ControlledModel
+from danish_rag.local_model_transport import FakeTransport
 from danish_rag.conversation_store import ConversationStore
 from danish_rag.knowledge_release import install_knowledge_release
 from danish_rag.provider_setup import ProviderConfiguration
 from danish_rag.retrieval import HybridRetriever
+from tests.answer_transport import lexical_service
 from tests.chunk_release_fixture import (
     build_chunked_release_fixture,
     bundled_reviewed_source_and_document,
@@ -17,29 +18,18 @@ from tests.release_trust_fixture import create_test_release_trust_fixture
 from tests.evaluation_time import fixed_clock
 
 
-class ChunkCitationGenerator:
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        selected = next(
-            item for item in evidence if "equivalent or higher" in item["content"]
-        )
-        return {
-            "summary": "The reviewed source describes equivalent Danish tests.",
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": selected["content"],
-                    "citation_ids": [selected["citation_id"]],
-                }
-            ],
-        }
+def chunk_citation_draft(call):
+    selected = next(item for item in call.evidence if "equivalent or higher" in item["content"])
+    return {
+        "summary": "The reviewed source describes equivalent Danish tests.",
+        "sections": [
+            {
+                "kind": "official_fact",
+                "text": selected["content"],
+                "citation_ids": [selected["citation_id"]],
+            }
+        ],
+    }
 
 
 class ChunkAnswerPathTests(unittest.TestCase):
@@ -75,14 +65,13 @@ class ChunkAnswerPathTests(unittest.TestCase):
         )
 
     def test_chunked_source_installs_retrieves_cites_and_persists_full_provenance(self):
-        result = AnswerService(
-            verifier=LexicalAnswerVerifier(),
-            retriever=HybridRetriever.from_data_dir(
+        result = lexical_service(
+            FakeTransport(responder=ControlledModel(draft=chunk_citation_draft)),
+            HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
                 trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
             ),
-            generator=ChunkCitationGenerator(), clock=fixed_clock,
         ).answer(
             "Can an equivalent or higher Danish test satisfy the permanent residence requirement?",
             ProviderConfiguration(

@@ -6,11 +6,13 @@ from typing import Any
 
 import httpx
 
-from danish_rag.answer_pipeline import AnswerService, LexicalAnswerVerifier
 from danish_rag.conversation_store import ConversationStore
 from danish_rag.knowledge_release import install_minimal_knowledge_release
+from danish_rag.controlled_model import ControlledModel, GenerationCall
 from danish_rag.local_app import create_app
+from danish_rag.local_model_transport import FakeTransport
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
+from tests.answer_transport import lexical_service
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.evaluation_time import fixed_clock
 
@@ -60,30 +62,16 @@ class RecordingRetriever:
         return [evidence_fixture()]
 
 
-class RecordingGenerator:
-    def __init__(self, *, fail_on_call: int | None = None) -> None:
-        self.fail_on_call = fail_on_call
-        self.calls: list[dict[str, Any]] = []
+def recording_model(*, fail_on_turn: int | None = None) -> ControlledModel:
+    """A model that answers every turn, or fails validation (repair included) on one."""
 
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        self.calls.append(
-            {
-                "question": question,
-                "normalized_question": normalized_question,
-                "model": configuration.model,
-                "evidence_ids": [item["citation_id"] for item in evidence],
-            }
-        )
-        citation_id = evidence[0]["citation_id"]
-        if self.fail_on_call and len(self.calls) == self.fail_on_call:
+    turns = {"seen": 0}
+
+    def draft(call: GenerationCall) -> dict[str, Any]:
+        if not call.repair:
+            turns["seen"] += 1
+        citation_id = call.evidence[0]["citation_id"]
+        if fail_on_turn and turns["seen"] == fail_on_turn:
             return {
                 "summary": "This response intentionally fails validation.",
                 "sections": [
@@ -108,11 +96,13 @@ class RecordingGenerator:
             ],
         }
 
+    return ControlledModel(draft=draft)
+
 
 class Issue14FollowUpServiceTests(unittest.TestCase):
     def test_concise_follow_up_uses_local_context_and_reruns_retrieval(self):
         retriever = RecordingRetriever()
-        generator = RecordingGenerator()
+        model = recording_model()
         prior_turns = [
             {
                 "turn_index": 1,
@@ -133,7 +123,7 @@ class Issue14FollowUpServiceTests(unittest.TestCase):
             }
         ]
 
-        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
+        result = lexical_service(FakeTransport(responder=model), retriever).answer(
             "What about PD3?",
             provider_configuration(),
             conversation_turns=prior_turns,
@@ -141,22 +131,20 @@ class Issue14FollowUpServiceTests(unittest.TestCase):
 
         self.assertEqual(result.question, "What about PD3?")
         self.assertEqual(len(retriever.calls), 1)
-        self.assertEqual(len(generator.calls), 1)
+        self.assertEqual(len(model.calls), 1)
         retrieval_question = retriever.calls[0]
         self.assertIn("previous question", retrieval_question.casefold())
         self.assertIn("What Danish test do I need for permanent residence?", retrieval_question)
         self.assertIn("Follow-up question: What about PD3?", retrieval_question)
         self.assertNotIn("Prior answer text", retrieval_question)
         self.assertNotIn("old-corpus", retrieval_question)
-        self.assertEqual(generator.calls[0]["question"], retrieval_question)
+        self.assertEqual(model.calls[0].question, retrieval_question)
         self.assertEqual(result.answer["citations"][0]["citation_id"], "language-source")
         self.assertEqual(result.answer["trust"]["evidence_confidence"], "High")
 
     def test_suggested_follow_ups_are_stored_and_stay_inside_evidence_boundary(self):
-        result = AnswerService(
-            verifier=LexicalAnswerVerifier(),
-            retriever=RecordingRetriever(),
-            generator=RecordingGenerator(), clock=fixed_clock,
+        result = lexical_service(
+            FakeTransport(responder=recording_model()), RecordingRetriever()
         ).answer(
             "What Danish test do I need for permanent residence?",
             provider_configuration(),
@@ -187,11 +175,11 @@ class Issue14FollowUpApplicationTests(unittest.IsolatedAsyncioTestCase):
             embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
 
-    def make_client(self, answer_generator: RecordingGenerator):
+    def make_client(self, model: ControlledModel):
         app = create_app(
             config_path=self.config_path,
             data_dir=self.data_dir,
-            answer_generator=answer_generator,
+            transport=FakeTransport(responder=model),
             embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         client = httpx.AsyncClient(
@@ -223,8 +211,8 @@ class Issue14FollowUpApplicationTests(unittest.IsolatedAsyncioTestCase):
         return match.group(1)
 
     async def test_suggested_follow_up_button_submits_contextual_turn_with_own_provenance(self):
-        generator = RecordingGenerator()
-        client = self.make_client(generator)
+        model = recording_model()
+        client = self.make_client(model)
 
         first = await self.post_question(
             client,
@@ -249,7 +237,7 @@ class Issue14FollowUpApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(follow_up.text.count("Corpus: kr-2026-07-06.1"), 2)
         self.assertGreaterEqual(follow_up.text.count("Evidence Confidence: High"), 2)
         self.assertGreaterEqual(follow_up.text.count("Fresh Tomato Score: High"), 2)
-        self.assertIn("previous question", generator.calls[1]["question"].casefold())
+        self.assertIn("previous question", model.calls[1].question.casefold())
 
         record = ConversationStore(self.data_dir / "conversations.sqlite3").get_conversation(
             conversation_id
@@ -267,8 +255,8 @@ class Issue14FollowUpApplicationTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_failed_follow_up_preserves_prior_turns_and_draft_for_retry(self):
-        generator = RecordingGenerator(fail_on_call=2)
-        client = self.make_client(generator)
+        model = recording_model(fail_on_turn=2)
+        client = self.make_client(model)
 
         first = await self.post_question(
             client,
@@ -283,7 +271,8 @@ class Issue14FollowUpApplicationTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(failed.status_code, 422)
-        self.assertIn("Answer validation failed", failed.text)
+        self.assertIn("answer validation failed", failed.text)
+        self.assertIn("rejected answer item 1", failed.text)
         self.assertIn("What Danish test do I need for permanent residence?", failed.text)
         self.assertIn("What about PD3?", failed.text)
         self.assertIn(f'name="conversation_id" value="{conversation_id}"', failed.text)

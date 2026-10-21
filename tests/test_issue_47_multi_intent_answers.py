@@ -6,7 +6,9 @@ from typing import Any
 
 import httpx
 
+from danish_rag.controlled_model import ControlledModel, GenerationCall
 from danish_rag.local_app import create_app
+from danish_rag.local_model_transport import FakeTransport
 from danish_rag.provider_setup import (
     ProviderConfiguration,
     save_provider_configuration,
@@ -18,6 +20,8 @@ from tests.source_freshness_fixture import review_clock
 
 PERMANENT_RESIDENCE_DOCUMENT_ID = "di-rag-doc-permanent-residence-language"
 REGISTRATION_DOCUMENT_ID = "di-rag-doc-registration-deadlines-2026"
+PERMANENT_RESIDENCE_TITLE = "Permanent residence language requirements"
+REGISTRATION_TITLE = "Tilmeldingsfrister og prøvedatoer"
 
 
 def eligible_document(
@@ -45,54 +49,33 @@ def eligible_document(
     }
 
 
-class MultiIntentAnswerGeneratorFixture:
-    """Deterministic fixture for the external generation-provider boundary."""
-
-    def __init__(self) -> None:
-        self.evidence_ids: list[str] = []
-
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        del question, normalized_question, configuration, schema
-        self.evidence_ids = [str(item["document_id"]) for item in evidence]
-        citation_ids = {
-            str(item["document_id"]): str(item["citation_id"])
-            for item in evidence
-        }
-        return {
-            "summary": (
-                "The approved sources address both the permanent-residence "
-                "requirement and test registration."
-            ),
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": (
-                        "For permanent opholdstilladelse, the applicant must pass "
-                        "Danish language test 2 (Prøve i Dansk 2), or a Danish exam "
-                        "of an equivalent or higher level."
-                    ),
-                    "citation_ids": [
-                        citation_ids[PERMANENT_RESIDENCE_DOCUMENT_ID]
-                    ],
-                },
-                {
-                    "kind": "official_fact",
-                    "text": (
-                        "Users register for a test directly at the sprogcenter where "
-                        "they want to take the test."
-                    ),
-                    "citation_ids": [citation_ids[REGISTRATION_DOCUMENT_ID]],
-                },
-            ],
-        }
+def multi_intent_draft(call: GenerationCall) -> dict[str, Any]:
+    citation_ids = {item["title"]: item["citation_id"] for item in call.evidence}
+    return {
+        "summary": (
+            "The approved sources address both the permanent-residence "
+            "requirement and test registration."
+        ),
+        "sections": [
+            {
+                "kind": "official_fact",
+                "text": (
+                    "For permanent opholdstilladelse, the applicant must pass "
+                    "Danish language test 2 (Prøve i Dansk 2), or a Danish exam "
+                    "of an equivalent or higher level."
+                ),
+                "citation_ids": [citation_ids[PERMANENT_RESIDENCE_TITLE]],
+            },
+            {
+                "kind": "official_fact",
+                "text": (
+                    "Users register for a test directly at the sprogcenter where "
+                    "they want to take the test."
+                ),
+                "citation_ids": [citation_ids[REGISTRATION_TITLE]],
+            },
+        ],
+    }
 
 
 class Issue47MultiIntentAnswerTests(unittest.IsolatedAsyncioTestCase):
@@ -177,11 +160,11 @@ class Issue47MultiIntentAnswerTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_combined_question_answers_both_intents_from_eligible_evidence(self):
-        generator = MultiIntentAnswerGeneratorFixture()
+        model = ControlledModel(draft=multi_intent_draft)
         app = create_app(
             config_path=self.config_path,
             data_dir=self.data_dir,
-            answer_generator=generator,
+            transport=FakeTransport(responder=model),
             embedding_provider=self.embedding_provider, clock=review_clock,
         )
         client = httpx.AsyncClient(
@@ -202,12 +185,10 @@ class Issue47MultiIntentAnswerTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        seen_titles = {item["title"] for item in model.calls[0].evidence}
         self.assertTrue(
-            {
-                PERMANENT_RESIDENCE_DOCUMENT_ID,
-                REGISTRATION_DOCUMENT_ID,
-            }.issubset(set(generator.evidence_ids)),
-            generator.evidence_ids,
+            {PERMANENT_RESIDENCE_TITLE, REGISTRATION_TITLE}.issubset(seen_titles),
+            seen_titles,
         )
         self.assertIn("Prøve i Dansk 2", response.text)
         self.assertIn("register for a test directly at the sprogcenter", response.text)

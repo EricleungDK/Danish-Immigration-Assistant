@@ -24,8 +24,10 @@ from .answer_pipeline import (
     LexicalAnswerVerifier,
     ModelAnswerVerifier,
     TransportAnswerGenerator,
+    fixed_transport,
     provider_transport,
 )
+from .controlled_model import ControlledModel, GenerationCall
 from .embedding_provider import EmbeddingProvider
 from .evidence_integrity import (
     canonical_json_sha256 as _sha256_json,
@@ -45,6 +47,7 @@ from .evaluation_quality_bar import (
     load_evaluation_quality_bar,
     validate_evaluation_cases,
 )
+from .local_model_transport import FakeTransport
 from .knowledge_release import (
     BUNDLED_MINIMAL_RELEASE,
     default_data_dir,
@@ -114,30 +117,27 @@ class FinalAnswerCaseRunner(Protocol):
         ...
 
 
-class ControlledAnswerGenerator:
-    """Deterministic generator that copies only retrieved evidence into claims."""
+def _evidence_copy_draft(call: GenerationCall) -> dict[str, Any]:
+    """The controlled model's draft: it copies only retrieved evidence into claims."""
 
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        del question, normalized_question, configuration, schema
-        return {
-            "summary": "See the cited official facts below.",
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": str(item["content"]),
-                    "citation_ids": [str(item["citation_id"])],
-                }
-                for item in evidence
-            ],
-        }
+    return {
+        "summary": "See the cited official facts below.",
+        "sections": [
+            {
+                "kind": "official_fact",
+                "text": str(item["content"]),
+                "citation_ids": [str(item["citation_id"])],
+            }
+            for item in call.evidence
+        ],
+    }
+
+
+def controlled_generator() -> TransportAnswerGenerator:
+    """The production generator over the shared fake serving the controlled model."""
+
+    return TransportAnswerGenerator(
+        fixed_transport(FakeTransport(responder=ControlledModel(draft=_evidence_copy_draft))))
 
 
 class _RecordingRetriever:
@@ -2182,7 +2182,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     manifest=verified_release["manifest"],
                     documents=verified_release["documents"],
                 ),
-                generator=ControlledAnswerGenerator(),
+                generator=controlled_generator(),
                 verifier=LexicalAnswerVerifier(),
                 configuration=ProviderConfiguration(
                     provider_id="controlled",

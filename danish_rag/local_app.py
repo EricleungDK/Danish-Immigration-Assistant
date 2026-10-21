@@ -19,7 +19,6 @@ from .answer_pipeline import (
     AnswerPipelineError,
     AnswerService,
     AnswerValidationError,
-    LexicalAnswerVerifier,
     ModelAnswerVerifier,
     TransportAnswerGenerator,
     fixed_transport,
@@ -97,7 +96,6 @@ def create_app(
     *,
     config_path: str | Path | None = None,
     data_dir: str | Path | None = None,
-    answer_generator: Any | None = None,
     transport: LocalModelTransport | None = None,
     capability_tester: Callable[[ProviderConfiguration], CapabilityTestResult | dict[str, Any]]
     | None = None,
@@ -175,21 +173,12 @@ def create_app(
     retriever_cache: RetrieverCache[HybridRetriever] = RetrieverCache()
     tester = capability_tester or ProviderCapabilityTester()
     discover_models = model_discoverer or ProviderModelDiscoverer()
-    if answer_generator is not None and transport is not None:
-        raise ValueError("Choose either an injected answer generator or a transport.")
-    if answer_generator is not None:
-        # Fixture path only (browser/monitor/test fixtures; deleted with the generator
-        # protocol in #77): a controlled generator gets the deterministic lexical guard.
-        # No production entry point passes answer_generator; live runs use a transport.
-        generator, verifier = answer_generator, LexicalAnswerVerifier()
-        social = SocialConversation(answer_generator)
-    else:
-        # Production: the configured provider's transport (or the injected one) drafts,
-        # verifies with a separate request, and repairs once.
-        transports = fixed_transport(transport) if transport is not None else provider_transport()
-        generator = TransportAnswerGenerator(transports)
-        verifier = ModelAnswerVerifier(transports)
-        social = SocialConversation(TransportSocialReplies(transports))
+    # The configured provider's transport (or the injected one) drafts, verifies with a
+    # separate request, and repairs once; social turns use the same transport.
+    transports = fixed_transport(transport) if transport is not None else provider_transport()
+    generator = TransportAnswerGenerator(transports)
+    verifier = ModelAnswerVerifier(transports)
+    social = SocialConversation(TransportSocialReplies(transports))
     store = ConversationStore(resolved_data_dir / "conversations.sqlite3")
     update_controller = KnowledgeUpdateController(
         data_dir=resolved_data_dir,

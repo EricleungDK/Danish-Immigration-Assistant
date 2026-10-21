@@ -2,14 +2,8 @@ import hashlib
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
 
-from danish_rag.answer_pipeline import (
-    AnswerService,
-    AnswerValidationError,
-    answer_schema,
-    LexicalAnswerVerifier,
-)
+from danish_rag.answer_pipeline import AnswerValidationError
 from danish_rag.knowledge_release import (
     BUNDLED_MINIMAL_RELEASE,
     install_minimal_knowledge_release,
@@ -17,6 +11,7 @@ from danish_rag.knowledge_release import (
 from danish_rag.provider_setup import ProviderConfiguration
 from danish_rag.retrieval import HybridRetriever
 from danish_rag.evaluation_quality_bar import load_evaluation_cases
+from tests.answer_transport import CannedModel
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.source_freshness_fixture import review_clock
 
@@ -34,31 +29,6 @@ def provider_configuration() -> ProviderConfiguration:
         capabilities=["generation"],
         validated_at_utc="2026-07-06T12:00:00+00:00",
     )
-
-
-class RecordingGenerator:
-    def __init__(self, payload: dict[str, Any]) -> None:
-        self.payload = payload
-        self.calls: list[dict[str, Any]] = []
-
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        self.calls.append(
-            {
-                "question": question,
-                "normalized_question": normalized_question,
-                "evidence_ids": [item["citation_id"] for item in evidence],
-                "schema": schema,
-            }
-        )
-        return self.payload
 
 
 class Issue15ExamCoverageTests(unittest.TestCase):
@@ -148,7 +118,7 @@ class Issue15ExamCoverageTests(unittest.TestCase):
         self.assertIn("Prøve i Dansk 3", results[0]["content"])
 
     def test_permanent_residence_exam_comparison_keeps_personal_choice_boundary(self):
-        generator = RecordingGenerator(
+        generator = CannedModel(
             {
                 "summary": "The official sources document examination facts.",
                 "sections": [
@@ -168,7 +138,7 @@ class Issue15ExamCoverageTests(unittest.TestCase):
             }
         )
 
-        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=self.retriever, generator=generator, clock=review_clock).answer(
+        result = generator.service(self.retriever, clock=review_clock).answer(
             (
                 "Can you compare Prøve i Dansk 1, Prøve i Dansk 2, Prøve i Dansk 3, "
                 "and Studieprøven for permanent residence?"
@@ -186,7 +156,7 @@ class Issue15ExamCoverageTests(unittest.TestCase):
         self.assertIn("cannot recommend which examination", refusal_sections[0]["text"])
 
     def test_certificate_acceptance_question_answers_facts_but_refuses_decision(self):
-        generator = RecordingGenerator(
+        generator = CannedModel(
             {
                 "summary": "Official sources document equivalence lists, not a personal certificate decision.",
                 "sections": [
@@ -202,20 +172,18 @@ class Issue15ExamCoverageTests(unittest.TestCase):
             }
         )
 
-        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=self.retriever, generator=generator, clock=review_clock).answer(
+        result = generator.service(self.retriever, clock=review_clock).answer(
             "I have an old Danish certificate. Can you tell me whether SIRI will accept it for permanent residence?",
             provider_configuration(),
         )
 
         self.assertEqual(
-            generator.calls[0]["schema"],
-            answer_schema(
-                [
-                    "di-rag-doc-permanent-residence-language",
-                    "di-rag-doc-equivalent-tests-language-test-3",
-                    "di-rag-doc-equivalent-tests-language-test-2",
-                ]
-            ),
+            sorted(generator.calls[0]["schema_ids"]),
+            sorted([
+                "di-rag-doc-permanent-residence-language",
+                "di-rag-doc-equivalent-tests-language-test-3",
+                "di-rag-doc-equivalent-tests-language-test-2",
+            ]),
         )
         self.assertIn(
             "di-rag-doc-equivalent-tests-language-test-3",
@@ -231,7 +199,7 @@ class Issue15ExamCoverageTests(unittest.TestCase):
         self.assertEqual(result.answer["response_kind"], "answer")
 
     def test_certificate_acceptance_conclusion_from_generator_is_rejected(self):
-        generator = RecordingGenerator(
+        generator = CannedModel(
             {
                 "summary": "SIRI will accept your old certificate.",
                 "sections": [
@@ -245,7 +213,7 @@ class Issue15ExamCoverageTests(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(AnswerValidationError, "prohibited"):
-            AnswerService(verifier=LexicalAnswerVerifier(), retriever=self.retriever, generator=generator, clock=review_clock).answer(
+            generator.service(self.retriever, clock=review_clock).answer(
                 "I have an old Danish certificate. Can you tell me whether SIRI will accept it for permanent residence?",
                 provider_configuration(),
             )

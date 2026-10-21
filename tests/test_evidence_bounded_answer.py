@@ -14,7 +14,6 @@ from danish_rag.answer_pipeline import (
     AnswerPipelineError,
     AnswerService,
     AnswerValidationError,
-    LexicalAnswerVerifier,
     ModelAnswerVerifier,
     TransportAnswerGenerator,
     fixed_transport,
@@ -82,7 +81,7 @@ class ModelRegimeTests(unittest.TestCase):
         self.assertEqual(verification['context_tokens'], 8192)
         self.assertIn('checks', verification['schema']['properties'])
         self.assertIn('separate conservative evidence verifier', verification['messages'][0]['content'])
-        self.assertEqual(transport.remaining, 0)
+        transport.assert_script_consumed(allow_responder=False)
 
     def test_rejected_verification_triggers_one_repair_then_verifies_the_repair(self):
         transport = script(
@@ -101,7 +100,7 @@ class ModelRegimeTests(unittest.TestCase):
             for message in repair['messages']))
         self.assertIn('failed the separate evidence check', repair['messages'][-1]['content'])
         self.assertEqual(sent[3]['context_tokens'], 8192)
-        self.assertEqual(transport.remaining, 0)
+        transport.assert_script_consumed(allow_responder=False)
 
     def test_repair_is_attempted_once_and_exhausted_repair_fails_closed(self):
         reject = checks(unsupported(), unsupported())
@@ -286,12 +285,6 @@ class VerifierChoiceTests(unittest.TestCase):
                 verifier=ModelAnswerVerifier(fixed_transport(FakeTransport())), clock=fixed_clock)
 
     def test_service_cannot_be_built_without_an_explicit_verifier(self):
-        class GenerateOnly:
-            def generate(self, **kwargs):
-                return draft(summary=CLAIM)
-
-        with self.assertRaises(TypeError):
-            AnswerService(retriever=self.retriever(), generator=GenerateOnly(), clock=fixed_clock)
         with self.assertRaises(TypeError):
             AnswerService(
                 retriever=self.retriever(),
@@ -303,22 +296,15 @@ class VerifierChoiceTests(unittest.TestCase):
             def prepare(self, draft):
                 return draft
 
-        class GenerateOnly:
-            def generate(self, **kwargs):
-                return draft()
-
         with self.assertRaisesRegex(ValueError, 'repairs_rejected_drafts'):
-            AnswerService(retriever=self.retriever(), generator=GenerateOnly(),
-                          verifier=Incomplete(), clock=fixed_clock)
+            AnswerService(
+                retriever=self.retriever(),
+                generator=TransportAnswerGenerator(fixed_transport(FakeTransport())),
+                verifier=Incomplete(), clock=fixed_clock)
 
     def test_explicit_lexical_verifier_serves_controlled_generators(self):
-        class GenerateOnly:
-            def generate(self, **kwargs):
-                return draft(summary=CLAIM)
-
-        result = ask(AnswerService(
-            retriever=self.retriever(), generator=GenerateOnly(),
-            verifier=LexicalAnswerVerifier(), clock=fixed_clock))
+        transport = script(FakeTransport(), wire(draft(summary=CLAIM), ALIASES))
+        result = ask(lexical_service(transport, self.retriever()))
         self.assertEqual(result.answer['sections'][0]['text'], CLAIM)
 
     def test_both_verifiers_accept_the_same_evidence_with_the_same_answer(self):
