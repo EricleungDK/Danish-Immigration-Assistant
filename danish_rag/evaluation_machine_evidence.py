@@ -41,6 +41,7 @@ from .provider_setup import (
     ProviderConfiguration,
     save_provider_configuration,
 )
+from .trust_indicators import SourceHealth
 
 
 WORKFLOW_EVIDENCE_SCHEMA_VERSION = "workflow-evaluation-evidence-v1"
@@ -659,7 +660,7 @@ def _build_source_scenario(case_id: str) -> dict[str, Any]:
                 "within its reviewed scope."
             ),
             review_state="overdue-policy-usable",
-            source_health="overdue-policy-usable",
+            source_health=SourceHealth.OVERDUE_POLICY_USABLE.value,
         )
         return {
             "evidence": [stale],
@@ -690,7 +691,7 @@ def _build_source_scenario(case_id: str) -> dict[str, Any]:
             "changed-source",
             content="The changed page states a new unreviewed requirement.",
             review_state="changed-unreviewed",
-            source_health="changed-unreviewed",
+            source_health=SourceHealth.CHANGED_UNREVIEWED.value,
         )
         return {
             "evidence": [older, changed],
@@ -798,7 +799,7 @@ def _source_scenario_observations(
     elif case_id == "eval-012-changed-source-blocked":
         blocked_warning = any(
             "blocked by source policy" in str(item.get("text", "")).casefold()
-            and "changed-unreviewed" in str(item.get("text", "")).casefold()
+            and SourceHealth.CHANGED_UNREVIEWED.value in str(item.get("text", "")).casefold()
             for item in warnings
         )
         observations.update(
@@ -885,7 +886,7 @@ def _source_scenario_observations(
         str(item.get("citation_id"))
         for item in retrieved_evidence
         if item.get("review_state") == "changed-unreviewed"
-        or item.get("source_health") == "changed-unreviewed"
+        or item.get("source_health") == SourceHealth.CHANGED_UNREVIEWED
     }
     source_policy = {
         "retrieved_source_count": len(retrieved_evidence),
@@ -1347,7 +1348,7 @@ def _scenario_evidence(
     *,
     content: str,
     review_state: str = "approved-current",
-    source_health: str = "healthy",
+    source_health: str = SourceHealth.HEALTHY.value,
     agreement_state: str = "supports",
 ) -> dict[str, Any]:
     return {

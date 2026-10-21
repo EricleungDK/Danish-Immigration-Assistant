@@ -48,6 +48,12 @@ from .provider_setup import (
     load_provider_configuration,
 )
 from .retrieval import HybridRetriever, _attach_source_metadata
+from .trust_indicators import (
+    CONFLICTING_AGREEMENT_STATES,
+    SourceHealth,
+    TrustLevel,
+    lowest_trust_level,
+)
 
 
 SCHEMA_VERSION = "final-answer-evaluation-v1"
@@ -2668,9 +2674,8 @@ def _document_search_text(document: dict[str, Any]) -> str:
 
 def _eligible_material_source(evidence: dict[str, Any]) -> bool:
     return (
-        evidence.get("review_state")
-        in {"approved-current", "overdue-policy-usable"}
-        and evidence.get("source_health") in {"healthy", "overdue-policy-usable"}
+        evidence.get("review_state") in _ORACLE_ELIGIBLE_REVIEW_STATES
+        and evidence.get("source_health") in _ORACLE_ELIGIBLE_HEALTH
         and evidence.get("approval_state", "approved") == "approved"
     )
 
@@ -2713,7 +2718,7 @@ def _expected_evidence_confidence(
     conflicting = any(
         item.get("conflicts_with_answer") is True
         or str(item.get("agreement_state", "supports")).casefold()
-        in {"conflict", "conflicts", "conflicting", "contradicts"}
+        in CONFLICTING_AGREEMENT_STATES
         for item in material_evidence
     )
     if cited_official_fact_count == official_fact_count and not conflicting:
@@ -2721,20 +2726,24 @@ def _expected_evidence_confidence(
     return "Low"
 
 
+# The oracle's own declared-health table: expected Fresh Tomato level per source health.
+# It is deliberately not derived by calling the production assessment.
+_ORACLE_HEALTH_LEVEL = {
+    SourceHealth.HEALTHY: TrustLevel.HIGH,
+    SourceHealth.OVERDUE_POLICY_USABLE: TrustLevel.MEDIUM,
+}
+_ORACLE_ELIGIBLE_HEALTH = frozenset(_ORACLE_HEALTH_LEVEL)
+# Eligibility policy is oracle-owned so a production policy change cannot silently move
+# the expected outcomes.
+_ORACLE_ELIGIBLE_REVIEW_STATES = {"approved-current", "overdue-policy-usable"}
+
+
 def _expected_fresh_tomato(material_evidence: list[dict[str, Any]]) -> str:
-    if not material_evidence:
-        return "Low"
-    scores = []
-    for item in material_evidence:
-        health = str(item.get("source_health", "unknown"))
-        if health == "healthy":
-            scores.append("High")
-        elif health == "overdue-policy-usable":
-            scores.append("Medium")
-        else:
-            scores.append("Low")
-    order = {"Low": 0, "Medium": 1, "High": 2}
-    return min(scores, key=order.__getitem__)
+    levels = [
+        _ORACLE_HEALTH_LEVEL.get(str(item.get("source_health", "unknown")), TrustLevel.LOW)
+        for item in material_evidence
+    ]
+    return lowest_trust_level(levels).value
 
 
 def _explicit_trust_value(indicators: list[Any], label: str) -> str | None:
