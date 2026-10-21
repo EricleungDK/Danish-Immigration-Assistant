@@ -62,6 +62,22 @@ class ChatResult:
     raw: Mapping[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class EmbedResult:
+    """Embedding vectors plus the provider's raw response (e.g. Ollama durations)."""
+
+    vectors: list[list[float]]
+    raw: Mapping[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ModelListing:
+    """Lenient model listing: normalized entries plus the provider's raw response."""
+
+    models: list[dict[str, Any]]
+    raw: Mapping[str, Any] = field(default_factory=dict)
+
+
 class LocalModelTransport(Protocol):
     endpoint: str
 
@@ -76,7 +92,11 @@ class LocalModelTransport(Protocol):
 
     def embed(self, *, model: str, texts: Sequence[str]) -> list[list[float]]: ...
 
+    def embed_result(self, *, model: str, texts: Sequence[str]) -> EmbedResult: ...
+
     def list_models(self) -> list[dict[str, Any]]: ...
+
+    def model_listing(self) -> ModelListing: ...
 
     def version(self) -> str: ...
 
@@ -188,6 +208,9 @@ class OllamaTransport(_HttpJsonTransport):
         )
 
     def embed(self, *, model: str, texts: Sequence[str]) -> list[list[float]]:
+        return self.embed_result(model=model, texts=texts).vectors
+
+    def embed_result(self, *, model: str, texts: Sequence[str]) -> EmbedResult:
         body = self._request(
             "POST",
             "/api/embed",
@@ -201,15 +224,23 @@ class OllamaTransport(_HttpJsonTransport):
             raise ModelProtocolError(
                 f"Ollama embed response must contain {len(texts)} embedding(s)."
             )
-        return vectors
+        return EmbedResult(vectors=vectors, raw=body)
 
     def list_models(self) -> list[dict[str, Any]]:
         body = self._request("GET", "/api/tags")
-        models = body.get("models")
-        if not isinstance(models, list):
+        if not isinstance(body.get("models"), list):
             raise ModelProtocolError("Ollama /api/tags response did not include models.")
+        return self._tag_entries(body)
+
+    def model_listing(self) -> ModelListing:
+        body = self._request("GET", "/api/tags")
+        return ModelListing(models=self._tag_entries(body), raw=body)
+
+    @staticmethod
+    def _tag_entries(body: Mapping[str, Any]) -> list[dict[str, Any]]:
+        models = body.get("models")
         entries: list[dict[str, Any]] = []
-        for item in models:
+        for item in models if isinstance(models, list) else []:
             if not isinstance(item, dict):
                 continue
             name = item.get("name") or item.get("model")
@@ -273,14 +304,25 @@ class OpenAICompatibleTransport(_HttpJsonTransport):
     def embed(self, *, model: str, texts: Sequence[str]) -> list[list[float]]:
         raise self._unsupported("embed")
 
+    def embed_result(self, *, model: str, texts: Sequence[str]) -> EmbedResult:
+        raise self._unsupported("embed")
+
     def list_models(self) -> list[dict[str, Any]]:
         body = self._request("GET", "/v1/models")
-        data = body.get("data")
-        if not isinstance(data, list):
+        if not isinstance(body.get("data"), list):
             raise ModelProtocolError("OpenAI-compatible /v1/models response had no data.")
+        return self._model_entries(body)
+
+    def model_listing(self) -> ModelListing:
+        body = self._request("GET", "/v1/models")
+        return ModelListing(models=self._model_entries(body), raw=body)
+
+    @staticmethod
+    def _model_entries(body: Mapping[str, Any]) -> list[dict[str, Any]]:
+        data = body.get("data")
         return [
             {**item, "name": item["id"]}
-            for item in data
+            for item in (data if isinstance(data, list) else [])
             if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"]
         ]
 
@@ -322,11 +364,16 @@ class FakeTransport:
     def queue_chat(self, content: str, *, done_reason: str | None = None) -> None:
         self._script.append(("chat", ChatResult(content=content, done_reason=done_reason)))
 
-    def queue_embed(self, vectors: list[list[float]]) -> None:
-        self._script.append(("embed", vectors))
+    def queue_embed(
+        self, vectors: list[list[float]], *, raw: Mapping[str, Any] | None = None
+    ) -> None:
+        self._script.append(("embed", EmbedResult(vectors=vectors, raw=dict(raw or {}))))
 
-    def queue_models(self, models: list[dict[str, Any]]) -> None:
-        self._script.append(("list_models", models))
+    def queue_models(
+        self, models: list[dict[str, Any]], *, raw: Mapping[str, Any] | None = None
+    ) -> None:
+        listing = ModelListing(models=models, raw=dict(raw or {"object": "list"}))
+        self._script.append(("list_models", listing))
 
     def queue_version(self, version: str) -> None:
         self._script.append(("version", version))
@@ -357,9 +404,15 @@ class FakeTransport:
         )
 
     def embed(self, *, model: str, texts: Sequence[str]) -> list[list[float]]:
+        return self.embed_result(model=model, texts=texts).vectors
+
+    def embed_result(self, *, model: str, texts: Sequence[str]) -> EmbedResult:
         return self._next("embed", {"model": model, "texts": list(texts)})
 
     def list_models(self) -> list[dict[str, Any]]:
+        return self.model_listing().models
+
+    def model_listing(self) -> ModelListing:
         return self._next("list_models", {})
 
     def version(self) -> str:

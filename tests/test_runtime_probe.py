@@ -71,7 +71,7 @@ class RuntimeProbeTests(unittest.TestCase):
     def test_probe_requests_structured_chat_through_the_transport(self):
         transport = scripted_transport()
 
-        run_runtime_probe(load_runtime_policy(POLICY_PATH), client=transport)
+        run_runtime_probe(load_runtime_policy(POLICY_PATH), transport=transport)
 
         self.assertEqual(
             [request.operation for request in transport.requests],
@@ -91,11 +91,11 @@ class RuntimeProbeTests(unittest.TestCase):
         self.assertIn("Ollama service is unreachable", result.diagnostic)
 
     def test_probe_builds_a_loopback_ollama_transport_by_default(self):
-        from danish_rag.runtime_probe import OllamaClient
+        from danish_rag import runtime_probe
 
-        self.assertTrue(issubclass(OllamaClient, OllamaTransport))
+        self.assertFalse(hasattr(runtime_probe, "OllamaClient"))
         with self.assertRaises(PrivacyBoundaryError):
-            OllamaClient("http://example.com:11434")
+            OllamaTransport("http://example.com:11434")
 
     def test_probe_result_uses_named_environment_evidence_type(self):
         self.assertIs(
@@ -111,7 +111,7 @@ class RuntimeProbeTests(unittest.TestCase):
     def test_probe_succeeds_with_version_model_completion_and_structured_json(self):
         policy = load_runtime_policy(POLICY_PATH)
 
-        result = run_runtime_probe(policy, client=scripted_transport())
+        result = run_runtime_probe(policy, transport=scripted_transport())
 
         self.assertIsInstance(result, ProbeResult)
         self.assertEqual(result.exit_status, ProbeExitStatus.PASSED)
@@ -127,7 +127,7 @@ class RuntimeProbeTests(unittest.TestCase):
     def test_probe_reports_missing_service_with_actionable_diagnostic(self):
         policy = load_runtime_policy(POLICY_PATH)
 
-        result = run_runtime_probe(policy, client=scripted_transport(failure="service"))
+        result = run_runtime_probe(policy, transport=scripted_transport(failure="service"))
 
         self.assertEqual(result.exit_status, ProbeExitStatus.PROVIDER_UNREACHABLE)
         self.assertIn("Ollama service is unreachable", result.diagnostic)
@@ -137,7 +137,7 @@ class RuntimeProbeTests(unittest.TestCase):
     def test_probe_reports_incompatible_ollama_version_with_required_floor(self):
         policy = load_runtime_policy(POLICY_PATH)
 
-        result = run_runtime_probe(policy, client=scripted_transport(version="0.30.5"))
+        result = run_runtime_probe(policy, transport=scripted_transport(version="0.30.5"))
 
         self.assertEqual(result.exit_status, ProbeExitStatus.PROVIDER_VERSION_UNSUPPORTED)
         self.assertIn("Upgrade Ollama to 0.30.6 or newer", result.diagnostic)
@@ -145,7 +145,7 @@ class RuntimeProbeTests(unittest.TestCase):
     def test_probe_reports_missing_generation_model_with_pull_command(self):
         policy = load_runtime_policy(POLICY_PATH)
 
-        result = run_runtime_probe(policy, client=scripted_transport(failure="model"))
+        result = run_runtime_probe(policy, transport=scripted_transport(failure="model"))
 
         self.assertEqual(result.exit_status, ProbeExitStatus.MODEL_UNAVAILABLE)
         self.assertIn("gemma4:12b is not installed", result.diagnostic)
@@ -156,7 +156,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=scripted_transport(chat_content=json.dumps({"status": "ok"})),
+            transport=scripted_transport(chat_content=json.dumps({"status": "ok"})),
         )
 
         self.assertEqual(result.exit_status, ProbeExitStatus.STRUCTURED_RESPONSE_INVALID)
@@ -167,7 +167,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=scripted_transport(
+            transport=scripted_transport(
                 chat_content=json.dumps(
                     {
                         "runtime_baseline": "mvp-runtime-baseline-issue-26",
@@ -195,7 +195,7 @@ class RuntimeProbeTests(unittest.TestCase):
             }
         )
 
-        result = run_runtime_probe(policy, client=client)
+        result = run_runtime_probe(policy, transport=client)
 
         self.assertEqual(result.exit_status, ProbeExitStatus.MODEL_UNAVAILABLE)
         self.assertEqual(chat_requests(client), [])
@@ -208,7 +208,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=scripted_transport(chat_content=json.dumps(["not", "an", "object"])),
+            transport=scripted_transport(chat_content=json.dumps(["not", "an", "object"])),
         )
 
         self.assertEqual(result.exit_status, ProbeExitStatus.STRUCTURED_RESPONSE_INVALID)
@@ -219,7 +219,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=scripted_transport(
+            transport=scripted_transport(
                 chat_content=json.dumps(
                     {
                         "runtime_baseline": "different-baseline",
@@ -237,7 +237,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=scripted_transport(
+            transport=scripted_transport(
                 show={
                     "details": {
                         "family": "llama",
@@ -259,7 +259,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=scripted_transport(
+            transport=scripted_transport(
                 show={
                     "details": {},
                     "model_info": {},
@@ -277,7 +277,7 @@ class RuntimeProbeTests(unittest.TestCase):
 
         result = run_runtime_probe(
             policy,
-            client=scripted_transport(
+            transport=scripted_transport(
                 show={
                     "details": {
                         "family": "gemma4",

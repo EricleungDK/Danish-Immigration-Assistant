@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any, TypedDict, cast
-from urllib.parse import urlparse
+
+from .privacy_boundary import is_loopback_url
 
 
 CONTRACT_START = "<!-- runtime-policy-contract:start -->"
@@ -351,12 +352,6 @@ def validate_runtime_baseline_prose_contract(
     )
 
     return failures
-
-
-def is_loopback_url(value: str) -> bool:
-    parsed = urlparse(value)
-    host = parsed.hostname if parsed.scheme else value
-    return host in {"127.0.0.1", "localhost", "::1"}
 
 
 def _strip_markdown_json_fence(text: str) -> str:

@@ -10,16 +10,33 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse
-import urllib.error
-import urllib.request
 
-from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
-from .runtime_policy import is_loopback_url, load_runtime_policy
-from .runtime_probe import OllamaClient, ProbeExitStatus, run_runtime_probe
+from .local_model_transport import (
+    LocalModelTransport,
+    LocalModelTransportError,
+    OllamaTransport,
+    OpenAICompatibleTransport,
+)
+from .privacy_boundary import PrivacyBoundaryError, is_loopback_url
+from .runtime_policy import load_runtime_policy
+from .runtime_probe import ProbeExitStatus, run_runtime_probe
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POLICY_PATH = ROOT / "config" / "runtime-policy.json"
+
+TransportFactory = Callable[[str, str, float], LocalModelTransport]
+_TRANSPORT_ERRORS = (LocalModelTransportError, PrivacyBoundaryError)
+
+
+def default_transport_factory(
+    provider_id: str, endpoint: str, timeout_seconds: float
+) -> LocalModelTransport:
+    if provider_id == "ollama":
+        return OllamaTransport(endpoint, timeout_seconds=timeout_seconds)
+    if provider_id == "openai_compatible":
+        return OpenAICompatibleTransport(endpoint, timeout_seconds=timeout_seconds)
+    raise ValueError(f"Unsupported provider: {provider_id}")
 
 
 @dataclass(frozen=True)
@@ -205,15 +222,11 @@ class ProviderModelDiscoverer:
         *,
         policy_path: str | Path = DEFAULT_POLICY_PATH,
         timeout_seconds: float = 10.0,
-        request_json: Callable[
-            [str, str, str, dict[str, Any] | None],
-            dict[str, Any],
-        ]
-        | None = None,
+        transport_factory: TransportFactory = default_transport_factory,
     ) -> None:
         self.policy = load_runtime_policy(policy_path)
         self.timeout_seconds = timeout_seconds
-        self._injected_request_json = request_json
+        self._transport_factory = transport_factory
 
     def __call__(self, configuration: ProviderConfiguration) -> ModelDiscoveryResult:
         failures = validate_provider_configuration(
@@ -230,18 +243,22 @@ class ProviderModelDiscoverer:
                 message=" ".join(failures),
             )
 
+        if configuration.provider_id not in PROVIDERS:
+            return ModelDiscoveryResult(
+                ok=False,
+                reason="unsupported_provider",
+                message="Choose one of the supported local generation-model providers.",
+            )
+
         try:
+            transport = self._transport_factory(
+                configuration.provider_id, configuration.endpoint, self.timeout_seconds
+            )
             if configuration.provider_id == "ollama":
-                models = self._discover_ollama(configuration.endpoint)
-            elif configuration.provider_id == "openai_compatible":
-                models = self._discover_openai_compatible(configuration.endpoint)
+                models = self._discover_ollama(transport)
             else:
-                return ModelDiscoveryResult(
-                    ok=False,
-                    reason="unsupported_provider",
-                    message="Choose one of the supported local generation-model providers.",
-                )
-        except Exception as exc:
+                models = self._discover_openai_compatible(transport)
+        except _TRANSPORT_ERRORS as exc:
             return ModelDiscoveryResult(
                 ok=False,
                 reason="service_unreachable",
@@ -268,60 +285,29 @@ class ProviderModelDiscoverer:
             models=models,
         )
 
-    def _discover_ollama(self, endpoint: str) -> list[str]:
-        tags_payload = self._request_json(endpoint, "GET", "/api/tags")
-        tag_models = tags_payload.get("models")
-        if not isinstance(tag_models, list):
-            return []
-
+    def _discover_ollama(self, transport: LocalModelTransport) -> list[str]:
         identity = self.policy["models"]["generation"].get("identity", {})
         compatible: list[str] = []
-        for item in tag_models[:100]:
-            if not isinstance(item, dict):
-                continue
-            model = item.get("name") or item.get("model")
-            if not isinstance(model, str) or not model or _is_cloud_model_id(model):
+        for entry in transport.model_listing().models[:100]:
+            model = entry["name"]
+            if _is_cloud_model_id(model):
                 continue
             try:
-                payload = self._request_json(
-                    endpoint,
-                    "POST",
-                    "/api/show",
-                    {"model": model},
-                )
-            except Exception:
+                payload = transport.show_model(model)
+            except _TRANSPORT_ERRORS:
                 continue
             if _ollama_model_matches_generation_contract(payload, identity):
                 compatible.append(model)
         return sorted(set(compatible), key=str.casefold)
 
-    def _discover_openai_compatible(self, endpoint: str) -> list[str]:
-        payload = self._request_json(endpoint, "GET", "/v1/models")
+    def _discover_openai_compatible(self, transport: LocalModelTransport) -> list[str]:
         return sorted(
             (
-                model
-                for model in _openai_model_ids(payload)
-                if not _is_cloud_model_id(model)
+                entry["name"]
+                for entry in transport.model_listing().models
+                if not _is_cloud_model_id(entry["name"])
             ),
             key=str.casefold,
-        )
-
-    def _request_json(
-        self,
-        endpoint: str,
-        method: str,
-        path: str,
-        payload: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        if self._injected_request_json is not None:
-            return self._injected_request_json(endpoint, method, path, payload)
-        return _request_provider_json(
-            endpoint,
-            method,
-            path,
-            payload,
-            timeout_seconds=self.timeout_seconds,
-            purpose="Provider model discovery",
         )
 
 
@@ -331,9 +317,11 @@ class ProviderCapabilityTester:
         *,
         policy_path: str | Path = DEFAULT_POLICY_PATH,
         timeout_seconds: float = 60.0,
+        transport_factory: TransportFactory | None = None,
     ) -> None:
         self.policy = load_runtime_policy(policy_path)
         self.timeout_seconds = timeout_seconds
+        self._transport_factory = transport_factory
 
     def __call__(self, configuration: ProviderConfiguration) -> CapabilityTestResult:
         failures = validate_provider_configuration(configuration)
@@ -357,12 +345,15 @@ class ProviderCapabilityTester:
         policy = deepcopy(self.policy)
         policy["providers"]["initial"]["default_endpoint"] = configuration.endpoint
         policy["models"]["generation"]["initial"] = configuration.model
-        try:
-            client = OllamaClient(configuration.endpoint, timeout_seconds=self.timeout_seconds)
-        except PrivacyBoundaryError:
-            client = None  # the probe reports the same unreachable result itself
+        # Without an injected factory the probe builds its own loopback Ollama
+        # transport and reports a refused or unreachable endpoint itself.
+        transport = (
+            self._transport_factory("ollama", configuration.endpoint, self.timeout_seconds)
+            if self._transport_factory
+            else None
+        )
         result = run_runtime_probe(
-            policy, client=client, timeout_seconds=self.timeout_seconds
+            policy, transport=transport, timeout_seconds=self.timeout_seconds
         )
         if result.exit_status is ProbeExitStatus.PASSED:
             return CapabilityTestResult(
@@ -391,13 +382,14 @@ class ProviderCapabilityTester:
         )
 
     def _test_openai_compatible(self, configuration: ProviderConfiguration) -> CapabilityTestResult:
+        factory = self._transport_factory or default_transport_factory
         try:
-            models_payload = self._request_openai_json(
-                configuration.endpoint,
-                "GET",
-                "/v1/models",
+            transport = factory(
+                configuration.provider_id, configuration.endpoint, self.timeout_seconds
             )
-        except Exception as exc:
+            listing = transport.model_listing()
+            model_ids = {entry["name"] for entry in listing.models}
+        except _TRANSPORT_ERRORS as exc:
             return CapabilityTestResult(
                 ok=False,
                 reason="service_unreachable",
@@ -407,7 +399,6 @@ class ProviderCapabilityTester:
                 ),
             )
 
-        model_ids = _openai_model_ids(models_payload)
         if model_ids and configuration.model not in model_ids:
             return CapabilityTestResult(
                 ok=False,
@@ -424,38 +415,18 @@ class ProviderCapabilityTester:
             "required": ["status"],
             "additionalProperties": False,
         }
-        payload = {
-            "model": configuration.model,
-            "messages": [
-                {"role": "system", "content": "Return only JSON."},
-                {"role": "user", "content": "Return {\"status\":\"ok\"}."},
-            ],
-            "temperature": 0,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "danish_rag_setup_probe",
-                    "schema": schema,
-                    "strict": True,
-                },
-            },
-        }
+        messages = [
+            {"role": "system", "content": "Return only JSON."},
+            {"role": "user", "content": 'Return {"status":"ok"}.'},
+        ]
         try:
-            completion = self._request_openai_json(
-                configuration.endpoint,
-                "POST",
-                "/v1/chat/completions",
-                payload,
+            completion = transport.chat(
+                model=configuration.model, messages=messages, schema=schema
             )
-            content = (
-                completion.get("choices", [{}])[0]
-                .get("message", {})
-                .get("content", "")
-            )
-            parsed = json.loads(content)
+            parsed = json.loads(completion.content)
             if parsed != {"status": "ok"}:
                 raise ValueError("response did not match the setup probe schema")
-        except Exception as exc:
+        except (*_TRANSPORT_ERRORS, ValueError) as exc:
             return CapabilityTestResult(
                 ok=False,
                 reason="structured_output_failed",
@@ -469,51 +440,10 @@ class ProviderCapabilityTester:
             ok=True,
             reason="passed",
             message="Provider capability test passed.",
-            provider_version=str(models_payload.get("object", "openai-compatible")),
+            provider_version=str(listing.raw.get("object", "openai-compatible")),
             model_identity={"id": configuration.model},
             capabilities=["generation"],
         )
-
-    def _request_openai_json(
-        self,
-        endpoint: str,
-        method: str,
-        path: str,
-        payload: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        try:
-            require_loopback_endpoint(endpoint, purpose="Provider capability testing")
-        except PrivacyBoundaryError as exc:
-            raise RuntimeError(str(exc)) from exc
-        data = None
-        headers = {"Accept": "application/json"}
-        if payload is not None:
-            data = json.dumps(payload).encode("utf-8")
-            headers["Content-Type"] = "application/json"
-
-        request = urllib.request.Request(
-            f"{endpoint.rstrip('/')}{path}",
-            data=data,
-            headers=headers,
-            method=method,
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"HTTP {exc.code}: {detail}") from exc
-
-
-def _openai_model_ids(payload: dict[str, Any]) -> set[str]:
-    data = payload.get("data")
-    if not isinstance(data, list):
-        return set()
-    model_ids = set()
-    for item in data:
-        if isinstance(item, dict) and isinstance(item.get("id"), str):
-            model_ids.add(item["id"])
-    return model_ids
 
 
 def _is_cloud_model_id(model: str) -> bool:
@@ -553,35 +483,3 @@ def _ollama_model_matches_generation_contract(
         not expected_value or actual[key] == expected_value
         for key, expected_value in expected.items()
     )
-
-
-def _request_provider_json(
-    endpoint: str,
-    method: str,
-    path: str,
-    payload: dict[str, Any] | None,
-    *,
-    timeout_seconds: float,
-    purpose: str,
-) -> dict[str, Any]:
-    try:
-        require_loopback_endpoint(endpoint, purpose=purpose)
-    except PrivacyBoundaryError as exc:
-        raise RuntimeError(str(exc)) from exc
-    data = None
-    headers = {"Accept": "application/json"}
-    if payload is not None:
-        data = json.dumps(payload).encode("utf-8")
-        headers["Content-Type"] = "application/json"
-    request = urllib.request.Request(
-        f"{endpoint.rstrip('/')}{path}",
-        data=data,
-        headers=headers,
-        method=method,
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"HTTP {exc.code}: {detail}") from exc

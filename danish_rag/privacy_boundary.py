@@ -6,8 +6,6 @@ from typing import Any
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request
 
-from .runtime_policy import is_loopback_url
-
 
 APPROVED_RELEASE_NETWORK_OPERATIONS = {
     "knowledge_release_discovery",
@@ -49,6 +47,14 @@ REQUIRED_PROHIBITED_UPDATE_FIELDS = {
 
 class PrivacyBoundaryError(ValueError):
     """Raised when an operation would cross the configured privacy boundary."""
+
+
+def is_loopback_url(value: str) -> bool:
+    """The one loopback definition: 127.0.0.1, localhost, or ::1."""
+
+    parsed = urlparse(value)
+    host = parsed.hostname if parsed.scheme else value
+    return host in {"127.0.0.1", "localhost", "::1"}
 
 
 def require_loopback_endpoint(endpoint: str, *, purpose: str) -> None:
