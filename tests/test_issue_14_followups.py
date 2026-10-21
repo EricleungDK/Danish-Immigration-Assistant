@@ -272,6 +272,7 @@ class Issue14FollowUpApplicationTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(failed.status_code, 422)
         self.assertIn("answer validation failed", failed.text)
+        self.assertIn("rejected answer item 1", failed.text)
         self.assertIn("What Danish test do I need for permanent residence?", failed.text)
         self.assertIn("What about PD3?", failed.text)
         self.assertIn(f'name="conversation_id" value="{conversation_id}"', failed.text)

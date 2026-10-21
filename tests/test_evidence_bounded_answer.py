@@ -81,7 +81,7 @@ class ModelRegimeTests(unittest.TestCase):
         self.assertEqual(verification['context_tokens'], 8192)
         self.assertIn('checks', verification['schema']['properties'])
         self.assertIn('separate conservative evidence verifier', verification['messages'][0]['content'])
-        self.assertEqual(transport.remaining, 0)
+        transport.assert_script_consumed(allow_responder=False)
 
     def test_rejected_verification_triggers_one_repair_then_verifies_the_repair(self):
         transport = script(
@@ -100,7 +100,7 @@ class ModelRegimeTests(unittest.TestCase):
             for message in repair['messages']))
         self.assertIn('failed the separate evidence check', repair['messages'][-1]['content'])
         self.assertEqual(sent[3]['context_tokens'], 8192)
-        self.assertEqual(transport.remaining, 0)
+        transport.assert_script_consumed(allow_responder=False)
 
     def test_repair_is_attempted_once_and_exhausted_repair_fails_closed(self):
         reject = checks(unsupported(), unsupported())

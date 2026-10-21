@@ -11,6 +11,7 @@ from danish_rag.answer_pipeline import (
     _answer_messages,
     answer_schema,
     fixed_transport,
+    provider_transport,
 )
 from danish_rag.social_conversation import TransportSocialReplies, conversation_schema
 from danish_rag.conversation_store import ConversationStore
@@ -401,6 +402,19 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Prøve i Dansk 2", reopened.text)
         self.assertIn("Corpus: kr-2026-07-06.1", reopened.text)
 
+    def test_the_configured_provider_selects_its_adapter(self):
+        asked = []
+
+        def factory(provider_id, endpoint, timeout):
+            asked.append((provider_id, endpoint))
+            return FakeTransport()
+
+        transports = provider_transport(factory=factory)
+        transports(ProviderConfiguration(
+            provider_id="openai_compatible", endpoint="http://127.0.0.1:1234", model="fixture-model"))
+
+        self.assertEqual(asked, [("openai_compatible", "http://127.0.0.1:1234")])
+
     async def test_validation_failure_preserves_question_and_does_not_persist_answer(self):
         model = ControlledModel(draft=invalid_draft)
         client = self.make_client(model)
@@ -413,6 +427,7 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(response.status_code, 422)
         self.assertIn("answer validation failed; no answer was saved", response.text)
+        self.assertIn("rejected answer item 1", response.text)
         self.assertIn("Retry", response.text)
         self.assertIn(
             "What Danish test do I need for permanent residence?",

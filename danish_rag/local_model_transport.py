@@ -373,10 +373,21 @@ class FakeTransport:
         self.requests: list[RecordedRequest] = []
         self._script: list[tuple[str | None, Any]] = []
         self._responder = responder
+        self._responder_calls = 0
 
     @property
     def remaining(self) -> int:
         return len(self._script)
+
+    def assert_script_consumed(self, *, allow_responder: bool = True) -> None:
+        """Fail unless every queued response was used (and, optionally, no call overflowed
+        to the responder), so a test can pin exactly how many calls were made."""
+
+        if self._script:
+            raise FakeTransportScriptError(f"{len(self._script)} scripted response(s) unused")
+        if not allow_responder and self._responder_calls:
+            raise FakeTransportScriptError(
+                f"{self._responder_calls} call(s) went past the script to the responder")
 
     def queue_chat(self, content: str, *, done_reason: str | None = None) -> None:
         self._script.append(("chat", ChatResult(content=content, done_reason=done_reason)))
@@ -443,6 +454,7 @@ class FakeTransport:
         if not self._script:
             if self._responder is None:
                 raise FakeTransportScriptError(f"script exhausted; unexpected {operation}")
+            self._responder_calls += 1
             return self._respond(operation, params)
         scripted_operation, result = self._script.pop(0)
         if scripted_operation is not None and scripted_operation != operation:

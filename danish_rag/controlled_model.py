@@ -95,8 +95,16 @@ class ControlledModel:
 
     def _chat(self, params: dict[str, Any]) -> dict[str, Any]:
         messages = [dict(message) for message in params["messages"]]
-        user = next(message for message in messages if message["role"] == "user")
-        payload = json.loads(user["content"])
+        user = next((message for message in messages if message["role"] == "user"), None)
+        if user is None:
+            raise FakeTransportScriptError("The controlled model got a request with no user message.")
+        try:
+            payload = json.loads(user["content"])
+        except ValueError as exc:
+            raise FakeTransportScriptError(
+                "The controlled model got a user message that is not JSON.") from exc
+        if not isinstance(payload, dict):
+            raise FakeTransportScriptError("The controlled model got a user message that is not a JSON object.")
         model = params["model"]
         if "approved_official_evidence" in payload:
             if self._draft is None:
@@ -157,7 +165,13 @@ class CannedAnswer:
 
     def __call__(self, call: GenerationCall) -> dict[str, Any]:
         sources = self._sources(call.question) if callable(self._sources) else self._sources
-        canonical_by_content = {str(item["content"]): str(item["citation_id"]) for item in sources}
+        canonical_by_content: dict[str, str] = {}
+        for item in sources:
+            content, citation_id = str(item["content"]), str(item["citation_id"])
+            if canonical_by_content.setdefault(content, citation_id) != citation_id:
+                raise FakeTransportScriptError(
+                    f"Sources {canonical_by_content[content]!r} and {citation_id!r} have "
+                    "identical content; the canned answer cannot tell them apart.")
         aliases = {
             canonical_by_content[str(item["content"])]: str(item["citation_id"])
             for item in call.evidence

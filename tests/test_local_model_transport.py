@@ -158,6 +158,18 @@ class FakeTransportTests(unittest.TestCase):
         with self.assertRaises(ModelUnreachableError):
             fake.version()
 
+    def test_assert_script_consumed_catches_unused_script_and_responder_overflow(self):
+        fake = FakeTransport(responder=lambda operation, params: "extra")
+        fake.queue_chat("scripted")
+        with self.assertRaises(FakeTransportScriptError):
+            fake.assert_script_consumed()  # nothing consumed yet
+        fake.chat(model="m", messages=[])
+        fake.assert_script_consumed()  # exactly consumed
+        fake.chat(model="m", messages=[])  # served by the responder, silently
+        fake.assert_script_consumed()
+        with self.assertRaises(FakeTransportScriptError):
+            fake.assert_script_consumed(allow_responder=False)
+
     def test_queued_script_runs_before_the_responder_and_stays_strict(self):
         fake = FakeTransport(responder=lambda operation, params: "from responder")
         fake.queue_error(ModelUnreachableError("first call fails"), operation="chat")

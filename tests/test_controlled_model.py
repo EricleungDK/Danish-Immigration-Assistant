@@ -7,7 +7,7 @@ from danish_rag.answer_pipeline import (
     AnswerService, AnswerValidationError, LexicalAnswerVerifier, ModelAnswerVerifier,
     TransportAnswerGenerator, fixed_transport,
 )
-from danish_rag.controlled_model import CannedAnswer, ControlledModel
+from danish_rag.controlled_model import CannedAnswer, ControlledModel, GenerationCall
 from danish_rag.embedding_provider import OllamaEmbeddingProvider
 from danish_rag.local_model_transport import (
     FakeTransport, FakeTransportScriptError, ModelUnreachableError, UnsupportedOperationError,
@@ -145,6 +145,70 @@ class ControlledModelTests(unittest.TestCase):
             fake.version()
 
 
+def fact(text, *, cited=True, kind="official_fact"):
+    return {"kind": kind, "text": text, "citation_ids": ["e1"] if cited else []}
+
+
+class VerdictParityTests(unittest.TestCase):
+    """The controlled model's verdicts track the lexical guard; differences are documented."""
+
+    def outcome(self, sections, *, model_regime):
+        draft = {"summary": "Summary.", "sections": sections}
+        model = ControlledModel(draft=lambda call: draft)
+        try:
+            result = service(model, verifier=None if model_regime else LexicalAnswerVerifier()).answer(
+                "What Danish test do I need for permanent residence?", provider_configuration())
+        except AnswerValidationError:
+            return "reject", None
+        return "accept", result.answer
+
+    def assert_same(self, sections):
+        lexical = self.outcome(sections, model_regime=False)[0]
+        controlled = self.outcome(sections, model_regime=True)[0]
+        self.assertEqual(lexical, controlled)
+        return lexical
+
+    def test_clear_cases_get_the_same_accept_or_reject(self):
+        cases = {
+            "supported": ([fact(FACT)], "accept"),
+            "unsupported": ([fact("Citizens receive a free flight to Copenhagen.")], "reject"),
+            "uncited": ([fact(FACT, cited=False)], "reject"),
+            "number mismatch": ([fact(FACT.replace("Dansk 2", "Dansk 3"))], "reject"),
+        }
+        for name, (sections, expected) in cases.items():
+            with self.subTest(name):
+                self.assertEqual(self.assert_same(sections), expected)
+
+    def test_negation_flip_passes_the_lexical_guard_but_the_controlled_model_rejects_it(self):
+        sections = [fact(FACT.replace("can require", "cannot require"))]
+        lexical, _ = self.outcome(sections, model_regime=False)
+        controlled, _ = self.outcome(sections, model_regime=True)
+        self.assertEqual(controlled, "reject")
+        self.assertEqual(lexical, "accept")  # lexical overlap alone lets the flip pass
+
+    def test_interpretation_with_extra_numbers_is_accepted_by_both_regimes(self):
+        sections = [fact(FACT), fact("Apply within 30 days of the decision.", kind="interpretation")]
+        texts = []
+        for model_regime in (False, True):
+            kind, answer = self.outcome(sections, model_regime=model_regime)
+            self.assertEqual(kind, "accept")
+            texts.append([s["text"] for s in answer["sections"]])
+        self.assertEqual(texts[0], texts[1])
+
+    def test_mixed_good_and_bad_facts_fail_lexically_but_salvage_the_good_fact(self):
+        sections = [fact(FACT), fact("Citizens receive a free flight to Copenhagen.")]
+        self.assertEqual(self.outcome(sections, model_regime=False)[0], "reject")
+        kind, answer = self.outcome(sections, model_regime=True)
+        self.assertEqual(kind, "accept")
+        self.assertEqual([s["text"] for s in answer["sections"] if s["kind"] == "official_fact"], [FACT])
+
+    def test_the_model_regime_replaces_the_draft_summary_with_the_first_fact(self):
+        lexical = self.outcome([fact(FACT)], model_regime=False)[1]
+        controlled = self.outcome([fact(FACT)], model_regime=True)[1]
+        self.assertEqual(lexical["summary"], "Summary.")
+        self.assertEqual(controlled["summary"], FACT)
+
+
 class CannedAnswerTests(unittest.TestCase):
     def evidence(self):
         return [
@@ -196,6 +260,32 @@ class CannedAnswerTests(unittest.TestCase):
                 question="q", normalized_question="q", evidence=self.evidence(),
                 configuration=provider_configuration(),
                 schema=answer_schema(["doc-a", "doc-b"]))
+
+    def test_identical_content_in_two_sources_is_refused_not_mapped_silently(self):
+        twins = [
+            {**self.evidence()[0], "citation_id": "twin-a"},
+            {**self.evidence()[0], "citation_id": "twin-b"},
+        ]
+        canned = CannedAnswer(self.payload("twin-a"), twins)
+        with self.assertRaisesRegex(FakeTransportScriptError, "identical content"):
+            canned(GenerationCall(
+                model="m", question="q", normalized_question="q", evidence=[],
+                schema={"properties": {"sections": {"items": {"properties": {
+                    "citation_ids": {"items": {}}}}}}}, repair=False))
+
+
+class ErrorSurfaceTests(unittest.TestCase):
+    def chat(self, messages):
+        return FakeTransport(responder=ControlledModel(draft=supported_draft)).chat(
+            model="m", messages=messages)
+
+    def test_a_request_without_a_user_message_is_a_clear_script_error(self):
+        with self.assertRaisesRegex(FakeTransportScriptError, "user message"):
+            self.chat([{"role": "system", "content": "x"}])
+
+    def test_a_non_json_user_message_is_a_clear_script_error(self):
+        with self.assertRaisesRegex(FakeTransportScriptError, "not JSON"):
+            self.chat([{"role": "user", "content": "plain words"}])
 
 
 if __name__ == "__main__":

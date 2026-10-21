@@ -152,7 +152,7 @@ class LocalProviderVerificationIntegrationTests(unittest.TestCase):
                             for message in sent[2]['messages']))
         self.assertIn('separate conservative evidence verifier', sent[1]['messages'][0]['content'])
         self.assertIn('separate conservative evidence verifier', sent[3]['messages'][0]['content'])
-        self.assertEqual(transport.remaining, 0)
+        transport.assert_script_consumed(allow_responder=False)
         self.assertEqual(sent[1]['context_tokens'], 8192)
         self.assertIsNone(sent[0]['context_tokens'])
 
