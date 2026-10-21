@@ -60,6 +60,13 @@ tests/                         unit, integration, live opt-in, and browser gates
   languages, and prevents one chunk-heavy source from crowding out all others.
 - `answer_pipeline.py` separates ambiguity, safety, generation, claim support,
   citations, Evidence Confidence, and Fresh Tomato Score.
+- `retriever_cache.py` (#79) caches one `HybridRetriever` per active release + embedding index,
+  keyed by a hash of the verified active record and index embedding model/identity from the
+  request's `ensure_release()` plus the live embedding model identity (inspected each request). Built
+  once under a build lock (hits take only a short lookup lock); replaced only by a successful build,
+  so a failed install/re-index keeps the prior retriever. A hit re-runs `_validate_index()` at the
+  request's evaluation time, so time-dependent eligibility/coverage failures match a fresh build. The retriever holds the snapshot-aware clock,
+  read per `retrieve()`, so a cached one stays correct per request.
 - `snapshot_clock.py` (#67 snapshot mode) holds a per-request `SnapshotState` derived only
   from the verified release the request loads (`ensure_release()` result, the retriever's
   manifest in `ask`; no release I/O of its own) and wraps the app clock (`snapshot_aware_clock`)
