@@ -266,8 +266,6 @@ class VerifierChoiceTests(unittest.TestCase):
                 return draft()
             def repair_answer(self, **kwargs):
                 raise AssertionError('not needed')
-            def converse(self, **kwargs):
-                raise AssertionError('not needed')
 
         transport = script(FakeTransport(), checks(supported(), supported()))
         service = AnswerService(
@@ -457,13 +455,14 @@ class OpenAICompatibleRequestTests(unittest.TestCase):
 
         with patch.object(OpenAICompatibleTransport, '_request', fake_request):
             transport = OpenAICompatibleTransport('http://127.0.0.1:1234', timeout_seconds=1)
-            return call(TransportAnswerGenerator(fixed_transport(transport))), sent
+            self.source = fixed_transport(transport)
+            return call(TransportAnswerGenerator(self.source)), sent
 
     def test_social_conversation_uses_a_strict_schema(self):
-        from danish_rag.answer_pipeline import conversation_schema
+        from danish_rag.social_conversation import TransportSocialReplies, conversation_schema
         schema = conversation_schema()
         result, sent = self.run_with_replies(
-            lambda generator: generator.converse(
+            lambda generator: TransportSocialReplies(self.source).converse(
                 question='How are you?', configuration=provider_configuration(), schema=schema),
             [{'response': 'Fine.'}])
         self.assertEqual(result, {'response': 'Fine.'})
