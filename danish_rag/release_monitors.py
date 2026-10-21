@@ -45,7 +45,8 @@ from .privacy_boundary import (
 )
 from .provider_setup import ProviderConfiguration, save_provider_configuration
 from .retrieval import HybridRetriever
-from .runtime_policy import is_loopback_url, load_runtime_policy
+from .privacy_boundary import is_loopback_url
+from .runtime_policy import load_runtime_policy
 from .source_maintenance import build_publishable_knowledge_release
 from .supported_environment_monitor import (
     LiveEnvironmentWorkspace,

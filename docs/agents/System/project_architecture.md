@@ -50,7 +50,9 @@ tests/                         unit, integration, live opt-in, and browser gates
 
 - `local_model_transport.py` is the single seam for local model HTTP (Ollama and
   OpenAI-compatible adapters, loopback enforced, typed errors, scripted `FakeTransport`);
-  `runtime_probe.py` and `embedding_provider.py` run through it.
+  `runtime_probe.py`, `embedding_provider.py`, `provider_setup.py`, and
+  `retrieval_benchmark.py` run through it. `privacy_boundary.is_loopback_url` is the
+  single loopback definition.
 - `provider_setup.py`, `runtime_probe.py`, and `embedding_provider.py` keep
   provider capability and model identity contracts explicit.
 - `retrieval.py` verifies corpus/index compatibility, filters ineligible sources,

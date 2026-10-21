@@ -11,13 +11,13 @@ import resource
 import sqlite3
 import sys
 import time
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .local_model_transport import LocalModelTransport, ModelMissingError, OllamaTransport
+from .privacy_boundary import PrivacyBoundaryError
 from .runtime_policy import load_runtime_policy
 
 
@@ -102,42 +102,34 @@ class DenseIndexCompatibilityIdentity:
         ]
 
 
-class OllamaEmbeddingClient:
-    def __init__(self, endpoint: str, timeout_seconds: float = 60.0):
-        self.endpoint = endpoint.rstrip("/")
-        self.timeout_seconds = timeout_seconds
+class TransportEmbeddingClient:
+    """Benchmark embedding seam over the Local model transport (loopback only)."""
+
+    def __init__(self, transport: LocalModelTransport):
+        self.transport = transport
+        self.endpoint = transport.endpoint
+
+    @classmethod
+    def for_endpoint(cls, endpoint: str, timeout_seconds: float = 60.0) -> "TransportEmbeddingClient":
+        try:
+            return cls(OllamaTransport(endpoint, timeout_seconds=timeout_seconds))
+        except PrivacyBoundaryError as exc:
+            raise BenchmarkValidationError(
+                f"Embedding endpoint must be loopback. Detail: {exc}"
+            ) from exc
 
     def get_version(self) -> dict[str, Any]:
-        return self._request("GET", "/api/version")
+        return {"version": self.transport.version()}
 
     def show_model(self, model: str) -> dict[str, Any]:
         try:
-            return self._request("POST", "/api/show", {"model": model})
-        except urllib.error.HTTPError as exc:
-            if exc.code in {400, 404}:
-                raise FileNotFoundError(model) from exc
-            raise
+            return self.transport.show_model(model)
+        except ModelMissingError as exc:
+            raise FileNotFoundError(model) from exc
 
     def embed(self, model: str, text: str) -> dict[str, Any]:
-        return self._request("POST", "/api/embed", {"model": model, "input": text})
-
-    def _request(
-        self, method: str, path: str, payload: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        data = None
-        headers = {"Accept": "application/json"}
-        if payload is not None:
-            data = json.dumps(payload).encode("utf-8")
-            headers["Content-Type"] = "application/json"
-
-        request = urllib.request.Request(
-            f"{self.endpoint}{path}",
-            data=data,
-            headers=headers,
-            method=method,
-        )
-        with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-            return json.loads(response.read().decode("utf-8"))
+        vectors = self.transport.embed(model=model, texts=[text])
+        return {"embeddings": vectors}
 
 
 def load_benchmark_inputs(
@@ -278,7 +270,7 @@ def run_dense_retrieval_benchmark(
     endpoint = embedding_endpoint
     if client is None:
         endpoint = embedding_endpoint or policy["providers"]["initial"]["default_endpoint"]  # type: ignore[index]
-        client = OllamaEmbeddingClient(
+        client = TransportEmbeddingClient.for_endpoint(
             endpoint,
             timeout_seconds=timeout_seconds if timeout_seconds is not None else 60.0,
         )
@@ -397,7 +389,7 @@ def run_hybrid_retrieval_comparison(
         embedding_model = policy["models"]["embedding"]["initial_supported"]
     if client is None:
         endpoint = embedding_endpoint or policy["providers"]["initial"]["default_endpoint"]
-        client = OllamaEmbeddingClient(
+        client = TransportEmbeddingClient.for_endpoint(
             endpoint,
             timeout_seconds=timeout_seconds if timeout_seconds is not None else 60.0,
         )
@@ -655,7 +647,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.mode in {"dense", "compare"}:
             policy = load_runtime_policy(args.policy)
             endpoint = args.embedding_endpoint or policy["providers"]["initial"]["default_endpoint"]
-            client = OllamaEmbeddingClient(endpoint, timeout_seconds=args.timeout)
+            client = TransportEmbeddingClient.for_endpoint(endpoint, timeout_seconds=args.timeout)
         if args.mode == "compare":
             result = run_hybrid_retrieval_comparison(
                 args.corpus,
