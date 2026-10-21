@@ -56,6 +56,10 @@ _Avoid_: Model confidence, accuracy score, certainty
 A user-visible assessment of how recently material sources were checked and whether their approved content remains unchanged and healthy. An answer inherits the lowest score among its material sources.
 _Avoid_: Evidence confidence, model confidence, freshness confidence
 
+**Trust indicators**:
+The user-visible pair of Evidence confidence and Fresh Tomato Score attached to an answer, derived from the health of its material sources at an evaluation time.
+_Avoid_: Trust score, quality score
+
 **Evidence-bounded answer**:
 An answer limited to claims supported by retrieved approved official sources; unsupported portions are explicitly declined.
 _Avoid_: Best-effort answer, model-knowledge answer
