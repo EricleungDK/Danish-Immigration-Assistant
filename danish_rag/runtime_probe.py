@@ -19,7 +19,8 @@ from .local_model_transport import (
     ModelMissingError,
     OllamaTransport,
 )
-from .runtime_policy import RuntimePolicy, is_loopback_url, load_runtime_policy
+from .privacy_boundary import is_loopback_url
+from .runtime_policy import RuntimePolicy, load_runtime_policy
 
 
 class ProbeExitStatus(IntEnum):
@@ -88,14 +89,10 @@ class ProbeResult:
         return asdict(self)
 
 
-# provider_setup still imports this name; the Ollama transport adapter is the client.
-OllamaClient = OllamaTransport
-
-
 def run_runtime_probe(
     policy: RuntimePolicy,
     *,
-    client: LocalModelTransport | None = None,
+    transport: LocalModelTransport | None = None,
     command: list[str] | None = None,
     timeout_seconds: float = 60.0,
 ) -> ProbeResult:
@@ -128,8 +125,8 @@ def run_runtime_probe(
         )
 
     try:
-        client = client or OllamaTransport(endpoint, timeout_seconds=timeout_seconds)
-        version = _timed(timings, "service_version", client.version)
+        transport = transport or OllamaTransport(endpoint, timeout_seconds=timeout_seconds)
+        version = _timed(timings, "service_version", transport.version)
     except Exception as exc:
         return _finish(
             result,
@@ -150,7 +147,7 @@ def run_runtime_probe(
         )
 
     try:
-        model_payload = _timed(timings, "model_inspection", client.show_model, model_name)
+        model_payload = _timed(timings, "model_inspection", transport.show_model, model_name)
     except ModelMissingError:
         return _finish(
             result,
@@ -211,7 +208,7 @@ def run_runtime_probe(
         chat_result = _timed(
             timings,
             "structured_completion",
-            client.chat,
+            transport.chat,
             model=model_name,
             schema=schema,
             messages=messages,
