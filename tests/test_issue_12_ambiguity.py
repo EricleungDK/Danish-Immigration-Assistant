@@ -6,13 +6,18 @@ from typing import Any
 
 import httpx
 
-from danish_rag.answer_pipeline import AnswerService, answer_schema, LexicalAnswerVerifier
+from danish_rag.answer_pipeline import answer_schema, fixed_transport
 from danish_rag.conversation_store import ConversationStore
 from danish_rag.evaluation_quality_bar import load_evaluation_cases
 from danish_rag.knowledge_release import install_minimal_knowledge_release
+from danish_rag.controlled_model import ControlledModel, GenerationCall
 from danish_rag.local_app import create_app
+from danish_rag.local_model_transport import FakeTransport
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
-from danish_rag.social_conversation import SocialConversation, classify_conversation_turn
+from danish_rag.social_conversation import (
+    SocialConversation, TransportSocialReplies, classify_conversation_turn, conversation_schema,
+)
+from tests.answer_transport import lexical_service
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.evaluation_time import fixed_clock
 
@@ -62,73 +67,38 @@ class CountingRetriever:
         ]
 
 
-def social_reply(generator, question, turns=None):
+def social_reply(model, question, turns=None):
     """The application's routing for a non-domain turn: classify, then social conversation."""
 
     kind = classify_conversation_turn(question, conversation_turns=turns)
     assert kind in ("greeting", "social"), kind
-    return SocialConversation(generator).reply(
+    return SocialConversation(
+        TransportSocialReplies(fixed_transport(FakeTransport(responder=model)))).reply(
         question, provider_configuration(), kind=kind, corpus_identity="fixture-corpus")
 
 
-class FixtureAnswerGenerator:
-    def __init__(
-        self,
-        *,
-        conversation_response: str = (
-            "Why did the tomato blush? It saw the salad dressing."
-        ),
-    ) -> None:
-        self.calls: list[dict[str, Any]] = []
-        self.conversation_calls: list[dict[str, Any]] = []
-        self.conversation_response = conversation_response
+JOKE = "Why did the tomato blush? It saw the salad dressing."
 
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        self.calls.append(
-            {
-                "question": question,
-                "normalized_question": normalized_question,
-                "evidence_ids": [item["document_id"] for item in evidence],
-                "schema": schema,
-            }
-        )
-        citation_id = evidence[0]["citation_id"]
-        return {
-            "summary": "The official source supports a permanent-residence language answer.",
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": (
-                        "Permanent opholdstilladelse can require documentation for "
-                        "bestået Prøve i Dansk 2 or an equivalent Danish test."
-                    ),
-                    "citation_ids": [citation_id],
-                }
-            ],
-        }
 
-    def converse(
-        self,
-        *,
-        question: str,
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        self.conversation_calls.append(
+def fixture_draft(call: GenerationCall) -> dict[str, Any]:
+    citation_id = call.evidence[0]["citation_id"]
+    return {
+        "summary": "The official source supports a permanent-residence language answer.",
+        "sections": [
             {
-                "question": question,
-                "schema": schema,
+                "kind": "official_fact",
+                "text": (
+                    "Permanent opholdstilladelse can require documentation for "
+                    "bestået Prøve i Dansk 2 or an equivalent Danish test."
+                ),
+                "citation_ids": [citation_id],
             }
-        )
-        return {"response": self.conversation_response}
+        ],
+    }
+
+
+def controlled_model(conversation_response: str = JOKE) -> ControlledModel:
+    return ControlledModel(draft=fixture_draft, conversation_response=conversation_response)
 
 
 class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
@@ -150,9 +120,9 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         for question in questions:
             with self.subTest(question=question):
                 retriever = CountingRetriever()
-                generator = FixtureAnswerGenerator()
+                model = controlled_model()
 
-                result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
+                result = lexical_service(FakeTransport(responder=model), retriever).answer(
                     question,
                     provider_configuration(),
                 )
@@ -161,12 +131,11 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("Which application", result.answer["summary"])
                 self.assertIn("application purpose", result.answer["sections"][0]["text"])
                 self.assertEqual(retriever.calls, [])
-                self.assertEqual(generator.calls, [])
+                self.assertEqual(model.calls, [])
 
     def test_clarification_turn_trust_indicators_are_unchanged(self):
-        result = AnswerService(
-            verifier=LexicalAnswerVerifier(),
-            retriever=CountingRetriever(), generator=FixtureAnswerGenerator(), clock=fixed_clock
+        result = lexical_service(
+            FakeTransport(responder=controlled_model()), CountingRetriever()
         ).answer("Which Danish test do I need for my application?", provider_configuration())
 
         self.assertEqual(
@@ -185,20 +154,20 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         )
 
     def test_greeting_is_answered_locally(self):
-        generator = FixtureAnswerGenerator()
+        model = controlled_model()
 
-        result = social_reply(generator, "hi")
+        result = social_reply(model, "hi")
 
         self.assertEqual(result.answer["response_kind"], "conversation")
         self.assertIs(result.answer["generation_used"], False)
         self.assertIn("Hello", result.answer["summary"])
         self.assertEqual(result.answer["citations"], [])
-        self.assertEqual(generator.conversation_calls, [])
+        self.assertEqual(model.conversation_calls, [])
 
     def test_non_factual_social_turn_uses_local_model(self):
-        generator = FixtureAnswerGenerator()
+        model = controlled_model()
 
-        result = social_reply(generator, "Tell me a short joke.")
+        result = social_reply(model, "Tell me a short joke.")
 
         self.assertEqual(result.answer["response_kind"], "conversation")
         self.assertIs(result.answer["generation_used"], True)
@@ -208,24 +177,12 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(result.answer["citations"], [])
         self.assertEqual(
-            generator.conversation_calls,
-            [
-                {
-                    "question": "Tell me a short joke.",
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "response": {"type": "string", "minLength": 1},
-                        },
-                        "required": ["response"],
-                        "additionalProperties": False,
-                    },
-                }
-            ],
+            [(call.question, call.schema) for call in model.conversation_calls],
+            [("Tell me a short joke.", conversation_schema())],
         )
 
     def test_unrelated_factual_turn_uses_bounded_model_mode(self):
-        generator = FixtureAnswerGenerator(
+        model = controlled_model(
             conversation_response=(
                 "I can chat briefly, but factual answers are limited to the installed "
                 "corpus of approved official sources."
@@ -233,7 +190,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         )
 
         result = social_reply(
-            generator,
+            model,
             "What is the capital of France?",
             [{"question": "What is PD2?", "answer": {"response_kind": "answer"}}],
         )
@@ -242,11 +199,11 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(result.answer["generation_used"], True)
         self.assertIn("factual answers are limited", result.answer["summary"])
         self.assertEqual(result.answer["citations"], [])
-        self.assertEqual(len(generator.conversation_calls), 1)
+        self.assertEqual(len(model.conversation_calls), 1)
 
     async def test_greeting_renders_as_conversation_without_evidence_indicators(self):
-        generator = FixtureAnswerGenerator()
-        client = self.make_client(generator)
+        model = controlled_model()
+        client = self.make_client(model)
 
         response = await self.post_question(client, "hi")
 
@@ -254,8 +211,8 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Conversation", response.text)
         self.assertIn("Handled locally without retrieval or model generation", response.text)
         self.assertNotIn("Evidence Confidence", response.text)
-        self.assertEqual(generator.calls, [])
-        self.assertEqual(generator.conversation_calls, [])
+        self.assertEqual(model.calls, [])
+        self.assertEqual(model.conversation_calls, [])
 
         conversations = ConversationStore(
             self.data_dir / "conversations.sqlite3"
@@ -269,9 +226,9 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
 
     def test_low_risk_ambiguity_answers_with_visible_assumption(self):
         retriever = CountingRetriever()
-        generator = FixtureAnswerGenerator()
+        model = controlled_model()
 
-        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
+        result = lexical_service(FakeTransport(responder=model), retriever).answer(
             "What is PD3?",
             provider_configuration(),
         )
@@ -289,33 +246,33 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(len(retriever.calls), 1)
         self.assertIn(result.answer["assumptions"][0], retriever.calls[0])
-        self.assertEqual(generator.calls[0]["question"], retriever.calls[0])
+        self.assertEqual(model.calls[0].question, retriever.calls[0])
         self.assertEqual(
-            generator.calls[0]["schema"],
-            answer_schema(["di-rag-doc-permanent-residence-language"]),
+            model.calls[0].schema,
+            answer_schema(["e1"]),
         )
 
     def test_definition_does_not_override_consequential_application_ambiguity(self):
         retriever = CountingRetriever()
-        generator = FixtureAnswerGenerator()
-        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
+        model = controlled_model()
+        result = lexical_service(FakeTransport(responder=model), retriever).answer(
             "What is PD3 for permanent residence or citizenship?",
             provider_configuration(),
         )
         self.assertEqual(result.answer["response_kind"], "clarification")
         self.assertEqual(retriever.calls, [])
-        self.assertEqual(generator.calls, [])
+        self.assertEqual(model.calls, [])
 
     def test_explicit_registration_definition_does_not_gain_residence_context(self):
         retriever = CountingRetriever()
-        generator = FixtureAnswerGenerator()
+        model = controlled_model()
         question = "What is PD3 registration?"
-        result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
+        result = lexical_service(FakeTransport(responder=model), retriever).answer(
             question, provider_configuration(),
         )
         self.assertEqual(result.answer["response_kind"], "answer")
         self.assertEqual(retriever.calls, [question])
-        self.assertEqual(generator.calls[0]["question"], question)
+        self.assertEqual(model.calls[0].question, question)
 
     def test_application_specific_definition_without_purpose_needs_clarification(self):
         for question in (
@@ -326,13 +283,13 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         ):
             with self.subTest(question=question):
                 retriever = CountingRetriever()
-                generator = FixtureAnswerGenerator()
-                result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
+                model = controlled_model()
+                result = lexical_service(FakeTransport(responder=model), retriever).answer(
                     question, provider_configuration(),
                 )
                 self.assertEqual(result.answer["response_kind"], "clarification")
                 self.assertEqual(retriever.calls, [])
-                self.assertEqual(generator.calls, [])
+                self.assertEqual(model.calls, [])
 
     def test_other_explicit_definition_purpose_does_not_gain_residence_context(self):
         for question in (
@@ -342,17 +299,17 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         ):
             with self.subTest(question=question):
                 retriever = CountingRetriever()
-                generator = FixtureAnswerGenerator()
-                result = AnswerService(verifier=LexicalAnswerVerifier(), retriever=retriever, generator=generator, clock=fixed_clock).answer(
+                model = controlled_model()
+                result = lexical_service(FakeTransport(responder=model), retriever).answer(
                     question, provider_configuration(),
                 )
                 self.assertEqual(result.answer["response_kind"], "answer")
                 self.assertEqual(retriever.calls, [question])
-                self.assertEqual(generator.calls[0]["question"], question)
+                self.assertEqual(model.calls[0].question, question)
 
     async def test_clarification_turn_stays_in_conversation_and_feeds_next_question(self):
-        generator = FixtureAnswerGenerator()
-        client = self.make_client(generator)
+        model = controlled_model()
+        client = self.make_client(model)
 
         first = await self.post_question(
             client,
@@ -362,7 +319,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first.status_code, 200)
         self.assertIn("Clarification needed", first.text)
         self.assertIn("Which application", first.text)
-        self.assertEqual(generator.calls, [])
+        self.assertEqual(model.calls, [])
         conversation_id = self.conversation_id_from(first.text)
 
         second = await self.post_question(
@@ -372,8 +329,8 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(second.status_code, 200)
-        self.assertEqual(len(generator.calls), 1)
-        normalized = generator.calls[0]["normalized_question"].casefold()
+        self.assertEqual(len(model.calls), 1)
+        normalized = model.calls[0].normalized_question.casefold()
         self.assertIn("which danish test do i need for my application", normalized)
         self.assertIn("permanent residence", normalized)
         self.assertIn("Turn 1", second.text)
@@ -401,7 +358,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue({"answer", "clarify", "refuse"}.issubset(expected_behaviors))
 
-    def make_client(self, answer_generator: FixtureAnswerGenerator):
+    def make_client(self, model: ControlledModel):
         install_minimal_knowledge_release(
             self.data_dir,
             embedding_provider=self.embedding_provider, clock=fixed_clock,
@@ -409,7 +366,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         app = create_app(
             config_path=self.config_path,
             data_dir=self.data_dir,
-            answer_generator=answer_generator,
+            transport=FakeTransport(responder=model),
             embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         client = httpx.AsyncClient(

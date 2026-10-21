@@ -193,7 +193,7 @@ class RetrieverCacheAppTests(sm.AppTestCase):
         self.assertEqual(fresh.status_code, 200)
         self.assertNotIn("Fresh Tomato Score: High", blocked.text)
         self.assertIn("Fresh Tomato Score: High", again.text)
-        self.assertEqual(self.generator.clock_seen, [sm.FIXED_TIME, sm.FIXED_TIME])
+        self.assertEqual(self.probe.clock_seen, [sm.FIXED_TIME, sm.FIXED_TIME])
 
     async def test_cached_retriever_under_a_bundled_snapshot_evaluates_at_the_snapshot(self):
         client = self.make_client()
@@ -203,7 +203,7 @@ class RetrieverCacheAppTests(sm.AppTestCase):
         self.assertEqual(len(counter.built), 1)
         self.assertIn("Fresh Tomato Score: High", first.text)
         self.assertIn("Fresh Tomato Score: High", second.text)
-        self.assertEqual(self.generator.clock_seen, [sm.JULY_SNAPSHOT] * 2)
+        self.assertEqual(self.probe.clock_seen, [sm.JULY_SNAPSHOT] * 2)
 
     async def test_request_never_gets_a_cached_retriever_for_another_release(self):
         client = self.make_client()
@@ -213,7 +213,7 @@ class RetrieverCacheAppTests(sm.AppTestCase):
             with sm.late_wall_clock():
                 response = await self.ask(client)
         self.assert_cited_answer(response, "kr-2026-09-05.1")
-        self.assertEqual(self.generator.clock_seen[-1], sm.SEPTEMBER_SNAPSHOT)
+        self.assertEqual(self.probe.clock_seen[-1], sm.SEPTEMBER_SNAPSHOT)
 
 
 class RetrieverCacheUnitTests(unittest.TestCase):

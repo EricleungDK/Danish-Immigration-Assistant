@@ -7,41 +7,34 @@ from unittest.mock import patch
 
 import httpx
 
+from danish_rag.controlled_model import ControlledModel, GenerationCall
 from danish_rag.local_app import create_app
+from danish_rag.local_model_transport import FakeTransport
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.evaluation_time import fixed_clock
 
 
-class FixtureAnswerGenerator:
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        citation_id = evidence[0]["citation_id"]
-        return {
-            "summary": f"Supported answer for {question}",
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": (
-                        "Permanent opholdstilladelse can require documentation for "
-                        "bestået Prøve i Dansk 2 or an equivalent Danish test."
-                    ),
-                    "citation_ids": [citation_id],
-                },
-                {
-                    "kind": "interpretation",
-                    "text": "Use the cited official page to verify the requirement.",
-                    "citation_ids": [citation_id],
-                },
-            ],
-        }
+def fixture_draft(call: GenerationCall) -> dict[str, Any]:
+    citation_id = call.evidence[0]["citation_id"]
+    return {
+        "summary": f"Supported answer for {call.question}",
+        "sections": [
+            {
+                "kind": "official_fact",
+                "text": (
+                    "Permanent opholdstilladelse can require documentation for "
+                    "bestået Prøve i Dansk 2 or an equivalent Danish test."
+                ),
+                "citation_ids": [citation_id],
+            },
+            {
+                "kind": "interpretation",
+                "text": "Use the cited official page to verify the requirement.",
+                "citation_ids": [citation_id],
+            },
+        ],
+    }
 
 
 class Issue16ConversationRecordControlTests(unittest.IsolatedAsyncioTestCase):
@@ -69,7 +62,7 @@ class Issue16ConversationRecordControlTests(unittest.IsolatedAsyncioTestCase):
         app = create_app(
             config_path=self.config_path,
             data_dir=self.data_dir,
-            answer_generator=FixtureAnswerGenerator(),
+            transport=FakeTransport(responder=ControlledModel(draft=fixture_draft)),
             embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         client = httpx.AsyncClient(

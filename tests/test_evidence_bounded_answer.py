@@ -14,7 +14,6 @@ from danish_rag.answer_pipeline import (
     AnswerPipelineError,
     AnswerService,
     AnswerValidationError,
-    LexicalAnswerVerifier,
     ModelAnswerVerifier,
     TransportAnswerGenerator,
     fixed_transport,
@@ -286,12 +285,6 @@ class VerifierChoiceTests(unittest.TestCase):
                 verifier=ModelAnswerVerifier(fixed_transport(FakeTransport())), clock=fixed_clock)
 
     def test_service_cannot_be_built_without_an_explicit_verifier(self):
-        class GenerateOnly:
-            def generate(self, **kwargs):
-                return draft(summary=CLAIM)
-
-        with self.assertRaises(TypeError):
-            AnswerService(retriever=self.retriever(), generator=GenerateOnly(), clock=fixed_clock)
         with self.assertRaises(TypeError):
             AnswerService(
                 retriever=self.retriever(),
@@ -303,22 +296,15 @@ class VerifierChoiceTests(unittest.TestCase):
             def prepare(self, draft):
                 return draft
 
-        class GenerateOnly:
-            def generate(self, **kwargs):
-                return draft()
-
         with self.assertRaisesRegex(ValueError, 'repairs_rejected_drafts'):
-            AnswerService(retriever=self.retriever(), generator=GenerateOnly(),
-                          verifier=Incomplete(), clock=fixed_clock)
+            AnswerService(
+                retriever=self.retriever(),
+                generator=TransportAnswerGenerator(fixed_transport(FakeTransport())),
+                verifier=Incomplete(), clock=fixed_clock)
 
     def test_explicit_lexical_verifier_serves_controlled_generators(self):
-        class GenerateOnly:
-            def generate(self, **kwargs):
-                return draft(summary=CLAIM)
-
-        result = ask(AnswerService(
-            retriever=self.retriever(), generator=GenerateOnly(),
-            verifier=LexicalAnswerVerifier(), clock=fixed_clock))
+        transport = script(FakeTransport(), wire(draft(summary=CLAIM), ALIASES))
+        result = ask(lexical_service(transport, self.retriever()))
         self.assertEqual(result.answer['sections'][0]['text'], CLAIM)
 
     def test_both_verifiers_accept_the_same_evidence_with_the_same_answer(self):

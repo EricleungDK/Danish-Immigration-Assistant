@@ -72,18 +72,6 @@ PERMANENT_RESIDENCE_TOPIC_TERMS = (
 )
 
 
-class AnswerGenerator(Protocol):
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        ...
-
 @dataclass(frozen=True)
 class AnswerResult:
     question: str
@@ -611,7 +599,7 @@ class EvidenceBoundedAnswer:
     work; this class never looks at what kind of generator or verifier it holds.
     """
 
-    def __init__(self, *, generator: AnswerGenerator, verifier: AnswerVerifier) -> None:
+    def __init__(self, *, generator: TransportAnswerGenerator, verifier: AnswerVerifier) -> None:
         if not isinstance(getattr(verifier, "repairs_rejected_drafts", None), bool):
             raise ValueError("An answer verifier must declare repairs_rejected_drafts (True or False).")
         if verifier.repairs_rejected_drafts and not callable(getattr(generator, "repair_answer", None)):
@@ -655,7 +643,7 @@ class AnswerService:
         self,
         *,
         retriever: Any,
-        generator: AnswerGenerator,
+        generator: TransportAnswerGenerator,
         verifier: AnswerVerifier,
         clock: Callable[[], datetime] = system_utc_clock,
     ) -> None:

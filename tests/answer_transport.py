@@ -17,6 +17,7 @@ from danish_rag.answer_pipeline import (
     TransportAnswerGenerator,
     fixed_transport,
 )
+from danish_rag.controlled_model import CannedAnswer, ControlledModel
 from danish_rag.local_model_transport import FakeTransport
 from tests.evaluation_time import fixed_clock
 
@@ -64,17 +65,56 @@ def lexical_service(transport: FakeTransport, retriever: Any, *, clock=fixed_clo
     )
 
 
+def model_generator(model: Any) -> TransportAnswerGenerator:
+    """The production generator over a fake served by a controlled model."""
+
+    return TransportAnswerGenerator(fixed_transport(FakeTransport(responder=model)))
+
+
 def requests(transport: FakeTransport) -> list[dict[str, Any]]:
     return [recorded.params for recorded in transport.requests]
 
 
-class ScriptedGenerator(TransportAnswerGenerator):
-    """A transport generator over its own scripted fake (generation-level tests)."""
+def scripted_generator(*responses: Any) -> tuple[TransportAnswerGenerator, FakeTransport]:
+    """The production generator over its own scripted fake (generation-level tests)."""
 
-    def __init__(self, *responses: Any) -> None:
-        self.transport = script(FakeTransport(), *responses)
-        super().__init__(fixed_transport(self.transport))
+    transport = script(FakeTransport(), *responses)
+    return TransportAnswerGenerator(fixed_transport(transport)), transport
+
+
+class _EvidenceSpy:
+    """Wraps a retriever and remembers the evidence it returned last."""
+
+    def __init__(self, retriever: Any) -> None:
+        self._retriever = retriever
+        self.last_evidence: list[dict[str, Any]] = []
 
     @property
-    def requests(self) -> list[dict[str, Any]]:
-        return requests(self.transport)
+    def manifest(self) -> Any:
+        return self._retriever.manifest
+
+    def retrieve(self, question: str) -> list[dict[str, Any]]:
+        self.last_evidence = self._retriever.retrieve(question)
+        return self.last_evidence
+
+
+class CannedModel:
+    """A fixed answer payload, written with the retriever's own citation ids.
+
+    `service(retriever)` runs the production generator over the shared fake with the
+    deterministic lexical guard; `calls` records what the model was asked.
+    """
+
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self.payload = payload
+        self._canned: CannedAnswer | None = None
+
+    def service(self, retriever: Any, *, clock=fixed_clock) -> AnswerService:
+        spy = _EvidenceSpy(retriever)
+        self._canned = CannedAnswer(self.payload, lambda question: spy.last_evidence)
+        return lexical_service(
+            FakeTransport(responder=ControlledModel(draft=self._canned)), spy, clock=clock)
+
+    @property
+    def calls(self) -> list[dict[str, Any]]:
+        return self._canned.calls if self._canned else []

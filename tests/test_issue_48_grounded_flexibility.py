@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from danish_rag.answer_pipeline import AnswerResult, LexicalAnswerVerifier
+from danish_rag.controlled_model import ControlledModel
 from danish_rag.final_answer_evaluation import (
     AnswerServiceCaseRunner,
     CaseExecution,
@@ -16,6 +17,7 @@ from danish_rag.grounded_flexibility_evaluation import (
 from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.provider_setup import ProviderConfiguration
 from danish_rag.retrieval import HybridRetriever
+from tests.answer_transport import model_generator
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.source_freshness_fixture import review_clock
 
@@ -27,40 +29,27 @@ DATASET_PATH = (
 MACHINE_REPORT_PATH = ROOT / "docs" / "progress" / "issue-48-grounded-flexibility.json"
 
 
-class GroundedFlexibilityAnswerGenerator:
-    """Controlled external-provider boundary scoped to the evaluated facts."""
+EVALUATED_TITLES = {
+    "Permanent residence language requirements",
+    "Tilmeldingsfrister og prøvedatoer",
+}
 
-    evaluated_document_ids = {
-        "di-rag-doc-permanent-residence-language",
-        "di-rag-doc-registration-deadlines-2026",
+
+def grounded_flexibility_draft(call):
+    """Controlled model scoped to the evaluated facts."""
+
+    material_evidence = [item for item in call.evidence if item["title"] in EVALUATED_TITLES]
+    return {
+        "summary": "The approved material sources support the facts below.",
+        "sections": [
+            {
+                "kind": "official_fact",
+                "text": item["content"],
+                "citation_ids": [item["citation_id"]],
+            }
+            for item in material_evidence
+        ],
     }
-
-    def generate(
-        self,
-        *,
-        question,
-        normalized_question,
-        evidence,
-        configuration,
-        schema,
-    ):
-        del question, normalized_question, configuration, schema
-        material_evidence = [
-            item
-            for item in evidence
-            if item["document_id"] in self.evaluated_document_ids
-        ]
-        return {
-            "summary": "The approved material sources support the facts below.",
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": item["content"],
-                    "citation_ids": [item["citation_id"]],
-                }
-                for item in material_evidence
-            ],
-        }
 
 
 def build_production_answer_runner(data_dir):
@@ -74,7 +63,7 @@ def build_production_answer_runner(data_dir):
             data_dir,
             embedding_provider=embedding_provider, clock=review_clock,
         ),
-        generator=GroundedFlexibilityAnswerGenerator(),
+        generator=model_generator(ControlledModel(draft=grounded_flexibility_draft)),
         verifier=LexicalAnswerVerifier(),
         configuration=ProviderConfiguration(
             provider_id="controlled",

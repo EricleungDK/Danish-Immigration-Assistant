@@ -15,7 +15,9 @@ from danish_rag.knowledge_release import (
     install_knowledge_release,
     install_minimal_knowledge_release,
 )
+from danish_rag.controlled_model import ControlledModel, GenerationCall
 from danish_rag.local_app import create_app
+from danish_rag.local_model_transport import FakeTransport
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
 from danish_rag.release_trust import sign_manifest
 from danish_rag.retrieval import HybridRetriever
@@ -25,31 +27,20 @@ from tests.release_trust_fixture import create_test_release_trust_fixture
 from tests.evaluation_time import fixed_clock
 
 
-class FixtureAnswerGenerator:
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        citation_id = evidence[0]["citation_id"]
-        release_id = evidence[0]["knowledge_release_id"]
-        return {
-            "summary": f"Supported by {release_id}",
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": (
-                        "Permanent opholdstilladelse can require documented Danish "
-                        "language evidence."
-                    ),
-                    "citation_ids": [citation_id],
-                }
-            ],
-        }
+def fixture_draft(call: GenerationCall) -> dict[str, Any]:
+    return {
+        "summary": "Supported by the installed knowledge release.",
+        "sections": [
+            {
+                "kind": "official_fact",
+                "text": (
+                    "Permanent opholdstilladelse can require documented Danish "
+                    "language evidence."
+                ),
+                "citation_ids": [call.evidence[0]["citation_id"]],
+            }
+        ],
+    }
 
 
 class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
@@ -295,7 +286,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
         app = create_app(
             config_path=self.config_path,
             data_dir=self.data_dir,
-            answer_generator=FixtureAnswerGenerator(),
+            transport=FakeTransport(responder=ControlledModel(draft=fixture_draft)),
             embedding_provider=self.embedding_provider,
             trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )

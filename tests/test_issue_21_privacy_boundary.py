@@ -15,6 +15,8 @@ from danish_rag.answer_pipeline import (
     answer_schema,
     provider_transport,
 )
+from danish_rag.controlled_model import ControlledModel, GenerationCall
+from danish_rag.local_model_transport import FakeTransport
 from danish_rag.knowledge_release import (
     BUNDLED_MINIMAL_RELEASE,
     active_corpus_summary,
@@ -57,46 +59,26 @@ class NetworkObserver:
         raise AssertionError(f"Unexpected network request during local workflow: {url}")
 
 
-class FixtureAnswerGenerator:
-    def __init__(self) -> None:
-        self.calls: list[dict[str, Any]] = []
-
-    def generate(
-        self,
-        *,
-        question: str,
-        normalized_question: str,
-        evidence: list[dict[str, Any]],
-        configuration: ProviderConfiguration,
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        self.calls.append(
+def fixture_draft(call: GenerationCall) -> dict[str, Any]:
+    citation_id = call.evidence[0]["citation_id"]
+    return {
+        "summary": "The official source supports a Danish language requirement answer.",
+        "sections": [
             {
-                "question": question,
-                "normalized_question": normalized_question,
-                "evidence_ids": [item["citation_id"] for item in evidence],
-                "schema": schema,
-            }
-        )
-        citation_id = evidence[0]["citation_id"]
-        return {
-            "summary": "The official source supports a Danish language requirement answer.",
-            "sections": [
-                {
-                    "kind": "official_fact",
-                    "text": (
-                        "Permanent opholdstilladelse can require documentation for "
-                        "passed Prøve i Dansk 2 or an equivalent Danish test."
-                    ),
-                    "citation_ids": [citation_id],
-                },
-                {
-                    "kind": "interpretation",
-                    "text": "Use the cited official source to verify the exact requirement.",
-                    "citation_ids": [citation_id],
-                },
-            ],
-        }
+                "kind": "official_fact",
+                "text": (
+                    "Permanent opholdstilladelse can require documentation for "
+                    "passed Prøve i Dansk 2 or an equivalent Danish test."
+                ),
+                "citation_ids": [citation_id],
+            },
+            {
+                "kind": "interpretation",
+                "text": "Use the cited official source to verify the exact requirement.",
+                "citation_ids": [citation_id],
+            },
+        ],
+    }
 
 
 class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
@@ -191,11 +173,11 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_observed_user_workflows_make_no_network_requests(self):
         self.make_newer_release()
-        generator = FixtureAnswerGenerator()
+        model = ControlledModel(draft=fixture_draft)
         app = create_app(
             config_path=self.config_path,
             data_dir=self.data_dir,
-            answer_generator=generator,
+            transport=FakeTransport(responder=model),
             release_catalog_dir=self.release_catalog,
             embedding_provider=self.embedding_provider,
             trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
@@ -262,15 +244,17 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(retrieval_results)
         self.assertEqual(home.status_code, 200)
         self.assertEqual(answer.status_code, 200)
+        aliases = model.calls[0].schema["properties"]["sections"]["items"]["properties"][
+            "citation_ids"]["items"]["enum"]
         self.assertEqual(
-            generator.calls[0]["schema"],
-            answer_schema(
-                [
-                    "di-rag-doc-permanent-residence-language",
-                    "di-rag-doc-equivalent-tests-language-test-2",
-                    "di-rag-doc-equivalent-tests-language-test-3",
-                ]
-            ),
+            sorted(alias for alias in aliases if alias.startswith("e")), ["e1", "e2", "e3"])
+        self.assertEqual(
+            {item["title"] for item in model.calls[0].evidence},
+            {
+                "Permanent residence language requirements",
+                "Tests equivalent to or higher than Danish language test 2",
+                "Tests equivalent to or higher than Danish language test 3",
+            },
         )
         self.assertIn("Inspect evidence", reopened.text)
         self.assertEqual(one_export.status_code, 200)
