@@ -6,6 +6,7 @@ import argparse
 import json
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse
@@ -23,6 +24,7 @@ from .answer_pipeline import (
 )
 from .conversation_store import ConversationStore
 from .embedding_provider import EmbeddingProvider
+from .evidence_integrity import system_utc_clock
 from .github_release_client import ArtifactDownloadApproval, GitHubReleaseClient
 from .knowledge_release import (
     APPLICATION_VERSION,
@@ -65,6 +67,7 @@ from .runtime_policy import load_runtime_policy
 from .snapshot_clock import (
     SnapshotState,
     current_snapshot_state,
+    snapshot_aware_clock,
     snapshot_clock,
 )
 
@@ -99,8 +102,12 @@ def create_app(
     ),
     update_check_clock: Callable[[], float] = time.monotonic,
     initial_release_dir: str | Path | Callable[..., str | Path] = BUNDLED_MINIMAL_RELEASE,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> FastAPI:
     app = FastAPI(title="Danish Immigration RAG")
+    # Freshness is judged at this time (a bundled release's snapshot time inside a request
+    # that uses one); record and install timestamps stay on the real clock.
+    request_clock = snapshot_aware_clock(clock)
     app.mount("/static", StaticFiles(directory=WEB_ROOT / "static"), name="static")
 
     resolved_config_path = Path(config_path) if config_path else default_config_path()
@@ -135,6 +142,7 @@ def create_app(
             release_dir=app.state.initial_release_dir,
             embedding_provider=embedding_provider,
             trust_root_path=resolved_trust_root_path,
+            clock=clock,
         )
 
     def ensure_release() -> dict[str, Any]:
@@ -293,6 +301,7 @@ def create_app(
                 trust_root_path=resolved_trust_root_path,
                 expected_release_id=release_id,
                 progress_callback=record_installation_progress,
+                clock=clock,
             )
             active_release_id = _active_release_id(
                 resolved_data_dir,
@@ -1113,6 +1122,7 @@ def create_app(
                     resolved_data_dir,
                     embedding_provider=embedding_provider,
                     trust_root_path=resolved_trust_root_path,
+                    clock=request_clock,
                 )
             except Exception as exc:
                 snapshot_state.mark_unavailable(exc)
@@ -1125,6 +1135,7 @@ def create_app(
             result = AnswerService(
                 retriever=retriever,
                 generator=generator,
+                clock=request_clock,
             ).answer(
                 question,
                 configuration,

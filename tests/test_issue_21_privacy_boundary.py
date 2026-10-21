@@ -31,6 +31,7 @@ from danish_rag.runtime_policy import load_runtime_policy
 from danish_rag.source_maintenance import build_publishable_knowledge_release
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.release_trust_fixture import create_test_release_trust_fixture
+from tests.evaluation_time import fixed_clock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -196,7 +197,7 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
             answer_generator=generator,
             release_catalog_dir=self.release_catalog,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -207,11 +208,11 @@ class Issue21PrivacyBoundaryTests(unittest.IsolatedAsyncioTestCase):
         with NetworkObserver() as observer:
             installation = install_minimal_knowledge_release(
                 self.data_dir,
-                embedding_provider=self.embedding_provider,
+                embedding_provider=self.embedding_provider, clock=fixed_clock,
             )
             retrieval_results = HybridRetriever.from_data_dir(
                 self.data_dir,
-                embedding_provider=self.embedding_provider,
+                embedding_provider=self.embedding_provider, clock=fixed_clock,
             ).retrieve("What Danish test do I need for permanent residence?")
             home = await client.get("/")
             answer = await client.post(

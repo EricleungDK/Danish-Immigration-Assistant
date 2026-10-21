@@ -9,6 +9,8 @@ import re
 import sqlite3
 import threading
 from collections import OrderedDict
+from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +32,7 @@ from .knowledge_release import (
     load_active_documents,
     load_active_release,
 )
+from .evidence_integrity import system_utc_clock
 from .source_freshness import assess_source_freshness
 
 
@@ -171,7 +174,9 @@ def build_hybrid_index(
     embedding_model_identity: dict[str, Any] | None = None,
     progress_callback: Any | None = None,
     fault_injector: Any | None = None,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
+    evaluated_at = clock()
     embedding_profile = embedding_model_profile(embedding_model)
     resolved_embedding_provider = resolve_embedding_provider(
         embedding_provider,
@@ -203,7 +208,7 @@ def build_hybrid_index(
     try:
         _create_lexical_schema(connection)
         for document in documents:
-            if not _is_release_eligible(document):
+            if not _is_release_eligible(document, evaluated_at):
                 continue
             connection.execute(
                 """
@@ -256,7 +261,7 @@ def build_hybrid_index(
     vectors: list[dict[str, Any]] = []
     vector_dimensions: int | None = None
     for document in documents:
-        if not _is_release_eligible(document):
+        if not _is_release_eligible(document, evaluated_at):
             continue
         vector = embed_with_provider(
             resolved_embedding_provider,
@@ -313,7 +318,9 @@ class HybridRetriever:
         embedding_provider: EmbeddingProvider | None = None,
         embedding_endpoint: str | None = None,
         embedding_model_identity: dict[str, Any] | None = None,
+        clock: Callable[[], datetime] = system_utc_clock,
     ) -> None:
+        self._clock = clock
         self.data_dir = Path(data_dir)
         self.active_release = active_release
         self.manifest = active_release["manifest"]
@@ -358,6 +365,7 @@ class HybridRetriever:
         embedding_provider: EmbeddingProvider | None = None,
         embedding_endpoint: str | None = None,
         trust_root_path: str | Path | None = None,
+        clock: Callable[[], datetime] = system_utc_clock,
     ) -> "HybridRetriever":
         with active_release_snapshot():
             active_release = load_active_release(
@@ -381,13 +389,15 @@ class HybridRetriever:
                 dense_index=dense_index,
                 embedding_provider=embedding_provider,
                 embedding_endpoint=embedding_endpoint,
+                clock=clock,
             )
 
     def retrieve(self, question: str, *, limit: int = 3) -> list[dict[str, Any]]:
         normalized_question = normalize_question(question)
         metadata_filter = _metadata_filter_for_question(normalized_question)
-        lexical_ids = self._lexical_ranked_ids(normalized_question, metadata_filter)
-        dense_ids = self._dense_ranked_ids(normalized_question, metadata_filter)
+        evaluated_at = self._clock()
+        lexical_ids = self._lexical_ranked_ids(normalized_question, metadata_filter, evaluated_at)
+        dense_ids = self._dense_ranked_ids(normalized_question, metadata_filter, evaluated_at)
         fused_ids, fusion_scores = reciprocal_rank_fusion([lexical_ids, dense_ids], k=RRF_K)
         if self.manifest.get("corpus_schema_version") == "2.0":
             # A source title is a separate retrieval field. Its relevance should
@@ -401,7 +411,7 @@ class HybridRetriever:
         eligible_ids = [
             document_id
             for document_id in fused_ids
-            if _is_release_eligible(self.documents_by_id[document_id])
+            if _is_release_eligible(self.documents_by_id[document_id], evaluated_at)
             and _matches_metadata_filter(
                 self.documents_by_id[document_id],
                 metadata_filter,
@@ -416,6 +426,7 @@ class HybridRetriever:
             documents_by_id=self.documents_by_id,
             metadata_filter=metadata_filter,
             limit=limit,
+            evaluated_at=evaluated_at,
             prefer_distinct_sources=(self.manifest.get("corpus_schema_version") == "2.0"),
             requested_exams=(
                 _mentioned_exams(question)
@@ -442,6 +453,7 @@ class HybridRetriever:
         self,
         normalized_question: str,
         metadata_filter: dict[str, Any],
+        evaluated_at: datetime,
     ) -> list[str]:
         expression = _fts_match_expression(normalized_question)
         if not expression:
@@ -461,7 +473,7 @@ class HybridRetriever:
         eligible_ids = [
             document_id
             for document_id in ranked_ids
-            if _is_release_eligible(self.documents_by_id[document_id])
+            if _is_release_eligible(self.documents_by_id[document_id], evaluated_at)
             and _matches_metadata_filter(self.documents_by_id[document_id], metadata_filter)
         ]
         return _select_result_ids_for_topic_groups(
@@ -469,12 +481,14 @@ class HybridRetriever:
             documents_by_id=self.documents_by_id,
             metadata_filter=metadata_filter,
             limit=RETRIEVAL_CHANNEL_LIMIT,
+            evaluated_at=evaluated_at,
         )
 
     def _dense_ranked_ids(
         self,
         normalized_question: str,
         metadata_filter: dict[str, Any],
+        evaluated_at: datetime,
     ) -> list[str]:
         query_vector = embed_with_provider(
             self.embedding_provider,
@@ -493,7 +507,7 @@ class HybridRetriever:
         for item in self.dense_index["vectors"]:
             document_id = item["document_id"]
             document = self.documents_by_id[document_id]
-            if not _is_release_eligible(document):
+            if not _is_release_eligible(document, evaluated_at):
                 continue
             if not _matches_metadata_filter(document, metadata_filter):
                 continue
@@ -504,6 +518,7 @@ class HybridRetriever:
             documents_by_id=self.documents_by_id,
             metadata_filter=metadata_filter,
             limit=RETRIEVAL_CHANNEL_LIMIT,
+            evaluated_at=evaluated_at,
         )
 
     def _validate_index(self) -> None:
@@ -562,7 +577,7 @@ class HybridRetriever:
         eligible_documents = [
             document
             for document in self.release_documents
-            if _is_release_eligible(document)
+            if _is_release_eligible(document, self._clock())
         ]
         expected_by_id = {
             str(document["document_id"]): document for document in eligible_documents
@@ -911,8 +926,8 @@ def _index_metadata(
     return metadata
 
 
-def _is_release_eligible(document: dict[str, Any]) -> bool:
-    return assess_source_freshness(document).answer_eligible
+def _is_release_eligible(document: dict[str, Any], evaluated_at: datetime) -> bool:
+    return assess_source_freshness(document, evaluated_at_utc=evaluated_at).answer_eligible
 
 
 def _attach_source_metadata(
@@ -1017,6 +1032,7 @@ def _select_result_ids_for_topic_groups(
     prefer_distinct_sources: bool = False,
     requested_exams: set[str] | None = None,
     include_list_context: bool = False,
+    evaluated_at: datetime,
 ) -> list[str]:
     topic_tag_groups = metadata_filter.get("topic_tag_groups")
     if not topic_tag_groups and not prefer_distinct_sources:
@@ -1076,7 +1092,7 @@ def _select_result_ids_for_topic_groups(
         selected_ids = _include_introductory_list_context(
             selected_ids, documents_by_id=documents_by_id,
             metadata_filter=metadata_filter, reserved_ids=set(reserved_ids[:limit]),
-            requested_exams=requested_exams or set(), limit=limit,
+            requested_exams=requested_exams or set(), limit=limit, evaluated_at=evaluated_at,
         )
     rank = {document_id: index for index, document_id in enumerate(ranked_ids)}
     return sorted(selected_ids, key=lambda document_id: rank.get(document_id, len(rank)))
@@ -1085,7 +1101,7 @@ def _select_result_ids_for_topic_groups(
 def _include_introductory_list_context(
     selected_ids: list[str], *, documents_by_id: dict[str, dict[str, Any]],
     metadata_filter: dict[str, Any], reserved_ids: set[str],
-    requested_exams: set[str], limit: int,
+    requested_exams: set[str], limit: int, evaluated_at: datetime,
 ) -> list[str]:
     """Retrieve a preceding list introduction as context, not inferred parenthood.
 
@@ -1111,7 +1127,7 @@ def _include_introductory_list_context(
                      and isinstance(candidate.get("chunk_index"), int)
                      and candidate["chunk_index"] < index
                      and introduction.search(candidate["content"])
-                     and _is_release_eligible(candidate)
+                     and _is_release_eligible(candidate, evaluated_at)
                      and _matches_metadata_filter(candidate, metadata_filter)]
         if not preceding:
             continue

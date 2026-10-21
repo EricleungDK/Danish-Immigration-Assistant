@@ -1,6 +1,7 @@
 import unittest
 
 from danish_rag.answer_pipeline import validate_answer
+from tests.evaluation_time import FIXED_TIME
 
 
 def evidence_fixture(
@@ -47,11 +48,11 @@ class Issue11EvidenceInspectionTests(unittest.TestCase):
 
         current = validate_answer(
             payload,
-            evidence=[evidence_fixture("source-a", source_health="healthy")],
+            evidence=[evidence_fixture("source-a", source_health="healthy")], evaluated_at=FIXED_TIME,
         )
         overdue = validate_answer(
             payload,
-            evidence=[evidence_fixture("source-a", source_health="overdue-policy-usable")],
+            evidence=[evidence_fixture("source-a", source_health="overdue-policy-usable")], evaluated_at=FIXED_TIME,
         )
 
         self.assertEqual(current["trust"]["evidence_confidence"], "High")
@@ -75,7 +76,7 @@ class Issue11EvidenceInspectionTests(unittest.TestCase):
 
         answer = validate_answer(
             payload,
-            evidence=[evidence_fixture("source-a", agreement_state="conflicts")],
+            evidence=[evidence_fixture("source-a", agreement_state="conflicts")], evaluated_at=FIXED_TIME,
         )
 
         self.assertEqual(answer["trust"]["evidence_confidence"], "Low")
@@ -105,7 +106,7 @@ class Issue11EvidenceInspectionTests(unittest.TestCase):
             evidence=[
                 evidence_fixture("source-a", source_health="healthy"),
                 evidence_fixture("source-b", source_health="overdue-policy-usable"),
-            ],
+            ], evaluated_at=FIXED_TIME,
         )
 
         self.assertEqual(answer["trust"]["fresh_tomato_score"], "Medium")
@@ -145,8 +146,8 @@ class Issue11EvidenceInspectionTests(unittest.TestCase):
         }
         evidence = [evidence_fixture("source-a", source_health="overdue-policy-usable")]
 
-        first = validate_answer(one_claim, evidence=evidence)
-        second = validate_answer(two_claims, evidence=evidence)
+        first = validate_answer(one_claim, evidence=evidence, evaluated_at=FIXED_TIME)
+        second = validate_answer(two_claims, evidence=evidence, evaluated_at=FIXED_TIME)
 
         self.assertEqual(first["trust"]["fresh_tomato_score"], "Medium")
         self.assertEqual(second["trust"]["fresh_tomato_score"], "Medium")

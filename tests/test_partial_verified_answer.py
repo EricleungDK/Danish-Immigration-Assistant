@@ -7,6 +7,7 @@ from danish_rag.answer_pipeline import AnswerService, AnswerValidationError, Loc
 from danish_rag.answer_verification import VerificationError, partial_verified_answer
 from tests.test_issue_13_evidence_safety import FixtureRetriever, evidence_fixture, provider_configuration
 from tests.test_answer_policy_provenance import CLAIM, QUESTION
+from tests.evaluation_time import fixed_clock
 
 
 def positive(quote='e1s1'):
@@ -53,7 +54,7 @@ class PartialVerifiedAnswerTests(unittest.TestCase):
 
     def run_service(self, answer, evidence, response):
         generator = ScriptedVerifier(answer, response)
-        result = AnswerService(retriever=FixtureRetriever(evidence), generator=generator).answer(
+        result = AnswerService(retriever=FixtureRetriever(evidence), generator=generator, clock=fixed_clock).answer(
             QUESTION, replace(provider_configuration(), provider_id='ollama'))
         return result.answer, generator
 
@@ -141,5 +142,5 @@ class PartialVerifiedAnswerTests(unittest.TestCase):
             return original(**kwargs)
         generator._generate_ollama_messages = resource_failure
         with self.assertRaisesRegex(AnswerValidationError, 'resource bound'):
-            AnswerService(retriever=FixtureRetriever(evidence), generator=generator).answer(
+            AnswerService(retriever=FixtureRetriever(evidence), generator=generator, clock=fixed_clock).answer(
                 QUESTION, replace(provider_configuration(), provider_id='ollama'))

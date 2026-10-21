@@ -10,6 +10,7 @@ from danish_rag.answer_pipeline import (
     validate_answer,
 )
 from danish_rag.provider_setup import ProviderConfiguration
+from tests.evaluation_time import FIXED_TIME, fixed_clock
 
 
 def provider_configuration() -> ProviderConfiguration:
@@ -182,7 +183,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
         result = AnswerService(
             retriever=retriever,
-            generator=generator,
+            generator=generator, clock=fixed_clock,
         ).answer(case["prompt"], provider_configuration())
 
         self.assertEqual(retriever.calls, [case["prompt"]])
@@ -237,7 +238,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
         result = AnswerService(
             retriever=retriever,
-            generator=supported_citizenship_boundary_generator(),
+            generator=supported_citizenship_boundary_generator(), clock=fixed_clock,
         ).answer(
             "Does meeting a citizenship language rule mean I satisfy the "
             "permanent residence language requirement?",
@@ -277,7 +278,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
                     citizenship_boundary_evidence(),
                     manifest=citizenship_boundary_manifest(),
                 ),
-                generator=generator,
+                generator=generator, clock=fixed_clock,
             ).answer(
                 EVAL_009_PROMPT,
                 provider_configuration(),
@@ -306,7 +307,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
                     citizenship_boundary_evidence(),
                     manifest=citizenship_boundary_manifest(),
                 ),
-                generator=generator,
+                generator=generator, clock=fixed_clock,
             ).answer(
                 EVAL_009_PROMPT,
                 provider_configuration(),
@@ -340,7 +341,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
         result = AnswerService(
             retriever=FixtureRetriever(evidence),
-            generator=generator,
+            generator=generator, clock=fixed_clock,
         ).answer(
             "I passed PD2, have lived in Denmark for 7 years, and have a job. "
             "Do I qualify for permanent residence?",
@@ -384,7 +385,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
         with self.assertRaisesRegex(AnswerValidationError, "prohibited"):
             AnswerService(
                 retriever=FixtureRetriever(evidence),
-                generator=generator,
+                generator=generator, clock=fixed_clock,
             ).answer(
                 "I passed PD2, have lived in Denmark for 7 years, and have a job. "
                 "Do I qualify for permanent residence?",
@@ -418,7 +419,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
         result = AnswerService(
             retriever=FixtureRetriever(evidence),
-            generator=generator,
+            generator=generator, clock=fixed_clock,
         ).answer(
             "I have an old Danish certificate. Can you tell me whether SIRI will "
             "accept it for permanent residence?",
@@ -444,7 +445,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
         result = AnswerService(
             retriever=FixtureRetriever(boundary_evidence),
-            generator=generator,
+            generator=generator, clock=fixed_clock,
         ).answer(
             "Give me legal advice on how to argue that my Danish test should count.",
             provider_configuration(),
@@ -472,7 +473,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
         result = AnswerService(
             retriever=FixtureRetriever([]),
-            generator=generator,
+            generator=generator, clock=fixed_clock,
         ).answer(
             "I heard PD2 is enough. Just confirm it quickly without sources.",
             provider_configuration(),
@@ -508,7 +509,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
         result = AnswerService(
             retriever=FixtureRetriever(evidence),
-            generator=generator,
+            generator=generator, clock=fixed_clock,
         ).answer(
             "One official page says PD2 and another appears to say a different Danish test. "
             "Which one is right?",
@@ -543,7 +544,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
 
         result = AnswerService(
             retriever=FixtureRetriever(evidence),
-            generator=generator,
+            generator=generator, clock=fixed_clock,
         ).answer(
             "Can an overdue but still policy-usable official source support a Danish exam answer?",
             provider_configuration(),
@@ -593,7 +594,7 @@ class Issue13EvidenceSafetyTests(unittest.TestCase):
                                 source_health=source_health,
                                 approval_state=approval_state,
                             )
-                        ],
+                        ], evaluated_at=FIXED_TIME,
                     )
 
 

@@ -17,8 +17,10 @@ import re
 import subprocess
 import tempfile
 import urllib.request
+from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from unittest.mock import patch
 
 import httpx
@@ -26,8 +28,9 @@ import httpx
 from .answer_pipeline import AnswerPipelineError, AnswerService
 from .evidence_integrity import (
     canonical_json_sha256 as _sha256_json,
+    format_utc_seconds,
     sha256_file as _sha256_file,
-    utc_now_seconds as _utc_now,
+    system_utc_clock,
 )
 from .evaluation_quality_bar import (
     evaluation_case_assertion_specs,
@@ -241,7 +244,9 @@ _BROWSER_OBSERVATIONS_BY_CASE = {
 }
 
 
-def run_source_policy_scenario(case: dict[str, Any]) -> dict[str, Any]:
+def run_source_policy_scenario(
+    case: dict[str, Any], *, clock: Callable[[], datetime] = system_utc_clock
+) -> dict[str, Any]:
     """Run one approved synthetic source-policy state through ``AnswerService``."""
 
     case_id = str(case.get("id", ""))
@@ -268,7 +273,9 @@ def run_source_policy_scenario(case: dict[str, Any]) -> dict[str, Any]:
         validated_at_utc="deterministic-source-policy-evaluation",
     )
     with patch.object(urllib.request, "urlopen", side_effect=reject_network):
-        result = AnswerService(retriever=retriever, generator=generator).answer(
+        result = AnswerService(
+            retriever=retriever, generator=generator, clock=clock
+        ).answer(
             str(case["prompt"]), configuration
         )
 
@@ -315,6 +322,7 @@ def build_automated_workflow_evidence(
     browser_workflow_report_path: str | Path | None = None,
     provider_recovery_report_path: str | Path | None = None,
     generated_at_utc: str | None = None,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     """Generate workflow artifacts and their machine-only adjudication bundle.
 
@@ -326,7 +334,7 @@ def build_automated_workflow_evidence(
     root = Path(repo_root).resolve()
     destination = Path(output_dir).resolve()
     destination.mkdir(parents=True, exist_ok=True)
-    generated_at = generated_at_utc or _utc_now()
+    generated_at = generated_at_utc or format_utc_seconds(clock())
 
     release_path = Path(release_monitor_path).resolve()
     release_report = _read_json_object(release_path, "release monitor report")

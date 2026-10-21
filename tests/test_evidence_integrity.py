@@ -2,6 +2,7 @@ import hashlib
 import json
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 from danish_rag.evidence_integrity import (
@@ -9,7 +10,7 @@ from danish_rag.evidence_integrity import (
     is_utc_seconds,
     reject_duplicate_json_object,
     sha256_file,
-    utc_now_seconds,
+    format_utc_seconds,
 )
 
 
@@ -36,7 +37,10 @@ class EvidenceIntegrityTests(unittest.TestCase):
             self.assertEqual(sha256_file(path), hashlib.sha256(payload).hexdigest())
 
     def test_utc_timestamp_has_second_precision(self):
-        self.assertRegex(utc_now_seconds(), r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+        self.assertEqual(
+            format_utc_seconds(datetime(2026, 7, 14, 18, 54, 9, 123456, tzinfo=timezone.utc)),
+            "2026-07-14T18:54:09Z",
+        )
         self.assertTrue(is_utc_seconds("2026-07-14T18:54:09Z"))
         self.assertFalse(is_utc_seconds("2026-07-14T18:54:09.123Z"))
         self.assertFalse(is_utc_seconds("yesterday"))

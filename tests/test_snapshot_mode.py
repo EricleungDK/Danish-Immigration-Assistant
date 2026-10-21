@@ -7,11 +7,11 @@ import sqlite3
 import tempfile
 import threading
 import unittest
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
-import danish_rag.source_freshness as source_freshness
 from danish_rag.source_freshness import assess_source_freshness
 import httpx
 
@@ -29,7 +29,8 @@ from danish_rag.knowledge_release import (
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
 from danish_rag.retrieval import HybridRetriever
-from tests import fixture_clock
+from danish_rag.snapshot_clock import snapshot_aware_clock
+from tests.evaluation_time import FIXED_TIME
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 
 SEPTEMBER_RELEASE = DEFAULT_RELEASE_CATALOG_DIR / "kr-2026-09-05.1"
@@ -40,10 +41,25 @@ JULY_SNAPSHOT = datetime(2026, 7, 6, tzinfo=timezone.utc)
 SEPTEMBER_SNAPSHOT = datetime(2026, 9, 5, 15, 12, tzinfo=timezone.utc)
 
 
-def late_wall_clock():
-    """Force the (test-pinned) wall clock past the due dates; restored on exit."""
+class _Wall:
+    """The injected base clock of every app/retriever in this module."""
 
-    return patch.object(fixture_clock, "FIXTURE_EVALUATION_TIME_UTC", LATE_WALL_CLOCK)
+    now = FIXED_TIME
+
+
+def wall_clock() -> datetime:
+    return _Wall.now
+
+
+@contextmanager
+def late_wall_clock():
+    """Move the injected wall clock past the due dates; restored on exit."""
+
+    previous, _Wall.now = _Wall.now, LATE_WALL_CLOCK
+    try:
+        yield
+    finally:
+        _Wall.now = previous
 
 
 def evidence_due(due: str) -> dict[str, object]:
@@ -64,32 +80,34 @@ def at(instant: datetime):
 
 
 def now_utc() -> datetime:
-    return source_freshness.datetime.now(timezone.utc)
+    """The freshness time the app uses: the request's snapshot, else the wall clock."""
+
+    return snapshot_aware_clock(wall_clock)()
 
 
 class SnapshotClockTests(unittest.TestCase):
+    def eligible(self, due: str, at_time: datetime) -> bool:
+        return assess_source_freshness(
+            evidence_due(due), evaluated_at_utc=at_time
+        ).answer_eligible
+
     def test_wall_clock_after_the_due_date_blocks_without_a_snapshot_scope(self):
         with late_wall_clock():
-            self.assertFalse(
-                assess_source_freshness(evidence_due("2026-10-06T12:00:00Z")).answer_eligible
-            )
+            self.assertEqual(now_utc(), LATE_WALL_CLOCK)
+            self.assertFalse(self.eligible("2026-10-06T12:00:00Z", now_utc()))
 
     def test_scope_evaluates_freshness_at_the_snapshot_time(self):
         from danish_rag.snapshot_clock import snapshot_clock
 
         with late_wall_clock(), snapshot_clock(at(JULY_SNAPSHOT)):
             self.assertEqual(now_utc(), JULY_SNAPSHOT)
-            self.assertTrue(
-                assess_source_freshness(evidence_due("2026-10-06T12:00:00Z")).answer_eligible
-            )
+            self.assertTrue(self.eligible("2026-10-06T12:00:00Z", now_utc()))
 
     def test_snapshot_time_is_not_an_exemption_from_the_due_date(self):
         from danish_rag.snapshot_clock import snapshot_clock
 
         with snapshot_clock(at(datetime(2026, 10, 7, tzinfo=timezone.utc))):
-            self.assertFalse(
-                assess_source_freshness(evidence_due("2026-10-06T12:00:00Z")).answer_eligible
-            )
+            self.assertFalse(self.eligible("2026-10-06T12:00:00Z", now_utc()))
 
     def test_scope_restores_the_underlying_clock_on_exit(self):
         from danish_rag.snapshot_clock import snapshot_clock
@@ -98,7 +116,7 @@ class SnapshotClockTests(unittest.TestCase):
             with snapshot_clock(at(JULY_SNAPSHOT)):
                 pass
             self.assertEqual(now_utc(), LATE_WALL_CLOCK)
-        self.assertEqual(now_utc(), fixture_clock.FIXTURE_EVALUATION_TIME_UTC)
+        self.assertEqual(now_utc(), FIXED_TIME)
 
     def test_scope_is_isolated_per_thread(self):
         from danish_rag.snapshot_clock import snapshot_clock
@@ -137,84 +155,16 @@ class SnapshotClockTests(unittest.TestCase):
             with late_wall_clock(), snapshot_clock(state):
                 self.assertEqual(now_utc(), LATE_WALL_CLOCK)
 
-    def test_now_without_tz_mirrors_datetime_now_local_naive_time(self):
-        import os
-        import time
-
-        from danish_rag.snapshot_clock import snapshot_clock
-
-        previous = os.environ.get("TZ")
-        os.environ["TZ"] = "Asia/Tokyo"
-        time.tzset()
-        try:
-            with snapshot_clock(at(JULY_SNAPSHOT)):
-                naive = source_freshness.datetime.now()
-            self.assertIsNone(naive.tzinfo)
-            self.assertEqual(naive, datetime(2026, 7, 6, 9, 0))  # UTC+9
-        finally:
-            if previous is None:
-                os.environ.pop("TZ", None)
-            else:
-                os.environ["TZ"] = previous
-            time.tzset()
-
-    def test_a_subclass_of_the_wrapper_is_wrapped_again(self):
+    def test_no_module_global_datetime_is_swapped(self):
+        import danish_rag.source_freshness as source_freshness
         from danish_rag.snapshot_clock import snapshot_clock
 
         with snapshot_clock(at(JULY_SNAPSHOT)):
-            installed = source_freshness.datetime
-        replaced = type("Replaced", (installed,), {})  # inherits the wrapper's marker
-        previous = source_freshness.datetime
-        source_freshness.datetime = replaced
-        try:
-            with snapshot_clock(at(SEPTEMBER_SNAPSHOT)):
-                self.assertEqual(now_utc(), SEPTEMBER_SNAPSHOT)
-        finally:
-            source_freshness.datetime = previous
+            self.assertIs(source_freshness.datetime, datetime)
 
-    def test_clock_works_over_the_real_datetime_and_after_the_pin_is_removed(self):
-        from danish_rag.snapshot_clock import snapshot_clock
-
-        fixture_clock.unpin_freshness_clock()
-        try:
-            with snapshot_clock(at(JULY_SNAPSHOT)):
-                self.assertEqual(now_utc(), JULY_SNAPSHOT)
-            self.assertIsNot(source_freshness.datetime, None)
-            self.assertAlmostEqual(
-                now_utc().timestamp(), datetime.now(timezone.utc).timestamp(), delta=60
-            )
-        finally:
-            fixture_clock.pin_freshness_clock()
-
-    def test_wrapped_datetime_still_recognises_real_datetimes_and_parses(self):
-        from danish_rag.snapshot_clock import snapshot_clock
-
-        with snapshot_clock(at(JULY_SNAPSHOT)):
-            self.assertIsInstance(datetime(2026, 1, 1, tzinfo=timezone.utc), source_freshness.datetime)
-            self.assertTrue(
-                assess_source_freshness(
-                    evidence_due("2026-10-06T12:00:00Z"),
-                    evaluated_at_utc=datetime(2026, 8, 1, tzinfo=timezone.utc),
-                ).answer_eligible
-            )
-            self.assertFalse(
-                assess_source_freshness(
-                    evidence_due("2026-10-06T12:00:00Z"), evaluated_at_utc="2026-10-07T00:00:00Z"
-                ).answer_eligible
-            )
-
-    def test_other_freshness_clocks_are_left_to_the_evaluation_pipeline(self):
-        # Evidence/qualification code reads these; snapshot mode is app-only.
-        import danish_rag.evidence_integrity as evidence_integrity
-        import danish_rag.grounded_flexibility_evaluation as grounded
-
-        from danish_rag.snapshot_clock import snapshot_clock
-
-        with late_wall_clock(), snapshot_clock(at(JULY_SNAPSHOT)):
-            self.assertEqual(
-                evidence_integrity.utc_now_seconds(), "2027-01-01T00:00:00Z"
-            )
-            self.assertEqual(grounded._utc_now(), "2027-01-01T00:00:00Z")
+    def test_the_base_clock_is_used_unchanged_outside_a_scope(self):
+        sentinel = datetime(2031, 5, 5, tzinfo=timezone.utc)
+        self.assertEqual(snapshot_aware_clock(lambda: sentinel)(), sentinel)
 
 
 class SnapshotResolutionTests(unittest.TestCase):
@@ -513,7 +463,7 @@ class AppTestCase(unittest.IsolatedAsyncioTestCase):
             data_dir=self.data_dir,
             answer_generator=self.generator,
             embedding_provider=self.provider,
-            **app_kwargs,
+            **{"clock": wall_clock, **app_kwargs},
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://testserver"
@@ -544,9 +494,9 @@ class SnapshotAppTests(AppTestCase):
             with self.subTest(release=release_id):
                 data_dir = Path(self.tempdir.name) / f"control-{release_id}"
                 install_knowledge_release(
-                    data_dir, release_dir=release_dir, embedding_provider=self.provider
+                    data_dir, release_dir=release_dir, embedding_provider=self.provider, clock=wall_clock
                 )
-                retriever = HybridRetriever.from_data_dir(data_dir, embedding_provider=self.provider)
+                retriever = HybridRetriever.from_data_dir(data_dir, embedding_provider=self.provider, clock=wall_clock)
                 self.assertTrue(retriever.retrieve(QUESTION))
                 with late_wall_clock():
                     self.assertEqual(retriever.retrieve(QUESTION), [])
@@ -556,38 +506,41 @@ class SnapshotAppTests(AppTestCase):
             with self.subTest(release=release_id):
                 self.data_dir = Path(self.tempdir.name) / f"installed-{release_id}"
                 install_knowledge_release(
-                    self.data_dir, release_dir=release_dir, embedding_provider=self.provider
+                    self.data_dir, release_dir=release_dir, embedding_provider=self.provider, clock=wall_clock
                 )
                 client = self.make_client()
                 with late_wall_clock():
                     response = await self.ask(client)
                 self.assert_cited_answer(response, release_id)
 
-    async def test_pin_governs_outside_requests_and_the_snapshot_clock_inside(self):
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+    async def test_wall_clock_governs_outside_requests_and_the_snapshot_clock_inside(self):
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         with late_wall_clock():
             response = await self.ask(client)
             self.assertEqual(now_utc(), LATE_WALL_CLOCK)
         self.assert_cited_answer(response, "kr-2026-07-06.1")
-        self.assertEqual(now_utc(), fixture_clock.FIXTURE_EVALUATION_TIME_UTC)
+        self.assertEqual(self.generator.clock_seen, [JULY_SNAPSHOT])
+        self.assertEqual(now_utc(), FIXED_TIME)
 
     async def test_snapshot_clock_does_not_leak_between_requests_or_apps(self):
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         with late_wall_clock():
             await client.get("/")
             self.assertEqual(now_utc(), LATE_WALL_CLOCK)
             self.assertFalse(
-                assess_source_freshness(evidence_due("2026-10-06T12:00:00Z")).answer_eligible
+                assess_source_freshness(
+                    evidence_due("2026-10-06T12:00:00Z"), evaluated_at_utc=now_utc()
+                ).answer_eligible
             )
 
     async def test_request_follows_the_active_release_after_it_changes(self):
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         first = (await client.get("/status")).json()["corpus"]["knowledge_release_id"]
         install_knowledge_release(
-            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider, clock=wall_clock
         )
         second = (await client.get("/status")).json()["corpus"]["knowledge_release_id"]
         self.assertEqual((first, second), ("kr-2026-07-06.1", "kr-2026-09-05.1"))
@@ -613,7 +566,7 @@ class SnapshotAppTests(AppTestCase):
                 self.data_dir = Path(self.tempdir.name) / f"late-install-{release_id}"
                 with late_wall_clock():
                     install_knowledge_release(
-                        self.data_dir, release_dir=release_dir, embedding_provider=self.provider
+                        self.data_dir, release_dir=release_dir, embedding_provider=self.provider, clock=wall_clock
                     )
                     response = await self.ask(self.make_client())
                 self.assert_cited_answer(response, release_id)
@@ -625,7 +578,7 @@ class SnapshotLabelTests(AppTestCase):
             with self.subTest(release=release_id):
                 self.data_dir = Path(self.tempdir.name) / f"label-{release_id}"
                 install_knowledge_release(
-                    self.data_dir, release_dir=release_dir, embedding_provider=self.provider
+                    self.data_dir, release_dir=release_dir, embedding_provider=self.provider, clock=wall_clock
                 )
                 client = self.make_client()
                 date = release_snapshot_date(release_dir)
@@ -635,7 +588,7 @@ class SnapshotLabelTests(AppTestCase):
                 self.assertIn("not legal advice", html)
 
     async def test_unavailable_release_does_not_claim_a_snapshot_basis(self):
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         (self.data_dir / "active-release.json").write_text("{not json", encoding="utf-8")
         client = self.make_client()
         with self.assertLogs("danish_rag.snapshot_clock", "WARNING"):
@@ -650,7 +603,7 @@ class SnapshotLabelTests(AppTestCase):
         from danish_rag import snapshot_clock
 
         install_knowledge_release(
-            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider, clock=wall_clock
         )
         client = self.make_client()
         with patch.object(snapshot_clock, "BUNDLED_CATALOG_DIR", Path(self.tempdir.name) / "none"):
@@ -669,7 +622,7 @@ class SnapshotLabelTests(AppTestCase):
             # Before the due date the same release is served at the wall clock.
             fresh = await self.ask(client)
         self.assertEqual(fresh.status_code, 200)
-        self.assertEqual(self.generator.clock_seen, [fixture_clock.FIXTURE_EVALUATION_TIME_UTC])
+        self.assertEqual(self.generator.clock_seen, [FIXED_TIME])
         self.assertNotIn("as of the snapshot date", fresh.text)
 
     async def test_first_request_on_a_fresh_install_shows_the_installed_release_snapshot(self):
@@ -678,7 +631,7 @@ class SnapshotLabelTests(AppTestCase):
 
     async def test_fresh_tomato_wording_is_scoped_to_the_snapshot_not_today(self):
         install_knowledge_release(
-            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider, clock=wall_clock
         )
         client = self.make_client()
         with late_wall_clock():
@@ -701,14 +654,14 @@ class SnapshotConsistencyTests(AppTestCase):
     """The snapshot comes only from the verified release the request actually loaded."""
 
     async def test_snapshot_follows_the_release_the_retriever_loaded(self):
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         real = HybridRetriever.from_data_dir.__func__
 
         def switching(cls, *args, **kwargs):
             # A concurrent install activates the September release after the request began.
             install_knowledge_release(
-                self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+                self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider, clock=wall_clock
             )
             return real(cls, *args, **kwargs)
 
@@ -729,7 +682,7 @@ class SnapshotConsistencyTests(AppTestCase):
     async def test_snapshot_mode_adds_no_release_verification_to_a_request(self):
         from danish_rag import knowledge_release, snapshot_clock
 
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         calls = []
         real_load = knowledge_release.load_active_release
@@ -750,7 +703,7 @@ class SnapshotConsistencyTests(AppTestCase):
             # /status does exactly one verified load (the corpus panel reuses it): no extra
             # read for snapshot mode and no second verification for the panel.
             knowledge_release.ensure_minimal_knowledge_release(
-                self.data_dir, embedding_provider=self.provider
+                self.data_dir, embedding_provider=self.provider, clock=wall_clock
             )
             expected = list(calls)
             calls.clear()
@@ -765,7 +718,7 @@ class SnapshotConsistencyTests(AppTestCase):
         for name, corrupt in corruptions.items():
             with self.subTest(name):
                 self.data_dir = Path(self.tempdir.name) / f"corrupt-{name.replace(' ', '-')}"
-                install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+                install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
                 client = self.make_client()
                 self.assertIn("Knowledge snapshot from 2026-07-06", (await client.get("/")).text)
                 corrupt(self.data_dir)  # the active-release pointer file is untouched
@@ -784,7 +737,7 @@ class SnapshotConsistencyTests(AppTestCase):
                 self.assertEqual(self.generator.clock_seen, [])
 
     async def test_a_failed_retriever_load_marks_the_request_unavailable(self):
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
 
         def failing(cls, *args, **kwargs):
@@ -799,13 +752,13 @@ class SnapshotConsistencyTests(AppTestCase):
         self.assertNotIn("Knowledge snapshot from", response.text)
 
     async def test_turns_carry_their_own_snapshot_and_old_turns_carry_none(self):
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         await self.ask(client)
         store = ConversationStore(self.data_dir / "conversations.sqlite3")
         conversation_id = store.list_conversations()[0]["id"]
         install_knowledge_release(
-            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider, clock=wall_clock
         )
 
         page = (await client.get(f"/conversations/{conversation_id}")).text
@@ -824,7 +777,7 @@ class SnapshotConsistencyTests(AppTestCase):
 
     async def test_status_and_exports_carry_explicit_snapshot_metadata(self):
         install_knowledge_release(
-            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider, clock=wall_clock
         )
         client = self.make_client()
         expected = {"release_id": "kr-2026-09-05.1", "snapshot_date": "2026-09-05", "kept_current": False}
@@ -874,17 +827,17 @@ class SnapshotBasisConsistencyTests(AppTestCase):
         return html[start : html.index("</p>", start)]
 
     async def test_full_page_has_one_plain_banner(self):
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         page = (await self.make_client().get("/")).text
         self.assertEqual(page.count('id="snapshot-banner"'), 1)
         self.assertNotIn("hx-swap-oob", page)
 
     async def test_htmx_answer_refreshes_the_banner_to_the_answered_release(self):
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         self.assertIn("Knowledge snapshot from 2026-07-06", (await client.get("/")).text)
         install_knowledge_release(
-            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider, clock=wall_clock
         )
         with late_wall_clock():
             fragment = await self.ask_htmx(client)
@@ -893,7 +846,7 @@ class SnapshotBasisConsistencyTests(AppTestCase):
         self.assertEqual(fragment.text.count("Knowledge snapshot from"), 1)
 
     async def test_htmx_failure_refreshes_the_banner_to_unavailable(self):
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
 
         def failing(cls, *args, **kwargs):
@@ -911,7 +864,7 @@ class SnapshotBasisConsistencyTests(AppTestCase):
         from danish_rag import snapshot_clock
 
         none_catalog = Path(self.tempdir.name) / "no-bundled-releases"
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client(release_catalog_dir=DEFAULT_RELEASE_CATALOG_DIR)
         self.assertIn("Knowledge snapshot from 2026-07-06", (await client.get("/")).text)
         # bundled -> a release that is not bundled: the banner must stop claiming a snapshot.
@@ -922,7 +875,7 @@ class SnapshotBasisConsistencyTests(AppTestCase):
 
         # not bundled -> bundled.
         self.data_dir = Path(self.tempdir.name) / "second"
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client(release_catalog_dir=DEFAULT_RELEASE_CATALOG_DIR)
         with patch.object(snapshot_clock, "BUNDLED_CATALOG_DIR", none_catalog):
             self.assertNotIn("Knowledge snapshot from", (await client.get("/")).text)
@@ -930,11 +883,11 @@ class SnapshotBasisConsistencyTests(AppTestCase):
         self.assertIn("Knowledge snapshot from 2026-09-05", banner)
 
     async def test_banner_keeps_the_basis_the_answer_was_judged_on(self):
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         # A concurrent install lands after the answer was generated, before the page renders.
         self.generator.while_answering = lambda: install_knowledge_release(
-            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+            self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider, clock=wall_clock
         )
         with late_wall_clock():
             page = (await self.ask(client)).text
@@ -945,7 +898,7 @@ class SnapshotBasisConsistencyTests(AppTestCase):
         self.assertIn("The active knowledge release changed while this answer was prepared", page)
 
     async def test_normal_pages_never_claim_a_release_change(self):
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         notice = "changed while this answer was prepared"
         self.assertNotIn(notice, (await client.get("/")).text)
@@ -957,7 +910,7 @@ class SnapshotBasisConsistencyTests(AppTestCase):
     async def test_render_failure_after_the_answer_is_reported_without_claiming_a_change(self):
         from danish_rag import local_app
 
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         answered = {"done": False}
         self.generator.while_answering = lambda: answered.update(done=True)
@@ -977,14 +930,14 @@ class SnapshotBasisConsistencyTests(AppTestCase):
     async def test_corpus_panel_and_status_come_from_the_release_that_was_verified(self):
         from danish_rag import local_app
 
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         client = self.make_client()
         real = local_app.ensure_minimal_knowledge_release
 
         def then_install_september(*args, **kwargs):
             release = real(*args, **kwargs)
             install_knowledge_release(
-                self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+                self.data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider, clock=wall_clock
             )
             return release
 
@@ -993,7 +946,7 @@ class SnapshotBasisConsistencyTests(AppTestCase):
         self.assertEqual(status["corpus"]["knowledge_release_id"], "kr-2026-07-06.1")
         self.assertEqual(status["knowledge_snapshot"]["release_id"], "kr-2026-07-06.1")
 
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         with patch.object(local_app, "ensure_minimal_knowledge_release", then_install_september):
             page = (await client.get("/")).text
         self.assertIn("<dd>kr-2026-07-06.1</dd>", page)
@@ -1004,7 +957,7 @@ class SnapshotBasisConsistencyTests(AppTestCase):
             def list_published_releases(self):
                 return []
 
-        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider)
+        install_minimal_knowledge_release(self.data_dir, embedding_provider=self.provider, clock=wall_clock)
         (self.data_dir / "active-release.json").write_text("{not json", encoding="utf-8")
         client = self.make_client(github_release_client=NoReleases(application_version="0.1.0"))
         app = client._transport.app
@@ -1132,16 +1085,16 @@ class FreshInstallDefaultTests(unittest.TestCase):
 
     def test_ensure_installs_the_requested_initial_release_on_a_fresh_data_dir(self):
         installed = ensure_minimal_knowledge_release(
-            self.root / "data", release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+            self.root / "data", release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider, clock=wall_clock
         )
         self.assertEqual(installed["manifest"]["knowledge_release_id"], "kr-2026-09-05.1")
 
     def test_ensure_keeps_the_fixture_default_and_the_active_release(self):
         data_dir = self.root / "data"
-        installed = ensure_minimal_knowledge_release(data_dir, embedding_provider=self.provider)
+        installed = ensure_minimal_knowledge_release(data_dir, embedding_provider=self.provider, clock=wall_clock)
         self.assertEqual(installed["manifest"]["knowledge_release_id"], "kr-2026-07-06.1")
         again = ensure_minimal_knowledge_release(
-            data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider
+            data_dir, release_dir=SEPTEMBER_RELEASE, embedding_provider=self.provider, clock=wall_clock
         )
         self.assertEqual(again["manifest"]["knowledge_release_id"], "kr-2026-07-06.1")
 
@@ -1153,7 +1106,7 @@ class FreshInstallDefaultTests(unittest.TestCase):
         data_dir = self.root / "data"
         with self.assertRaises(KnowledgeReleaseError):
             ensure_minimal_knowledge_release(
-                data_dir, release_dir=tampered, embedding_provider=self.provider
+                data_dir, release_dir=tampered, embedding_provider=self.provider, clock=wall_clock
             )
         self.assertFalse((data_dir / "active-release.json").exists())
 
@@ -1176,7 +1129,7 @@ class FreshInstallDefaultTests(unittest.TestCase):
         data_dir = self.root / "data"
         for _ in range(2):
             installed = ensure_minimal_knowledge_release(
-                data_dir, release_dir=resolve, embedding_provider=self.provider
+                data_dir, release_dir=resolve, embedding_provider=self.provider, clock=wall_clock
             )
         self.assertEqual(installed["manifest"]["knowledge_release_id"], "kr-2026-09-05.1")
         self.assertEqual(len(calls), 1)
@@ -1192,7 +1145,7 @@ class FreshInstallDefaultTests(unittest.TestCase):
 
     def test_library_default_stays_the_fixture_release(self):
         # Tests and tools that call create_app() directly keep the July fixture.
-        app = create_app(data_dir=self.root / "data", config_path=self.root / "c.json")
+        app = create_app(data_dir=self.root / "data", config_path=self.root / "c.json", clock=wall_clock)
         self.assertEqual(app.state.initial_release_dir, BUNDLED_MINIMAL_RELEASE)
 
 

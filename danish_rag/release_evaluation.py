@@ -5,6 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
+from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -13,8 +16,9 @@ from danish_rag.candidate_release_evidence import validate_candidate_evidence
 from danish_rag.evidence_integrity import (
     is_utc_seconds,
     reject_duplicate_json_object,
+    format_utc_seconds,
     sha256_file as _sha256_path,
-    utc_now_seconds as _utc_now,
+    system_utc_clock,
 )
 from danish_rag.release_qualification import (
     BLOCKING_GATE_STATUSES,
@@ -109,9 +113,10 @@ def generate_release_evaluation(
     repo_root: str | Path,
     *,
     generated_at_utc: str | None = None,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     root = Path(repo_root)
-    generated_at = generated_at_utc or _utc_now()
+    generated_at = generated_at_utc or format_utc_seconds(clock())
 
     qualification = load_release_qualification(
         root / EVIDENCE_PATHS["release_qualification"]
@@ -147,7 +152,7 @@ def generate_release_evaluation(
           "summary": "Candidate evidence bindings could not be validated.",
           "evidence": [], "observed": {}, "thresholds": {}, "failures": list(candidate_failures)}
          if candidate_failures else
-         _evaluate_gate(gate, root, quality_bar, runtime_policy, candidate=candidate, evidence_paths=evidence_paths))
+         _evaluate_gate(gate, root, quality_bar, runtime_policy, candidate=candidate, evidence_paths=evidence_paths, clock=clock))
         for gate in qualification["gate_results"]
     ]
     derived_blockers = derive_release_blockers(qualification)
@@ -255,6 +260,7 @@ def _evaluate_gate(
     runtime_policy: dict[str, Any],
     *, candidate: dict[str, Any] | None = None,
     evidence_paths: dict[str, Path] | None = None,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     evidence_paths = evidence_paths or EVIDENCE_PATHS
     gate_id = gate["id"]
@@ -271,7 +277,7 @@ def _evaluate_gate(
             if candidate is not None:
                 if candidate.get("retrieval_contract") == "owner-approved-production-and-fixture-v1":
                     from danish_rag.approved_retrieval_evidence import evaluate_approved_retrieval
-                    evaluator = evaluate_approved_retrieval
+                    evaluator = partial(evaluate_approved_retrieval, clock=clock)
                 else:
                     from danish_rag.candidate_retrieval_evidence import evaluate_candidate_retrieval
                     evaluator = evaluate_candidate_retrieval

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from danish_rag.knowledge_release import default_data_dir
 from danish_rag.retrieval import HybridRetriever
+from tests.evaluation_time import fixed_clock
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,7 +21,7 @@ class LivePassageRetrievalTests(unittest.TestCase):
     def setUpClass(cls):
         cls.retriever = HybridRetriever.from_data_dir(
             default_data_dir(),
-            trust_root_path=ROOT / "config/trust_roots/project-release-key-v2.json",
+            trust_root_path=ROOT / "config/trust_roots/project-release-key-v2.json", clock=fixed_clock,
         )
 
     def assert_requirement_passage(self, results):

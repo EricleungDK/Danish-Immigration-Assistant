@@ -1,6 +1,7 @@
 import unittest
 
 from danish_rag.retrieval import _include_introductory_list_context
+from tests.evaluation_time import FIXED_TIME
 
 
 class IntroductoryListContextTests(unittest.TestCase):
@@ -24,6 +25,7 @@ class IntroductoryListContextTests(unittest.TestCase):
             ["reserved", "tail", "filler"], documents_by_id=documents,
             metadata_filter={}, reserved_ids={"reserved"},
             requested_exams=requested_exams or set(), limit=3,
+            evaluated_at=FIXED_TIME,
         )
 
     def test_explicit_introductory_colon_adds_separate_context_within_budget(self):

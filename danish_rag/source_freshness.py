@@ -21,10 +21,14 @@ class SourceFreshnessAssessment:
 def assess_source_freshness(
     evidence: dict[str, Any],
     *,
-    evaluated_at_utc: str | datetime | None = None,
+    evaluated_at_utc: str | datetime,
 ) -> SourceFreshnessAssessment:
-    """Calculate source freshness without changing evidence-confidence semantics."""
+    """Calculate source freshness at an explicit, timezone-aware evaluation time.
 
+    There is no wall-clock fallback: entry points own the clock (#70).
+    """
+
+    now = _parse_utc(evaluated_at_utc)
     base_eligible = (
         evidence.get("review_state") in ELIGIBLE_REVIEW_STATES
         and evidence.get("source_health") in ELIGIBLE_SOURCE_HEALTH
@@ -57,7 +61,6 @@ def assess_source_freshness(
             answer_eligible=True,
         )
 
-    now = _parse_utc(evaluated_at_utc) if evaluated_at_utc else datetime.now(timezone.utc)
     blocked_after = inputs.get("overdue_blocked_after_utc")
     if blocked_after:
         parsed_blocked_after = _try_parse_utc(blocked_after)

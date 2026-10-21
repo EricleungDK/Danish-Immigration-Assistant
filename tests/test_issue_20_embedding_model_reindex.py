@@ -15,6 +15,7 @@ from danish_rag.retrieval import (
     UnsupportedEmbeddingModelError,
 )
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.evaluation_time import fixed_clock
 
 
 class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
@@ -25,7 +26,7 @@ class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
         self.embedding_provider = DeterministicEmbeddingProviderFixture()
         install_minimal_knowledge_release(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
 
     def index_metadata(self) -> dict[str, object]:
@@ -46,7 +47,7 @@ class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.index_metadata()["embedding_model"], embedding_model)
         results = HybridRetriever.from_data_dir(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         ).retrieve("What Danish test can count for permanent residence?")
         self.assertTrue(results)
         self.assertEqual(results[0]["knowledge_release_id"], "kr-2026-07-06.1")
@@ -59,7 +60,7 @@ class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
             install_minimal_knowledge_release(
                 self.data_dir,
                 embedding_model="unreviewed-local-embedder",
-                embedding_provider=self.embedding_provider,
+                embedding_provider=self.embedding_provider, clock=fixed_clock,
             )
 
         self.assert_active_index_queryable("embeddinggemma")
@@ -70,7 +71,7 @@ class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
         result = install_minimal_knowledge_release(
             self.data_dir,
             embedding_model="embeddinggemma:latest",
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
 
         self.assertEqual(result["index"]["embedding_model"], "embeddinggemma:latest")
@@ -98,7 +99,7 @@ class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
                 self.data_dir,
                 embedding_model="embeddinggemma:latest",
                 embedding_provider=self.embedding_provider,
-                fault_injector=fault_injector,
+                fault_injector=fault_injector, clock=fixed_clock,
             )
 
         self.assert_active_index_queryable("embeddinggemma")
@@ -107,12 +108,12 @@ class Issue20EmbeddingModelReindexTests(unittest.IsolatedAsyncioTestCase):
         install_minimal_knowledge_release(
             self.data_dir,
             embedding_model="embeddinggemma:latest",
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         app = create_app(
             data_dir=self.data_dir,
             config_path=Path(self.tempdir.name) / "provider-config.json",
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),

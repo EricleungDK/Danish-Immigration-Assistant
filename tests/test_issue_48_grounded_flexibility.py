@@ -17,6 +17,7 @@ from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.provider_setup import ProviderConfiguration
 from danish_rag.retrieval import HybridRetriever
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.source_freshness_fixture import review_clock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,12 +67,12 @@ def build_production_answer_runner(data_dir):
     embedding_provider = DeterministicEmbeddingProviderFixture()
     install_minimal_knowledge_release(
         data_dir,
-        embedding_provider=embedding_provider,
+        embedding_provider=embedding_provider, clock=review_clock,
     )
     return AnswerServiceCaseRunner(
         retriever=HybridRetriever.from_data_dir(
             data_dir,
-            embedding_provider=embedding_provider,
+            embedding_provider=embedding_provider, clock=review_clock,
         ),
         generator=GroundedFlexibilityAnswerGenerator(),
         configuration=ProviderConfiguration(
@@ -83,6 +84,7 @@ def build_production_answer_runner(data_dir):
             capabilities=["generation"],
             validated_at_utc="2026-07-30T16:00:00Z",
         ),
+        clock=review_clock,
     )
 
 
@@ -478,9 +480,7 @@ class GroundedFlexibilityDatasetContractTests(unittest.TestCase):
         self.assertNotIn("conversation_id", serialized)
 
     def test_production_answer_path_qualifies_every_synthetic_variant(self):
-        from tests.source_freshness_fixture import fixture_review_time
-
-        with fixture_review_time(), tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory() as tmpdir:
             report = generate_grounded_flexibility_evaluation(
                 DATASET_PATH,
                 runner=build_production_answer_runner(tmpdir),

@@ -1,6 +1,7 @@
 import unittest
 
 from danish_rag.answer_verification import VerificationError, validate_verification
+from tests.evaluation_time import FIXED_TIME, fixed_clock
 
 
 def supported_branch(schema, index=1):
@@ -84,31 +85,31 @@ class VerifiedClaimBindingTests(unittest.TestCase):
         original = evidence('Du tilmelder dig direkte ved sprogcentret.')
         bindings = frozenset({claim_binding(claim, ['official-source'], [original]),
                               claim_binding(payload(claim)['summary'], ['official-source'], [original], kind='summary')})
-        result = validate_answer(payload(claim), evidence=[original], verified_claims=bindings)
+        result = validate_answer(payload(claim), evidence=[original], verified_claims=bindings, evaluated_at=FIXED_TIME)
         self.assertEqual(result['sections'][0]['text'], claim)
         with self.assertRaises(AnswerValidationError):
-            validate_answer(payload('The examination is free.'), evidence=[original], verified_claims=bindings)
+            validate_answer(payload('The examination is free.'), evidence=[original], verified_claims=bindings, evaluated_at=FIXED_TIME)
         with self.assertRaises(AnswerValidationError):
-            validate_answer(payload(claim), evidence=[evidence('Et andet indhold.')], verified_claims=bindings)
+            validate_answer(payload(claim), evidence=[evidence('Et andet indhold.')], verified_claims=bindings, evaluated_at=FIXED_TIME)
         with self.assertRaises(AnswerValidationError):
-            validate_answer(payload(claim), evidence=[{**original, 'language': 'da'}], verified_claims=bindings)
+            validate_answer(payload(claim), evidence=[{**original, 'language': 'da'}], verified_claims=bindings, evaluated_at=FIXED_TIME)
         changed_summary = payload(claim)
         changed_summary['summary'] = 'An unsupported new summary.'
         with self.assertRaises(AnswerValidationError):
-            validate_answer(changed_summary, evidence=[original], verified_claims=bindings)
+            validate_answer(changed_summary, evidence=[original], verified_claims=bindings, evaluated_at=FIXED_TIME)
         changed_kind = payload(claim)
         changed_kind['sections'].append(dict(changed_kind['sections'][0]))
         changed_kind['sections'][0]['kind'] = 'interpretation'
         with self.assertRaises(AnswerValidationError):
-            validate_answer(changed_kind, evidence=[original], verified_claims=bindings)
+            validate_answer(changed_kind, evidence=[original], verified_claims=bindings, evaluated_at=FIXED_TIME)
         with_trailing_refusal = bindings | {claim_binding(
             'I cannot determine eligibility.', [], [original], kind='refusal', position=2)}
         with self.assertRaises(AnswerValidationError):
-            validate_answer(payload(claim), evidence=[original], verified_claims=with_trailing_refusal)
+            validate_answer(payload(claim), evidence=[original], verified_claims=with_trailing_refusal, evaluated_at=FIXED_TIME)
         spoofed = payload(claim)
         spoofed['verified_claims'] = list(bindings)
         with self.assertRaises(AnswerValidationError):
-            validate_answer(spoofed, evidence=[original])
+            validate_answer(spoofed, evidence=[original], evaluated_at=FIXED_TIME)
 
 class LocalProviderVerificationIntegrationTests(unittest.TestCase):
     def test_production_answer_repairs_rejected_translation_then_verifies_it_separately(self):
@@ -140,7 +141,7 @@ class LocalProviderVerificationIntegrationTests(unittest.TestCase):
             provider_id='ollama', endpoint='http://127.0.0.1:11434', model='fixture',
             provider_version='fixture', model_identity={}, capabilities=['generation'],
             validated_at_utc='test')
-        result = AnswerService(retriever=Retriever(), generator=generator).answer(
+        result = AnswerService(retriever=Retriever(), generator=generator, clock=fixed_clock).answer(
             'Where do I register for Prøve i Dansk 2?', configuration)
         self.assertEqual(result.answer['sections'][0]['text'], claim)
         self.assertEqual(result.answer['summary'], claim)
@@ -280,7 +281,7 @@ class RefusalSummaryTests(unittest.TestCase):
             provider_id='ollama', endpoint='http://127.0.0.1:11434', model='fixture',
             provider_version='fixture', model_identity={}, capabilities=['generation'],
             validated_at_utc='test')
-        result = AnswerService(retriever=Retriever(), generator=generator).answer(
+        result = AnswerService(retriever=Retriever(), generator=generator, clock=fixed_clock).answer(
             'What registration fee applies to Prøve i Dansk 2 in 2030?', configuration)
         self.assertEqual(result.answer['summary'], refusal)
         self.assertEqual(result.answer['sections'][0]['text'], refusal)
@@ -303,7 +304,7 @@ class SafetyAugmentationSummaryTests(unittest.TestCase):
         generator = RecordingOllamaGenerator([json.dumps(wire_answer), json.dumps({'checks': checks})])
         result = AnswerService(
             retriever=FixtureRetriever([evidence_fixture('source', content=claim)]),
-            generator=generator,
+            generator=generator, clock=fixed_clock,
         ).answer('I passed PD2, have lived in Denmark for 7 years, and have a job. '
                  'Do I qualify for permanent residence?',
                  replace(provider_configuration(), provider_id='ollama'))

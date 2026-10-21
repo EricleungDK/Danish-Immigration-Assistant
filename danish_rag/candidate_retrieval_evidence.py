@@ -3,10 +3,14 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .evidence_integrity import reject_duplicate_json_object, sha256_file, utc_now_seconds
+from .evidence_integrity import (
+    format_utc_seconds, reject_duplicate_json_object, sha256_file, system_utc_clock,
+)
 from .knowledge_release import verify_knowledge_release, default_data_dir
 from .retrieval_benchmark import _is_eligible_for_query
 
@@ -154,10 +158,11 @@ def evaluate_candidate_retrieval(root: Path, quality_bar: dict, runtime_policy: 
             observed, thresholds, evidence, failures)
 
 
-def collect_baseline(root: Path, retriever: Any) -> dict:
+def collect_baseline(root: Path, retriever: Any,
+                     *, clock: Callable[[], datetime] = system_utc_clock) -> dict:
     from .source_freshness import assess_source_freshness
     queries, fixtures = _frozen(root)
-    now = utc_now_seconds()
+    now = format_utc_seconds(clock())
     rows = []
     for query in queries:
         error = 0

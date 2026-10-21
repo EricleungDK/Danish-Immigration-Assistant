@@ -17,7 +17,7 @@ from danish_rag.provider_setup import ProviderConfiguration
 from danish_rag.retrieval import HybridRetriever
 from danish_rag.evaluation_quality_bar import load_evaluation_cases
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
-from tests.source_freshness_fixture import fixture_review_time
+from tests.source_freshness_fixture import review_clock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,18 +62,17 @@ class RecordingGenerator:
 
 class Issue15ExamCoverageTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.enterContext(fixture_review_time())
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         self.data_dir = Path(self.tempdir.name)
         self.embedding_provider = DeterministicEmbeddingProviderFixture()
         self.installation = install_minimal_knowledge_release(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=review_clock,
         )
         self.retriever = HybridRetriever.from_data_dir(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=review_clock,
         )
 
     def test_added_sources_include_review_and_provenance_metadata(self):
@@ -168,7 +167,7 @@ class Issue15ExamCoverageTests(unittest.TestCase):
             }
         )
 
-        result = AnswerService(retriever=self.retriever, generator=generator).answer(
+        result = AnswerService(retriever=self.retriever, generator=generator, clock=review_clock).answer(
             (
                 "Can you compare Prøve i Dansk 1, Prøve i Dansk 2, Prøve i Dansk 3, "
                 "and Studieprøven for permanent residence?"
@@ -202,7 +201,7 @@ class Issue15ExamCoverageTests(unittest.TestCase):
             }
         )
 
-        result = AnswerService(retriever=self.retriever, generator=generator).answer(
+        result = AnswerService(retriever=self.retriever, generator=generator, clock=review_clock).answer(
             "I have an old Danish certificate. Can you tell me whether SIRI will accept it for permanent residence?",
             provider_configuration(),
         )
@@ -245,7 +244,7 @@ class Issue15ExamCoverageTests(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(AnswerValidationError, "prohibited"):
-            AnswerService(retriever=self.retriever, generator=generator).answer(
+            AnswerService(retriever=self.retriever, generator=generator, clock=review_clock).answer(
                 "I have an old Danish certificate. Can you tell me whether SIRI will accept it for permanent residence?",
                 provider_configuration(),
             )

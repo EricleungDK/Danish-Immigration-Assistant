@@ -14,6 +14,7 @@ from tests.chunk_release_fixture import (
 )
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.release_trust_fixture import create_test_release_trust_fixture
+from tests.evaluation_time import fixed_clock
 
 
 class ChunkCitationGenerator:
@@ -70,7 +71,7 @@ class ChunkAnswerPathTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
     def test_chunked_source_installs_retrieves_cites_and_persists_full_provenance(self):
@@ -78,9 +79,9 @@ class ChunkAnswerPathTests(unittest.TestCase):
             retriever=HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
-                trust_root_path=self.release_trust.trust_root_path,
+                trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
             ),
-            generator=ChunkCitationGenerator(),
+            generator=ChunkCitationGenerator(), clock=fixed_clock,
         ).answer(
             "Can an equivalent or higher Danish test satisfy the permanent residence requirement?",
             ProviderConfiguration(

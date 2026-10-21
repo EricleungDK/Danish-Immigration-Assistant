@@ -13,6 +13,7 @@ from danish_rag.provider_setup import (
 )
 from danish_rag.retrieval import HybridRetriever, build_hybrid_index
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.source_freshness_fixture import review_clock
 
 
 PERMANENT_RESIDENCE_DOCUMENT_ID = "di-rag-doc-permanent-residence-language"
@@ -96,9 +97,6 @@ class MultiIntentAnswerGeneratorFixture:
 
 class Issue47MultiIntentAnswerTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        from tests.source_freshness_fixture import fixture_review_time
-
-        self.enterContext(fixture_review_time())
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         root = Path(self.tempdir.name)
@@ -146,7 +144,7 @@ class Issue47MultiIntentAnswerTests(unittest.IsolatedAsyncioTestCase):
             self.data_dir,
             documents,
             manifest=manifest,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=review_clock,
         )
         dense_index = json.loads(
             (
@@ -161,7 +159,7 @@ class Issue47MultiIntentAnswerTests(unittest.IsolatedAsyncioTestCase):
             active_release={"manifest": manifest},
             documents=documents,
             dense_index=dense_index,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=review_clock,
         )
 
         results = retriever.retrieve(
@@ -184,7 +182,7 @@ class Issue47MultiIntentAnswerTests(unittest.IsolatedAsyncioTestCase):
             config_path=self.config_path,
             data_dir=self.data_dir,
             answer_generator=generator,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=review_clock,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),

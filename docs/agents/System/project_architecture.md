@@ -57,10 +57,16 @@ tests/                         unit, integration, live opt-in, and browser gates
   citations, Evidence Confidence, and Fresh Tomato Score.
 - `snapshot_clock.py` (#67 snapshot mode) holds a per-request `SnapshotState` derived only
   from the verified release the request loads (`ensure_release()` result, the retriever's
-  manifest in `ask`; no release I/O of its own) and scopes `source_freshness`'s clock to
-  it. It applies only to releases whose canonical manifest digest equals a bundled one's;
-  evaluation CLIs keep the wall clock. `local_app.py` adds it as middleware and stores
-  `knowledge_snapshot` per turn.
+  manifest in `ask`; no release I/O of its own) and wraps the app clock (`snapshot_aware_clock`)
+  so it returns the snapshot time inside the request. It applies only to releases whose
+  canonical manifest digest equals a bundled one's. `local_app.py` adds it as middleware
+  and stores `knowledge_snapshot` per turn.
+- Clock injection (#70): freshness, eligibility and evidence-integrity time take an explicit
+  timezone-aware evaluation time (no wall-clock fallback). Entry points (`create_app`,
+  `AnswerService`, `HybridRetriever`, install, evaluation runners and monitors) accept
+  `clock: Callable[[], datetime]` defaulting to `evidence_integrity.system_utc_clock`. Tests
+  pass a fixed time (`tests/evaluation_time.py`). Record and install timestamps stay on
+  the real clock.
 - `conversation_store.py` persists immutable turn provenance locally.
 - `release_trust.py`, `github_release_client.py`, and `knowledge_release.py`
   separate discovery, explicit download approval, signed review, install, and

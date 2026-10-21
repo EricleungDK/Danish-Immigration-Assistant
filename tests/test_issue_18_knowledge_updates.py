@@ -19,6 +19,7 @@ from danish_rag.local_app import create_app
 from danish_rag.source_maintenance import build_publishable_knowledge_release
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.release_trust_fixture import create_test_release_trust_fixture
+from tests.evaluation_time import fixed_clock
 
 
 class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
@@ -34,7 +35,7 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
         )
         self.current = install_minimal_knowledge_release(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
 
     async def wait_for_install_terminal_status(
@@ -172,7 +173,7 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
         app = create_app(
             config_path=self.root / "provider-config.json", data_dir=self.data_dir,
             release_catalog_dir=self.release_catalog, embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
             for available in (False, True):
@@ -188,7 +189,7 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
         app = create_app(
             config_path=self.root / "provider-config.json", data_dir=self.data_dir,
             release_catalog_dir=self.release_catalog, embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
             for error in (HTTPException(status_code=409, detail="Installation is in progress."), RuntimeError("unavailable")):
@@ -208,7 +209,7 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
             data_dir=self.data_dir,
             release_catalog_dir=self.release_catalog,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
