@@ -1013,12 +1013,12 @@ class SnapshotBasisConsistencyTests(AppTestCase):
                 "/knowledge-updates/automatic-check", headers={"Origin": "http://testserver"}
             )
             for _ in range(400):
-                if not app.state.automatic_check_state["running"]:
+                if not app.state.update_controller.automatic_check_running:
                     break
                 await asyncio.sleep(0.05)
             else:
                 self.fail("automatic check did not finish")
-        self.assertEqual(app.state.automatic_check_state["status"]["state"], "failed")
+        self.assertEqual(app.state.update_controller.automatic_check_status()["state"], "failed")
 
 
 class FreshInstallDefaultTests(unittest.TestCase):
