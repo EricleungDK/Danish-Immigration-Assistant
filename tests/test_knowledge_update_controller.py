@@ -260,6 +260,39 @@ class AutomaticCheckTests(ControllerTestBase):
                 self.make_controller(interval=bad)
 
 
+class WorkerThreadTests(ControllerTestBase):
+    def test_wait_idle_never_sees_unstarted_workers_under_concurrent_spawns(self):
+        controller = self.make_controller()
+        errors = []
+        stop = threading.Event()
+
+        def waiter():
+            while not stop.is_set():
+                try:
+                    controller.wait_idle(timeout=0.01)
+                except Exception as exc:  # e.g. RuntimeError joining an unstarted thread
+                    errors.append(exc)
+
+        watcher = threading.Thread(target=waiter)
+        watcher.start()
+        try:
+            for index in range(300):
+                controller._spawn(lambda: None, name=f"w{index}")
+        finally:
+            stop.set()
+            watcher.join()
+        self.assertEqual(errors, [])
+        self.assertTrue(controller.wait_idle(timeout=5))
+
+    def test_wait_idle_is_false_while_a_worker_is_blocked(self):
+        controller = self.make_controller()
+        release = threading.Event()
+        controller._spawn(lambda: release.wait(5), name="blocked")
+        self.assertFalse(controller.wait_idle(timeout=0.05))
+        release.set()
+        self.assertTrue(controller.wait_idle(timeout=5))
+
+
 class InstallTests(ControllerTestBase):
     def blocking_injector(self):
         started, release = threading.Event(), threading.Event()

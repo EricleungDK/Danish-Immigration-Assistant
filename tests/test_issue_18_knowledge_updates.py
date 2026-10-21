@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from fastapi import HTTPException
 
 import httpx
 
@@ -15,6 +14,7 @@ from danish_rag.knowledge_release import (
     discover_knowledge_update,
     install_minimal_knowledge_release,
 )
+from danish_rag.knowledge_update_controller import KnowledgeUpdateConflict
 from danish_rag.local_app import create_app
 from danish_rag.source_maintenance import build_publishable_knowledge_release
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
@@ -191,13 +191,19 @@ class Issue18KnowledgeUpdateTests(unittest.IsolatedAsyncioTestCase):
             trust_root_path=self.release_trust.trust_root_path,
         )
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
-            for error in (HTTPException(status_code=409, detail="Installation is in progress."), RuntimeError("unavailable")):
+            for error in (KnowledgeUpdateConflict("Installation is in progress."), RuntimeError("unavailable")):
                 with patch("danish_rag.knowledge_update_controller.discover_knowledge_update", side_effect=error):
                     response = await client.post("/knowledge-updates/check", headers={"Origin": "http://testserver", "HX-Request": "true"})
                 self.assertEqual(response.status_code, 200)
                 self.assertIn('id="manual-update-result"', response.text)
                 self.assertNotIn("No newer knowledge update is available", response.text)
-                self.assertIn("Installation is in progress." if isinstance(error, HTTPException) else "Knowledge update failed while checking", response.text)
+                self.assertIn("Installation is in progress." if isinstance(error, KnowledgeUpdateConflict) else "Knowledge update failed while checking", response.text)
+            with patch("danish_rag.knowledge_update_controller.discover_knowledge_update", side_effect=KnowledgeUpdateConflict("Installation is in progress.")):
+                plain = await client.post("/knowledge-updates/check", headers={"Origin": "http://testserver"})
+            self.assertEqual(plain.status_code, 409)
+            with patch("danish_rag.knowledge_update_controller.discover_knowledge_update", side_effect=RuntimeError("unavailable")):
+                plain = await client.post("/knowledge-updates/check", headers={"Origin": "http://testserver"})
+            self.assertEqual(plain.status_code, 503)
             rejected = await client.post("/knowledge-updates/check", headers={"HX-Request": "true"})
             self.assertEqual(rejected.status_code, 403)
 

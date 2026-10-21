@@ -250,9 +250,16 @@ class KnowledgeUpdateController:
             self._run_automatic_metadata_check,
             name="knowledge-release-automatic-metadata-check",
         )
-        status = self.automatic_check_status()
-        assert status is not None
-        return status
+        return self.automatic_check_status() or {
+            "state": "running",
+            "kind": "neutral",
+            "role": "status",
+            "title": "Checking release metadata automatically",
+            "message": (
+                "Only bounded release metadata is being checked. Ordinary local "
+                "use remains available."
+            ),
+        }
 
     def manual_check(self, ensure_release: Callable[[], Any] | None = None) -> None:
         """Check for a newer release now. `ensure_release` overrides the verified-release
@@ -265,8 +272,9 @@ class KnowledgeUpdateController:
                     "Wait for the current knowledge release installation "
                     "before checking for another update."
                 )
-            (ensure_release or self._ensure_release)()
+            loader = ensure_release or self._ensure_release
             if self._client is None:
+                loader()
                 update = discover_knowledge_update(
                     self._data_dir,
                     self._catalog_dir,
@@ -274,22 +282,12 @@ class KnowledgeUpdateController:
                 )
                 save_pending_knowledge_update(self._data_dir, update)
             else:
-                prepared = load_pending_knowledge_update(self._data_dir)
-                prepared_distribution = (
-                    prepared.get("distribution") if isinstance(prepared, dict) else None
+                _check_github_update_metadata(
+                    ensure_release=loader,
+                    data_dir=self._data_dir,
+                    client=self._client,
+                    trust_root_path=self._trust_root_path,
                 )
-                if (
-                    isinstance(prepared_distribution, dict)
-                    and prepared_distribution.get("channel") == "github-releases"
-                ):
-                    dismiss_available_github_knowledge_update(self._data_dir)
-                else:
-                    update = select_github_knowledge_update(
-                        self._data_dir,
-                        self._client.list_published_releases(),
-                        trust_root_path=self._trust_root_path,
-                    )
-                    save_available_github_knowledge_update(self._data_dir, update)
         except KnowledgeUpdateConflict:
             raise
         except Exception as exc:
@@ -416,9 +414,10 @@ class KnowledgeUpdateController:
     ) -> None:
         worker = threading.Thread(target=target, kwargs=kwargs or {}, name=name, daemon=True)
         with self._threads_lock:
+            # Start under the lock so no reader sees an unstarted thread.
+            worker.start()
             self._threads = [t for t in self._threads if t.is_alive()]
             self._threads.append(worker)
-        worker.start()
 
     def _acquire_record_lock_or_conflict(self) -> None:
         if not self._record_lock.acquire(blocking=False):
