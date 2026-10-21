@@ -19,6 +19,7 @@ from typing import Any
 from .local_model_transport import LocalModelTransport, ModelMissingError, OllamaTransport
 from .privacy_boundary import PrivacyBoundaryError
 from .runtime_policy import load_runtime_policy
+from .trust_indicators import SourceHealth
 
 
 BENCHMARK_ID = "mvp-retrieval-benchmark-issue-27"
@@ -39,15 +40,13 @@ DEFAULT_DENSE_INDEX_PATH = "docs/progress/issue-28-dense-index.json"
 DEFAULT_RUNTIME_PROBE_PATH = "docs/progress/issue-26-runtime-probe.json"
 DEFAULT_RRF_K = 60
 APPROVAL_STATES = {"approved", "unapproved"}
-SOURCE_HEALTH_STATES = {
-    "healthy",
-    "overdue-policy-usable",
-    "changed-unreviewed",
-    "broken",
-    "extraction-failed",
+SOURCE_HEALTH_STATES = {member.value for member in SourceHealth}
+BLOCKED_SOURCE_HEALTH = {
+    SourceHealth.CHANGED_UNREVIEWED.value,
+    SourceHealth.BROKEN.value,
+    SourceHealth.EXTRACTION_FAILED.value,
 }
-BLOCKED_SOURCE_HEALTH = {"changed-unreviewed", "broken", "extraction-failed"}
-POLICY_USABLE_OVERDUE_HEALTH = "overdue-policy-usable"
+POLICY_USABLE_OVERDUE_HEALTH = SourceHealth.OVERDUE_POLICY_USABLE.value
 FIXTURE_ID_PATTERN = re.compile(r"^di-rag-doc-[a-z0-9-]+$")
 QUERY_ID_PATTERN = re.compile(r"^di-rag-query-[a-z0-9-]+$")
 TOKEN_PATTERN = re.compile(r"[0-9a-zA-ZæøåÆØÅ]+")

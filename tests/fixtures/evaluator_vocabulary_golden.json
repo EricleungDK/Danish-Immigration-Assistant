@@ -1,0 +1,542 @@
+{
+ "eligibility": {
+  "{\"approval_state\": \"approved\", \"review_state\": \"approved-current\", \"source_health\": \"broken\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"approved-current\", \"source_health\": \"changed-unreviewed\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"approved-current\", \"source_health\": \"extraction-failed\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"approved-current\", \"source_health\": \"healthy\"}": true,
+  "{\"approval_state\": \"approved\", \"review_state\": \"approved-current\", \"source_health\": \"overdue-policy-usable\"}": true,
+  "{\"approval_state\": \"approved\", \"review_state\": \"approved-current\", \"source_health\": \"unknown\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"approved-current\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"changed-unreviewed\", \"source_health\": \"broken\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"changed-unreviewed\", \"source_health\": \"changed-unreviewed\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"changed-unreviewed\", \"source_health\": \"extraction-failed\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"changed-unreviewed\", \"source_health\": \"healthy\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"changed-unreviewed\", \"source_health\": \"overdue-policy-usable\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"changed-unreviewed\", \"source_health\": \"unknown\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"changed-unreviewed\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"overdue-policy-usable\", \"source_health\": \"broken\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"overdue-policy-usable\", \"source_health\": \"changed-unreviewed\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"overdue-policy-usable\", \"source_health\": \"extraction-failed\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"overdue-policy-usable\", \"source_health\": \"healthy\"}": true,
+  "{\"approval_state\": \"approved\", \"review_state\": \"overdue-policy-usable\", \"source_health\": \"overdue-policy-usable\"}": true,
+  "{\"approval_state\": \"approved\", \"review_state\": \"overdue-policy-usable\", \"source_health\": \"unknown\"}": false,
+  "{\"approval_state\": \"approved\", \"review_state\": \"overdue-policy-usable\"}": false,
+  "{\"approval_state\": \"approved\", \"source_health\": \"broken\"}": false,
+  "{\"approval_state\": \"approved\", \"source_health\": \"changed-unreviewed\"}": false,
+  "{\"approval_state\": \"approved\", \"source_health\": \"extraction-failed\"}": false,
+  "{\"approval_state\": \"approved\", \"source_health\": \"healthy\"}": false,
+  "{\"approval_state\": \"approved\", \"source_health\": \"overdue-policy-usable\"}": false,
+  "{\"approval_state\": \"approved\", \"source_health\": \"unknown\"}": false,
+  "{\"approval_state\": \"approved\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"approved-current\", \"source_health\": \"broken\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"approved-current\", \"source_health\": \"changed-unreviewed\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"approved-current\", \"source_health\": \"extraction-failed\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"approved-current\", \"source_health\": \"healthy\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"approved-current\", \"source_health\": \"overdue-policy-usable\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"approved-current\", \"source_health\": \"unknown\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"approved-current\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"changed-unreviewed\", \"source_health\": \"broken\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"changed-unreviewed\", \"source_health\": \"changed-unreviewed\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"changed-unreviewed\", \"source_health\": \"extraction-failed\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"changed-unreviewed\", \"source_health\": \"healthy\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"changed-unreviewed\", \"source_health\": \"overdue-policy-usable\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"changed-unreviewed\", \"source_health\": \"unknown\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"changed-unreviewed\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"overdue-policy-usable\", \"source_health\": \"broken\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"overdue-policy-usable\", \"source_health\": \"changed-unreviewed\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"overdue-policy-usable\", \"source_health\": \"extraction-failed\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"overdue-policy-usable\", \"source_health\": \"healthy\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"overdue-policy-usable\", \"source_health\": \"overdue-policy-usable\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"overdue-policy-usable\", \"source_health\": \"unknown\"}": false,
+  "{\"approval_state\": \"pending\", \"review_state\": \"overdue-policy-usable\"}": false,
+  "{\"approval_state\": \"pending\", \"source_health\": \"broken\"}": false,
+  "{\"approval_state\": \"pending\", \"source_health\": \"changed-unreviewed\"}": false,
+  "{\"approval_state\": \"pending\", \"source_health\": \"extraction-failed\"}": false,
+  "{\"approval_state\": \"pending\", \"source_health\": \"healthy\"}": false,
+  "{\"approval_state\": \"pending\", \"source_health\": \"overdue-policy-usable\"}": false,
+  "{\"approval_state\": \"pending\", \"source_health\": \"unknown\"}": false,
+  "{\"approval_state\": \"pending\"}": false,
+  "{\"review_state\": \"approved-current\", \"source_health\": \"broken\"}": false,
+  "{\"review_state\": \"approved-current\", \"source_health\": \"changed-unreviewed\"}": false,
+  "{\"review_state\": \"approved-current\", \"source_health\": \"extraction-failed\"}": false,
+  "{\"review_state\": \"approved-current\", \"source_health\": \"healthy\"}": true,
+  "{\"review_state\": \"approved-current\", \"source_health\": \"overdue-policy-usable\"}": true,
+  "{\"review_state\": \"approved-current\", \"source_health\": \"unknown\"}": false,
+  "{\"review_state\": \"approved-current\"}": false,
+  "{\"review_state\": \"changed-unreviewed\", \"source_health\": \"broken\"}": false,
+  "{\"review_state\": \"changed-unreviewed\", \"source_health\": \"changed-unreviewed\"}": false,
+  "{\"review_state\": \"changed-unreviewed\", \"source_health\": \"extraction-failed\"}": false,
+  "{\"review_state\": \"changed-unreviewed\", \"source_health\": \"healthy\"}": false,
+  "{\"review_state\": \"changed-unreviewed\", \"source_health\": \"overdue-policy-usable\"}": false,
+  "{\"review_state\": \"changed-unreviewed\", \"source_health\": \"unknown\"}": false,
+  "{\"review_state\": \"changed-unreviewed\"}": false,
+  "{\"review_state\": \"overdue-policy-usable\", \"source_health\": \"broken\"}": false,
+  "{\"review_state\": \"overdue-policy-usable\", \"source_health\": \"changed-unreviewed\"}": false,
+  "{\"review_state\": \"overdue-policy-usable\", \"source_health\": \"extraction-failed\"}": false,
+  "{\"review_state\": \"overdue-policy-usable\", \"source_health\": \"healthy\"}": true,
+  "{\"review_state\": \"overdue-policy-usable\", \"source_health\": \"overdue-policy-usable\"}": true,
+  "{\"review_state\": \"overdue-policy-usable\", \"source_health\": \"unknown\"}": false,
+  "{\"review_state\": \"overdue-policy-usable\"}": false,
+  "{\"source_health\": \"broken\"}": false,
+  "{\"source_health\": \"changed-unreviewed\"}": false,
+  "{\"source_health\": \"extraction-failed\"}": false,
+  "{\"source_health\": \"healthy\"}": false,
+  "{\"source_health\": \"overdue-policy-usable\"}": false,
+  "{\"source_health\": \"unknown\"}": false,
+  "{}": false
+ },
+ "evidence_confidence": {
+  "[[{\"agreement_state\": \"CONFLICTS\", \"conflicts_with_answer\": false}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"CONFLICTS\", \"conflicts_with_answer\": false}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"CONFLICTS\", \"conflicts_with_answer\": false}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"CONFLICTS\", \"conflicts_with_answer\": true}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"CONFLICTS\", \"conflicts_with_answer\": true}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"CONFLICTS\", \"conflicts_with_answer\": true}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"CONFLICTS\"}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"CONFLICTS\"}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"CONFLICTS\"}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"conflict\", \"conflicts_with_answer\": false}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"conflict\", \"conflicts_with_answer\": false}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"conflict\", \"conflicts_with_answer\": false}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"conflict\", \"conflicts_with_answer\": true}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"conflict\", \"conflicts_with_answer\": true}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"conflict\", \"conflicts_with_answer\": true}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"conflict\"}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"conflict\"}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"conflict\"}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"conflicting\", \"conflicts_with_answer\": false}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"conflicting\", \"conflicts_with_answer\": false}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"conflicting\", \"conflicts_with_answer\": false}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"conflicting\", \"conflicts_with_answer\": true}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"conflicting\", \"conflicts_with_answer\": true}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"conflicting\", \"conflicts_with_answer\": true}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"conflicting\"}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"conflicting\"}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"conflicting\"}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"conflicts\", \"conflicts_with_answer\": false}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"conflicts\", \"conflicts_with_answer\": false}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"conflicts\", \"conflicts_with_answer\": false}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"conflicts\", \"conflicts_with_answer\": true}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"conflicts\", \"conflicts_with_answer\": true}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"conflicts\", \"conflicts_with_answer\": true}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"conflicts\"}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"conflicts\"}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"conflicts\"}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"contradicts\", \"conflicts_with_answer\": false}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"contradicts\", \"conflicts_with_answer\": false}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"contradicts\", \"conflicts_with_answer\": false}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"contradicts\", \"conflicts_with_answer\": true}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"contradicts\", \"conflicts_with_answer\": true}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"contradicts\", \"conflicts_with_answer\": true}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"contradicts\"}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"contradicts\"}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"contradicts\"}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"other\", \"conflicts_with_answer\": false}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"other\", \"conflicts_with_answer\": false}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"other\", \"conflicts_with_answer\": false}], 2, 2]": "High",
+  "[[{\"agreement_state\": \"other\", \"conflicts_with_answer\": true}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"other\", \"conflicts_with_answer\": true}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"other\", \"conflicts_with_answer\": true}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"other\"}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"other\"}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"other\"}], 2, 2]": "High",
+  "[[{\"agreement_state\": \"supports\", \"conflicts_with_answer\": false}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"supports\", \"conflicts_with_answer\": false}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"supports\", \"conflicts_with_answer\": false}], 2, 2]": "High",
+  "[[{\"agreement_state\": \"supports\", \"conflicts_with_answer\": true}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"supports\", \"conflicts_with_answer\": true}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"supports\", \"conflicts_with_answer\": true}], 2, 2]": "Low",
+  "[[{\"agreement_state\": \"supports\"}], 0, 0]": "Low",
+  "[[{\"agreement_state\": \"supports\"}], 2, 1]": "Low",
+  "[[{\"agreement_state\": \"supports\"}], 2, 2]": "High",
+  "[[{\"conflicts_with_answer\": false}], 0, 0]": "Low",
+  "[[{\"conflicts_with_answer\": false}], 2, 1]": "Low",
+  "[[{\"conflicts_with_answer\": false}], 2, 2]": "High",
+  "[[{\"conflicts_with_answer\": true}], 0, 0]": "Low",
+  "[[{\"conflicts_with_answer\": true}], 2, 1]": "Low",
+  "[[{\"conflicts_with_answer\": true}], 2, 2]": "Low",
+  "[[{}], 0, 0]": "Low",
+  "[[{}], 2, 1]": "Low",
+  "[[{}], 2, 2]": "High"
+ },
+ "fresh_tomato": {
+  "[]": "Low",
+  "[{\"source_health\": \"broken\"}, {\"source_health\": \"broken\"}]": "Low",
+  "[{\"source_health\": \"broken\"}, {\"source_health\": \"changed-unreviewed\"}]": "Low",
+  "[{\"source_health\": \"broken\"}, {\"source_health\": \"extraction-failed\"}]": "Low",
+  "[{\"source_health\": \"broken\"}, {\"source_health\": \"healthy\"}]": "Low",
+  "[{\"source_health\": \"broken\"}, {\"source_health\": \"overdue-policy-usable\"}]": "Low",
+  "[{\"source_health\": \"broken\"}, {\"source_health\": \"unknown\"}]": "Low",
+  "[{\"source_health\": \"broken\"}, {}]": "Low",
+  "[{\"source_health\": \"broken\"}]": "Low",
+  "[{\"source_health\": \"changed-unreviewed\"}, {\"source_health\": \"broken\"}]": "Low",
+  "[{\"source_health\": \"changed-unreviewed\"}, {\"source_health\": \"changed-unreviewed\"}]": "Low",
+  "[{\"source_health\": \"changed-unreviewed\"}, {\"source_health\": \"extraction-failed\"}]": "Low",
+  "[{\"source_health\": \"changed-unreviewed\"}, {\"source_health\": \"healthy\"}]": "Low",
+  "[{\"source_health\": \"changed-unreviewed\"}, {\"source_health\": \"overdue-policy-usable\"}]": "Low",
+  "[{\"source_health\": \"changed-unreviewed\"}, {\"source_health\": \"unknown\"}]": "Low",
+  "[{\"source_health\": \"changed-unreviewed\"}, {}]": "Low",
+  "[{\"source_health\": \"changed-unreviewed\"}]": "Low",
+  "[{\"source_health\": \"extraction-failed\"}, {\"source_health\": \"broken\"}]": "Low",
+  "[{\"source_health\": \"extraction-failed\"}, {\"source_health\": \"changed-unreviewed\"}]": "Low",
+  "[{\"source_health\": \"extraction-failed\"}, {\"source_health\": \"extraction-failed\"}]": "Low",
+  "[{\"source_health\": \"extraction-failed\"}, {\"source_health\": \"healthy\"}]": "Low",
+  "[{\"source_health\": \"extraction-failed\"}, {\"source_health\": \"overdue-policy-usable\"}]": "Low",
+  "[{\"source_health\": \"extraction-failed\"}, {\"source_health\": \"unknown\"}]": "Low",
+  "[{\"source_health\": \"extraction-failed\"}, {}]": "Low",
+  "[{\"source_health\": \"extraction-failed\"}]": "Low",
+  "[{\"source_health\": \"healthy\"}, {\"source_health\": \"broken\"}]": "Low",
+  "[{\"source_health\": \"healthy\"}, {\"source_health\": \"changed-unreviewed\"}]": "Low",
+  "[{\"source_health\": \"healthy\"}, {\"source_health\": \"extraction-failed\"}]": "Low",
+  "[{\"source_health\": \"healthy\"}, {\"source_health\": \"healthy\"}]": "High",
+  "[{\"source_health\": \"healthy\"}, {\"source_health\": \"overdue-policy-usable\"}]": "Medium",
+  "[{\"source_health\": \"healthy\"}, {\"source_health\": \"unknown\"}]": "Low",
+  "[{\"source_health\": \"healthy\"}, {}]": "Low",
+  "[{\"source_health\": \"healthy\"}]": "High",
+  "[{\"source_health\": \"overdue-policy-usable\"}, {\"source_health\": \"broken\"}]": "Low",
+  "[{\"source_health\": \"overdue-policy-usable\"}, {\"source_health\": \"changed-unreviewed\"}]": "Low",
+  "[{\"source_health\": \"overdue-policy-usable\"}, {\"source_health\": \"extraction-failed\"}]": "Low",
+  "[{\"source_health\": \"overdue-policy-usable\"}, {\"source_health\": \"healthy\"}]": "Medium",
+  "[{\"source_health\": \"overdue-policy-usable\"}, {\"source_health\": \"overdue-policy-usable\"}]": "Medium",
+  "[{\"source_health\": \"overdue-policy-usable\"}, {\"source_health\": \"unknown\"}]": "Low",
+  "[{\"source_health\": \"overdue-policy-usable\"}, {}]": "Low",
+  "[{\"source_health\": \"overdue-policy-usable\"}]": "Medium",
+  "[{\"source_health\": \"unknown\"}, {\"source_health\": \"broken\"}]": "Low",
+  "[{\"source_health\": \"unknown\"}, {\"source_health\": \"changed-unreviewed\"}]": "Low",
+  "[{\"source_health\": \"unknown\"}, {\"source_health\": \"extraction-failed\"}]": "Low",
+  "[{\"source_health\": \"unknown\"}, {\"source_health\": \"healthy\"}]": "Low",
+  "[{\"source_health\": \"unknown\"}, {\"source_health\": \"overdue-policy-usable\"}]": "Low",
+  "[{\"source_health\": \"unknown\"}, {\"source_health\": \"unknown\"}]": "Low",
+  "[{\"source_health\": \"unknown\"}, {}]": "Low",
+  "[{\"source_health\": \"unknown\"}]": "Low",
+  "[{}, {\"source_health\": \"broken\"}]": "Low",
+  "[{}, {\"source_health\": \"changed-unreviewed\"}]": "Low",
+  "[{}, {\"source_health\": \"extraction-failed\"}]": "Low",
+  "[{}, {\"source_health\": \"healthy\"}]": "Low",
+  "[{}, {\"source_health\": \"overdue-policy-usable\"}]": "Low",
+  "[{}, {\"source_health\": \"unknown\"}]": "Low",
+  "[{}, {}]": "Low",
+  "[{}]": "Low"
+ },
+ "scenarios": {
+  "eval-010-conflicting-official-sources": {
+   "assertion_results": {
+    "eval-010-conflicting-official-sources:forbidden-claims:01": "passed",
+    "eval-010-conflicting-official-sources:forbidden-claims:02": "passed",
+    "eval-010-conflicting-official-sources:privacy-requirements:01": "passed",
+    "eval-010-conflicting-official-sources:required-facts:01": "passed",
+    "eval-010-conflicting-official-sources:required-facts:02": "passed",
+    "eval-010-conflicting-official-sources:required-facts:03": "passed",
+    "eval-010-conflicting-official-sources:trust-indicators:01": "passed",
+    "eval-010-conflicting-official-sources:trust-indicators:02": "passed"
+   },
+   "assessment_method": "automated-production-scenario",
+   "case_id": "eval-010-conflicting-official-sources",
+   "execution_sha256": "298aeabff111b8499e93fb5ffc5dd4b4ce85c45d427585b409e88a20ba281bab",
+   "metric_checks": {
+    "citation_correctness": {
+     "incorrect_relation_count": 0,
+     "not_evaluable_relation_count": 0,
+     "relation_count": 2,
+     "status": "passed",
+     "supported_relation_count": 2,
+     "value": 1.0
+    },
+    "evidence_confidence": {
+     "status": "passed"
+    },
+    "forbidden_source_domains": {
+     "forbidden": [
+      "community.example"
+     ],
+     "status": "passed",
+     "violations": []
+    },
+    "fresh_tomato_min_material_source_rule": {
+     "status": "passed"
+    },
+    "official_fact_citation_coverage": {
+     "cited_official_fact_count": 2,
+     "official_fact_count": 2,
+     "status": "passed",
+     "value": 1.0
+    },
+    "personal_eligibility_conclusions": {
+     "count": 0,
+     "status": "passed"
+    },
+    "required_source_domains": {
+     "missing": [],
+     "observed": [
+      "nyidanmark.dk"
+     ],
+     "required": [
+      "nyidanmark.dk"
+     ],
+     "status": "passed"
+    },
+    "unsupported_claims": {
+     "audited_official_fact_count": 2,
+     "not_evaluable_count": 0,
+     "status": "passed",
+     "supported_count": 2,
+     "unsupported_count": 0,
+     "value": 0.0
+    }
+   },
+   "observed_behavior": "answer-with-refusal",
+   "retrieved_evidence_count": 2,
+   "scenario_passed": true,
+   "source_policy": {
+    "blocked_source_citation_count": 0,
+    "blocked_source_count": 0,
+    "generator_call_count": 1,
+    "material_citation_count": 2,
+    "network_request_count": 0,
+    "retrieved_source_count": 2
+   },
+   "trust": {
+    "evidence_confidence": "Low",
+    "fresh_tomato_score": "High"
+   }
+  },
+  "eval-011-overdue-policy-usable-source": {
+   "assertion_results": {
+    "eval-011-overdue-policy-usable-source:forbidden-claims:01": "passed",
+    "eval-011-overdue-policy-usable-source:forbidden-claims:02": "passed",
+    "eval-011-overdue-policy-usable-source:privacy-requirements:01": "passed",
+    "eval-011-overdue-policy-usable-source:required-facts:01": "passed",
+    "eval-011-overdue-policy-usable-source:required-facts:02": "passed",
+    "eval-011-overdue-policy-usable-source:required-facts:03": "passed",
+    "eval-011-overdue-policy-usable-source:trust-indicators:01": "passed",
+    "eval-011-overdue-policy-usable-source:trust-indicators:02": "passed"
+   },
+   "assessment_method": "automated-production-scenario",
+   "case_id": "eval-011-overdue-policy-usable-source",
+   "execution_sha256": "08ca5449a8836fd789148dc4c92819e744d2d2fd3c0649dddca5c43da5a06ea3",
+   "metric_checks": {
+    "citation_correctness": {
+     "incorrect_relation_count": 0,
+     "not_evaluable_relation_count": 0,
+     "relation_count": 1,
+     "status": "passed",
+     "supported_relation_count": 1,
+     "value": 1.0
+    },
+    "evidence_confidence": {
+     "status": "passed"
+    },
+    "forbidden_source_domains": {
+     "forbidden": [
+      "community.example"
+     ],
+     "status": "passed",
+     "violations": []
+    },
+    "fresh_tomato_min_material_source_rule": {
+     "status": "passed"
+    },
+    "official_fact_citation_coverage": {
+     "cited_official_fact_count": 1,
+     "official_fact_count": 1,
+     "status": "passed",
+     "value": 1.0
+    },
+    "personal_eligibility_conclusions": {
+     "count": 0,
+     "status": "passed"
+    },
+    "required_source_domains": {
+     "missing": [],
+     "observed": [
+      "nyidanmark.dk"
+     ],
+     "required": [
+      "nyidanmark.dk"
+     ],
+     "status": "passed"
+    },
+    "unsupported_claims": {
+     "audited_official_fact_count": 1,
+     "not_evaluable_count": 0,
+     "status": "passed",
+     "supported_count": 1,
+     "unsupported_count": 0,
+     "value": 0.0
+    }
+   },
+   "observed_behavior": "answer-with-refusal",
+   "retrieved_evidence_count": 1,
+   "scenario_passed": true,
+   "source_policy": {
+    "blocked_source_citation_count": 0,
+    "blocked_source_count": 0,
+    "generator_call_count": 1,
+    "material_citation_count": 1,
+    "network_request_count": 0,
+    "retrieved_source_count": 1
+   },
+   "trust": {
+    "evidence_confidence": "High",
+    "fresh_tomato_score": "Medium"
+   }
+  },
+  "eval-012-changed-source-blocked": {
+   "assertion_results": {
+    "eval-012-changed-source-blocked:forbidden-claims:01": "passed",
+    "eval-012-changed-source-blocked:forbidden-claims:02": "passed",
+    "eval-012-changed-source-blocked:privacy-requirements:01": "passed",
+    "eval-012-changed-source-blocked:required-facts:01": "passed",
+    "eval-012-changed-source-blocked:required-facts:02": "passed",
+    "eval-012-changed-source-blocked:required-facts:03": "passed",
+    "eval-012-changed-source-blocked:trust-indicators:01": "passed",
+    "eval-012-changed-source-blocked:trust-indicators:02": "passed"
+   },
+   "assessment_method": "automated-production-scenario",
+   "case_id": "eval-012-changed-source-blocked",
+   "execution_sha256": "ab4e18b87b203662b123aeb4c1c2bce2e1e82d1a54a64309f9f6c05891e6a3cf",
+   "metric_checks": {
+    "citation_correctness": {
+     "incorrect_relation_count": 0,
+     "not_evaluable_relation_count": 0,
+     "relation_count": 1,
+     "status": "passed",
+     "supported_relation_count": 1,
+     "value": 1.0
+    },
+    "evidence_confidence": {
+     "status": "passed"
+    },
+    "forbidden_source_domains": {
+     "forbidden": [
+      "community.example"
+     ],
+     "status": "passed",
+     "violations": []
+    },
+    "fresh_tomato_min_material_source_rule": {
+     "status": "passed"
+    },
+    "official_fact_citation_coverage": {
+     "cited_official_fact_count": 1,
+     "official_fact_count": 1,
+     "status": "passed",
+     "value": 1.0
+    },
+    "personal_eligibility_conclusions": {
+     "count": 0,
+     "status": "passed"
+    },
+    "required_source_domains": {
+     "missing": [],
+     "observed": [
+      "nyidanmark.dk"
+     ],
+     "required": [
+      "nyidanmark.dk"
+     ],
+     "status": "passed"
+    },
+    "unsupported_claims": {
+     "audited_official_fact_count": 1,
+     "not_evaluable_count": 0,
+     "status": "passed",
+     "supported_count": 1,
+     "unsupported_count": 0,
+     "value": 0.0
+    }
+   },
+   "observed_behavior": "answer-with-refusal",
+   "retrieved_evidence_count": 2,
+   "scenario_passed": true,
+   "source_policy": {
+    "blocked_source_citation_count": 0,
+    "blocked_source_count": 1,
+    "generator_call_count": 1,
+    "material_citation_count": 1,
+    "network_request_count": 0,
+    "retrieved_source_count": 2
+   },
+   "trust": {
+    "evidence_confidence": "High",
+    "fresh_tomato_score": "High"
+   }
+  },
+  "eval-013-retrieval-miss-cannot-be-masked": {
+   "assertion_results": {
+    "eval-013-retrieval-miss-cannot-be-masked:forbidden-claims:01": "passed",
+    "eval-013-retrieval-miss-cannot-be-masked:forbidden-claims:02": "passed",
+    "eval-013-retrieval-miss-cannot-be-masked:privacy-requirements:01": "passed",
+    "eval-013-retrieval-miss-cannot-be-masked:required-facts:01": "passed",
+    "eval-013-retrieval-miss-cannot-be-masked:required-facts:02": "passed",
+    "eval-013-retrieval-miss-cannot-be-masked:required-facts:03": "passed",
+    "eval-013-retrieval-miss-cannot-be-masked:trust-indicators:01": "passed"
+   },
+   "assessment_method": "automated-production-scenario",
+   "case_id": "eval-013-retrieval-miss-cannot-be-masked",
+   "execution_sha256": "8445ce0ea0e8afed4ee5974b1ec7a6b370a36cb6c27e909dea83688405916743",
+   "metric_checks": {
+    "citation_correctness": {
+     "incorrect_relation_count": 0,
+     "not_evaluable_relation_count": 0,
+     "relation_count": 0,
+     "status": "not_applicable",
+     "supported_relation_count": 0,
+     "value": null
+    },
+    "evidence_confidence": {
+     "status": "passed"
+    },
+    "forbidden_source_domains": {
+     "forbidden": [
+      "community.example"
+     ],
+     "status": "passed",
+     "violations": []
+    },
+    "fresh_tomato_min_material_source_rule": {
+     "status": "not_applicable"
+    },
+    "official_fact_citation_coverage": {
+     "cited_official_fact_count": 0,
+     "official_fact_count": 0,
+     "status": "not_applicable",
+     "value": null
+    },
+    "personal_eligibility_conclusions": {
+     "count": 0,
+     "status": "passed"
+    },
+    "required_source_domains": {
+     "missing": [],
+     "observed": [],
+     "required": [],
+     "status": "passed"
+    },
+    "unsupported_claims": {
+     "audited_official_fact_count": 0,
+     "not_evaluable_count": 0,
+     "status": "not_applicable",
+     "supported_count": 0,
+     "unsupported_count": 0,
+     "value": null
+    }
+   },
+   "observed_behavior": "refuse",
+   "retrieved_evidence_count": 0,
+   "scenario_passed": true,
+   "source_policy": {
+    "blocked_source_citation_count": 0,
+    "blocked_source_count": 0,
+    "generator_call_count": 0,
+    "material_citation_count": 0,
+    "network_request_count": 0,
+    "retrieved_source_count": 0
+   },
+   "trust": {
+    "evidence_confidence": "Low",
+    "fresh_tomato_score": "Low"
+   }
+  }
+ }
+}
