@@ -46,7 +46,14 @@ class _OllamaStub(BaseHTTPRequestHandler):
             self._send({"model": payload["model"], "details": {"family": "embeddinggemma"}})
         else:
             self.server.embed_inputs.append(payload["input"])
-            self._send({"embeddings": [[1.0, 0.5, 0.25] for _ in payload["input"]]})
+            self._send(
+                {
+                    "embeddings": [[1.0, 0.5, 0.25] for _ in payload["input"]],
+                    "total_duration": 90_000_000,
+                    "load_duration": 81_000_000,
+                    "prompt_eval_duration": 4_000_000,
+                }
+            )
 
 
 class TransportEmbeddingClientTests(unittest.TestCase):
@@ -58,6 +65,15 @@ class TransportEmbeddingClientTests(unittest.TestCase):
 
         self.assertEqual(payload, {"embeddings": [[0.1, 0.2]]})
         self.assertEqual(transport.requests[0].params, {"model": "embeddinggemma", "texts": ["hej"]})
+
+    def test_embed_keeps_provider_duration_fields(self):
+        transport = FakeTransport()
+        transport.queue_embed([[0.1]], raw={"load_duration": 7, "model": "m"})
+
+        payload = TransportEmbeddingClient(transport).embed("embeddinggemma", "hej")
+
+        self.assertEqual(payload["embeddings"], [[0.1]])
+        self.assertEqual(payload["load_duration"], 7)
 
     def test_show_model_maps_missing_model_to_file_not_found(self):
         transport = FakeTransport()
@@ -126,6 +142,12 @@ class BenchmarkLoopbackTests(unittest.TestCase):
             server.server_close()
 
         self.assertEqual(result["index"]["vector_dimensions"], 3)
+        self.assertTrue(result["operations"]["cold_embedding_load_observed"])
+        durations = result["operations"]["embedding_service_durations_ms"]
+        self.assertEqual(set(durations), {"total_duration", "load_duration", "prompt_eval_duration"})
+        self.assertEqual(durations["load_duration"][0], 81.0)
+        for query in result["queries"]:
+            self.assertEqual(query["embedding_load_duration_ms"], 81.0)
         self.assertTrue(server.embed_inputs)
         self.assertTrue(all(isinstance(item, list) and len(item) == 1 for item in server.embed_inputs))
 

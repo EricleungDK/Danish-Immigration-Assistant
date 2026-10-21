@@ -128,8 +128,8 @@ class TransportEmbeddingClient:
             raise FileNotFoundError(model) from exc
 
     def embed(self, model: str, text: str) -> dict[str, Any]:
-        vectors = self.transport.embed(model=model, texts=[text])
-        return {"embeddings": vectors}
+        result = self.transport.embed_result(model=model, texts=[text])
+        return {**result.raw, "embeddings": result.vectors}
 
 
 def load_benchmark_inputs(

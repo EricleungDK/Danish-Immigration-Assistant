@@ -288,7 +288,7 @@ class ProviderModelDiscoverer:
     def _discover_ollama(self, transport: LocalModelTransport) -> list[str]:
         identity = self.policy["models"]["generation"].get("identity", {})
         compatible: list[str] = []
-        for entry in transport.list_models()[:100]:
+        for entry in transport.model_listing().models[:100]:
             model = entry["name"]
             if _is_cloud_model_id(model):
                 continue
@@ -304,7 +304,7 @@ class ProviderModelDiscoverer:
         return sorted(
             (
                 entry["name"]
-                for entry in transport.list_models()
+                for entry in transport.model_listing().models
                 if not _is_cloud_model_id(entry["name"])
             ),
             key=str.casefold,
@@ -387,7 +387,8 @@ class ProviderCapabilityTester:
             transport = factory(
                 configuration.provider_id, configuration.endpoint, self.timeout_seconds
             )
-            model_ids = {entry["name"] for entry in transport.list_models()}
+            listing = transport.model_listing()
+            model_ids = {entry["name"] for entry in listing.models}
         except _TRANSPORT_ERRORS as exc:
             return CapabilityTestResult(
                 ok=False,
@@ -439,7 +440,7 @@ class ProviderCapabilityTester:
             ok=True,
             reason="passed",
             message="Provider capability test passed.",
-            provider_version="openai-compatible",
+            provider_version=str(listing.raw.get("object", "openai-compatible")),
             model_identity={"id": configuration.model},
             capabilities=["generation"],
         )
