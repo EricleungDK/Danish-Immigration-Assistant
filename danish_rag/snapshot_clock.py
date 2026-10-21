@@ -12,12 +12,11 @@ manifest content, not by name). Any other release (for example one installed fro
 later) keeps wall-clock freshness, so its real-time due and block-after dates still
 fire, and no snapshot label is shown for it.
 
-Mechanism. Files bound by release-qualification evidence cannot change, so this module
-swaps the module-level `datetime` of `source_freshness` once, for a subclass whose
-`now()` returns the snapshot time while a `snapshot_clock` scope is active and otherwise
-defers to whatever `datetime` was there before (real, or the #64 test pin). The scope
-holds a per-request `SnapshotState` in a `ContextVar`: it applies per request/task or
-thread, never process-wide.
+Mechanism. Core freshness checks take an explicit evaluation time (#70); the app's clock
+(`snapshot_aware_clock`) returns the snapshot time while a `snapshot_clock` scope has one
+and otherwise defers to the injected base clock (system UTC, or a test's fixed time). The
+scope holds a per-request `SnapshotState` in a `ContextVar`: it applies per request/task
+or thread, never process-wide.
 
 The state is derived ONLY from the signature-verified release the request actually uses
 (`SnapshotState.adopt(manifest)`): the result of the handler's `ensure_release()` and, in
@@ -28,11 +27,9 @@ no verification. Until a release has been verified in the request the state is "
 says so). There is no path that rebases freshness without a verified release in the same
 request.
 
-Only `source_freshness` is wrapped: the answer path, retrieval eligibility and trust
-indicators all call it without an evaluation time. `evidence_integrity` and
-`grounded_flexibility_evaluation` supply times only to evidence/qualification code, which
-keeps the wall clock (or the test pin). Installation and indexing need no scope:
-eligibility is judged at retrieval time, not when documents are indexed.
+Only the answer path and retrieval eligibility use the snapshot-aware clock. Evaluation
+and qualification runners take their own clock. Installation and indexing use the app's
+base clock (not the request scope).
 """
 
 from __future__ import annotations
@@ -41,7 +38,7 @@ import hashlib
 import json
 import logging
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -49,17 +46,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import danish_rag.source_freshness as source_freshness
 from .knowledge_release import DEFAULT_RELEASE_CATALOG_DIR
 
 LOGGER = logging.getLogger(__name__)
 
-CLOCK_MODULES = (source_freshness,)
 # Releases shipped in this repository; tests may point this elsewhere.
 BUNDLED_CATALOG_DIR = DEFAULT_RELEASE_CATALOG_DIR
 
 _REAL_DATETIME = datetime
-_MARKER = "_snapshot_clock_wrapper"
 _RELEASE_ID = re.compile(r"kr-\d{4}-\d{2}-\d{2}\.\d+")
 
 
@@ -233,45 +227,25 @@ def bundled_snapshot(manifest: dict[str, Any], *, digest: str | None = None) -> 
         return None
 
 
-def _wrap(base: type) -> type:
-    meta = type(
-        "SnapshotDatetimeMeta",
-        (type(base),),
-        {
-            # isinstance(real_datetime, wrapper) stays True, as in production.
-            "__instancecheck__": lambda cls, instance: isinstance(instance, _REAL_DATETIME),
-        },
-    )
+def snapshot_aware_clock(base: Callable[[], datetime]) -> Callable[[], datetime]:
+    """A clock that reads the request's snapshot time, else `base()`.
 
-    class SnapshotDatetime(base, metaclass=meta):  # type: ignore[valid-type, misc]
-        @classmethod
-        def now(cls, tz=None):  # mirrors datetime.now
-            state = _STATE.get()
-            snapshot_time = state.time if state is not None else None
-            if snapshot_time is None:
-                return base.now(tz)
-            if tz is not None:
-                return snapshot_time.astimezone(tz)
-            return snapshot_time.astimezone().replace(tzinfo=None)  # naive local time
+    The snapshot is the per-request `SnapshotState` of the active `snapshot_clock` scope,
+    so concurrent requests never see each other's basis.
+    """
 
-    setattr(SnapshotDatetime, _MARKER, True)
-    return SnapshotDatetime
+    def clock() -> datetime:
+        state = _STATE.get()
+        snapshot_time = state.time if state is not None else None
+        return snapshot_time if snapshot_time is not None else base()
 
-
-def install_snapshot_clock() -> None:
-    """Idempotently wrap the current `datetime` of each clock module."""
-
-    for module in CLOCK_MODULES:
-        # vars(): a subclass of the wrapper inherits the marker and must still be wrapped.
-        if _MARKER not in vars(module.datetime):
-            module.datetime = _wrap(module.datetime)
+    return clock
 
 
 @contextmanager
 def snapshot_clock(state: SnapshotState) -> Iterator[None]:
     """Evaluate freshness at `state.time` inside this scope (the wall clock if unset)."""
 
-    install_snapshot_clock()
     token = _STATE.set(state)
     try:
         yield

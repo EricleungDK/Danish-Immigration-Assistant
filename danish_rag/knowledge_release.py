@@ -24,7 +24,7 @@ from .corpus_schema import (
     corpus_schema_contract,
 )
 from .embedding_provider import EmbeddingProvider, resolve_embedding_provider
-from .evidence_integrity import is_utc_seconds
+from .evidence_integrity import is_utc_seconds, system_utc_clock
 from .github_release_client import (
     ArtifactDownloadApproval,
     DownloadedReleaseArtifact,
@@ -89,6 +89,7 @@ def install_minimal_knowledge_release(
     embedding_endpoint: str | None = None,
     trust_root_path: str | Path | None = None,
     fault_injector: Callable[[str], None] | None = None,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     """Install the bundled minimal reviewed release and build its local hybrid index."""
 
@@ -100,6 +101,7 @@ def install_minimal_knowledge_release(
         embedding_endpoint=embedding_endpoint,
         trust_root_path=trust_root_path,
         fault_injector=fault_injector,
+        clock=clock,
     )
 
 
@@ -114,6 +116,7 @@ def install_knowledge_release(
     expected_release_id: str | None = None,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
     fault_injector: Callable[[str], None] | None = None,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     """Install a verified reviewed knowledge release and build its local hybrid index."""
 
@@ -208,6 +211,7 @@ def install_knowledge_release(
             trust_root_path=resolved_trust_root_path,
             progress=progress,
             fault_injector=fault_injector,
+            clock=clock,
         )
     finally:
         if staging_dir.exists():
@@ -269,6 +273,7 @@ def ensure_minimal_knowledge_release(
     embedding_provider: EmbeddingProvider | None = None,
     embedding_endpoint: str | None = None,
     trust_root_path: str | Path | None = None,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     """Return the active release, installing `release_dir` first if none is installed.
 
@@ -303,6 +308,7 @@ def ensure_minimal_knowledge_release(
             embedding_provider=embedding_provider,
             embedding_endpoint=embedding_endpoint,
             trust_root_path=trust_root_path,
+            clock=clock,
         )
 
 
@@ -1703,6 +1709,7 @@ def _install_verified_release_from_staging(
     trust_root_path: Path,
     progress: _InstallProgress,
     fault_injector: Callable[[str], None] | None,
+    clock: Callable[[], datetime],
 ) -> dict[str, Any]:
     from .retrieval import HybridRetriever, build_hybrid_index
 
@@ -1746,6 +1753,7 @@ def _install_verified_release_from_staging(
         embedding_model_identity=embedding_model_identity,
         progress_callback=progress.report_from_event,
         fault_injector=fault_injector,
+        clock=clock,
     )
     progress.report(
         "compatibility",
@@ -1772,6 +1780,7 @@ def _install_verified_release_from_staging(
         embedding_model=embedding_model,
         embedding_provider=embedding_provider,
         embedding_model_identity=embedding_model_identity,
+        clock=clock,
     )
     index_artifacts = _index_artifact_integrity(
         staging_dir / "index" / release_id

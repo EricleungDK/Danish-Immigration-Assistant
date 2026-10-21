@@ -5,11 +5,13 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import datetime
 from itertools import combinations
 from pathlib import Path
 from typing import Any
 
+from .evidence_integrity import format_utc_seconds, system_utc_clock
 from .final_answer_evaluation import evaluate_final_answer_case
 from .source_freshness import assess_source_freshness
 
@@ -47,12 +49,13 @@ def generate_grounded_flexibility_evaluation(
     *,
     runner: Any,
     generated_at_utc: str | None = None,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     """Execute the synthetic cases and publish content-free coverage evidence."""
 
     dataset_path = Path(dataset_path)
     dataset = load_grounded_flexibility_dataset(dataset_path)
-    evaluated_at_utc = generated_at_utc or _utc_now()
+    evaluated_at_utc = generated_at_utc or format_utc_seconds(clock())
     facts = {fact["fact_id"]: fact for fact in dataset["facts"]}
     unsupported_parts = {
         part["part_id"]: part for part in dataset["unsupported_parts"]
@@ -526,12 +529,6 @@ def _aggregate_paraphrase_consistency(
         "requires_identical_answer_prose": False,
         "groups": group_results,
     }
-
-
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace(
-        "+00:00", "Z"
-    )
 
 
 def _validate_dataset(dataset: dict[str, Any]) -> list[str]:

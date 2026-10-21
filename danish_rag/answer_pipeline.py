@@ -7,7 +7,9 @@ from copy import deepcopy
 import re
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass, replace
+from datetime import datetime
 from enum import Enum
 from typing import Any, Protocol
 
@@ -20,6 +22,7 @@ from .answer_verification import (
 )
 from .ollama_contract import OLLAMA_DETERMINISTIC_CHAT_OPTIONS
 from .privacy_boundary import PrivacyBoundaryError, require_loopback_endpoint
+from .evidence_integrity import system_utc_clock
 from .provider_setup import ProviderConfiguration
 from .retrieval import normalize_question
 from .source_freshness import assess_source_freshness
@@ -606,9 +609,11 @@ class AnswerService:
         *,
         retriever: Any,
         generator: AnswerGenerator,
+        clock: Callable[[], datetime] = system_utc_clock,
     ) -> None:
         self.retriever = retriever
         self.generator = generator
+        self.clock = clock
 
     def answer(
         self,
@@ -669,7 +674,10 @@ class AnswerService:
         if ambiguity.answer_context:
             interpreted_question += "\n\nApplication interpretation: " + ambiguity.answer_context
         evidence = self.retriever.retrieve(interpreted_question)
-        eligible_evidence, blocked_evidence = _partition_evidence_by_policy(evidence)
+        evaluated_at = self.clock()
+        eligible_evidence, blocked_evidence = _partition_evidence_by_policy(
+            evidence, evaluated_at=evaluated_at,
+        )
         safety = classify_question_safety(effective_question)
         generation_question = interpreted_question
         generation_normalized_question = normalize_question(interpreted_question)
@@ -738,7 +746,7 @@ class AnswerService:
                     answer = _complete_verified_answer(
                         generated, verified_claims=verified_claims,
                         safety=safety, evidence=eligible_evidence,
-                        blocked_evidence=blocked_evidence,
+                        blocked_evidence=blocked_evidence, evaluated_at=evaluated_at,
                     )
                 else:
                     augmented = _augment_generated_payload(
@@ -748,7 +756,9 @@ class AnswerService:
                     if isinstance(self.generator, LocalProviderAnswerGenerator):
                         augmented = _assemble_supported_summary(augmented)
                     _reject_prohibited_safety_claims(augmented, safety=safety)
-                    answer = validate_answer(augmented, evidence=eligible_evidence)
+                    answer = validate_answer(
+                        augmented, evidence=eligible_evidence, evaluated_at=evaluated_at,
+                    )
                 break
             except AnswerValidationError as exc:
                 if (attempt == 1 and isinstance(exc, _RejectedVerifiedAnswer)
@@ -762,7 +772,7 @@ class AnswerService:
                     answer = _complete_verified_answer(
                         partial, verified_claims=bindings, safety=safety,
                         evidence=eligible_evidence, blocked_evidence=blocked_evidence,
-                        verification_status=status,
+                        verification_status=status, evaluated_at=evaluated_at,
                     )
                     break
                 if (attempt == 1 or safety.skip_generation
@@ -813,6 +823,7 @@ def _complete_verified_answer(
     payload: dict[str, Any], *, verified_claims: frozenset[str],
     safety: SafetyDecision, evidence: list[dict[str, Any]],
     blocked_evidence: list[dict[str, Any]],
+    evaluated_at: datetime,
     verification_status: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Append program-derived policy statements to a fully verified model answer.
@@ -822,7 +833,9 @@ def _complete_verified_answer(
     from the safety decision and source metadata. Only those exact appended
     sections receive local bindings; the final complete binding set is checked.
     """
-    validate_answer(payload, evidence=evidence, verified_claims=verified_claims)
+    validate_answer(
+        payload, evidence=evidence, verified_claims=verified_claims, evaluated_at=evaluated_at,
+    )
     augmented = _assemble_supported_summary(_augment_generated_payload(
         payload, safety=safety, evidence=evidence, blocked_evidence=blocked_evidence,
     ))
@@ -845,7 +858,10 @@ def _complete_verified_answer(
     final_citations = sorted({c for s in augmented['sections'] for c in s['citation_ids']})
     bindings.add(claim_binding(augmented['summary'], final_citations, evidence, kind='summary'))
     _reject_prohibited_safety_claims(augmented, safety=safety)
-    answer = validate_answer(augmented, evidence=evidence, verified_claims=frozenset(bindings))
+    answer = validate_answer(
+        augmented, evidence=evidence, verified_claims=frozenset(bindings),
+        evaluated_at=evaluated_at,
+    )
     if verification_status is not None:
         answer['verification'] = deepcopy(verification_status)
     return answer
@@ -855,6 +871,7 @@ def validate_answer(
     payload: dict[str, Any],
     *,
     evidence: list[dict[str, Any]],
+    evaluated_at: datetime,
     verified_claims: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(payload, dict):
@@ -895,7 +912,7 @@ def validate_answer(
         ineligible_citation_ids = [
             citation_id
             for citation_id in normalized_citation_ids
-            if not _is_evidence_eligible(evidence_by_citation_id[citation_id])
+            if not _is_evidence_eligible(evidence_by_citation_id[citation_id], evaluated_at)
         ]
         if ineligible_citation_ids:
             raise AnswerValidationError(
@@ -941,7 +958,7 @@ def validate_answer(
                 "text": text.strip(),
                 "citation_ids": normalized_citation_ids,
                 "citations": [
-                    _citation_from_evidence(evidence_by_citation_id[citation_id])
+                    _citation_from_evidence(evidence_by_citation_id[citation_id], evaluated_at)
                     for citation_id in normalized_citation_ids
                 ],
             }
@@ -964,13 +981,14 @@ def validate_answer(
         official_fact_count=official_fact_count,
         cited_official_fact_count=cited_official_fact_count,
         used_evidence=used_evidence,
+        evaluated_at=evaluated_at,
     )
     return {
         "summary": summary.strip(),
         "response_kind": "answer",
         "assumptions": [],
         "sections": sanitized_sections,
-        "citations": _material_sources(sanitized_sections, used_evidence),
+        "citations": _material_sources(sanitized_sections, used_evidence, evaluated_at),
         "trust": trust,
     }
 
@@ -1631,19 +1649,21 @@ def _blocked_source_warning_section(
 
 def _partition_evidence_by_policy(
     evidence: list[dict[str, Any]],
+    *,
+    evaluated_at: datetime,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     eligible: list[dict[str, Any]] = []
     blocked: list[dict[str, Any]] = []
     for item in evidence:
-        if _is_evidence_eligible(item):
+        if _is_evidence_eligible(item, evaluated_at):
             eligible.append(item)
         else:
             blocked.append(item)
     return eligible, blocked
 
 
-def _is_evidence_eligible(evidence: dict[str, Any]) -> bool:
-    return assess_source_freshness(evidence).answer_eligible
+def _is_evidence_eligible(evidence: dict[str, Any], evaluated_at: datetime) -> bool:
+    return assess_source_freshness(evidence, evaluated_at_utc=evaluated_at).answer_eligible
 
 
 def _approved_corpus_capability_for_topic(
@@ -1935,9 +1955,11 @@ def _parse_provider_content(content: Any) -> dict[str, Any]:
     return parsed
 
 
-def _citation_from_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
+def _citation_from_evidence(evidence: dict[str, Any], evaluated_at: datetime) -> dict[str, Any]:
     checked_at = str(evidence["checked_at_utc"])
-    fresh_tomato_score, fresh_tomato_reason = _fresh_tomato_indicator(evidence)
+    fresh_tomato_score, fresh_tomato_reason = _fresh_tomato_indicator(
+        evidence, evaluated_at
+    )
     knowledge_release_id = str(evidence["knowledge_release_id"])
     citation: dict[str, Any] = {
         "citation_id": str(evidence["citation_id"]),
@@ -1977,10 +1999,11 @@ def _citation_from_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
 def _material_sources(
     sections: list[dict[str, Any]],
     used_evidence: list[dict[str, Any]],
+    evaluated_at: datetime,
 ) -> list[dict[str, Any]]:
     sources: list[dict[str, Any]] = []
     for item in sorted(used_evidence, key=lambda evidence_item: evidence_item["citation_id"]):
-        citation = _citation_from_evidence(item)
+        citation = _citation_from_evidence(item, evaluated_at)
         citation["claim_support"] = [
             {
                 "label": section["label"],
@@ -2060,8 +2083,9 @@ def _trust_indicators(
     official_fact_count: int,
     cited_official_fact_count: int,
     used_evidence: list[dict[str, Any]],
+    evaluated_at: datetime,
 ) -> dict[str, str]:
-    source_scores = [_fresh_tomato_indicator(item)[0] for item in used_evidence]
+    source_scores = [_fresh_tomato_indicator(item, evaluated_at)[0] for item in used_evidence]
     fresh_tomato_score = _lowest_indicator(source_scores)
     fresh_reason = _fresh_tomato_reason(fresh_tomato_score)
     conflicting_sources = [
@@ -2113,8 +2137,10 @@ def _is_conflicting_evidence(evidence: dict[str, Any]) -> bool:
     return agreement_state in CONFLICTING_AGREEMENT_STATES
 
 
-def _fresh_tomato_indicator(evidence: dict[str, Any]) -> tuple[TrustLevel, str]:
-    assessment = assess_source_freshness(evidence)
+def _fresh_tomato_indicator(
+    evidence: dict[str, Any], evaluated_at: datetime
+) -> tuple[TrustLevel, str]:
+    assessment = assess_source_freshness(evidence, evaluated_at_utc=evaluated_at)
     return TrustLevel(assessment.level), assessment.reason
 
 

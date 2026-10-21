@@ -13,6 +13,7 @@ from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.evaluation_time import fixed_clock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -141,7 +142,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
                 retriever = CountingRetriever()
                 generator = FixtureAnswerGenerator()
 
-                result = AnswerService(retriever=retriever, generator=generator).answer(
+                result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
                     question,
                     provider_configuration(),
                 )
@@ -156,7 +157,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()
 
-        result = AnswerService(retriever=retriever, generator=generator).answer(
+        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
             "hi",
             provider_configuration(),
         )
@@ -173,7 +174,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()
 
-        result = AnswerService(retriever=retriever, generator=generator).answer(
+        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
             "Tell me a short joke.",
             provider_configuration(),
         )
@@ -213,7 +214,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
             )
         )
 
-        result = AnswerService(retriever=retriever, generator=generator).answer(
+        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
             "What is the capital of France?",
             provider_configuration(),
             conversation_turns=[
@@ -259,7 +260,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()
 
-        result = AnswerService(retriever=retriever, generator=generator).answer(
+        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
             "What is PD3?",
             provider_configuration(),
         )
@@ -286,7 +287,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
     def test_definition_does_not_override_consequential_application_ambiguity(self):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()
-        result = AnswerService(retriever=retriever, generator=generator).answer(
+        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
             "What is PD3 for permanent residence or citizenship?",
             provider_configuration(),
         )
@@ -298,7 +299,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()
         question = "What is PD3 registration?"
-        result = AnswerService(retriever=retriever, generator=generator).answer(
+        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
             question, provider_configuration(),
         )
         self.assertEqual(result.answer["response_kind"], "answer")
@@ -315,7 +316,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(question=question):
                 retriever = CountingRetriever()
                 generator = FixtureAnswerGenerator()
-                result = AnswerService(retriever=retriever, generator=generator).answer(
+                result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
                     question, provider_configuration(),
                 )
                 self.assertEqual(result.answer["response_kind"], "clarification")
@@ -331,7 +332,7 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(question=question):
                 retriever = CountingRetriever()
                 generator = FixtureAnswerGenerator()
-                result = AnswerService(retriever=retriever, generator=generator).answer(
+                result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
                     question, provider_configuration(),
                 )
                 self.assertEqual(result.answer["response_kind"], "answer")
@@ -392,13 +393,13 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
     def make_client(self, answer_generator: FixtureAnswerGenerator):
         install_minimal_knowledge_release(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         app = create_app(
             config_path=self.config_path,
             data_dir=self.data_dir,
             answer_generator=answer_generator,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),

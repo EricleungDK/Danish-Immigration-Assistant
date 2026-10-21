@@ -20,12 +20,14 @@ import sys
 import tempfile
 import urllib.request
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Iterator, Literal
 from urllib.parse import parse_qs, urlparse
 
 import httpx
 
+from .evidence_integrity import system_utc_clock
 from .github_release_client import (
     ArtifactDownloadApproval,
     DEFAULT_REPOSITORY,
@@ -399,6 +401,7 @@ async def run_network_boundary_monitor(
     *,
     mode: MonitorMode,
     policy_path: str | Path = DEFAULT_RUNTIME_POLICY_PATH,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     """Exercise local workflows under outbound-call observation and inspect update fields."""
 
@@ -446,6 +449,7 @@ async def run_network_boundary_monitor(
                 embedding_provider=embedding_provider,
                 answer_generator=answer_generator,
                 workflow_results=workflow_results,
+                clock=clock,
             )
             _execute_observed_github_release_transport(
                 observer=observer,
@@ -546,13 +550,14 @@ async def _execute_network_observed_workflows(
     embedding_provider: Any | None,
     answer_generator: Any | None,
     workflow_results: list[dict[str, Any]],
+    clock: Callable[[], datetime],
 ) -> None:
     with observer.workflow("local_indexing"):
         installation = install_knowledge_release(
             data_dir,
             release_dir=prior_release,
             embedding_provider=embedding_provider,
-            trust_root_path=trust_root_path,
+            trust_root_path=trust_root_path, clock=clock,
         )
     workflow_results.append({"id": "local_indexing", "status": "passed"})
 
@@ -560,7 +565,7 @@ async def _execute_network_observed_workflows(
         results = HybridRetriever.from_data_dir(
             data_dir,
             embedding_provider=embedding_provider,
-            trust_root_path=trust_root_path,
+            trust_root_path=trust_root_path, clock=clock,
         ).retrieve("What Danish test do I need for permanent residence?")
     workflow_results.append(
         {"id": "retrieval", "status": "passed" if results else "failed"}
@@ -572,7 +577,7 @@ async def _execute_network_observed_workflows(
         answer_generator=answer_generator,
         release_catalog_dir=release_catalog,
         embedding_provider=embedding_provider,
-        trust_root_path=trust_root_path,
+        trust_root_path=trust_root_path, clock=clock,
     )
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
@@ -870,6 +875,7 @@ def _build_fixture_release(
 def run_rollback_fault_matrix(
     *,
     mode: MonitorMode,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     """Inject every published installation fault and prove atomic rollback behavior."""
 
@@ -905,7 +911,7 @@ def run_rollback_fault_matrix(
                 data_dir,
                 release_dir=prior_release,
                 embedding_provider=embedding_provider,
-                trust_root_path=trust_root_path,
+                trust_root_path=trust_root_path, clock=clock,
             )
             before = active_corpus_summary(
                 data_dir,
@@ -961,7 +967,7 @@ def run_rollback_fault_matrix(
                     embedding_provider=embedding_provider,
                     trust_root_path=trust_root_path,
                     progress_callback=progress.append,
-                    fault_injector=inject_fault,
+                    fault_injector=inject_fault, clock=clock,
                 )
                 installation_returned = True
             except Exception as exc:  # Evidence records the type, never request content.
@@ -986,7 +992,7 @@ def run_rollback_fault_matrix(
                 retrieved = HybridRetriever.from_data_dir(
                     data_dir,
                     embedding_provider=embedding_provider,
-                    trust_root_path=trust_root_path,
+                    trust_root_path=trust_root_path, clock=clock,
                 ).retrieve("What Danish test is required for permanent residence?")
                 prior_pair_queryable = bool(retrieved) and all(
                     result.get("knowledge_release_id") == before["knowledge_release_id"]
@@ -1529,7 +1535,7 @@ def _build_live_supported_environment_report(
 
 
 def _execute_live_supported_environment_journeys(
-    *, policy: dict[str, Any]
+    *, policy: dict[str, Any], clock: Callable[[], datetime]
 ) -> dict[str, Any]:
     def prepare_workspace(workspace: Path) -> LiveEnvironmentWorkspace:
         data_dir = workspace / "data"
@@ -1555,7 +1561,7 @@ def _execute_live_supported_environment_journeys(
             data_dir,
             release_dir=prior_release,
             embedding_provider=None,
-            trust_root_path=trust_root_path,
+            trust_root_path=trust_root_path, clock=clock,
         )
         return LiveEnvironmentWorkspace(
             data_dir=data_dir,
@@ -1576,6 +1582,7 @@ async def run_supported_environment_critical_journeys(
     *,
     mode: MonitorMode,
     rollback_evidence: dict[str, Any] | None = None,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     """Run the release-blocking journeys through the local application's public seams.
 
@@ -1593,11 +1600,13 @@ async def run_supported_environment_critical_journeys(
     if mode == "live":
         if rollback_evidence is None:
             try:
-                rollback_evidence = run_rollback_fault_matrix(mode="live")
+                rollback_evidence = run_rollback_fault_matrix(mode="live", clock=clock)
             except Exception:
                 rollback_evidence = {}
         try:
-            raw_execution = _execute_live_supported_environment_journeys(policy=policy)
+            raw_execution = _execute_live_supported_environment_journeys(
+                policy=policy, clock=clock
+            )
             if not isinstance(raw_execution, dict):
                 raise TypeError("Live supported-environment evidence must be an object.")
         except Exception as error:
@@ -1647,7 +1656,7 @@ async def run_supported_environment_critical_journeys(
 
     if rollback_evidence is None:
         try:
-            rollback_evidence = run_rollback_fault_matrix(mode=mode)
+            rollback_evidence = run_rollback_fault_matrix(mode=mode, clock=clock)
         except Exception as error:
             rollback_evidence = {}
             record_failure(
@@ -1685,7 +1694,7 @@ async def run_supported_environment_critical_journeys(
                 data_dir,
                 release_dir=prior_release,
                 embedding_provider=embedding_provider,
-                trust_root_path=trust_root_path,
+                trust_root_path=trust_root_path, clock=clock,
             )
             prior_installation_passed = True
         except Exception as error:
@@ -1720,7 +1729,7 @@ async def run_supported_environment_critical_journeys(
             capability_tester=capability_tester,
             release_catalog_dir=release_catalog,
             embedding_provider=embedding_provider,
-            trust_root_path=trust_root_path,
+            trust_root_path=trust_root_path, clock=clock,
         )
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -2139,14 +2148,16 @@ async def run_release_qualification_monitors(
     *,
     mode: MonitorMode,
     generated_at_utc: str,
+    clock: Callable[[], datetime] = system_utc_clock,
 ) -> dict[str, Any]:
     """Run privacy, rollback, and supported-environment monitors as one evidence set."""
 
-    rollback = run_rollback_fault_matrix(mode=mode)
-    network = await run_network_boundary_monitor(mode=mode)
+    rollback = run_rollback_fault_matrix(mode=mode, clock=clock)
+    network = await run_network_boundary_monitor(mode=mode, clock=clock)
     environment = await run_supported_environment_critical_journeys(
         mode=mode,
         rollback_evidence=rollback,
+        clock=clock,
     )
     component_passed = all(
         result.get("passed") is True for result in (network, rollback, environment)
@@ -2177,7 +2188,11 @@ def write_release_monitor_report(report: dict[str, Any], output_path: str | Path
     )
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    clock: Callable[[], datetime] = system_utc_clock,
+) -> int:
     parser = argparse.ArgumentParser(
         description="Run release privacy, rollback, and supported-environment monitors."
     )
@@ -2191,6 +2206,7 @@ def main(argv: list[str] | None = None) -> int:
             run_release_qualification_monitors(
                 mode=args.mode,
                 generated_at_utc=args.generated_at_utc,
+                clock=clock,
             )
         )
         write_release_monitor_report(report, args.output)

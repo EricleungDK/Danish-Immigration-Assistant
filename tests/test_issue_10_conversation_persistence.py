@@ -18,6 +18,7 @@ from danish_rag.provider_setup import ProviderConfiguration, save_provider_confi
 from danish_rag.release_trust import sign_manifest
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.release_trust_fixture import create_test_release_trust_fixture
+from tests.evaluation_time import fixed_clock
 
 
 class FixtureAnswerGenerator:
@@ -68,7 +69,7 @@ class Issue10ConversationPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.save_provider("fixture-model-v1")
         install_minimal_knowledge_release(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
 
     def save_provider(self, model: str) -> None:
@@ -91,7 +92,7 @@ class Issue10ConversationPersistenceTests(unittest.IsolatedAsyncioTestCase):
             data_dir=self.data_dir,
             answer_generator=answer_generator or FixtureAnswerGenerator(),
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -139,7 +140,7 @@ class Issue10ConversationPersistenceTests(unittest.IsolatedAsyncioTestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
     async def post_question(

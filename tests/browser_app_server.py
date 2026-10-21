@@ -29,6 +29,7 @@ from danish_rag.provider_setup import ProviderConfiguration
 from danish_rag.source_maintenance import build_publishable_knowledge_release
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.release_trust_fixture import create_test_release_trust_fixture
+from tests.evaluation_time import fixed_clock
 
 
 def fixture_capability_tester(configuration: ProviderConfiguration) -> dict[str, Any]:
@@ -132,7 +133,7 @@ RELEASE_TRUST = create_test_release_trust_fixture(
 EMBEDDING_PROVIDER = DeterministicEmbeddingProviderFixture()
 install_minimal_knowledge_release(
     DATA_DIR,
-    embedding_provider=EMBEDDING_PROVIDER,
+    embedding_provider=EMBEDDING_PROVIDER, clock=fixed_clock,
 )
 
 
@@ -263,7 +264,7 @@ app = create_app(
     model_discoverer=fixture_model_discoverer,
     embedding_provider=EMBEDDING_PROVIDER,
     trust_root_path=RELEASE_TRUST.trust_root_path,
-    github_release_client=GITHUB_RELEASE_CLIENT,
+    github_release_client=GITHUB_RELEASE_CLIENT, clock=fixed_clock,
 )
 
 
@@ -276,7 +277,7 @@ async def reset_browser_test_knowledge_release() -> dict[str, str]:
     installation = install_minimal_knowledge_release(
         DATA_DIR,
         release_dir=BUNDLED_MINIMAL_RELEASE,
-        embedding_provider=EMBEDDING_PROVIDER,
+        embedding_provider=EMBEDDING_PROVIDER, clock=fixed_clock,
     )
     app.state.update_controller.reset_automatic_check()
     return {

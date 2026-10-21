@@ -5,6 +5,7 @@ from pathlib import Path
 from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.retrieval import HybridRetriever
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.evaluation_time import fixed_clock
 
 
 class ProductionEmbeddingContractTests(unittest.TestCase):
@@ -15,7 +16,7 @@ class ProductionEmbeddingContractTests(unittest.TestCase):
 
             installation = install_minimal_knowledge_release(
                 data_dir,
-                embedding_provider=embedding_provider,
+                embedding_provider=embedding_provider, clock=fixed_clock,
             )
             index_metadata = installation["index"]
 
@@ -30,7 +31,7 @@ class ProductionEmbeddingContractTests(unittest.TestCase):
 
             results = HybridRetriever.from_data_dir(
                 data_dir,
-                embedding_provider=embedding_provider,
+                embedding_provider=embedding_provider, clock=fixed_clock,
             ).retrieve("What Danish test do I need for permanent residence?")
 
             self.assertTrue(results)

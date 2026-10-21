@@ -11,6 +11,7 @@ from danish_rag.conversation_store import ConversationStore
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
 from danish_rag.runtime_policy import load_runtime_policy
+from tests.evaluation_time import fixed_clock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,7 +49,7 @@ class LiveAnswerGenerationSmokeTests(unittest.IsolatedAsyncioTestCase):
             app = create_app(
                 config_path=config_path,
                 data_dir=data_dir,
-                answer_generator=LocalProviderAnswerGenerator(timeout_seconds=timeout_seconds),
+                answer_generator=LocalProviderAnswerGenerator(timeout_seconds=timeout_seconds), clock=fixed_clock,
             )
             client = httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app),

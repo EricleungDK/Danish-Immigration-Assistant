@@ -19,6 +19,7 @@ from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
 from danish_rag.retrieval import HybridRetriever
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.evaluation_time import fixed_clock
 
 
 class FixtureAnswerGenerator:
@@ -315,7 +316,7 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
             config_path=self.config_path,
             data_dir=self.data_dir,
             answer_generator=answer_generator,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -327,7 +328,7 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
     async def test_minimal_release_installs_and_hybrid_retrieval_finds_supported_source(self):
         installation = install_minimal_knowledge_release(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
 
         self.assertEqual(installation["manifest"]["knowledge_release_id"], "kr-2026-07-06.1")
@@ -339,7 +340,7 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
 
         retriever = HybridRetriever.from_data_dir(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         results = retriever.retrieve("What Danish test do I need for permanent residence?")
 
@@ -400,7 +401,7 @@ class Issue9AnswerPathTests(unittest.IsolatedAsyncioTestCase):
                 app=create_app(
                     config_path=self.config_path,
                     data_dir=self.data_dir,
-                    embedding_provider=self.embedding_provider,
+                    embedding_provider=self.embedding_provider, clock=fixed_clock,
                 )
             ),
             base_url="http://testserver",

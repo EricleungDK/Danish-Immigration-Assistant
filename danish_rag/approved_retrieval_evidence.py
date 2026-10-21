@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from .candidate_release_evidence import read_artifact, safe_path
 from .candidate_retrieval_evidence import DATASETS, _frozen, _provenance, evaluate_candidate_retrieval
-from .evidence_integrity import sha256_file, utc_now_seconds
+from .evidence_integrity import format_utc_seconds, sha256_file, system_utc_clock
 from .knowledge_release import default_data_dir, verify_knowledge_release
 from .retrieval import HybridRetriever, _attach_source_metadata, inspect_embedding_model
 from .retrieval_benchmark import _is_eligible_for_query, run_hybrid_retrieval_comparison
@@ -105,7 +107,8 @@ def production_metrics(cases: list[dict], rows: list[dict], release: dict, evalu
                 forbidden_result_violations=0)
 
 
-def evaluate_approved_retrieval(root: Path, quality: dict, runtime: dict, candidate: dict) -> tuple:
+def evaluate_approved_retrieval(root: Path, quality: dict, runtime: dict, candidate: dict,
+                                *, clock: Callable[[], datetime] = system_utc_clock) -> tuple:
     thresholds = quality['thresholds']['retrieval']
     observed: dict[str, Any] = {}
     evidence = []
@@ -148,7 +151,8 @@ def evaluate_approved_retrieval(root: Path, quality: dict, runtime: dict, candid
         observed.update(production_metrics(cases, report['production_queries'], release, report['generated_at_utc']))
         # Re-evaluate freshness now too: old passing evidence cannot authorize a
         # currently blocked source merely because collection happened earlier.
-        current = production_metrics(cases, report['production_queries'], release, utc_now_seconds())
+        current = production_metrics(cases, report['production_queries'], release,
+                                  format_utc_seconds(clock()))
         if current['blocked_source_violations']:
             failures.append('production sources are no longer answer-eligible')
         fixture = fixture_metrics(root, report['fixture_queries'])
@@ -182,7 +186,8 @@ class _BenchmarkEmbeddingClient:
         return {'embedding': self.provider.embed(model, text)}
 
 
-def collect(root: Path, candidate: dict, retriever: HybridRetriever) -> dict:
+def collect(root: Path, candidate: dict, retriever: HybridRetriever,
+            *, clock: Callable[[], datetime] = system_utc_clock) -> dict:
     quality = json.loads((root/'config/evaluation-quality-bar.json').read_text())
     cases = approved_cases(root, candidate, quality['thresholds']['retrieval'])
     if sha256_file(retriever.active_release['manifest_path']) != candidate['manifest_sha256']:
@@ -195,7 +200,7 @@ def collect(root: Path, candidate: dict, retriever: HybridRetriever) -> dict:
     if inspect_embedding_model(retriever.embedding_provider, model) != retriever.dense_index['metadata']['embedding_model_identity']:
         raise ValueError('embedding model changed during collection')
     return dict(schema_version='approved-production-retrieval-v1', mode='live-local-embedding',
-                generated_at_utc=utc_now_seconds(), execution_error_count=0,
+                generated_at_utc=format_utc_seconds(clock()), execution_error_count=0,
                 proposal_sha256=candidate['artifacts']['retrieval_proposal']['sha256'],
                 approval_sha256=candidate['artifacts']['retrieval_approval']['sha256'],
                 implementation_sha256={p: sha256_file(root/p) for p in IMPLEMENTATIONS},
@@ -208,7 +213,7 @@ def collect(root: Path, candidate: dict, retriever: HybridRetriever) -> dict:
                             'index_metadata':retriever.dense_index['metadata']})
 
 
-def main() -> None:
+def main(*, clock: Callable[[], datetime] = system_utc_clock) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', default='.')
     parser.add_argument('--data-dir', default=default_data_dir())
@@ -216,8 +221,8 @@ def main() -> None:
     args = parser.parse_args()
     root = Path(args.root)
     candidate = json.loads((root/'config/release-qualification.json').read_text())['candidate_evidence']
-    retriever = HybridRetriever.from_data_dir(args.data_dir, trust_root_path=safe_path(root, candidate['trust_root_path']))
-    report = collect(root, candidate, retriever)
+    retriever = HybridRetriever.from_data_dir(args.data_dir, trust_root_path=safe_path(root, candidate['trust_root_path']), clock=clock)
+    report = collect(root, candidate, retriever, clock=clock)
     Path(args.output).write_text(json.dumps(report, indent=2, sort_keys=True)+'\n')
 
 

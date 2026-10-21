@@ -12,6 +12,7 @@ from danish_rag.knowledge_release import install_minimal_knowledge_release
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderConfiguration, save_provider_configuration
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.evaluation_time import fixed_clock
 
 
 def provider_configuration(model: str = "fixture-model") -> ProviderConfiguration:
@@ -132,7 +133,7 @@ class Issue14FollowUpServiceTests(unittest.TestCase):
             }
         ]
 
-        result = AnswerService(retriever=retriever, generator=generator).answer(
+        result = AnswerService(retriever=retriever, generator=generator, clock=fixed_clock).answer(
             "What about PD3?",
             provider_configuration(),
             conversation_turns=prior_turns,
@@ -154,7 +155,7 @@ class Issue14FollowUpServiceTests(unittest.TestCase):
     def test_suggested_follow_ups_are_stored_and_stay_inside_evidence_boundary(self):
         result = AnswerService(
             retriever=RecordingRetriever(),
-            generator=RecordingGenerator(),
+            generator=RecordingGenerator(), clock=fixed_clock,
         ).answer(
             "What Danish test do I need for permanent residence?",
             provider_configuration(),
@@ -182,7 +183,7 @@ class Issue14FollowUpApplicationTests(unittest.IsolatedAsyncioTestCase):
         save_provider_configuration(self.config_path, provider_configuration("fixture-model-v1"))
         install_minimal_knowledge_release(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
 
     def make_client(self, answer_generator: RecordingGenerator):
@@ -190,7 +191,7 @@ class Issue14FollowUpApplicationTests(unittest.IsolatedAsyncioTestCase):
             config_path=self.config_path,
             data_dir=self.data_dir,
             answer_generator=answer_generator,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),

@@ -26,6 +26,7 @@ from tests.chunk_release_fixture import (
 )
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.release_trust_fixture import create_test_release_trust_fixture
+from tests.evaluation_time import fixed_clock
 
 
 class ChunkInstallationTests(unittest.TestCase):
@@ -61,7 +62,7 @@ class ChunkInstallationTests(unittest.TestCase):
     ):
         whole_document_install = install_minimal_knowledge_release(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         self.assertEqual(
             whole_document_install["index"]["schema_version"],
@@ -72,7 +73,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=self.build_chunked_release(),
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         self.assertEqual(
@@ -88,7 +89,7 @@ class ChunkInstallationTests(unittest.TestCase):
             for item in HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
-                trust_root_path=self.release_trust.trust_root_path,
+                trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
             ).retrieve("Which equivalent or higher Danish test is described?", limit=2)
             if "equivalent or higher" in item["content"]
         )
@@ -116,7 +117,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             [self.document],
             manifest=manifest,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
 
         self.assertEqual(metadata["schema_version"], "hybrid-index-v1")
@@ -125,7 +126,7 @@ class ChunkInstallationTests(unittest.TestCase):
     def test_failed_chunked_index_build_preserves_prior_whole_document_pair(self):
         install_minimal_knowledge_release(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
 
         def fail_chunk_embedding(phase: str) -> None:
@@ -138,7 +139,7 @@ class ChunkInstallationTests(unittest.TestCase):
                 release_dir=self.build_chunked_release(),
                 embedding_provider=self.embedding_provider,
                 trust_root_path=self.release_trust.trust_root_path,
-                fault_injector=fail_chunk_embedding,
+                fault_injector=fail_chunk_embedding, clock=fixed_clock,
             )
 
         self.assertEqual(
@@ -147,7 +148,7 @@ class ChunkInstallationTests(unittest.TestCase):
         )
         results = HybridRetriever.from_data_dir(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         ).retrieve("What Danish test supports permanent residence?")
         self.assertTrue(results)
         self.assertEqual(results[0]["knowledge_release_id"], "kr-2026-07-06.1")
@@ -159,7 +160,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         index_dir = self.data_dir / "index" / "kr-2026-07-30.1"
         for filename in ("index-metadata.json", "dense-index.json"):
@@ -179,7 +180,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
@@ -191,7 +192,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         dense_index_path = (
             self.data_dir
@@ -210,7 +211,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
@@ -222,7 +223,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         dense_index_path = (
             self.data_dir
@@ -241,7 +242,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
@@ -253,7 +254,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         dense_index_path = (
             self.data_dir
@@ -273,7 +274,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
@@ -284,7 +285,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         documents_path = (
             self.data_dir
@@ -306,7 +307,7 @@ class ChunkInstallationTests(unittest.TestCase):
             HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
-                trust_root_path=self.release_trust.trust_root_path,
+                trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
             )
 
     def test_signed_manifest_rejects_tampered_corpus_and_active_hash_evidence(self):
@@ -315,7 +316,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         documents_path = (
             self.data_dir
@@ -344,7 +345,7 @@ class ChunkInstallationTests(unittest.TestCase):
             HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
-                trust_root_path=self.release_trust.trust_root_path,
+                trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
             )
 
     def test_active_record_cannot_redirect_the_installed_trust_anchor(self):
@@ -353,7 +354,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         active_path = self.data_dir / "active-release.json"
         active = json.loads(active_path.read_text(encoding="utf-8"))
@@ -366,7 +367,7 @@ class ChunkInstallationTests(unittest.TestCase):
         retriever = HybridRetriever.from_data_dir(
             self.data_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         self.assertEqual(
@@ -380,19 +381,19 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         with self.assertRaisesRegex(KnowledgeReleaseError, "explicit trust anchor"):
             HybridRetriever.from_data_dir(
                 self.data_dir,
-                embedding_provider=self.embedding_provider,
+                embedding_provider=self.embedding_provider, clock=fixed_clock,
             )
 
         retriever = HybridRetriever.from_data_dir(
             self.data_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         self.assertEqual(
             retriever.manifest["knowledge_release_id"],
@@ -405,7 +406,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         active_path = self.data_dir / "active-release.json"
         active = json.loads(active_path.read_text(encoding="utf-8"))
@@ -419,7 +420,7 @@ class ChunkInstallationTests(unittest.TestCase):
             HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
-                trust_root_path=self.release_trust.trust_root_path,
+                trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
             )
 
     def test_same_id_pointer_write_failure_restores_previous_active_pair(self):
@@ -428,7 +429,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         changed_content = "Replacement content must roll back on pointer failure."
         changed_source, changed_document = bundled_reviewed_source_and_document(
@@ -460,7 +461,7 @@ class ChunkInstallationTests(unittest.TestCase):
                     self.data_dir,
                     release_dir=replacement_dir,
                     embedding_provider=self.embedding_provider,
-                    trust_root_path=self.release_trust.trust_root_path,
+                    trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
                 )
 
         active_documents = json.loads(
@@ -470,7 +471,7 @@ class ChunkInstallationTests(unittest.TestCase):
         retriever = HybridRetriever.from_data_dir(
             self.data_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         self.assertNotIn(
             changed_content,
@@ -486,7 +487,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         changed_content = "Replacement content must not survive a failed backup move."
         changed_source, changed_document = bundled_reviewed_source_and_document(
@@ -518,14 +519,14 @@ class ChunkInstallationTests(unittest.TestCase):
                     self.data_dir,
                     release_dir=replacement_dir,
                     embedding_provider=self.embedding_provider,
-                    trust_root_path=self.release_trust.trust_root_path,
+                    trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
                 )
 
         self.assertTrue(original_index_path.is_dir())
         retriever = HybridRetriever.from_data_dir(
             self.data_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         self.assertNotIn(
             changed_content,
@@ -540,7 +541,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=self.build_chunked_release("kr-2026-07-30.1"),
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         first_active = first_install["active"]
         second_content = (
@@ -562,7 +563,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=second_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         active_path = self.data_dir / "active-release.json"
         active_path.write_text(
@@ -591,7 +592,7 @@ class ChunkInstallationTests(unittest.TestCase):
             retriever = HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
-                trust_root_path=self.release_trust.trust_root_path,
+                trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
             )
 
         self.assertEqual(
@@ -612,12 +613,12 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         original_retriever = HybridRetriever.from_data_dir(
             self.data_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         changed_content = "Replacement rows must not enter an existing retriever."
         changed_source, changed_document = bundled_reviewed_source_and_document(
@@ -636,7 +637,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=replacement_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         results = original_retriever.retrieve(
@@ -650,7 +651,7 @@ class ChunkInstallationTests(unittest.TestCase):
     def test_legacy_index_without_digests_rejects_valid_vector_tampering(self):
         installation = install_minimal_knowledge_release(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         active_path = self.data_dir / "active-release.json"
         active = json.loads(active_path.read_text(encoding="utf-8"))
@@ -672,13 +673,13 @@ class ChunkInstallationTests(unittest.TestCase):
         with self.assertRaisesRegex(RetrievalError, "content"):
             HybridRetriever.from_data_dir(
                 self.data_dir,
-                embedding_provider=self.embedding_provider,
+                embedding_provider=self.embedding_provider, clock=fixed_clock,
             )
 
     def test_legacy_active_manifest_is_anchored_to_bundled_signed_release(self):
         install_minimal_knowledge_release(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         active_path = self.data_dir / "active-release.json"
         active = json.loads(active_path.read_text(encoding="utf-8"))
@@ -709,13 +710,13 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             documents,
             manifest=active["manifest"],
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
 
         with self.assertRaisesRegex(KnowledgeReleaseError, "trusted signed release"):
             HybridRetriever.from_data_dir(
                 self.data_dir,
-                embedding_provider=self.embedding_provider,
+                embedding_provider=self.embedding_provider, clock=fixed_clock,
             )
 
     def test_interrupted_same_id_activation_recovers_stranded_backup(self):
@@ -723,7 +724,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=self.build_chunked_release(),
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         replacement_content = "Interrupted replacement content."
         replacement_source, replacement_document = bundled_reviewed_source_and_document(
@@ -743,7 +744,7 @@ class ChunkInstallationTests(unittest.TestCase):
             replacement_data,
             release_dir=replacement_release,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         release_id = "kr-2026-07-30.1"
         final_corpus = self.data_dir / "corpus" / release_id
@@ -786,14 +787,14 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         replacement_data = self.root / "identical-replacement-data"
         replacement = install_knowledge_release(
             replacement_data,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         release_id = "kr-2026-07-30.1"
         final_corpus = self.data_dir / "corpus" / release_id
@@ -844,7 +845,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         documents_path = (
             self.data_dir
@@ -863,7 +864,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
@@ -876,7 +877,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         changed_content = "A newly reviewed signed fact replaces the prior content."
         changed_source, changed_document = bundled_reviewed_source_and_document(
@@ -896,7 +897,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=replacement_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")
@@ -908,7 +909,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         lexical_path = (
             self.data_dir
@@ -927,7 +928,7 @@ class ChunkInstallationTests(unittest.TestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         self.assertNotEqual(repeated["progress"][-1]["phase"], "already_active")

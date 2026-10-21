@@ -22,6 +22,7 @@ from danish_rag.retrieval import HybridRetriever
 from danish_rag.source_maintenance import build_publishable_knowledge_release
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
 from tests.release_trust_fixture import create_test_release_trust_fixture
+from tests.evaluation_time import fixed_clock
 
 
 class FixtureAnswerGenerator:
@@ -65,7 +66,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
         )
         install_minimal_knowledge_release(
             self.data_dir,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         save_provider_configuration(
             self.config_path,
@@ -140,7 +141,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
         results = HybridRetriever.from_data_dir(
             self.data_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         ).retrieve("What Danish test do I need for permanent residence?")
         self.assertTrue(results)
         self.assertEqual(results[0]["knowledge_release_id"], "kr-2026-07-06.1")
@@ -154,7 +155,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
             trust_root_path=self.release_trust.trust_root_path,
-            progress_callback=streamed_progress.append,
+            progress_callback=streamed_progress.append, clock=fixed_clock,
         )
 
         self.assertEqual(result["manifest"]["knowledge_release_id"], "kr-2026-07-07.1")
@@ -184,7 +185,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
             HybridRetriever.from_data_dir(
                 self.data_dir,
                 embedding_provider=self.embedding_provider,
-                trust_root_path=self.release_trust.trust_root_path,
+                trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
             ).retrieve("permanent residence")
         )
 
@@ -192,7 +193,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         self.assertEqual(repeated["progress"][-1]["phase"], "already_active")
         self.assertEqual(repeated["progress"][-1]["percent"], 100)
@@ -211,7 +212,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
                 shutil.rmtree(self.data_dir)
                 install_minimal_knowledge_release(
                     self.data_dir,
-                    embedding_provider=self.embedding_provider,
+                    embedding_provider=self.embedding_provider, clock=fixed_clock,
                 )
                 release_dir = self.make_newer_release(
                     release_id=f"kr-2026-07-07.{phases.index(phase) + 1}"
@@ -227,7 +228,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
                         release_dir=release_dir,
                         embedding_provider=self.embedding_provider,
                         trust_root_path=self.release_trust.trust_root_path,
-                        fault_injector=fault_injector,
+                        fault_injector=fault_injector, clock=fixed_clock,
                     )
 
                 self.assert_previous_release_still_queryable()
@@ -255,7 +256,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
                 release_dir=release_dir,
                 embedding_provider=self.embedding_provider,
                 trust_root_path=self.release_trust.trust_root_path,
-                fault_injector=fault_injector,
+                fault_injector=fault_injector, clock=fixed_clock,
             )
 
         self.assert_previous_release_still_queryable()
@@ -282,7 +283,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
                 self.data_dir,
                 release_dir=release_dir,
                 embedding_provider=self.embedding_provider,
-                trust_root_path=self.release_trust.trust_root_path,
+                trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
             )
 
         self.assert_previous_release_still_queryable()
@@ -296,7 +297,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
             data_dir=self.data_dir,
             answer_generator=FixtureAnswerGenerator(),
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -319,7 +320,7 @@ class Issue19AtomicKnowledgeInstallTests(unittest.IsolatedAsyncioTestCase):
             self.data_dir,
             release_dir=release_dir,
             embedding_provider=self.embedding_provider,
-            trust_root_path=self.release_trust.trust_root_path,
+            trust_root_path=self.release_trust.trust_root_path, clock=fixed_clock,
         )
 
         second = await client.post(

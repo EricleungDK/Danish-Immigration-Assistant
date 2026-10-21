@@ -6,6 +6,7 @@ import unittest
 
 from danish_rag.candidate_retrieval_evidence import DATASETS, baseline_metrics, load_artifact, safe_path
 from danish_rag.evidence_integrity import sha256_file
+from tests.evidence_rebind import copy_repository, rebind_implementation_hashes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -71,22 +72,39 @@ class CandidateRetrievalEvidenceTests(unittest.TestCase):
                 with self.subTest(reference=reference), self.assertRaises(ValueError):
                     safe_path(root, reference)
 
-    def test_current_signed_candidate_does_not_inherit_old_passing_score(self):
-        from danish_rag.candidate_retrieval_evidence import evaluate_candidate_retrieval
+    def candidate_for(self, root):
         paths = {'retrieval': 'docs/progress/issue-51-retrieval-remediation.json',
                  'retrieval_baseline': 'docs/progress/issue-51-candidate-retrieval-baseline.json'}
-        candidate = {'release_dir': 'data/knowledge_releases/kr-2026-09-05.1',
-                     'manifest_sha256': sha256_file(ROOT / 'data/knowledge_releases/kr-2026-09-05.1/manifest.json'),
-                     'trust_root_path': 'config/trust_roots/project-release-key-v2.json',
-                     'artifacts': {key: {'path': path, 'sha256': sha256_file(ROOT / path)} for key, path in paths.items()}}
+        return {'release_dir': 'data/knowledge_releases/kr-2026-09-05.1',
+                'manifest_sha256': sha256_file(root / 'data/knowledge_releases/kr-2026-09-05.1/manifest.json'),
+                'trust_root_path': 'config/trust_roots/project-release-key-v2.json',
+                'artifacts': {key: {'path': path, 'sha256': sha256_file(root / path)} for key, path in paths.items()}}
+
+    def test_committed_evidence_is_stale_after_implementation_changes(self):
+        # ADR 0001 (docs/adr/0001-requalify-per-release-not-per-commit.md): committed hashes
+        # record the qualified candidate, not the current tree.
+        from danish_rag.candidate_retrieval_evidence import evaluate_candidate_retrieval
         quality = json.loads((ROOT / 'config/evaluation-quality-bar.json').read_text())
         runtime = json.loads((ROOT / 'config/runtime-policy.json').read_text())
-        result = evaluate_candidate_retrieval(ROOT, quality, runtime, candidate)
+        result = evaluate_candidate_retrieval(ROOT, quality, runtime, self.candidate_for(ROOT))
         self.assertEqual(result[0], 'failed')
-        self.assertIn('candidate required-evidence Recall@3 below threshold', result[5])
-        self.assertEqual(result[2]['required_evidence_query_count'], 7)
-        self.assertEqual(result[2]['required_evidence_hits'], 2)
-        candidate['manifest_sha256'] = '0' * 64
-        result = evaluate_candidate_retrieval(ROOT, quality, runtime, candidate)
-        self.assertEqual(result[0], 'failed')
-        self.assertIn('candidate manifest hash mismatch', result[5][0])
+        self.assertTrue(any('implementation changed' in item for item in result[5]), result[5])
+
+    def test_current_signed_candidate_does_not_inherit_old_passing_score(self):
+        # Run against a copy with implementation bindings recomputed (ADR 0001).
+        from danish_rag.candidate_retrieval_evidence import evaluate_candidate_retrieval
+        with tempfile.TemporaryDirectory() as directory:
+            root = copy_repository(directory)
+            rebind_implementation_hashes(root)
+            candidate = self.candidate_for(root)
+            quality = json.loads((root / 'config/evaluation-quality-bar.json').read_text())
+            runtime = json.loads((root / 'config/runtime-policy.json').read_text())
+            result = evaluate_candidate_retrieval(root, quality, runtime, candidate)
+            self.assertEqual(result[0], 'failed')
+            self.assertIn('candidate required-evidence Recall@3 below threshold', result[5])
+            self.assertEqual(result[2]['required_evidence_query_count'], 7)
+            self.assertEqual(result[2]['required_evidence_hits'], 2)
+            candidate['manifest_sha256'] = '0' * 64
+            result = evaluate_candidate_retrieval(root, quality, runtime, candidate)
+            self.assertEqual(result[0], 'failed')
+            self.assertIn('candidate manifest hash mismatch', result[5][0])

@@ -7,6 +7,7 @@ import httpx
 from danish_rag.local_app import create_app
 from danish_rag.provider_setup import ProviderCapabilityTester
 from tests.embedding_provider_fixture import DeterministicEmbeddingProviderFixture
+from tests.evaluation_time import fixed_clock
 
 
 class BrowserLevelApplicationTests(unittest.IsolatedAsyncioTestCase):
@@ -24,7 +25,7 @@ class BrowserLevelApplicationTests(unittest.IsolatedAsyncioTestCase):
             data_dir=data_dir,
             capability_tester=capability_tester,
             model_discoverer=model_discoverer,
-            embedding_provider=self.embedding_provider,
+            embedding_provider=self.embedding_provider, clock=fixed_clock,
         )
         client = httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -114,7 +115,7 @@ class BrowserLevelApplicationTests(unittest.IsolatedAsyncioTestCase):
                 app=create_app(
                     config_path=config_path,
                     data_dir=config_path.parent / "data",
-                    embedding_provider=self.embedding_provider,
+                    embedding_provider=self.embedding_provider, clock=fixed_clock,
                 )
             ),
             base_url="http://testserver",
