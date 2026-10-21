@@ -153,6 +153,26 @@ class Issue12AmbiguityTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(retriever.calls, [])
                 self.assertEqual(generator.calls, [])
 
+    def test_clarification_turn_trust_indicators_are_unchanged(self):
+        result = AnswerService(
+            retriever=CountingRetriever(), generator=FixtureAnswerGenerator(), clock=fixed_clock
+        ).answer("Which Danish test do I need for my application?", provider_configuration())
+
+        self.assertEqual(
+            result.answer["trust"],
+            {
+                "evidence_confidence": "Low",
+                "evidence_confidence_reason": (
+                    "No substantive answer was generated because the missing context can "
+                    "change the official answer."
+                ),
+                "fresh_tomato_score": "Low",
+                "fresh_tomato_reason": (
+                    "No material source has been attached to this clarification turn."
+                ),
+            },
+        )
+
     def test_greeting_bypasses_retrieval_and_generation(self):
         retriever = CountingRetriever()
         generator = FixtureAnswerGenerator()

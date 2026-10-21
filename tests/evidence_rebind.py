@@ -36,7 +36,7 @@ _COLLECTORS = {
 _RENAMED_IMPLEMENTATIONS = {
     "danish_rag/source_freshness.py": "danish_rag/trust_indicators.py",  # #71
 }
-_DEFAULT_COLLECTOR ="danish_rag/grounded_flexibility_retrieval.py"
+_DEFAULT_COLLECTOR = "danish_rag/grounded_flexibility_retrieval.py"
 
 # The only evidence files a full rebind may rewrite. A binding outside this set (for
 # example an approval record) changing means a new dependency on implementation hashes

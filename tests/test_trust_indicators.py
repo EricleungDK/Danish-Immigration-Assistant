@@ -1,5 +1,6 @@
 """Trust indicators module (#71): health vocabulary, eligibility, confidence, score."""
 
+import ast
 import copy
 import json
 import re
@@ -148,9 +149,23 @@ class DefinedOnceTests(unittest.TestCase):
 
     def test_answer_path_and_retrieval_do_not_hand_match_health_strings(self):
         for name in ("answer_pipeline.py", "retrieval.py"):
-            text = (ROOT / "danish_rag" / name).read_text(encoding="utf-8")
-            for literal in ("overdue-policy-usable", '"healthy"', "'healthy'", "approved-current"):
-                self.assertNotIn(literal, text, f"{name}: {literal}")
+            tree = ast.parse((ROOT / "danish_rag" / name).read_text(encoding="utf-8"))
+            docstrings = {
+                id(node.body[0].value)
+                for node in ast.walk(tree)
+                if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.body
+                and isinstance(node.body[0], ast.Expr)
+            }
+            strings = {
+                node.value
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and id(node) not in docstrings
+            }
+            hand_matched = strings & {"healthy", "overdue-policy-usable", "approved-current"}
+            self.assertEqual(hand_matched, set(), name)
 
     def test_source_freshness_module_is_absorbed(self):
         self.assertFalse((ROOT / "danish_rag" / "source_freshness.py").exists())

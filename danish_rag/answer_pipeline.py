@@ -1468,7 +1468,17 @@ def _clarification_answer(decision: AmbiguityDecision) -> dict[str, Any]:
             }
         ],
         "citations": [],
-        "trust": no_material_source_trust_indicators(),
+        "trust": {
+            "evidence_confidence": "Low",
+            "evidence_confidence_reason": (
+                "No substantive answer was generated because the missing context can "
+                "change the official answer."
+            ),
+            "fresh_tomato_score": "Low",
+            "fresh_tomato_reason": (
+                "No material source has been attached to this clarification turn."
+            ),
+        },
     }
 
 
@@ -1498,18 +1508,7 @@ def _unsupported_answer(
         "assumptions": [],
         "sections": sections,
         "citations": [],
-        "trust": {
-            "evidence_confidence": "Low",
-            "evidence_confidence_reason": (
-                "No eligible approved official material source could support a "
-                "substantive answer."
-            ),
-            "fresh_tomato_score": "Low",
-            "fresh_tomato_reason": (
-                "Source freshness is low because no current healthy material source "
-                "could be attached."
-            ),
-        },
+        "trust": no_material_source_trust_indicators(),
     }
 
 
