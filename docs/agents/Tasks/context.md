@@ -226,6 +226,13 @@ re-reviews, CI signing, or further GitHub releases). Built on #64 (PR #65), bran
   path. Without it cold `gemma4:12b` on Ollama 0.34.0 burned the token budget on
   thinking (empty content, `done_reason=length`, ~86 s) and failed setup. Live: cold
   3/3 pass (~6-7 s), warm ~1 s. No threshold/schema/timeout changed.
+- 2026-10-24 (#61): OpenAI-compatible adapter sends `reasoning_effort: "none"` (one seam
+  for probe + answer path); HTTP 400/422 -> retry once without it; adapter instance stops sending (a real 400 also
+  latches it off; instance is rebuilt per call, so a strict server pays one extra rejected request per call). Live
+  (Ollama `/v1`, `qwen3:1.7b` stand-in, `gemma4:12b` not installed): plain request
+  emitted `reasoning` text, 136-140 completion tokens; `think:false` ignored on `/v1`;
+  `reasoning_effort:"none"` -> 6 tokens, no reasoning; unknown fields silently accepted.
+  Empty-content failure itself not reproduced (small model, short prompt).
 
 ## Known Issues
 

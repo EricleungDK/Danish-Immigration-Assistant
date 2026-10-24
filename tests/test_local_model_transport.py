@@ -440,6 +440,70 @@ class OpenAICompatibleTransportTests(unittest.TestCase):
         self.assertEqual(body["response_format"]["json_schema"]["schema"], {"type": "object"})
         self.assertEqual(body["temperature"], 0)
 
+    def test_chat_requests_thinking_off_via_reasoning_effort(self):
+        routes = {
+            ("POST", "/v1/chat/completions"): ok(
+                {"choices": [{"message": {"content": '{"status": "ok"}'}}]}
+            )
+        }
+        with _StubServer(routes) as server:
+            OpenAICompatibleTransport(server.endpoint).chat(
+                model="m", messages=[{"role": "user", "content": "hi"}]
+            )
+        self.assertEqual(server.requests[0][2]["reasoning_effort"], "none")
+
+    def test_server_rejecting_reasoning_effort_is_retried_without_it_once(self):
+        for status in (400, 422):
+            def strict(body, status=status):
+                if "reasoning_effort" in body:
+                    return status, {"error": "unknown field reasoning_effort"}, {}
+                return 200, {"choices": [{"message": {"content": "hello"}}]}, {}
+
+            routes = {("POST", "/v1/chat/completions"): strict}
+            with self.subTest(status=status), _StubServer(routes) as server:
+                transport = OpenAICompatibleTransport(server.endpoint)
+                first = transport.chat(model="m", messages=[])
+                second = transport.chat(model="m", messages=[])
+                self.assertEqual((first.content, second.content), ("hello", "hello"))
+                sent = ["reasoning_effort" in request[2] for request in server.requests]
+                self.assertEqual(sent, [True, False, False])
+
+    def test_other_http_errors_are_not_retried_and_keep_the_field(self):
+        routes = {("POST", "/v1/chat/completions"): lambda body: (500, {"error": "x"}, {})}
+        with _StubServer(routes) as server:
+            transport = OpenAICompatibleTransport(server.endpoint)
+            with self.assertRaises(ModelProtocolError):
+                transport.chat(model="m", messages=[])
+        self.assertEqual(len(server.requests), 1)
+        self.assertTrue(transport._thinking_off_supported)
+
+    def test_setup_probe_passes_on_server_that_rejects_reasoning_effort(self):
+        from danish_rag.provider_setup import ProviderCapabilityTester, ProviderConfiguration
+
+        def strict(body):
+            if "reasoning_effort" in body:
+                return 400, {"error": "unknown field"}, {}
+            return 200, {"choices": [{"message": {"content": '{"status": "ok"}'}}]}, {}
+
+        routes = {
+            ("GET", "/v1/models"): ok({"data": [{"id": "chat-a"}]}),
+            ("POST", "/v1/chat/completions"): strict,
+        }
+        with _StubServer(routes) as server:
+            result = ProviderCapabilityTester()(
+                ProviderConfiguration(
+                    provider_id="openai_compatible", endpoint=server.endpoint, model="chat-a"
+                )
+            )
+        self.assertTrue(result.ok, result)
+
+    def test_http_400_without_reasoning_effort_is_still_a_protocol_error(self):
+        routes = {("POST", "/v1/chat/completions"): lambda body: (400, {"error": "bad"}, {})}
+        with _StubServer(routes) as server:
+            with self.assertRaises(ModelProtocolError):
+                OpenAICompatibleTransport(server.endpoint).chat(model="m", messages=[])
+        self.assertEqual(len(server.requests), 2)
+
     def test_chat_without_content_is_a_protocol_error(self):
         routes = {("POST", "/v1/chat/completions"): ok({"choices": []})}
         with _StubServer(routes) as server:

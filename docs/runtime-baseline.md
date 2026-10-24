@@ -81,6 +81,9 @@ Production Ollama structured-chat requests and the structured runtime probe use
 the same deterministic runtime options: `temperature` is `0` and `seed` is `0`.
 Both also send `think: false`; without it, thinking models such as `gemma4:12b`
 can spend the whole token budget on thinking and return empty content (#60).
+The OpenAI-compatible adapter sends `reasoning_effort: "none"` for the same reason
+(#61; Ollama `/v1` ignores `think` and honours this field). A server that answers
+HTTP 400 or 422 is retried once without it, and that adapter instance stops sending it.
 This provider request contract does not by itself qualify exact final-answer
 reproducibility; the current live verification finding is recorded in
 [Issue 25 Ollama Seed Determinism](progress/issue-25-ollama-seed-determinism.md).

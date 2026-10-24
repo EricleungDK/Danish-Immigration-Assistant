@@ -29,6 +29,12 @@ OLLAMA_DETERMINISTIC_CHAT_OPTIONS: Final[Mapping[str, int]] = MappingProxyType(
     }
 )
 _OLLAMA_THINKING_ENABLED: Final = False
+# OpenAI-compatible APIs have no standard thinking switch; Ollama's /v1 honours this one.
+_OPENAI_THINKING_OFF_FIELDS: Final[Mapping[str, str]] = MappingProxyType(
+    {"reasoning_effort": "none"}
+)
+# Statuses servers use to reject an unknown request field (strict validators answer 422).
+_FIELD_REJECTED_STATUSES: Final = (400, 422)
 
 
 class LocalModelTransportError(RuntimeError):
@@ -49,6 +55,14 @@ class ModelMissingError(LocalModelTransportError):
 
 class ModelProtocolError(LocalModelTransportError):
     """The provider answered, but not with a usable response."""
+
+
+class ModelRejectedRequestError(ModelProtocolError):
+    """The provider answered with an HTTP error status other than "model missing"."""
+
+    def __init__(self, message: str, *, status: int) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 class ModelEmptyReplyError(ModelProtocolError):
@@ -151,7 +165,9 @@ class _HttpJsonTransport:
                 raise ModelMissingError(
                     f"{name} does not have the requested model ({path})."
                 ) from exc
-            raise ModelProtocolError(f"{name} returned HTTP {exc.code} for {path}.") from exc
+            raise ModelRejectedRequestError(
+                f"{name} returned HTTP {exc.code} for {path}.", status=exc.code
+            ) from exc
         except urllib.error.URLError as exc:
             if isinstance(exc.reason, TimeoutError):
                 raise ModelTimeoutError(f"{name} timed out at {self.endpoint}.") from exc
@@ -266,6 +282,8 @@ class OpenAICompatibleTransport(_HttpJsonTransport):
 
     provider_name = "OpenAI-compatible provider"
 
+    _thinking_off_supported = True
+
     def chat(
         self,
         *,
@@ -289,9 +307,7 @@ class OpenAICompatibleTransport(_HttpJsonTransport):
                     "strict": True,
                 },
             }
-        body = self._request(
-            "POST", "/v1/chat/completions", payload, missing_statuses=(404,)
-        )
+        body = self._post_chat(payload)
         choices = body.get("choices")
         first = choices[0] if isinstance(choices, list) and choices else None
         message = first.get("message") if isinstance(first, dict) else None
@@ -304,6 +320,27 @@ class OpenAICompatibleTransport(_HttpJsonTransport):
             done_reason=finish_reason if isinstance(finish_reason, str) else None,
             raw=body,
         )
+
+    def _post_chat(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Ask for thinking off; a server that rejects the request is retried without it.
+
+        Any 400/422 is treated as a rejected field (the body is not inspected), so the
+        flag stays off for this adapter instance's remaining requests.
+        """
+
+        def post(body: Mapping[str, Any]) -> dict[str, Any]:
+            return self._request(
+                "POST", "/v1/chat/completions", body, missing_statuses=(404,)
+            )
+
+        if self._thinking_off_supported:
+            try:
+                return post({**payload, **_OPENAI_THINKING_OFF_FIELDS})
+            except ModelRejectedRequestError as exc:
+                if exc.status not in _FIELD_REJECTED_STATUSES:
+                    raise
+                self._thinking_off_supported = False
+        return post(payload)
 
     def embed(self, *, model: str, texts: Sequence[str]) -> list[list[float]]:
         raise self._unsupported("embed")
