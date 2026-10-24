@@ -876,6 +876,7 @@ def run_rollback_fault_matrix(
     *,
     mode: MonitorMode,
     clock: Callable[[], datetime] = system_utc_clock,
+    install_timeout_seconds: float = 120,
 ) -> dict[str, Any]:
     """Inject every published installation fault and prove atomic rollback behavior."""
 
@@ -980,11 +981,21 @@ def run_rollback_fault_matrix(
             failure_observed = False
             failure_type = ""
             installation_returned = False
-            try:
-                if discovery_error is not None:
-                    raise discovery_error
-                update_controller.start_install(release_dir.name)
-                update_controller.wait_idle(120)
+            install_timed_out = False
+            setup_error: Exception | None = discovery_error
+            if setup_error is None:
+                try:
+                    update_controller.start_install(release_dir.name)
+                except Exception as exc:
+                    setup_error = exc
+            if setup_error is not None:
+                # Discovery or install start broke: a setup error, not an observed fault.
+                failure_type = f"SetupError:{type(setup_error).__name__}"
+            elif not update_controller.wait_idle(install_timeout_seconds):
+                # The worker may still be writing; never read or clean up under it.
+                install_timed_out = True
+                failure_type = "InstallTimeout"
+            else:
                 installation = update_controller.installation_status() or {}
                 progress = list(installation.get("events") or [])
                 if installation.get("state") == "completed":
@@ -992,11 +1003,10 @@ def run_rollback_fault_matrix(
                 elif installation.get("state") == "failed":
                     failure_observed = True
                     failure_type = str(installation.get("error_type") or "")
-            except Exception as exc:  # Evidence records the type, never request content.
-                failure_observed = True
-                failure_type = type(exc).__name__
 
             try:
+                if install_timed_out:
+                    raise ReleaseMonitorError("install-timeout")
                 after = active_corpus_summary(
                     data_dir,
                     trust_root_path=trust_root_path,
@@ -1011,6 +1021,8 @@ def run_rollback_fault_matrix(
                 target_release_active = False
 
             try:
+                if install_timed_out:
+                    raise ReleaseMonitorError("install-timeout")
                 retrieved = HybridRetriever.from_data_dir(
                     data_dir,
                     embedding_provider=embedding_provider,
@@ -1059,7 +1071,7 @@ def run_rollback_fault_matrix(
                     "completed_phase_observed": success_phase_reported,
                 }
             )
-            if (data_dir / ".installing").exists():
+            if not install_timed_out and (data_dir / ".installing").exists():
                 shutil.rmtree(data_dir / ".installing")
 
     return {

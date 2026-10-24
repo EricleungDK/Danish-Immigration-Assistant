@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -9,7 +11,10 @@ from unittest.mock import patch
 import httpx
 
 import danish_rag.release_monitors as release_monitors
-from danish_rag.knowledge_update_controller import KnowledgeUpdateController
+from danish_rag.knowledge_update_controller import (
+    KnowledgeUpdateController,
+    KnowledgeUpdateUnavailable,
+)
 from danish_rag.release_monitors import (
     main,
     run_network_boundary_monitor,
@@ -135,6 +140,78 @@ class UpdateEvidenceUsesControllerTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(evidence["passed"])
         self.assertEqual(len(started), 6)
 
+    def test_install_that_outlives_the_timeout_fails_the_phase_explicitly(self):
+        release = threading.Event()
+
+        def blocked_install(*args, **kwargs):
+            release.wait(10)
+
+        try:
+            with patch(
+                "danish_rag.knowledge_update_controller.install_knowledge_release",
+                blocked_install,
+            ):
+                evidence = run_rollback_fault_matrix(
+                    mode="fixture",
+                    clock=fixed_clock,
+                    install_timeout_seconds=0.2,
+                )
+        finally:
+            release.set()
+
+        self.assertFalse(evidence["passed"])
+        for result in evidence["results"]:
+            with self.subTest(phase=result["phase"]):
+                self.assertEqual(result["status"], "failed")
+                self.assertEqual(result["failure_type"], "InstallTimeout")
+                self.assertFalse(result["failure_observed"])
+
+    def test_discovery_failure_is_a_setup_error_not_an_observed_install_failure(self):
+        with patch.object(
+            KnowledgeUpdateController,
+            "manual_check",
+            side_effect=KnowledgeUpdateUnavailable("discovery broke"),
+        ):
+            evidence = run_rollback_fault_matrix(mode="fixture", clock=fixed_clock)
+
+        self.assertFalse(evidence["passed"])
+        for result in evidence["results"]:
+            with self.subTest(phase=result["phase"]):
+                self.assertEqual(result["status"], "failed")
+                self.assertFalse(result["failure_observed"])
+                self.assertEqual(
+                    result["failure_type"], "SetupError:KnowledgeUpdateUnavailable"
+                )
+
+    def test_signature_is_tampered_after_discovery_and_rejected_at_install(self):
+        seen: dict[str, list[str]] = {"check": [], "install": []}
+        original_check = KnowledgeUpdateController.manual_check
+        original_start = KnowledgeUpdateController.start_install
+
+        def signature_digest(controller, release_id):
+            path = controller._catalog_dir / release_id / "manifest.sig"
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+
+        def recording_check(controller, *args, **kwargs):
+            release_id = next(p.name for p in controller._catalog_dir.iterdir())
+            seen["check"].append(signature_digest(controller, release_id))
+            return original_check(controller, *args, **kwargs)
+
+        def recording_start(controller, release_id):
+            seen["install"].append(signature_digest(controller, release_id))
+            return original_start(controller, release_id)
+
+        with patch.object(
+            KnowledgeUpdateController, "manual_check", recording_check
+        ), patch.object(KnowledgeUpdateController, "start_install", recording_start):
+            evidence = run_rollback_fault_matrix(mode="fixture", clock=fixed_clock)
+
+        verification = evidence["results"][0]
+        self.assertEqual(verification["phase"], "verification")
+        self.assertEqual(verification["failure_type"], "KnowledgeReleaseError")
+        self.assertTrue(verification["signature_rejection_observed"])
+        self.assertNotEqual(seen["check"][0], seen["install"][0])
+
 
 class ReleaseRollbackFaultMatrixTests(unittest.TestCase):
     def test_fixture_matrix_proves_every_failed_phase_keeps_prior_pair_queryable(self):
@@ -157,6 +234,12 @@ class ReleaseRollbackFaultMatrixTests(unittest.TestCase):
             with self.subTest(phase=result["phase"]):
                 self.assertEqual(result["status"], "passed")
                 self.assertTrue(result["failure_observed"])
+                self.assertEqual(
+                    result["failure_type"],
+                    "KnowledgeReleaseError"
+                    if result["phase"] == "verification"
+                    else "ReleaseMonitorError",
+                )
                 self.assertTrue(result["prior_pair_unchanged"])
                 self.assertTrue(result["prior_pair_queryable"])
                 self.assertFalse(result["target_release_active"])
