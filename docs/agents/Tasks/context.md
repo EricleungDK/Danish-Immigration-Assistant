@@ -1,6 +1,6 @@
 # Current Project Context
 
-**Last updated:** 2026-10-07
+**Last updated:** 2026-10-24
 
 ## Current Project State
 
@@ -23,6 +23,38 @@ relationships, and zero unsupported claims. The failed fact judgment remains
 recorded within the approved 95% coverage threshold.
 Fresh strict real-process/browser evidence now passes for the supported
 environment; all eight manual assistive-technology journeys passed.
+
+## Module deepening — 2026-10-24 (#69)
+
+PRD #69, 11 sub-issues, one PR each (#82-#92), behaviour unchanged.
+
+- **Clock (#70).** Freshness, eligibility, and evidence checks take a required
+  tz-aware evaluation time; `create_app`, `AnswerService`, evaluation runners take
+  `clock` (default system UTC). `tests/fixture_clock.py` deleted; tests pass
+  `tests/evaluation_time.fixed_clock`. Snapshot mode uses `snapshot_aware_clock`.
+- **Trust indicators (#71, #72).** `danish_rag/trust_indicators.py` replaces
+  `source_freshness.py`: `SourceHealth` enum, conflict set, lowest-source
+  aggregation, pure derivations. Evaluator oracle shares only the vocabulary and
+  keeps its own eligibility tables (drift-alarm test).
+- **Transport (#73, #74).** `danish_rag/local_model_transport.py`: Ollama and
+  OpenAI-compatible adapters, loopback on construction and every call, typed errors,
+  `FakeTransport` (scripted + responder). One `is_loopback_url`, in `privacy_boundary`.
+- **Answer path (#75, #76, #77).** `EvidenceBoundedAnswer` (generate, verify, one
+  repair, fail closed) with explicit `ModelAnswerVerifier` / `LexicalAnswerVerifier`;
+  `AnswerService` requires a verifier. Social turns in `social_conversation.py`.
+  `create_app` is transport-only; fixtures use `FakeTransport(responder=ControlledModel)`
+  and so run the model verifier, while controlled evaluation and direct validation stay lexical.
+- **Updates (#78, #79, #80).** `KnowledgeUpdateController` owns checks, download
+  approval, install, locks, threads; retriever cached per active release + live
+  embedding identity, revalidated per request; monitors collect update evidence
+  from the controller.
+- **Evidence.** Per ADR 0001 the committed `docs/progress/issue-51-*.json` hashes are
+  now stale; tests verify against a rebound temp copy (`tests/evidence_rebind.py`,
+  allow-listed) and assert committed evidence is rejected. Requalify the next
+  release candidate as a whole.
+- **Follow-ups.** Lexical guard accepts a negation flip the model verifier rejects;
+  `answer_pipeline.py` could split out the answer module; `/ask` blocks the event loop
+  (pre-existing); duplicated update running-status copy.
 
 ## README demo recording — 2026-09-30
 
